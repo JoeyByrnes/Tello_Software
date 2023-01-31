@@ -8,24 +8,24 @@
         {
             "name": "PlatformIO",
             "includePath": [
-                "/home/tello/Documents/PlatformIO/Projects/Tello_Robot_Software/include",
-                "/home/tello/Documents/PlatformIO/Projects/Tello_Robot_Software/src",
-                "/home/tello/Documents/PlatformIO/Projects/Tello_Robot_Software/lib/CheetahMotor",
-                "/home/tello/Documents/PlatformIO/Projects/Tello_Robot_Software/lib/PCAN",
+                "/home/tello/Documents/PlatformIO/Projects/Tello_Software/include",
+                "/home/tello/Documents/PlatformIO/Projects/Tello_Software/src",
+                "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/CheetahMotor",
+                "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/PCAN",
                 ""
             ],
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
-                    "/home/tello/Documents/PlatformIO/Projects/Tello_Robot_Software/include",
-                    "/home/tello/Documents/PlatformIO/Projects/Tello_Robot_Software/src",
-                    "/home/tello/Documents/PlatformIO/Projects/Tello_Robot_Software/lib/CheetahMotor",
-                    "/home/tello/Documents/PlatformIO/Projects/Tello_Robot_Software/lib/PCAN",
+                    "/home/tello/Documents/PlatformIO/Projects/Tello_Software/include",
+                    "/home/tello/Documents/PlatformIO/Projects/Tello_Software/src",
+                    "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/CheetahMotor",
+                    "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/PCAN",
                     ""
                 ]
             },
             "defines": [
-                "PLATFORMIO=60105",
+                "PLATFORMIO=60106",
                 ""
             ],
             "compilerPath": "/usr/bin/gcc",

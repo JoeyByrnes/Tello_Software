@@ -84,6 +84,9 @@ int stop_recording = 0;
 
 CheetahMotor* motors[10];
 
+pthread_mutex_t mutex_CAN_recv = PTHREAD_MUTEX_INITIALIZER;
+int can_data_ready_to_save = 1;
+
 void enable_all(){
 	for(int i=0;i<10;i++)
 	{
@@ -173,21 +176,21 @@ static void* update_1kHz( void * arg )
 	int pos_initialized = 0;
 	while(pos_initialized < motors_in_use)
 	{
+		pthread_mutex_lock(&mutex_CAN_recv);
 		pos_initialized = 0;
 		for(int i=0;i<10;i++)
 		{
 			pos_initialized+=position_initialized[i];
 			motors[i]->disableMotor();
 		}
+		pthread_mutex_unlock(&mutex_CAN_recv);
 		usleep(10000);
 	}
 	printf("\nAll motors Initialized, Enabling.\n");
 	for(int i=0;i<10;i++)
 	{
-		pos_initialized+=position_initialized[i];
 		motors[i]->setPos(encoder_offsets[i]);
 		motors[i]->updateMotor();
-		motors[i]->enableMotor();
 	}
 
 	usleep(1000);
@@ -222,7 +225,6 @@ static void* update_1kHz( void * arg )
 				disable_all();
 				break;
 		}
-
 		update_all_motors();
 
 		// Write update loop code above this line ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -239,10 +241,10 @@ void signal_callback_handler(int signum){
 		motors[i]->disableMotor();
 	}
 
-	fclose(log_file);
+	//fclose(log_file);
 	printf("\n\n==================== Exiting Tello Software ====================\n");
-	set_cpu_gov(6,GOV_POWERSAVE);
-	printf("CPU Governor set to Powersave (Approx. 900MHz on Up Xtreme 866)\n\n\n");
+	// set_cpu_gov(6,GOV_POWERSAVE);
+	// printf("CPU Governor set to Powersave (Approx. 900MHz on Up Xtreme 866)\n\n\n");
 	
 	usleep(1000);
 	exit(signum);
@@ -254,8 +256,8 @@ int main() {
 	printf("\n==================== Running Tello Software ====================\n\n");
 	assignToCore(ISOLATED_CORE);
 
-	set_cpu_gov(6,GOV_PERFORMANCE);
-	printf("CPU Governor set to Performance (Max 4.4GHz on Up Xtreme 866)\n");
+	// set_cpu_gov(6,GOV_PERFORMANCE);
+	// printf("CPU Governor set to Performance (Max 4.4GHz on Up Xtreme 866)\n");
 	
     setpriority(PRIO_PROCESS, 0, 19); // Set NICE Priority in case user doesn't have RT Permission
 
@@ -283,8 +285,8 @@ int main() {
 	// if(!chrt_err) printf("RT Priority: %d\n",sp.sched_priority);
 	// else printf("Error setting RT Priority");
 
-	log_file = fopen("tello_log.txt", "w+"); // open file for logging data
-	
+	//log_file = fopen("tello_log.txt", "w+"); // open file for logging data
+
 	
 	char buffer[UDP_MAXLINE];
     int cnt = 0;

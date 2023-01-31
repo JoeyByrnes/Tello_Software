@@ -9,7 +9,11 @@ extern uint16_t encoder_offsets[10];
 extern int udp_data_ready;
 extern char udp_control_packet[UDP_MAXLINE];
 
+extern pthread_mutex_t mutex_CAN_recv;
+extern int can_data_ready_to_save;
+
 void* rx_CAN( void * arg ){
+	
     
 	TPCANStatus Status;
 	TPCANMsg Message;
@@ -17,9 +21,11 @@ void* rx_CAN( void * arg ){
 	printf("CAN Channel %d receive thread running...\n",pcd-64);
     usleep(100);
 	while(1){
+		
 		while ((Status=CAN_Read(pcd, &Message, NULL)) == PCAN_ERROR_QRCVEMPTY){;}
 		if (Status != PCAN_ERROR_OK) {
-			//printf("CAN_Read(%xh) failure 0x%x\n", pcd, (int)Status);
+			pthread_exit(NULL);
+			printf("Error on CAN bus %d\n",pcd-64);
 			break;
 		}
 		unsigned int id = Message.DATA[0];
@@ -27,6 +33,8 @@ void* rx_CAN( void * arg ){
 		unsigned int vel  = (Message.DATA[3] << 4) + ((Message.DATA[4] & 0xF0) >> 4);
 		unsigned int cur = ((Message.DATA[4] & 0x0F) << 8) + Message.DATA[5];
 		
+		pthread_mutex_lock(&mutex_CAN_recv);
+
 		encoder_positions[id-1] = pos;
 		if(!position_initialized[id-1]){
 			encoder_offsets[id-1] = pos;
@@ -34,10 +42,11 @@ void* rx_CAN( void * arg ){
 			//printf("ID: %d , OFFSET: %d \n",id,pos);
 			printf("Motor %d Connected\n", id);
 		}
-		//encoders[id-1] = pos*(360.0/16384.0);
 
 		encoders[id-1] = pos;
-		//printf("ID: %d , POS: %d \n",id,pos);
+
+		pthread_mutex_unlock(&mutex_CAN_recv);
+
 		usleep(300);
 	}
     return NULL;

@@ -3,7 +3,7 @@ Tello Software
 
 Software package for RoboDesign Lab Tello Humanoid robot
 
-Features Implemented:
+<b>Features Implemented:</b>
 
 UDP joint control
 

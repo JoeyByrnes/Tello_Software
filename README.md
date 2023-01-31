@@ -1,23 +1,8 @@
-How to build PlatformIO based project
+Tello Software
 =====================================
 
-1. [Install PlatformIO Core](https://docs.platformio.org/page/core.html)
-2. Download [development platform with examples](https://github.com/platformio/platform-native/archive/develop.zip)
-3. Extract ZIP archive
-4. Run these commands:
+Software package for RoboDesign Lab Tello Humanoid robot
 
-```shell
-# Change directory to example
-$ cd platform-native/examples/hello-world
-
-# Build project
-$ pio run
-
-# Execute program
-$ pio run --target exec
-# or using embedded's "upload" target
-$ pio run --target upload
-
-# Clean build files
-$ pio run --target clean
-```
+Features Implemented:
+UDP joint control
+Motion recording and playback

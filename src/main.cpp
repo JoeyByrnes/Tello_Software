@@ -37,6 +37,7 @@ float averageTime = 0;
 float maxTime = 0;
 
 FILE *log_file, *f_tx, *f_motion;
+std::ifstream motion_in_file;
 
 struct timeval st, et;
 struct timeval update_st, update_et;
@@ -81,11 +82,14 @@ int motor_directions[10] =      { 1,-1, 1, 1,-1, 1,-1, 1, 1,-1};
 int motors_in_use = 5;
 int mode_selected = 0;
 int stop_recording = 0;
+int recording_initialized = 0;
+int playback_initialized = 0;
 
 CheetahMotor* motors[10];
 
 pthread_mutex_t mutex_CAN_recv = PTHREAD_MUTEX_INITIALIZER;
 int can_data_ready_to_save = 1;
+int disabled = 1;
 
 void enable_all(){
 	for(int i=0;i<10;i++)
@@ -142,9 +146,33 @@ void handle_UDP_Commands(){
 }
 void handle_Motion_Recording(){
 
+	if(!recording_initialized){
+		printf("Recording...\n");
+		f_motion = fopen("motion_log.txt", "w+");
+		recording_initialized = 1;
+	}
+	// record here:
+	for(int i=0;i<10;i++){
+		fprintf(f_motion, "%u ", encoders[i]);
+	}
+	fprintf(f_motion, "\n");
+
 }
 void handle_Motion_Playback(){
+	if(!playback_initialized){
+		motion_in_file = std::ifstream("motion_log.txt");
+		playback_initialized = 1;
+	}
 
+	for(int i=0;i<10;i++){
+		int a;
+		motion_in_file >> a;
+		if(a == 123456){
+			printf("\nEnd of recording reached\n");
+			exit(0);
+		}
+		motors[i]->setPos((uint16_t)a);
+	}
 }
 
 
@@ -208,21 +236,22 @@ static void* update_1kHz( void * arg )
 		// Write update loop code under this line ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		switch(fsm_state){
 			case 0:
-				disable_all();
-				// Nothing to be done here
+				// do nothing
 				break;
 			case 1:
 				set_kp_kd_all(400,200);
 				handle_UDP_Commands();
 				break;
 			case 2:
+				pthread_mutex_lock(&mutex_CAN_recv);
 				handle_Motion_Recording();
+				pthread_mutex_unlock(&mutex_CAN_recv);
 				break;
 			case 3:
 				handle_Motion_Playback();
 				break;
 			default:
-				disable_all();
+				// do nothing
 				break;
 		}
 		update_all_motors();
@@ -236,12 +265,19 @@ static void* update_1kHz( void * arg )
 
 // This callback handles CTRL+C Input
 void signal_callback_handler(int signum){
-
+	fsm_state = 0;
 	for(int i=0;i<10;i++){
 		motors[i]->disableMotor();
 	}
 
 	//fclose(log_file);
+	if(recording_initialized){
+		fprintf(f_motion, "123456\n");
+		usleep(1000);
+		fclose(f_motion);
+		recording_initialized = 0;
+	}
+	
 	printf("\n\n==================== Exiting Tello Software ====================\n");
 	// set_cpu_gov(6,GOV_POWERSAVE);
 	// printf("CPU Governor set to Powersave (Approx. 900MHz on Up Xtreme 866)\n\n\n");
@@ -350,13 +386,17 @@ int main() {
 			case 'r':
 				fsm_state = 2;
 				printf("\nEntering Motion Recording Mode\n");
+				disable_all();
 				break;
 			case 'p':
 				fsm_state = 3;
 				printf("\nEntering Motion Playback Mode\n");
+				enable_all();
 				break;
 			default:
-				printf("\nEntering Idle Mode");
+				fsm_state = 0;
+				printf("\nEntering Idle Mode\n");
+				disable_all();
 				break;
 		}
 		usleep(1000);

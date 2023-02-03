@@ -27,7 +27,11 @@ void startTimer();
 
 void stopTimer();
 
-void stopTimer(FILE * file);
+int stopTimer(FILE * file);
 
-void handle_start_of_periodic_task();
-void handle_end_of_periodic_task();
+int log_task_time();
+
+void handle_periodic_task_scheduling(struct timespec &next);
+
+void handle_start_of_periodic_task(struct timespec &next);
+void handle_end_of_periodic_task(struct timespec &next);

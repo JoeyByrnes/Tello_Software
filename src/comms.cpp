@@ -18,7 +18,16 @@ void* rx_CAN( void * arg ){
 	TPCANStatus Status;
 	TPCANMsg Message;
 	int pcd = *((int*)arg);
-	printf("CAN Channel %d receive thread running...\n",pcd-64);
+	// Print the core and priority of the thread
+	int core = sched_getcpu();
+	int policy;
+	sched_param param;
+    pthread_t current_thread = pthread_self();
+    int result = pthread_getschedparam(current_thread, &policy, &param);
+	int priority = param.sched_priority;
+	printf("CAN channel %d rx thread running on core %d, with priority %d\n", pcd-64, core, priority);
+
+
     usleep(100);
 	while(1){
 		
@@ -81,9 +90,15 @@ void* rx_UDP( void * arg ){
 		exit(EXIT_FAILURE);
 	}
 
-	int len, n;
+	int core = sched_getcpu();
+	int policy;
+	sched_param param;
+    pthread_t current_thread = pthread_self();
+    int result = pthread_getschedparam(current_thread, &policy, &param);
+	int priority = param.sched_priority;
+	printf("UDP rx thread running on core %d, with priority %d\n", core, priority);
 
-	printf("UDP receive thread running...\n");
+	int len, n;
 
 	while(1)
 	{

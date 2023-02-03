@@ -17,6 +17,8 @@
 #include <sched.h> 
 #include <fstream>
 #include <signal.h>
+#include <vector>
+#include <chrono>
 
 #include "math.h"
 
@@ -41,6 +43,8 @@ std::ifstream motion_in_file;
 
 struct timeval st, et;
 struct timeval update_st, update_et;
+
+struct sched_param sp = { .sched_priority = 99 };
 
 int update_delay = 700;
 int delay_microseconds = 300;
@@ -90,6 +94,10 @@ CheetahMotor* motors[10];
 pthread_mutex_t mutex_CAN_recv = PTHREAD_MUTEX_INITIALIZER;
 int can_data_ready_to_save = 1;
 int disabled = 1;
+
+std::ofstream *motion_log;
+std::ifstream *motion_log_in;
+std::ofstream output_file("tello_time_log.txt", std::ios::trunc);
 
 void enable_all(){
 	for(int i=0;i<10;i++)
@@ -148,31 +156,62 @@ void handle_Motion_Recording(){
 
 	if(!recording_initialized){
 		printf("Recording...\n");
-		f_motion = fopen("motion_log.txt", "w+");
+		//f_motion = fopen("motion_log.txt", "w+");
+		motion_log = new std::ofstream(MOTION_LOG_NAME, std::ios::trunc);
+		if (!motion_log->is_open()) {
+			std::cerr << "Error: unable to open file '" << MOTION_LOG_NAME << "' for writing." << std::endl;
+			return;
+		}
 		recording_initialized = 1;
 	}
 	// record here:
 	for(int i=0;i<10;i++){
-		fprintf(f_motion, "%u ", encoders[i]);
+		//fprintf(f_motion, "%u ", encoders[i]);
+		*motion_log << encoders[i] << " ";
 	}
-	fprintf(f_motion, "\n");
+	//fprintf(f_motion, "\n");
+	*motion_log << std::endl;
 
 }
 void handle_Motion_Playback(){
 	if(!playback_initialized){
-		motion_in_file = std::ifstream("motion_log.txt");
+		printf("Playing Motion...\n");
+		
+		motion_log_in = new std::ifstream(MOTION_LOG_NAME);
+		if (!motion_log_in->is_open()) {
+			std::cerr << "Error: unable to open file '" << MOTION_LOG_NAME << "'." << std::endl;
+			return;
+		}
 		playback_initialized = 1;
 	}
-
-	for(int i=0;i<10;i++){
-		int a;
-		motion_in_file >> a;
-		if(a == 123456){
-			printf("\nEnd of recording reached\n");
-			exit(0);
-		}
-		motors[i]->setPos((uint16_t)a);
-	}
+	std::string line;
+	std::getline(*motion_log_in, line);
+	std::vector<int> values;
+    std::stringstream ss(line);
+    int value;
+    while (ss >> value) {
+      values.push_back(value);
+    }
+    if (values.size() != 10) {
+      std::cerr << "Error: line has incorrect number of values." << std::endl;
+	  _exit(0);
+      return;
+    }
+	int idx = 0;
+    for (int i : values) {
+      std::cout << i << " " << std::flush;
+	  motors[idx++]->setPos((uint16_t)i);
+    }
+    std::cout << std::endl;
+	// for(int i=0;i<10;i++){
+	// 	int a;
+	// 	motion_in_file >> a;
+	// 	if(a == 123456){
+	// 		printf("\nEnd of recording reached\n");
+	// 		exit(0);
+	// 	}
+	// 	motors[i]->setPos((uint16_t)a);
+	// }
 }
 
 
@@ -180,6 +219,14 @@ void handle_Motion_Playback(){
 static void* update_1kHz( void * arg )
 {
 	startTimer();
+
+	int core = sched_getcpu();
+	int policy;
+	sched_param param;
+    pthread_t current_thread = pthread_self();
+    int result = pthread_getschedparam(current_thread, &policy, &param);
+	int priority = param.sched_priority;
+	printf("Main Update thread running on core %d, with priority %d\n", core, priority);
     
 	motors[0] = new CheetahMotor(0x01,PCAN_PCIBUS1);
 	motors[1] = new CheetahMotor(0x02,PCAN_PCIBUS1);
@@ -228,11 +275,20 @@ static void* update_1kHz( void * arg )
 	printf("\n\nEnter CTRL+C in terminal to exit.\n\n");
 
 	gettimeofday(&update_st,NULL);
+	auto start = std::chrono::high_resolution_clock::now();
 	usleep(990);
+
+	struct timespec next;
+    clock_gettime(CLOCK_MONOTONIC, &next);
 
 	while(1)
 	{
-		handle_start_of_periodic_task();
+		// log_task_time();
+		auto end = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+		output_file << duration.count() << std::endl << std::flush;
+		start = std::chrono::high_resolution_clock::now();
+		handle_start_of_periodic_task(next);
 		// Write update loop code under this line ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		switch(fsm_state){
 			case 0:
@@ -255,9 +311,9 @@ static void* update_1kHz( void * arg )
 				break;
 		}
 		update_all_motors();
-
+		//handle_periodic_task_scheduling(next);
+		handle_end_of_periodic_task(next);
 		// Write update loop code above this line ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-		handle_end_of_periodic_task();
 	}
 
 	return NULL;
@@ -270,7 +326,10 @@ void signal_callback_handler(int signum){
 		motors[i]->disableMotor();
 	}
 
-	//fclose(log_file);
+	fclose(log_file);
+	output_file.close();
+	motion_log->close();
+	motion_log_in->close();
 	if(recording_initialized){
 		fprintf(f_motion, "123456\n");
 		usleep(1000);
@@ -279,8 +338,13 @@ void signal_callback_handler(int signum){
 	}
 	
 	printf("\n\n==================== Exiting Tello Software ====================\n");
-	// set_cpu_gov(6,GOV_POWERSAVE);
-	// printf("CPU Governor set to Powersave (Approx. 900MHz on Up Xtreme 866)\n\n\n");
+	
+	if(set_cpu_governor(GOV_POWERSAVE)){
+		printf("CPU Governor set to Powersave\n");
+	}
+	else{
+		printf("Failed to set CPU Governor. (does user have write access to file?)\n");
+	}
 	
 	usleep(1000);
 	exit(signum);
@@ -289,39 +353,49 @@ void signal_callback_handler(int signum){
 // Driver code
 int main() {
 	setvbuf(stdout, NULL, _IONBF, 0); // no buffering on printf, change to _IOLBF for buffering until \n character
+	std::cout << std::setprecision(2);
 	printf("\n==================== Running Tello Software ====================\n\n");
-	assignToCore(ISOLATED_CORE);
+	assignToCore(ISOLATED_CORE_1_THREAD_1);
 
-	// set_cpu_gov(6,GOV_PERFORMANCE);
-	// printf("CPU Governor set to Performance (Max 4.4GHz on Up Xtreme 866)\n");
-	
-    setpriority(PRIO_PROCESS, 0, 19); // Set NICE Priority in case user doesn't have RT Permission
+	if(set_cpu_governor(GOV_PERFORMANCE)){
+		printf("CPU Governor set to Performance\n");
+	}
+	else{
+		printf("Failed to set CPU Governor. (does user have write access to file?)\n");
+	}
+	print_cpu_speed(ISOLATED_CORE_1_THREAD_1);
 
 	signal(SIGINT, signal_callback_handler); // Handle CTRL+C input
 
 
-    // int chrt_err = sched_setscheduler(0, SCHED_RR, &sp); // set scheduler to FIFO
+    int chrt_err = sched_setscheduler(0, SCHED_RR, &sp); // set scheduler to FIFO
 
-    // int policy = sched_getscheduler(0);
-    // if (chrt_err == -1) {
-    //     perror("Your user does not have RealTime Scheduler Permissions.");
-    //     return 1;
-    // }
-    // switch(policy) {
-    //     case SCHED_OTHER: printf("Scheduler in use does not support Real-Time\n"); break;
-    //     case SCHED_RR:   printf("Using Round Robin Scheduler (Real-Time Capable)\n"); break;
-    //     case SCHED_FIFO:  printf("Using FIFO Scheduler(Real-Time Capable)\n"); break;
-    //     default:   printf("Unknown Scheduler...does not support Real-Time\n");
-    // }
+    int policy = sched_getscheduler(0);
+    if (chrt_err == -1) {
+        perror("Your user does not have RealTime Scheduler Permissions.");
+		setpriority(PRIO_PROCESS, 0, 19); // Set NICE Priority in case user doesn't have RT Permission
+    }
+	else{
+		switch(policy) {
+			case SCHED_OTHER: printf("Scheduler in use does not support Real-Time\n"); break;
+			case SCHED_RR:   printf("Using Round Robin Scheduler (Real-Time Capable)\n"); break;
+			case SCHED_FIFO:  printf("Using FIFO Scheduler(Real-Time Capable)\n"); break;
+			default:   printf("Unknown Scheduler...does not support Real-Time\n");
+		}
+	}
 
-	// // PRINT CORE AND PRIORITIES =========================================================
-	// printf("Process assigned to core %d\n",ISOLATED_CORE);
-	// int prio = getpriority(0,0);
-	// printf("NICE Priority: %d\n",prio);
-	// if(!chrt_err) printf("RT Priority: %d\n",sp.sched_priority);
-	// else printf("Error setting RT Priority");
+	// PRINT CORE AND PRIORITIES =========================================================
+	int core = sched_getcpu();
+	printf("Main process assigned to core %d, ",core);
+	int prio = getpriority(0,0);
+	if(!chrt_err){
+		printf("with RT Priority: %d\n\n",sp.sched_priority);
+	}
+	else{
+		printf("with NICE Priority: %d\n\n",prio);
+	}
 
-	//log_file = fopen("tello_log.txt", "w+"); // open file for logging data
+	log_file = fopen("tello_log.txt", "w+"); // open file for logging data
 
 	
 	char buffer[UDP_MAXLINE];
@@ -346,27 +420,42 @@ int main() {
 	pthread_t rx_bus1, rx_bus2, rx_bus3, rx_bus4, rx_udp, update_main;
 	pthread_attr_t tattr;
 	int ret;
-	int newprio = 15;
 	sched_param param;
 	/* initialized with default attributes */
 	ret = pthread_attr_init (&tattr);
+	/* set the scheduler of the thread to use a realtime policy */
+	pthread_attr_setschedpolicy(&tattr, SCHED_RR);
 	/* safe to get existing scheduling param */
 	ret = pthread_attr_getschedparam (&tattr, &param);
 	/* set the priority; others are unchanged */
-	param.sched_priority = newprio;
-	/* setting the new scheduling param */
-	ret = pthread_attr_setschedparam (&tattr, &param);
+	param.sched_priority = 99;
+    pthread_attr_setschedparam(&tattr, &param);
 
-	int rx1 = pthread_create( &rx_bus1, 0, &rx_CAN, (void*)(&pcd1));
-	int rx2 = pthread_create( &rx_bus2, 0, &rx_CAN, (void*)(&pcd2));
-	int rx3 = pthread_create( &rx_bus3, 0, &rx_CAN, (void*)(&pcd3));
-	int rx4 = pthread_create( &rx_bus4, 0, &rx_CAN, (void*)(&pcd4));
+	// Set the CPU affinity of the thread to the specified core
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(ISOLATED_CORE_2_THREAD_1, &cpuset);
+    pthread_attr_setaffinity_np(&tattr, sizeof(cpu_set_t), &cpuset); // set the following threads to core 6
 
-	int rxUDP = pthread_create( &rx_udp, 0, &rx_UDP, (void*)(NULL));
+	// initialize one receive thread per CAN channel
+	int rx1 = pthread_create( &rx_bus1, &tattr, &rx_CAN, (void*)(&pcd1));
+	int rx2 = pthread_create( &rx_bus2, &tattr, &rx_CAN, (void*)(&pcd2));
+	int rx3 = pthread_create( &rx_bus3, &tattr, &rx_CAN, (void*)(&pcd3));
+	int rx4 = pthread_create( &rx_bus4, &tattr, &rx_CAN, (void*)(&pcd4));
 
-	newprio = 20;
-	ret = pthread_attr_setschedparam (&tattr, &param);
-	int update_th = pthread_create( &update_main, 0, &update_1kHz, (void*)(NULL));
+    CPU_ZERO(&cpuset);
+    CPU_SET(ISOLATED_CORE_2_THREAD_2, &cpuset);
+    pthread_attr_setaffinity_np(&tattr, sizeof(cpu_set_t), &cpuset); // set the following threads to core 7
+
+	// initialize receive thread for UDP communication
+	int rxUDP = pthread_create( &rx_udp, &tattr, &rx_UDP, (void*)(NULL));
+
+    CPU_ZERO(&cpuset);
+    CPU_SET(ISOLATED_CORE_1_THREAD_2, &cpuset);
+    pthread_attr_setaffinity_np(&tattr, sizeof(cpu_set_t), &cpuset); // set the following threads to core 5
+
+	// initialize main update thread that sends commands to motors
+	int update_th = pthread_create( &update_main, &tattr, &update_1kHz, (void*)(NULL));
 
 	usleep(1000);
 	

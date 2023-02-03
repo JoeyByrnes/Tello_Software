@@ -1,16 +1,19 @@
 #include "utilities.h"
 
 cpu_set_t  mask;
-struct sched_param sp = { .sched_priority = 99 };
 
-// Similar to running the following but doesn't start a whole new process:
-//system("echo \"performance\" | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor\n");
-void set_cpu_gov(int cpu, const char* gov){
-    char num = '0' + cpu;
-    std::string filename = "/sys/devices/system/cpu/cpu" + std::string(&num) + "/cpufreq/scaling_governor";
-    FILE* cpu_gov= fopen(filename.c_str(), "w");
-	fprintf(cpu_gov, "%s", gov);
-	fclose(cpu_gov);
+bool set_cpu_governor(const char* gov)
+{
+    std::ofstream governor_file("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor");
+    if (!governor_file.is_open())
+    {
+        return false;
+    }
+
+    governor_file << gov;
+    governor_file.close();
+
+    return true;
 }
 
 void assignToCore(int core_id)
@@ -18,4 +21,19 @@ void assignToCore(int core_id)
     CPU_ZERO(&mask);
     CPU_SET(core_id, &mask);
     sched_setaffinity(0, sizeof(mask), &mask);
+}
+
+void print_cpu_speed(int core_number) {
+    std::string path = "/sys/devices/system/cpu/cpu" + std::to_string(core_number) + "/cpufreq/scaling_cur_freq";
+
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        std::cerr << "Error: Failed to open file " << path << std::endl;
+        return;
+    }
+
+    int frequency;
+    file >> frequency;
+    
+    std::cout << "CPU Core " << core_number << " Speed: " << (float)frequency / 1000000.0 << " GHz" << std::endl;
 }

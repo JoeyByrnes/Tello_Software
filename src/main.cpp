@@ -493,6 +493,7 @@ int main() {
 		printf("\n\nTello Software Menu:\n");
 		printf("u : Enter UDP Control Mode\n");
 		printf("r : Enter Motion Recording Mode\n");
+		printf("e : Exit Motion Recording Mode\n");
 		printf("p : Enter Motion Playback Mode\n");
 		printf("i : Enter Idle Mode (or press any other unused key)\n\n");
 		char choice;
@@ -511,6 +512,21 @@ int main() {
 				fsm_state = 3;
 				printf("\nEntering Motion Playback Mode\n");
 				scheduleEnable();
+				break;
+			case 'e':
+				if(fsm_state == 2){
+					fsm_state = 0;
+					printf("\nEnding Recording.\n");
+					usleep(10000);
+					motion_log->close();
+					printf("Recording Written to file.\n");
+					recording_initialized = 0;
+					printf("\nEntering Idle Mode\n");
+					break;
+				}
+				else{
+					printf("'e' ignored, recording not in progress.\n");
+				}
 				break;
 			default:
 				fsm_state = 0;

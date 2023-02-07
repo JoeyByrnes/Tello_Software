@@ -15,3 +15,7 @@ void set_cpu_gov(int cpu, const char* gov);
 bool set_cpu_governor(const char* gov);
 void assignToCore(int core_id);
 void print_cpu_speed(int core_number);
+
+void scheduleEnable();
+void scheduleDisable();
+void scheduleZero();

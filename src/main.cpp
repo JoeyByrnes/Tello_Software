@@ -28,6 +28,8 @@
 #include "user_config.h"
 #include "utilities.h"
 
+#include <pcanfd.h>
+
 #define TWOPI 6.28318530718
 
 int udp_data_ready = 0;
@@ -97,7 +99,11 @@ int disabled = 1;
 
 std::ofstream *motion_log;
 std::ifstream *motion_log_in;
-std::ofstream output_file("tello_time_log.txt", std::ios::trunc);
+std::ofstream output_file("tello_time_log.txt", std::ios::out | std::ios::trunc);
+
+extern bool enableScheduled;
+extern bool disableScheduled;
+extern bool zeroScheduled;
 
 void enable_all(){
 	for(int i=0;i<10;i++)
@@ -168,8 +174,8 @@ void handle_Motion_Recording(){
 	for(int i=0;i<10;i++){
 		//fprintf(f_motion, "%u ", encoders[i]);
 		*motion_log << encoders[i] << " ";
+		motion_log->flush();
 	}
-	//fprintf(f_motion, "\n");
 	*motion_log << std::endl;
 
 }
@@ -199,10 +205,10 @@ void handle_Motion_Playback(){
     }
 	int idx = 0;
     for (int i : values) {
-      std::cout << i << " " << std::flush;
+      //std::cout << i << " " << std::flush;
 	  motors[idx++]->setPos((uint16_t)i);
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
 	// for(int i=0;i<10;i++){
 	// 	int a;
 	// 	motion_in_file >> a;
@@ -213,7 +219,6 @@ void handle_Motion_Playback(){
 	// 	motors[i]->setPos((uint16_t)a);
 	// }
 }
-
 
 
 static void* update_1kHz( void * arg )
@@ -247,6 +252,7 @@ static void* update_1kHz( void * arg )
 		motors[i]->updateMotor();
 		motors[i]->disableMotor();
 	}
+	usleep(1000);
 
 	int pos_initialized = 0;
 	while(pos_initialized < motors_in_use)
@@ -256,10 +262,12 @@ static void* update_1kHz( void * arg )
 		for(int i=0;i<10;i++)
 		{
 			pos_initialized+=position_initialized[i];
-			motors[i]->disableMotor();
+			//if(!position_initialized[i]){
+				motors[i]->disableMotor();
+			//}
 		}
 		pthread_mutex_unlock(&mutex_CAN_recv);
-		usleep(10000);
+		usleep(1000);
 	}
 	printf("\nAll motors Initialized, Enabling.\n");
 	for(int i=0;i<10;i++)
@@ -268,7 +276,7 @@ static void* update_1kHz( void * arg )
 		motors[i]->updateMotor();
 	}
 
-	usleep(1000);
+	usleep(100000); // 100ms
 
 	uint16_t pos_cmds[10];
 
@@ -283,11 +291,12 @@ static void* update_1kHz( void * arg )
 
 	while(1)
 	{
-		// log_task_time();
-		auto end = std::chrono::high_resolution_clock::now();
-		auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-		output_file << duration.count() << std::endl << std::flush;
-		start = std::chrono::high_resolution_clock::now();
+		// auto end = std::chrono::high_resolution_clock::now();
+		// auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+		// output_file << duration.count() << std::endl;
+		// output_file.flush();
+		// start = std::chrono::high_resolution_clock::now();
+		
 		handle_start_of_periodic_task(next);
 		// Write update loop code under this line ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		switch(fsm_state){
@@ -310,10 +319,19 @@ static void* update_1kHz( void * arg )
 				// do nothing
 				break;
 		}
-		update_all_motors();
-		//handle_periodic_task_scheduling(next);
-		handle_end_of_periodic_task(next);
+		if(disableScheduled){
+			disable_all();
+			disableScheduled = false;
+		}
+		else if(enableScheduled){
+			enable_all();
+			enableScheduled = false;
+		}
+		else{
+			update_all_motors();
+		}
 		// Write update loop code above this line ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+		handle_end_of_periodic_task(next);
 	}
 
 	return NULL;
@@ -323,17 +341,17 @@ static void* update_1kHz( void * arg )
 void signal_callback_handler(int signum){
 	fsm_state = 0;
 	for(int i=0;i<10;i++){
-		motors[i]->disableMotor();
+		// motors[i]->disableMotor();
 	}
 
-	fclose(log_file);
+	//fclose(log_file);
 	output_file.close();
 	motion_log->close();
 	motion_log_in->close();
 	if(recording_initialized){
-		fprintf(f_motion, "123456\n");
+		//fprintf(f_motion, "123456\n");
 		usleep(1000);
-		fclose(f_motion);
+		//fclose(f_motion);
 		recording_initialized = 0;
 	}
 	
@@ -356,6 +374,7 @@ int main() {
 	std::cout << std::setprecision(2);
 	printf("\n==================== Running Tello Software ====================\n\n");
 	assignToCore(ISOLATED_CORE_1_THREAD_1);
+	setpriority(PRIO_PROCESS, 0, 19); // Set NICE Priority in case user doesn't have RT Permission
 
 	if(set_cpu_governor(GOV_PERFORMANCE)){
 		printf("CPU Governor set to Performance\n");
@@ -368,7 +387,7 @@ int main() {
 	signal(SIGINT, signal_callback_handler); // Handle CTRL+C input
 
 
-    int chrt_err = sched_setscheduler(0, SCHED_RR, &sp); // set scheduler to FIFO
+    int chrt_err = sched_setscheduler(0, SCHED_FIFO, &sp); // set scheduler to FIFO
 
     int policy = sched_getscheduler(0);
     if (chrt_err == -1) {
@@ -395,7 +414,7 @@ int main() {
 		printf("with NICE Priority: %d\n\n",prio);
 	}
 
-	log_file = fopen("tello_log.txt", "w+"); // open file for logging data
+	//log_file = fopen("tello_log.txt", "w+"); // open file for logging data
 
 	
 	char buffer[UDP_MAXLINE];
@@ -419,17 +438,23 @@ int main() {
 	// Thread setup:
 	pthread_t rx_bus1, rx_bus2, rx_bus3, rx_bus4, rx_udp, update_main;
 	pthread_attr_t tattr;
+	pthread_attr_t tattr_high_prio;
 	int ret;
-	sched_param param;
+	sched_param param, param_high_prio;
 	/* initialized with default attributes */
 	ret = pthread_attr_init (&tattr);
+	ret = pthread_attr_init (&tattr_high_prio);
 	/* set the scheduler of the thread to use a realtime policy */
-	pthread_attr_setschedpolicy(&tattr, SCHED_RR);
+	pthread_attr_setschedpolicy(&tattr, SCHED_FIFO);
+	pthread_attr_setschedpolicy(&tattr_high_prio, SCHED_FIFO);
 	/* safe to get existing scheduling param */
 	ret = pthread_attr_getschedparam (&tattr, &param);
+	ret = pthread_attr_getschedparam (&tattr_high_prio, &param_high_prio);
 	/* set the priority; others are unchanged */
-	param.sched_priority = 99;
+	param.sched_priority = 40;
+	param_high_prio.sched_priority = 99;
     pthread_attr_setschedparam(&tattr, &param);
+	pthread_attr_setschedparam(&tattr_high_prio, &param_high_prio);
 
 	// Set the CPU affinity of the thread to the specified core
     cpu_set_t cpuset;
@@ -442,6 +467,10 @@ int main() {
 	int rx2 = pthread_create( &rx_bus2, &tattr, &rx_CAN, (void*)(&pcd2));
 	int rx3 = pthread_create( &rx_bus3, &tattr, &rx_CAN, (void*)(&pcd3));
 	int rx4 = pthread_create( &rx_bus4, &tattr, &rx_CAN, (void*)(&pcd4));
+	pthread_setschedparam(rx_bus1, SCHED_FIFO, &param);
+	pthread_setschedparam(rx_bus2, SCHED_FIFO, &param);
+	pthread_setschedparam(rx_bus3, SCHED_FIFO, &param);
+	pthread_setschedparam(rx_bus4, SCHED_FIFO, &param);
 
     CPU_ZERO(&cpuset);
     CPU_SET(ISOLATED_CORE_2_THREAD_2, &cpuset);
@@ -451,11 +480,12 @@ int main() {
 	int rxUDP = pthread_create( &rx_udp, &tattr, &rx_UDP, (void*)(NULL));
 
     CPU_ZERO(&cpuset);
-    CPU_SET(ISOLATED_CORE_1_THREAD_2, &cpuset);
+    CPU_SET(ISOLATED_CORE_2_THREAD_1, &cpuset);
     pthread_attr_setaffinity_np(&tattr, sizeof(cpu_set_t), &cpuset); // set the following threads to core 5
 
 	// initialize main update thread that sends commands to motors
-	int update_th = pthread_create( &update_main, &tattr, &update_1kHz, (void*)(NULL));
+	int update_th = pthread_create( &update_main, &tattr_high_prio, &update_1kHz, (void*)(NULL));
+	pthread_setschedparam(update_main, SCHED_FIFO, &param_high_prio);
 
 	usleep(1000);
 	
@@ -475,17 +505,17 @@ int main() {
 			case 'r':
 				fsm_state = 2;
 				printf("\nEntering Motion Recording Mode\n");
-				disable_all();
+				scheduleDisable();
 				break;
 			case 'p':
 				fsm_state = 3;
 				printf("\nEntering Motion Playback Mode\n");
-				enable_all();
+				scheduleEnable();
 				break;
 			default:
 				fsm_state = 0;
 				printf("\nEntering Idle Mode\n");
-				disable_all();
+				scheduleDisable();
 				break;
 		}
 		usleep(1000);

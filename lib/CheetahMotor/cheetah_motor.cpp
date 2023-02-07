@@ -1,4 +1,26 @@
 #include "cheetah_motor.h"
+#include <sys/time.h>
+#include <libpcanfd.h>
+#include <vector>
+
+
+int write8BytesToCANFD(TPCANHandle channel, DWORD id, std::vector<BYTE> data)
+{
+    int status;
+
+    // Create a CAN FD message
+    pcanfd_msg message;
+    message.id = id;
+    message.type = PCAN_MESSAGE_STANDARD;
+    message.data_len = data.size();
+    for (int i = 0; i < data.size(); i++)
+        message.data[i] = data[i];
+
+    // Write the message to the specified CAN FD channel
+    status = pcanfd_send_msg(channel, &message);
+
+    return status;
+}
 
 CheetahMotor::CheetahMotor(){
     _pcan_bus = PCAN_PCIBUS1;
@@ -67,7 +89,17 @@ void CheetahMotor::updateMotor(){
     Message.DATA[5] = _command.kd >> 4;
     Message.DATA[6] = ((_command.kd & 0x000F)<<4) + (_command.feedforward >> 8);
     Message.DATA[7] = _command.feedforward & 0xff;
-    CAN_Write(_pcan_bus, &Message);
+
+    // pcanfd_msg message;
+    // message.id = Message.ID;
+    // message.type = PCAN_MESSAGE_STANDARD;
+    // message.data_len = 8;
+    // for (int i = 0; i < 8; i++)
+    //     message.data[i] = Message.DATA[i];
+
+    // // Write the message to the specified CAN FD channel
+    // int status = pcanfd_send_msg(_pcan_bus, &message);
+   CAN_Write(_pcan_bus, &Message);
 }
 
 void CheetahMotor::updateState(uint16_t pos, uint16_t vel, uint16_t cur){

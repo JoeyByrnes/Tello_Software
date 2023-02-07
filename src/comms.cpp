@@ -56,7 +56,7 @@ void* rx_CAN( void * arg ){
 
 		pthread_mutex_unlock(&mutex_CAN_recv);
 
-		usleep(50);
+		usleep(10);
 	}
     return NULL;
 }
@@ -117,6 +117,7 @@ void* rx_UDP( void * arg ){
 		memcpy(udp_control_packet,buffer,UDP_MAXLINE);
 		udp_data_ready = 1;
 
-		usleep(50);
+		usleep(10);
 	}
 }
+

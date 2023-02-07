@@ -2,6 +2,10 @@
 
 cpu_set_t  mask;
 
+bool enableScheduled = 0;
+bool disableScheduled = 0;
+bool zeroScheduled = 0;
+
 bool set_cpu_governor(const char* gov)
 {
     std::ofstream governor_file("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor");
@@ -37,3 +41,19 @@ void print_cpu_speed(int core_number) {
     
     std::cout << "CPU Core " << core_number << " Speed: " << (float)frequency / 1000000.0 << " GHz" << std::endl;
 }
+
+void scheduleEnable()
+{
+    enableScheduled = true;
+    disableScheduled = false;
+}
+void scheduleDisable()
+{
+    disableScheduled = true;
+    enableScheduled = false;
+}
+void scheduleZero()
+{
+    zeroScheduled = true;
+}
+

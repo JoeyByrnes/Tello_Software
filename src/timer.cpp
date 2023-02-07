@@ -7,7 +7,7 @@ extern int update_delay;
 extern int delay_microseconds;
 extern int last_update_delay;
 
-#define PERIOD_IN_MICROSECONDS 915
+#define PERIOD_IN_MICROSECONDS 998
 
 void startTimer(){
   gettimeofday(&st,NULL);
@@ -52,7 +52,6 @@ void handle_periodic_task_scheduling(struct timespec &next){
 
 
 void handle_start_of_periodic_task(struct timespec &next){
-
   clock_gettime(CLOCK_MONOTONIC, &next);
 }
 void handle_end_of_periodic_task(struct timespec &next){

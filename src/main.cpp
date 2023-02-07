@@ -85,11 +85,15 @@ uint16_t encoder_positions[10];
 uint16_t encoder_offsets[10]  = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int motor_directions[10] =      { 1,-1, 1, 1,-1, 1,-1, 1, 1,-1};
 								//1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-int motors_in_use = 5;
+int motors_in_use = 10;
 int mode_selected = 0;
 int stop_recording = 0;
 int recording_initialized = 0;
 int playback_initialized = 0;
+
+int motor_kp = 50;
+int motor_kd = 600;
+int playback_kp = 1000;
 
 CheetahMotor* motors[10];
 
@@ -120,8 +124,14 @@ void disable_all(){
 void set_kp_kd_all(uint16_t kp, uint16_t kd){
 	for(int i=0;i<10;i++)
 	{
-		motors[i]->setKp(kp);
-		motors[i]->setKp(kd);
+		if(i == 3 || i == 4 || i == 8 || i == 9){
+			motors[i]->setKp(kp/4);
+			motors[i]->setKd(kd/4);
+		}
+		else{
+			motors[i]->setKp(kp);
+			motors[i]->setKd(kd);
+		}
 	}
 }
 void update_all_motors(){
@@ -168,6 +178,7 @@ void handle_Motion_Recording(){
 			std::cerr << "Error: unable to open file '" << MOTION_LOG_NAME << "' for writing." << std::endl;
 			return;
 		}
+		
 		recording_initialized = 1;
 	}
 	// record here:
@@ -188,6 +199,7 @@ void handle_Motion_Playback(){
 			std::cerr << "Error: unable to open file '" << MOTION_LOG_NAME << "'." << std::endl;
 			return;
 		}
+		scheduleEnable();
 		playback_initialized = 1;
 	}
 	std::string line;
@@ -199,15 +211,21 @@ void handle_Motion_Playback(){
       values.push_back(value);
     }
     if (values.size() != 10) {
-      std::cerr << "Error: line has incorrect number of values." << std::endl;
-	  _exit(0);
-      return;
+	  fsm_state = 0;
+	  printf("End of recording");
+	  playback_initialized = 0;
     }
-	int idx = 0;
-    for (int i : values) {
-      //std::cout << i << " " << std::flush;
-	  motors[idx++]->setPos((uint16_t)i);
-    }
+	else{
+		int idx = 0;
+		for (int i : values) {
+			//std::cout << i << " " << std::flush;
+			motors[idx++]->setPos((uint16_t)i);
+		}
+		if(motor_kp < playback_kp){
+			motor_kp = motor_kp+1;
+			set_kp_kd_all(motor_kp,motor_kd);
+		}
+	}
     //std::cout << std::endl;
 	// for(int i=0;i<10;i++){
 	// 	int a;
@@ -246,10 +264,10 @@ static void* update_1kHz( void * arg )
 
 	for(int i=0;i<10;i++)
 	{
-		motors[i]->setKp(800);
-		motors[i]->setKd(5);
+		motors[i]->setKp(50);
+		motors[i]->setKd(1);
 		motors[i]->setPos(32768);
-		motors[i]->updateMotor();
+		//motors[i]->updateMotor();
 		motors[i]->disableMotor();
 	}
 	usleep(1000);
@@ -262,9 +280,9 @@ static void* update_1kHz( void * arg )
 		for(int i=0;i<10;i++)
 		{
 			pos_initialized+=position_initialized[i];
-			//if(!position_initialized[i]){
-				motors[i]->disableMotor();
-			//}
+			// //if(!position_initialized[i]){
+			// 	motors[i]->disableMotor();
+			// //}
 		}
 		pthread_mutex_unlock(&mutex_CAN_recv);
 		usleep(1000);
@@ -282,9 +300,8 @@ static void* update_1kHz( void * arg )
 
 	printf("\n\nEnter CTRL+C in terminal to exit.\n\n");
 
-	gettimeofday(&update_st,NULL);
 	auto start = std::chrono::high_resolution_clock::now();
-	usleep(990);
+	usleep(1000);
 
 	struct timespec next;
     clock_gettime(CLOCK_MONOTONIC, &next);
@@ -467,10 +484,10 @@ int main() {
 	int rx2 = pthread_create( &rx_bus2, &tattr, &rx_CAN, (void*)(&pcd2));
 	int rx3 = pthread_create( &rx_bus3, &tattr, &rx_CAN, (void*)(&pcd3));
 	int rx4 = pthread_create( &rx_bus4, &tattr, &rx_CAN, (void*)(&pcd4));
-	pthread_setschedparam(rx_bus1, SCHED_FIFO, &param);
-	pthread_setschedparam(rx_bus2, SCHED_FIFO, &param);
-	pthread_setschedparam(rx_bus3, SCHED_FIFO, &param);
-	pthread_setschedparam(rx_bus4, SCHED_FIFO, &param);
+	pthread_setschedparam(rx_bus1, SCHED_RR, &param);
+	pthread_setschedparam(rx_bus2, SCHED_RR, &param);
+	pthread_setschedparam(rx_bus3, SCHED_RR, &param);
+	pthread_setschedparam(rx_bus4, SCHED_RR, &param);
 
     CPU_ZERO(&cpuset);
     CPU_SET(ISOLATED_CORE_2_THREAD_2, &cpuset);
@@ -480,7 +497,7 @@ int main() {
 	int rxUDP = pthread_create( &rx_udp, &tattr, &rx_UDP, (void*)(NULL));
 
     CPU_ZERO(&cpuset);
-    CPU_SET(ISOLATED_CORE_2_THREAD_1, &cpuset);
+    CPU_SET(ISOLATED_CORE_1_THREAD_2, &cpuset);
     pthread_attr_setaffinity_np(&tattr, sizeof(cpu_set_t), &cpuset); // set the following threads to core 5
 
 	// initialize main update thread that sends commands to motors
@@ -521,6 +538,15 @@ int main() {
 					motion_log->close();
 					printf("Recording Written to file.\n");
 					recording_initialized = 0;
+					printf("\nEntering Idle Mode\n");
+					break;
+				}
+				else if(fsm_state == 3){
+					fsm_state = 0;
+					printf("\nEnding Playback.\n");
+					usleep(10000);
+					motion_log_in->close();
+					playback_initialized = 0;
 					printf("\nEntering Idle Mode\n");
 					break;
 				}

@@ -31,32 +31,62 @@ void* rx_CAN( void * arg ){
     usleep(100);
 	while(1){
 		
-		while ((Status=CAN_Read(pcd, &Message, NULL)) == PCAN_ERROR_QRCVEMPTY){;}
-		if (Status != PCAN_ERROR_OK) {
-			pthread_exit(NULL);
-			printf("Error on CAN bus %d\n",pcd-64);
-			break;
+		if (     !((Status=CAN_Read(pcd, &Message, NULL)) == PCAN_ERROR_QRCVEMPTY)     )//{;}
+		{
+			if (Status != PCAN_ERROR_OK) {
+				//pthread_exit(NULL);
+				//printf("Error on CAN bus %d\n",pcd-64);
+				//break;
+			}
+			else
+			{
+				unsigned int id = Message.DATA[0];
+				unsigned int pos = (Message.DATA[1] << 8) + Message.DATA[2];
+				unsigned int vel  = (Message.DATA[3] << 4) + ((Message.DATA[4] & 0xF0) >> 4);
+				unsigned int cur = ((Message.DATA[4] & 0x0F) << 8) + Message.DATA[5];
+				
+				pthread_mutex_lock(&mutex_CAN_recv);
+
+				encoder_positions[id-1] = pos;
+				if(!position_initialized[id-1]){
+					encoder_offsets[id-1] = pos;
+					position_initialized[id-1] = 1;
+					//printf("ID: %d , OFFSET: %d \n",id,pos);
+					printf("Motor %d Connected\n", id);
+				}
+
+				encoders[id-1] = pos;
+
+				pthread_mutex_unlock(&mutex_CAN_recv);
+
+			}
+
 		}
-		unsigned int id = Message.DATA[0];
-		unsigned int pos = (Message.DATA[1] << 8) + Message.DATA[2];
-		unsigned int vel  = (Message.DATA[3] << 4) + ((Message.DATA[4] & 0xF0) >> 4);
-		unsigned int cur = ((Message.DATA[4] & 0x0F) << 8) + Message.DATA[5];
+		// if (Status != PCAN_ERROR_OK) {
+		// 	pthread_exit(NULL);
+		// 	printf("Error on CAN bus %d\n",pcd-64);
+		// 	break;
+		// }
+		// unsigned int id = Message.DATA[0];
+		// unsigned int pos = (Message.DATA[1] << 8) + Message.DATA[2];
+		// unsigned int vel  = (Message.DATA[3] << 4) + ((Message.DATA[4] & 0xF0) >> 4);
+		// unsigned int cur = ((Message.DATA[4] & 0x0F) << 8) + Message.DATA[5];
 		
-		pthread_mutex_lock(&mutex_CAN_recv);
+		// pthread_mutex_lock(&mutex_CAN_recv);
 
-		encoder_positions[id-1] = pos;
-		if(!position_initialized[id-1]){
-			encoder_offsets[id-1] = pos;
-			position_initialized[id-1] = 1;
-			//printf("ID: %d , OFFSET: %d \n",id,pos);
-			printf("Motor %d Connected\n", id);
-		}
+		// encoder_positions[id-1] = pos;
+		// if(!position_initialized[id-1]){
+		// 	encoder_offsets[id-1] = pos;
+		// 	position_initialized[id-1] = 1;
+		// 	//printf("ID: %d , OFFSET: %d \n",id,pos);
+		// 	printf("Motor %d Connected\n", id);
+		// }
 
-		encoders[id-1] = pos;
+		// encoders[id-1] = pos;
 
-		pthread_mutex_unlock(&mutex_CAN_recv);
+		// pthread_mutex_unlock(&mutex_CAN_recv);
 
-		usleep(10);
+		usleep(50);
 	}
     return NULL;
 }
@@ -117,7 +147,7 @@ void* rx_UDP( void * arg ){
 		memcpy(udp_control_packet,buffer,UDP_MAXLINE);
 		udp_data_ready = 1;
 
-		usleep(10);
+		usleep(100);
 	}
 }
 

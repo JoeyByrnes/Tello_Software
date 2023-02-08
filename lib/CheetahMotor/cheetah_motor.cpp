@@ -89,16 +89,6 @@ void CheetahMotor::updateMotor(){
     Message.DATA[5] = _command.kd >> 4;
     Message.DATA[6] = ((_command.kd & 0x000F)<<4) + (_command.feedforward >> 8);
     Message.DATA[7] = _command.feedforward & 0xff;
-
-    // pcanfd_msg message;
-    // message.id = Message.ID;
-    // message.type = PCAN_MESSAGE_STANDARD;
-    // message.data_len = 8;
-    // for (int i = 0; i < 8; i++)
-    //     message.data[i] = Message.DATA[i];
-
-    // // Write the message to the specified CAN FD channel
-    // int status = pcanfd_send_msg(_pcan_bus, &message);
    CAN_Write(_pcan_bus, &Message);
 }
 

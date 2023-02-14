@@ -12,6 +12,8 @@
                 "/home/tello/Documents/PlatformIO/Projects/Tello_Software/src",
                 "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/CheetahMotor",
                 "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/PCAN",
+                "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/Eigen/**",
+                "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/Eigen/src",
                 ""
             ],
             "browse": {
@@ -21,6 +23,8 @@
                     "/home/tello/Documents/PlatformIO/Projects/Tello_Software/src",
                     "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/CheetahMotor",
                     "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/PCAN",
+                    "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/Eigen/**",
+                    "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/Eigen/src",
                     ""
                 ]
             },

@@ -27,10 +27,13 @@
 #include "timer.h"
 #include "user_config.h"
 #include "utilities.h"
+#include "kinematics.h"
 
 #include <pcanfd.h>
 
 #define TWOPI 6.28318530718
+#define ENCODER_TO_RADIANS ((double)(12.5/32768.0))
+#define RADIANS_TO_DEGREES ((double)(180.0/M_PI))
 
 int udp_data_ready = 0;
 char udp_control_packet[UDP_MAXLINE];
@@ -85,11 +88,18 @@ uint16_t encoder_positions[10];
 uint16_t encoder_offsets[10]  = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int motor_directions[10] =      { 1,-1, 1, 1,-1, 1,-1, 1, 1,-1};
 								//1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+int motor_zeros[10] = {35598,35023,33523,33959,33157,32744,35038,34363,33703,34596}; // verified. Only works when legs pulled straight down before power on
+int motor_init_config[10] = {35540, 36558, 31813, 38599, 31811, 32767, 36712, 32718, 38436, 33335};
+int motor_initialized[10] = {0,0,0,0,0,0,0,0,0,0};
+int motor_move_complete[10] = {0,0,0,0,0,0,0,0,0,0};
 int motors_in_use = 10;
 int mode_selected = 0;
 int stop_recording = 0;
 int recording_initialized = 0;
 int playback_initialized = 0;
+int* motor_targets;
+
+double joint_setpoints_deg[10] = {0,0,0,0,0,0,0,0,0,0};
 
 int motor_kp = 50;
 int motor_kd = 600;
@@ -125,8 +135,8 @@ void set_kp_kd_all(uint16_t kp, uint16_t kd){
 	for(int i=0;i<10;i++)
 	{
 		if(i == 3 || i == 4 || i == 8 || i == 9){
-			motors[i]->setKp(kp/4);
-			motors[i]->setKd(kd/4);
+			motors[i]->setKp(kp*3);
+			motors[i]->setKd(kd);
 		}
 		else{
 			motors[i]->setKp(kp);
@@ -238,6 +248,61 @@ void handle_Motion_Playback(){
 	// }
 }
 
+void handle_motor_init(){
+	int init_sum = 0;
+	for(int i=0;i<10;i++){
+		if(fabs(encoder_positions[i] - motor_zeros[i])  < 50) 
+		{
+			motor_initialized[i] = 1;
+		}
+		else
+		{
+			if(encoder_positions[i] < motor_zeros[i])
+			{
+				motors[i]->setPos(encoder_positions[i]+10);
+			}
+			else
+			{
+				motors[i]->setPos(encoder_positions[i]-10);
+			}
+
+		}
+		init_sum += motor_initialized[i];
+	}
+	if(init_sum == 10){
+		fsm_state = 0;
+		set_kp_kd_all(200,100);
+	}
+}
+
+void moveMotors(int* positions){
+	int init_sum = 0;
+	for(int i=0;i<10;i++){
+		if(fabs(encoder_positions[i] - positions[i])  < 50) 
+		{
+			motor_move_complete[i] = 1;
+		}
+		else
+		{
+			if(encoder_positions[i] < positions[i])
+			{
+				motors[i]->setPos(encoder_positions[i]+10);
+			}
+			else
+			{
+				motors[i]->setPos(encoder_positions[i]-10);
+			}
+
+		}
+		init_sum += motor_move_complete[i];
+	}
+	if(init_sum == 10){
+		fsm_state = 0;
+		set_kp_kd_all(200,100);
+		for(int x=0; x<10; x++) motor_move_complete[x] = 0;
+	}
+}
+
 
 static void* update_1kHz( void * arg )
 {
@@ -287,6 +352,10 @@ static void* update_1kHz( void * arg )
 		pthread_mutex_unlock(&mutex_CAN_recv);
 		usleep(1000);
 	}
+	printf("Motor zero Positions:\n");
+	for(int i = 0;i<10;i++){
+		printf("Motor %d: %u\n",i+1,encoder_offsets[i]);
+	}
 	printf("\nAll motors Initialized, Enabling.\n");
 	for(int i=0;i<10;i++)
 	{
@@ -331,6 +400,10 @@ static void* update_1kHz( void * arg )
 				break;
 			case 3:
 				handle_Motion_Playback();
+				break;
+			case 4:
+				set_kp_kd_all(3500,1000);
+				moveMotors(motor_targets);
 				break;
 			default:
 				// do nothing
@@ -507,15 +580,41 @@ int main() {
 	usleep(1000);
 	
 	while(1){
-		printf("\n\nTello Software Menu:\n");
-		printf("u : Enter UDP Control Mode\n");
-		printf("r : Enter Motion Recording Mode\n");
-		printf("e : Exit Motion Recording Mode\n");
-		printf("p : Enter Motion Playback Mode\n");
-		printf("i : Enter Idle Mode (or press any other unused key)\n\n");
+		// printf("\n\nTello Software Menu:\n");
+		// printf("u : Enter UDP Control Mode\n");
+		// printf("r : Enter Motion Recording Mode\n");
+		// printf("e : Exit Motion Recording Mode\n");
+		// printf("p : Enter Motion Playback Mode\n");
+		// printf("i : Enter Idle Mode (or press any other unused key)\n\n");
+		Eigen::Matrix<double,5,1> jointsLeft;
+		Eigen::VectorXd motorsLeft;
 		char choice;
 		std::cin >> choice;
 		switch(choice){
+			case 'm':
+				printf("\nMotor Positions:\n");
+				for(int i = 0;i<10;i++){
+					printf("M(deg) %d: %f ",i+1, (float)(encoder_positions[i]-motor_zeros[i])*ENCODER_TO_RADIANS*RADIANS_TO_DEGREES );
+				}
+				printf("\n");
+				break;
+			case 'J':
+				printf("\nJoint Debug:\n");
+				jointsLeft(0) = 0.01;
+				jointsLeft(1) = 0.01;
+				jointsLeft(2) = 0.01;
+				jointsLeft(3) = 0.01;
+				jointsLeft(4) = 0.01;
+				motorsLeft = fcn_ik_q_2_p(jointsLeft);
+				for(int i = 0;i<5;i++){
+					printf("M(deg) %d: %f ",i+1, (float)(motorsLeft(i)*RADIANS_TO_DEGREES) );
+				}
+				printf("\n");
+				break;
+			case 'd':
+				scheduleDisable();
+				printf("\nDisabling\n");
+				break;
 			case 'u':
 				fsm_state = 1;
 				printf("\nEntering UDP Mode\n");
@@ -551,8 +650,23 @@ int main() {
 					break;
 				}
 				else{
-					printf("'e' ignored, recording not in progress.\n");
+					scheduleEnable();
+					printf("\nEnabling\n");
 				}
+				break;
+			case '1':
+				motor_targets = motor_zeros;
+				fsm_state = 4;
+				
+				scheduleEnable();
+				printf("Moving Motors to zero\n");
+				break;
+			case '2':
+				motor_targets = motor_init_config;
+				fsm_state = 4;
+				
+				scheduleEnable();
+				printf("Moving Motors to standing config\n");
 				break;
 			default:
 				fsm_state = 0;

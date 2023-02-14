@@ -27,6 +27,13 @@
 
 void* rx_CAN( void * arg );
 
+void process_motor_data(TPCANMsg Message);
+void process_foot_sensor_data(TPCANMsg Message);
+
 // ========================== UDP =============================
 
 void* rx_UDP( void * arg );
+
+// ========================= SERIAL ===========================
+
+void process_IMU_data();

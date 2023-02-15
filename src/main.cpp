@@ -34,6 +34,7 @@
 #define TWOPI 6.28318530718
 #define ENCODER_TO_RADIANS ((double)(12.5/32768.0))
 #define RADIANS_TO_DEGREES ((double)(180.0/M_PI))
+#define KNEE_OFFSET_ENC 503
 
 int udp_data_ready = 0;
 char udp_control_packet[UDP_MAXLINE];
@@ -88,7 +89,7 @@ uint16_t encoder_positions[10];
 uint16_t encoder_offsets[10]  = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int motor_directions[10] =      { 1,-1, 1, 1,-1, 1,-1, 1, 1,-1};
 								//1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-int motor_zeros[10] = {35598,35023,33523,33959,33157,32744,35038,34363,33703,34596}; // verified. Only works when legs pulled straight down before power on
+int motor_zeros[10] = {35534,35149,33481,33917-KNEE_OFFSET_ENC,33116+KNEE_OFFSET_ENC,32713,35168,34134,33648-KNEE_OFFSET_ENC,34552+KNEE_OFFSET_ENC}; // offsets handled
 int motor_init_config[10] = {35540, 36558, 31813, 38599, 31811, 32767, 36712, 32718, 38436, 33335};
 int motor_initialized[10] = {0,0,0,0,0,0,0,0,0,0};
 int motor_move_complete[10] = {0,0,0,0,0,0,0,0,0,0};
@@ -586,8 +587,9 @@ int main() {
 		// printf("e : Exit Motion Recording Mode\n");
 		// printf("p : Enter Motion Playback Mode\n");
 		// printf("i : Enter Idle Mode (or press any other unused key)\n\n");
-		Eigen::Matrix<double,5,1> jointsLeft;
-		Eigen::VectorXd motorsLeft;
+		Eigen::Matrix<double,5,1> jointsLeft, jointsRight;
+		Eigen::VectorXd motorsLeft, motorsRight;
+		int targets[10];
 		char choice;
 		std::cin >> choice;
 		switch(choice){
@@ -599,17 +601,50 @@ int main() {
 				printf("\n");
 				break;
 			case 'J':
-				printf("\nJoint Debug:\n");
-				jointsLeft(0) = 0.01;
-				jointsLeft(1) = 0.01;
-				jointsLeft(2) = 0.01;
-				jointsLeft(3) = 0.01;
-				jointsLeft(4) = 0.01;
+				printf("\nJoint Inputs:\n");
+				jointsLeft(0) = 0.0			*DEGREES_TO_RADIANS;
+				jointsLeft(1) = 0.0			*DEGREES_TO_RADIANS;
+				jointsLeft(2) = -75.0		*DEGREES_TO_RADIANS;
+				jointsLeft(3) = 55.0		*DEGREES_TO_RADIANS; // must be above 11
+				jointsLeft(4) = 0.0			*DEGREES_TO_RADIANS; 
 				motorsLeft = fcn_ik_q_2_p(jointsLeft);
+
+				jointsRight(0) = 0.0		*DEGREES_TO_RADIANS;
+				jointsRight(1) = 0.0		*DEGREES_TO_RADIANS;
+				jointsRight(2) = -75.0		*DEGREES_TO_RADIANS;
+				jointsRight(3) = 55.0		*DEGREES_TO_RADIANS; // must be above 11
+				jointsRight(4) = 0.0		*DEGREES_TO_RADIANS; 
+				motorsRight = fcn_ik_q_2_p(jointsRight);
+
+				targets[0] = (int)((float)( motorsLeft(0))*((float)(motor_directions[0])/ENCODER_TO_RADIANS))+motor_zeros[0];
+				targets[1] = (int)((float)( motorsLeft(1))*((float)(motor_directions[1])/ENCODER_TO_RADIANS))+motor_zeros[1];
+				targets[2] = (int)((float)( motorsLeft(2))*((float)(motor_directions[2])/ENCODER_TO_RADIANS))+motor_zeros[2];
+				targets[3] = (int)((float)( motorsLeft(3))*((float)(motor_directions[3])/ENCODER_TO_RADIANS))+motor_zeros[3];
+				targets[4] = (int)((float)( motorsLeft(4))*((float)(motor_directions[4])/ENCODER_TO_RADIANS))+motor_zeros[4];
+				targets[5] = (int)((float)(motorsRight(0))*((float)(motor_directions[5])/ENCODER_TO_RADIANS))+motor_zeros[5];
+				targets[6] = (int)((float)(motorsRight(1))*((float)(motor_directions[6])/ENCODER_TO_RADIANS))+motor_zeros[6];
+				targets[7] = (int)((float)(motorsRight(2))*((float)(motor_directions[7])/ENCODER_TO_RADIANS))+motor_zeros[7];
+				targets[8] = (int)((float)(motorsRight(3))*((float)(motor_directions[8])/ENCODER_TO_RADIANS))+motor_zeros[8];
+				targets[9] = (int)((float)(motorsRight(4))*((float)(motor_directions[9])/ENCODER_TO_RADIANS))+motor_zeros[9];
+				motor_targets = targets;
+				fsm_state = 4;
+				
+				scheduleEnable();
 				for(int i = 0;i<5;i++){
-					printf("M(deg) %d: %f ",i+1, (float)(motorsLeft(i)*RADIANS_TO_DEGREES) );
+					printf("M%d: %f ",i+1, (float)(motorsLeft(i)));
 				}
 				printf("\n");
+				// printf("\nMotor Setpoints:\n");
+				// for(int i = 0;i<5;i++){
+				// 	printf("M%d: %d ",i+1, (int)((float)(motorsLeft(i))*((float)(motor_directions[i])/ENCODER_TO_RADIANS))+motor_zeros[i]);
+				// }
+				// printf("\n");
+				// printf("\nRelative to these motor zeros:\n");
+				// for(int i = 0;i<5;i++){
+				// 	printf("M%d: %d ",i+1, motor_zeros[i] );
+				// }
+				// printf("\n");
+
 				break;
 			case 'd':
 				scheduleDisable();

@@ -10,10 +10,11 @@
             "includePath": [
                 "/home/tello/Documents/PlatformIO/Projects/Tello_Software/include",
                 "/home/tello/Documents/PlatformIO/Projects/Tello_Software/src",
+                "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/Eigen/src",
                 "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/CheetahMotor",
                 "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/PCAN",
                 "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/Eigen/**",
-                "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/Eigen/src",
+                "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/Kinematics/**",
                 ""
             ],
             "browse": {
@@ -21,10 +22,11 @@
                 "path": [
                     "/home/tello/Documents/PlatformIO/Projects/Tello_Software/include",
                     "/home/tello/Documents/PlatformIO/Projects/Tello_Software/src",
+                    "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/Eigen/src",
                     "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/CheetahMotor",
                     "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/PCAN",
                     "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/Eigen/**",
-                    "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/Eigen/src",
+                    "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/Kinematics/**",
                     ""
                 ]
             },

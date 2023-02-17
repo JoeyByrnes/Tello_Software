@@ -183,7 +183,6 @@ void handle_Motion_Recording(){
 
 	if(!recording_initialized){
 		printf("Recording...\n");
-		//f_motion = fopen("motion_log.txt", "w+");
 		motion_log = new std::ofstream(MOTION_LOG_NAME, std::ios::trunc);
 		if (!motion_log->is_open()) {
 			std::cerr << "Error: unable to open file '" << MOTION_LOG_NAME << "' for writing." << std::endl;
@@ -194,7 +193,6 @@ void handle_Motion_Recording(){
 	}
 	// record here:
 	for(int i=0;i<10;i++){
-		//fprintf(f_motion, "%u ", encoders[i]);
 		*motion_log << encoders[i] << " ";
 		motion_log->flush();
 	}
@@ -237,16 +235,6 @@ void handle_Motion_Playback(){
 			set_kp_kd_all(motor_kp,motor_kd);
 		}
 	}
-    //std::cout << std::endl;
-	// for(int i=0;i<10;i++){
-	// 	int a;
-	// 	motion_in_file >> a;
-	// 	if(a == 123456){
-	// 		printf("\nEnd of recording reached\n");
-	// 		exit(0);
-	// 	}
-	// 	motors[i]->setPos((uint16_t)a);
-	// }
 }
 
 void handle_motor_init(){
@@ -333,7 +321,6 @@ static void* update_1kHz( void * arg )
 		motors[i]->setKp(50);
 		motors[i]->setKd(1);
 		motors[i]->setPos(32768);
-		//motors[i]->updateMotor();
 		motors[i]->disableMotor();
 	}
 	usleep(1000);
@@ -346,9 +333,6 @@ static void* update_1kHz( void * arg )
 		for(int i=0;i<10;i++)
 		{
 			pos_initialized+=position_initialized[i];
-			// //if(!position_initialized[i]){
-			// 	motors[i]->disableMotor();
-			// //}
 		}
 		pthread_mutex_unlock(&mutex_CAN_recv);
 		usleep(1000);
@@ -378,12 +362,6 @@ static void* update_1kHz( void * arg )
 
 	while(1)
 	{
-		// auto end = std::chrono::high_resolution_clock::now();
-		// auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-		// output_file << duration.count() << std::endl;
-		// output_file.flush();
-		// start = std::chrono::high_resolution_clock::now();
-		
 		handle_start_of_periodic_task(next);
 		// Write update loop code under this line ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		switch(fsm_state){
@@ -440,9 +418,7 @@ void signal_callback_handler(int signum){
 	motion_log->close();
 	motion_log_in->close();
 	if(recording_initialized){
-		//fprintf(f_motion, "123456\n");
 		usleep(1000);
-		//fclose(f_motion);
 		recording_initialized = 0;
 	}
 	
@@ -459,7 +435,7 @@ void signal_callback_handler(int signum){
 	exit(signum);
 }
 	
-// Driver code
+
 int main() {
 	setvbuf(stdout, NULL, _IONBF, 0); // no buffering on printf, change to _IOLBF for buffering until \n character
 	std::cout << std::setprecision(2);
@@ -604,15 +580,15 @@ int main() {
 				printf("\nJoint Inputs:\n");
 				jointsLeft(0) = 0.0			*DEGREES_TO_RADIANS;
 				jointsLeft(1) = 0.0			*DEGREES_TO_RADIANS;
-				jointsLeft(2) = -75.0		*DEGREES_TO_RADIANS;
-				jointsLeft(3) = 55.0		*DEGREES_TO_RADIANS; // must be above 11
+				jointsLeft(2) = 0.0		*DEGREES_TO_RADIANS;
+				jointsLeft(3) = 90.0		*DEGREES_TO_RADIANS; // must be above 11
 				jointsLeft(4) = 0.0			*DEGREES_TO_RADIANS; 
 				motorsLeft = fcn_ik_q_2_p(jointsLeft);
 
 				jointsRight(0) = 0.0		*DEGREES_TO_RADIANS;
 				jointsRight(1) = 0.0		*DEGREES_TO_RADIANS;
-				jointsRight(2) = -75.0		*DEGREES_TO_RADIANS;
-				jointsRight(3) = 55.0		*DEGREES_TO_RADIANS; // must be above 11
+				jointsRight(2) = 0.0		*DEGREES_TO_RADIANS;
+				jointsRight(3) = 90.0		*DEGREES_TO_RADIANS; // must be above 11
 				jointsRight(4) = 0.0		*DEGREES_TO_RADIANS; 
 				motorsRight = fcn_ik_q_2_p(jointsRight);
 

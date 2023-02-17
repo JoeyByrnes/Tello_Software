@@ -2,23 +2,6 @@
 
 using namespace Eigen;
 
-// VectorXd fcn_ik_q_2_p_eig(const VectorXd &q)
-// {
-//     VectorXd p(5);
-//     double q_arr[5];
-//     double p_arr[5];
-
-//     for (int i = 0; i < 5; i++) {
-//         q_arr[i] = q(i);
-//     }
-//     fcn_ik_q_2_p(q_arr,p_arr);
-
-//     for(int i=0; i<p.size(); i++) {
-//         p(i) = p_arr[i];
-//     }
-
-//     return p;
-// }
 static double atan2_safe(double u0, double u1)
 {
   double y;
@@ -94,4 +77,103 @@ VectorXd fcn_ik_q_2_p(const VectorXd &q)
     p(4) = q(3) + (alpha_ - alpha_0);
 
     return p;
+}
+
+double fcn_q5_2_alpha(double q5) {
+    double num1 = ((7.0 * sin((19.0 * M_PI) / 30.0 + q5)) / 2500.0 + (21.0 * sin(M_PI / 9.0)) / 6250.0);
+    double num2 = (147.0 * cos((19.0 * M_PI) / 30.0 + q5) * cos(M_PI / 9.0)) / 50000.0 -
+                  (273.0 * cos(M_PI / 9)) / 12500.0 - (91.0 * cos((19.0 * M_PI) / 30.0 + q5)) / 5000.0 +
+                  (147.0 * sin((19.0 * M_PI) / 30.0 + q5) * sin(M_PI / 9.0)) / 50000.0 + 163349.0 / 6250000.0;
+    double den1 = ((7.0 * cos((19.0 * M_PI) / 30.0 + q5)) / 2500.0 + (21.0 * cos(M_PI / 9.0)) / 6250.0 - 13.0 / 625.0);
+    double den2 = (147.0 * cos((19.0 * M_PI) / 30.0 + q5) * cos(M_PI / 9.0)) / 50000.0 -
+                  (273.0 * cos(M_PI / 9.0)) / 12500.0 - (91.0 * cos((19.0 * M_PI) / 30.0 + q5)) / 5000.0 +
+                  (147.0 * sin((19.0 * M_PI) / 30.0 + q5) * sin(M_PI / 9.0)) / 50000.0 + 163349.0 / 6250000.0;
+    double den3 = pow(pow((7.0 * sin((19.0 * M_PI) / 30.0 + q5)) / 2500.0 + (21.0 * sin(M_PI / 9.0)) / 6250.0, 2) +
+                      pow((7.0 * cos((19.0 * M_PI) / 30.0 + q5)) / 2500.0 + (21.0 * cos(M_PI / 9.0)) / 6250.0 - 13.0 / 625.0, 2) -
+                      pow((147.0 * cos((19.0 * M_PI) / 30.0 + q5) * cos(M_PI / 9.0)) / 50000.0 -
+                          (273.0 * cos(M_PI / 9.0)) / 12500.0 - (91 * cos((19.0 * M_PI) / 30.0 + q5)) / 5000.0 +
+                          (147.0 * sin((19.0 * M_PI) / 30.0 + q5) * sin(M_PI / 9.0)) / 50000.0 + 163349.0 / 6250000.0, 2),
+                    0.5);
+    double out = atan2_safe(num1 * num2 - den1 * den2, den1 * den2 + num1 * den3);
+    return out;
+}
+
+double fcn_q5_2_beta(double q5) {
+    return q5 + (19.0 * M_PI) / 30.0;
+}
+
+double fcn_alphabeta2_lambda(double alpha, double beta) {
+    return (168.0 * sin(alpha - M_PI / 9.0) - 1040.0 * sin(alpha) + 
+            140.0 * sin(alpha - beta)) / 
+           (147.0 * sin(beta - M_PI / 9.0) - 910.0 * sin(beta) + 140.0 * sin(alpha - beta));
+}
+
+Eigen::MatrixXd fcn_Jaco_dq_2_dp(const Eigen::VectorXd& q)
+{
+    double alpha_ = fcn_q5_2_alpha(q(4));
+    double beta_ = fcn_q5_2_beta(q(4));
+    double lambda_ = fcn_alphabeta2_lambda(alpha_, beta_);
+    Eigen::VectorXd p_ = fcn_ik_q_2_p(q);
+
+    Eigen::MatrixXd J(5, 5);
+    J.setZero();
+
+    J(0, 0) = 1;
+    J(1, 1) = -(196.0 * sin(q(1)) - 399.0 * cos(q(1)) - 224.0 * cos(q(1)) * sin(p_(1)) + 
+              224.0 * cos(q(1)) * sin(q(2)) + 456.0 * sin(q(1)) * sin(q(2)) + 256.0 * sin(p_(1)) * 
+              sin(q(1)) * sin(q(2))) / (456.0 * cos(p_(1)) - 224.0 * cos(p_(1)) * sin(q(1)) + 
+              256.0 * cos(q(2)) * sin(p_(1)) - 256.0 * cos(p_(1)) * cos(q(1)) * sin(q(2)));
+    J(1, 2) = (57.0 * cos(q(1)) * cos(q(2)) - 32.0 * cos(p_(1)) * sin(q(2)) - 28.0 * cos(q(2)) * 
+              sin(q(1)) + 32.0 * cos(q(1)) * cos(q(2)) * sin(p_(1))) / (57.0 * cos(p_(1)) - 28.0 * 
+              cos(p_(1)) * sin(q(1)) + 32.0 * cos(q(2)) * sin(p_(1)) - 32.0 * cos(p_(1)) * 
+              cos(q(1)) * sin(q(2)));
+    J(2, 1) = -(399.0 * cos(q(1)) + 196.0 * sin(q(1)) + 224.0 * cos(q(1)) * sin(p_(2)) - 224.0 * 
+              cos(q(1)) * sin(q(2)) + 456.0 * sin(q(1)) * sin(q(2)) + 256.0 * sin(p_(2)) * 
+              sin(q(1)) * sin(q(2))) / (456.0 * cos(p_(2)) + 224.0 * cos(p_(2)) * sin(q(1)) + 
+              256.0 * cos(q(2)) * sin(p_(2)) - 256.0 * cos(p_(2)) * cos(q(1)) * sin(q(2)));
+    J(2, 2) = (57.0 * cos(q(1)) * cos(q(2)) - 32.0 * cos(p_(2)) * sin(q(2)) + 28.0 * cos(q(2)) * 
+              sin(q(1)) + 32.0 * cos(q(1)) * cos(q(2)) * sin(p_(2))) / (57.0 * cos(p_(2)) + 28.0 * 
+              cos(p_(2)) * sin(q(1)) + 32.0 * cos(q(2)) * sin(p_(2)) - 32.0 * cos(p_(2)) * 
+              cos(q(1)) * sin(q(2)));
+    J(3, 3) = 1.0;
+    J(3, 4) = 1.0 / lambda_;
+    J(4, 3) = 1.0;
+    J(4, 4) = -1.0 / lambda_;
+
+    return J;
+}
+
+Eigen::MatrixXd fcn_Jaco_dp_2_dq(Eigen::VectorXd q) {
+  VectorXd p = fcn_ik_q_2_p(q);
+  double alpha = fcn_q5_2_alpha(q(4));
+  double beta = fcn_q5_2_beta(q(4));
+  double lambda = fcn_alphabeta2_lambda(alpha, beta);
+
+  MatrixXd J_q_hip(2,2);
+  J_q_hip(0,0) = (49.0*sin(q(1)))/5000.0 - (399.0*cos(q(1)))/20000.0 - (7.0*cos(q(1))*sin(p(1)))/625.0
+                  + (7.0*cos(q(1))*sin(q(2)))/625.0 + (57.0*sin(q(1))*sin(q(2)))/2500.0
+                  + (8.0*sin(p(1))*sin(q(1))*sin(q(2)))/625.0;
+  J_q_hip(0,1) = (8.0*cos(p(1))*sin(q(2)))/625.0 - (57.0*cos(q(1))*cos(q(2)))/2500.0
+                  + (7.0*cos(q(2))*sin(q(1)))/625.0 - (8.0*cos(q(1))*cos(q(2))*sin(p(1)))/625.0;
+  J_q_hip(1,0) = (399.0*cos(q(1)))/20000.0 + (49.0*sin(q(1)))/5000.0 + (7.0*cos(q(1))*sin(p(2)))/625.0
+                  - (7.0*cos(q(1))*sin(q(2)))/625.0 + (57.0*sin(q(1))*sin(q(2)))/2500.0
+                  + (8.0*sin(p(2))*sin(q(1))*sin(q(2)))/625.0;
+  J_q_hip(1,1) = (8.0*cos(p(2))*sin(q(2)))/625.0 - (57.0*cos(q(1))*cos(q(2)))/2500.0
+                  - (7.0*cos(q(2))*sin(q(1)))/625.0 - (8.0*cos(q(1))*cos(q(2))*sin(p(2)))/625.0;
+
+  MatrixXd J_p_hip(2,2);
+  J_p_hip(0,0) = (57.0*cos(p(1)))/2500.0 - (7.0*cos(p(1))*sin(q(1)))/625.0 + (8.0*cos(q(2))*sin(p(1)))/625.0
+                  - (8.0*cos(p(1))*cos(q(1))*sin(q(2)))/625.0;
+  J_p_hip(1,1) = (57.0*cos(p(2)))/2500.0 + (7.0*cos(p(2))*sin(q(1)))/625.0
+                  + (8.0*cos(q(2))*sin(p(2)))/625.0 - (8.0*cos(p(2))*cos(q(1))*sin(q(2)))/625.0;
+  MatrixXd J_dp_2_dq_hip = -J_q_hip.lu().solve(J_p_hip);
+  MatrixXd J = MatrixXd::Zero(5, 5);
+  J(0, 0) = 1.0;
+  J.block(1, 1, 2, 2) = J_dp_2_dq_hip;
+  J(3, 3) = 0.5;
+  J(3, 4) = 0.5;
+  J(4, 3) = lambda/2.0;
+  J(4, 4) = -lambda/2.0;
+
+  return J;
 }

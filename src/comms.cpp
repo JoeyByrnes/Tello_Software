@@ -2,6 +2,8 @@
 
 extern uint16_t encoders[10];
 
+extern CheetahMotor* motors[10];
+
 extern int position_initialized[10];
 extern uint16_t encoder_positions[10];
 extern uint16_t encoder_offsets[10];
@@ -75,6 +77,7 @@ void process_motor_data(TPCANMsg Message)
 	}
 
 	encoders[id-1] = pos;
+	motors[id-1]->updateState(pos,vel,cur);
 
 	pthread_mutex_unlock(&mutex_CAN_recv);
 }

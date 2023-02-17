@@ -1,6 +1,6 @@
 // Use this file for configuring Tello software all in one place
 
-#define UPDATE_HZ 500
+#define UPDATE_HZ 1000
 
 #define ISOLATED_CORE_1_THREAD_1 4
 #define ISOLATED_CORE_1_THREAD_2 5

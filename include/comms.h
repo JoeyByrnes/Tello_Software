@@ -20,6 +20,7 @@
 #include <signal.h>
 #include "user_config.h"
 #include <mutex>
+#include "cheetah_motor.h"
 
 #define UDP_MAXLINE 1024
 

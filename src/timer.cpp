@@ -7,7 +7,7 @@ extern int update_delay;
 extern int delay_microseconds;
 extern int last_update_delay;
 
-#define PERIOD_IN_MICROSECONDS 998
+#define PERIOD_IN_MICROSECONDS ((1000000/UPDATE_HZ)-2)
 
 void startTimer(){
   gettimeofday(&st,NULL);

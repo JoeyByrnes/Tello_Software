@@ -19,8 +19,13 @@
 #include <fstream>
 #include <signal.h>
 #include "user_config.h"
+#include "utilities.h"
 #include <mutex>
-#include "cheetah_motor.h"
+// #include "cheetah_motor.h"
+#include "vn/sensors.h"
+#include "vn/compositedata.h"
+#include "vn/util.h"
+#include "../lib/Eigen/Dense"
 
 #define UDP_MAXLINE 1024
 
@@ -37,4 +42,4 @@ void* rx_UDP( void * arg );
 
 // ========================= SERIAL ===========================
 
-void process_IMU_data();
+void* IMU_Comms( void * arg );

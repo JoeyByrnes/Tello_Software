@@ -152,6 +152,11 @@ void update_all_motors(){
 	}
 }
 
+int joint_pos_to_motor_pos(int id, double joint_position_radians)
+{
+    return (int)((float)( joint_position_radians)*((float)(motor_directions[id])/ENCODER_TO_RADIANS))+motor_zeros[id];
+}
+
 void handle_UDP_Commands(){
 	if(udp_data_ready)
 	{
@@ -503,7 +508,7 @@ int main() {
 	printf("CAN Channels opened: %s \n",(channels).c_str());
 
 	// Thread setup:
-	pthread_t rx_bus1, rx_bus2, rx_bus3, rx_bus4, rx_udp, update_main;
+	pthread_t rx_bus1, rx_bus2, rx_bus3, rx_bus4, rx_udp, update_main, imu_thread;
 	pthread_attr_t tattr;
 	pthread_attr_t tattr_high_prio;
 	int ret;
@@ -534,10 +539,12 @@ int main() {
 	int rx2 = pthread_create( &rx_bus2, &tattr, &rx_CAN, (void*)(&pcd2));
 	int rx3 = pthread_create( &rx_bus3, &tattr, &rx_CAN, (void*)(&pcd3));
 	int rx4 = pthread_create( &rx_bus4, &tattr, &rx_CAN, (void*)(&pcd4));
-	pthread_setschedparam(rx_bus1, SCHED_RR, &param);
-	pthread_setschedparam(rx_bus2, SCHED_RR, &param);
-	pthread_setschedparam(rx_bus3, SCHED_RR, &param);
-	pthread_setschedparam(rx_bus4, SCHED_RR, &param);
+	// pthread_setschedparam(rx_bus1, SCHED_RR, &param);
+	// pthread_setschedparam(rx_bus2, SCHED_RR, &param);
+	// pthread_setschedparam(rx_bus3, SCHED_RR, &param);
+	// pthread_setschedparam(rx_bus4, SCHED_RR, &param);
+
+	int imu_th = pthread_create( &imu_thread, &tattr, &IMU_Comms, (void*)(NULL));
 
     CPU_ZERO(&cpuset);
     CPU_SET(ISOLATED_CORE_2_THREAD_2, &cpuset);
@@ -580,7 +587,7 @@ int main() {
 				printf("\nJoint Inputs:\n");
 				jointsLeft(0) = 0.0			*DEGREES_TO_RADIANS;
 				jointsLeft(1) = 0.0			*DEGREES_TO_RADIANS;
-				jointsLeft(2) = 0.0		*DEGREES_TO_RADIANS;
+				jointsLeft(2) = 0.0			*DEGREES_TO_RADIANS;
 				jointsLeft(3) = 90.0		*DEGREES_TO_RADIANS; // must be above 11
 				jointsLeft(4) = 0.0			*DEGREES_TO_RADIANS; 
 				motorsLeft = fcn_ik_q_2_p(jointsLeft);
@@ -592,16 +599,17 @@ int main() {
 				jointsRight(4) = 0.0		*DEGREES_TO_RADIANS; 
 				motorsRight = fcn_ik_q_2_p(jointsRight);
 
-				targets[0] = (int)((float)( motorsLeft(0))*((float)(motor_directions[0])/ENCODER_TO_RADIANS))+motor_zeros[0];
-				targets[1] = (int)((float)( motorsLeft(1))*((float)(motor_directions[1])/ENCODER_TO_RADIANS))+motor_zeros[1];
-				targets[2] = (int)((float)( motorsLeft(2))*((float)(motor_directions[2])/ENCODER_TO_RADIANS))+motor_zeros[2];
-				targets[3] = (int)((float)( motorsLeft(3))*((float)(motor_directions[3])/ENCODER_TO_RADIANS))+motor_zeros[3];
-				targets[4] = (int)((float)( motorsLeft(4))*((float)(motor_directions[4])/ENCODER_TO_RADIANS))+motor_zeros[4];
-				targets[5] = (int)((float)(motorsRight(0))*((float)(motor_directions[5])/ENCODER_TO_RADIANS))+motor_zeros[5];
-				targets[6] = (int)((float)(motorsRight(1))*((float)(motor_directions[6])/ENCODER_TO_RADIANS))+motor_zeros[6];
-				targets[7] = (int)((float)(motorsRight(2))*((float)(motor_directions[7])/ENCODER_TO_RADIANS))+motor_zeros[7];
-				targets[8] = (int)((float)(motorsRight(3))*((float)(motor_directions[8])/ENCODER_TO_RADIANS))+motor_zeros[8];
-				targets[9] = (int)((float)(motorsRight(4))*((float)(motor_directions[9])/ENCODER_TO_RADIANS))+motor_zeros[9];
+
+				targets[0] = joint_pos_to_motor_pos(0, motorsLeft(0));
+				targets[1] = joint_pos_to_motor_pos(1, motorsLeft(1));
+				targets[2] = joint_pos_to_motor_pos(2, motorsLeft(2));
+				targets[3] = joint_pos_to_motor_pos(3, motorsLeft(3));
+				targets[4] = joint_pos_to_motor_pos(4, motorsLeft(4));
+				targets[5] = joint_pos_to_motor_pos(5, motorsRight(0));
+				targets[6] = joint_pos_to_motor_pos(6, motorsRight(1));
+				targets[7] = joint_pos_to_motor_pos(7, motorsRight(2));
+				targets[8] = joint_pos_to_motor_pos(8, motorsRight(3));
+				targets[9] = joint_pos_to_motor_pos(9, motorsRight(4));
 				motor_targets = targets;
 				fsm_state = 4;
 				

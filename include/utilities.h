@@ -7,6 +7,8 @@
 #include <sys/resource.h>
 #include <iostream>
 #include <iomanip>
+#include "vn/sensors.h"
+#include "../lib/Eigen/Dense"
 
 #define GOV_PERFORMANCE "performance"
 #define GOV_POWERSAVE "powersave"
@@ -19,3 +21,6 @@ void print_cpu_speed(int core_number);
 void scheduleEnable();
 void scheduleDisable();
 void scheduleZero();
+
+void quaternion_to_euler(double q0, double q1, double q2, double q3, float &roll, float &pitch, float &yaw);
+vn::math::mat3f eigenToVnMatrix(const Eigen::Matrix3d& eigenMat);

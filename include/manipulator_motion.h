@@ -13,4 +13,3 @@ VectorXd motor_vel_to_joint_vel(const VectorXd& joint_positions, const VectorXd&
 
 VectorXd joint_torque_to_motor_torque(const VectorXd& joint_positions, const VectorXd& joint_torques);
 VectorXd motor_torque_to_joint_torque(const VectorXd& joint_positions, const VectorXd& motor_torques);
-

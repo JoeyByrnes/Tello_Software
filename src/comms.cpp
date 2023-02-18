@@ -2,7 +2,7 @@
 
 extern uint16_t encoders[10];
 
-extern CheetahMotor* motors[10];
+// extern CheetahMotor* motors[10];
 
 extern int position_initialized[10];
 extern uint16_t encoder_positions[10];
@@ -77,7 +77,7 @@ void process_motor_data(TPCANMsg Message)
 	}
 
 	encoders[id-1] = pos;
-	motors[id-1]->updateState(pos,vel,cur);
+	// motors[id-1]->updateState(pos,vel,cur);
 
 	pthread_mutex_unlock(&mutex_CAN_recv);
 }
@@ -154,3 +154,142 @@ void* rx_UDP( void * arg ){
 	}
 }
 
+//    IMU   =================================================================================
+
+using namespace vn::sensors;
+using namespace vn::protocol::uart;
+using namespace vn::xplat;
+using namespace vn::math;
+using namespace std;
+void BinaryAsyncMessageReceived(void * userData, Packet & p, size_t index);
+
+// Custom user data to pass to packet callback function
+struct UserData
+{
+  // the vectornav device identifier
+  int device_family;
+  // frame id used only for Odom header.frame_id
+  std::string map_frame_id;
+  // frame id used for header.frame_id of other messages and for Odom child_frame_id
+  std::string frame_id;
+  // Boolean to use ned or enu frame. Defaults to enu which is data format from sensor.
+  bool tf_ned_to_enu;
+  bool frame_based_enu;
+  // Initial position after getting a GPS fix.
+  vec3d initial_position;
+  bool initial_position_set = false;
+
+  //Unused covariances initialized to zero's
+//   boost::array<double, 9ul> linear_accel_covariance = {};
+//   boost::array<double, 9ul> angular_vel_covariance = {};
+//   boost::array<double, 9ul> orientation_covariance = {};
+
+  // ROS header time stamp adjustments
+  double average_time_difference{0};
+  bool adjust_ros_timestamp{false};
+
+  // strides
+  unsigned int imu_stride;
+  unsigned int output_stride;
+};
+
+void* IMU_Comms( void * arg ){
+	// Initialize IMU 
+	UserData user_data;
+
+	// Open the serial port to communicate with the VN100 IMU
+    const std::string port = "/dev/imu";
+    const int baudrate = 115200;
+    VnSensor vs;
+    vs.connect(port, baudrate);
+    std::cout << "\n\nConnected to VN100 IMU on port " << port << std::endl;
+
+	// Make sure no generic async output is registered
+  	vs.writeAsyncDataOutputType(VNOFF);
+
+	 // Query the sensor's model number.
+	string mn = vs.readModelNumber();
+	string fv = vs.readFirmwareVersion();
+	uint32_t hv = vs.readHardwareRevision();
+	uint32_t sn = vs.readSerialNumber();
+	printf("Model Number: %s, Firmware Version: %s\n", mn.c_str(), fv.c_str());
+	printf("Hardware Revision : %d, Serial Number : %d\n\n", hv, sn);
+
+	// Define the quaternion for the rotation (-90deg about original y axis)
+    vn::math::vec4f q(0.7071, 0, -0.7071, 0);
+	Eigen::Quaternionf eigenQuat(q[0], q[1], q[2], q[3]);
+    Eigen::Matrix3f eigenMat = eigenQuat.toRotationMatrix();
+    vn::math::mat3f vnMat;
+	double a = 0;
+
+	vnMat.e00 = 0;
+	vnMat.e01 = 0;
+	vnMat.e02 = -1;
+
+	vnMat.e10 = 0;
+	vnMat.e11 = 1;
+	vnMat.e12 = 0;
+
+	vnMat.e20 = 1;
+	vnMat.e21 = 0;
+	vnMat.e22 = 0;
+
+	vs.writeReferenceFrameRotation(vnMat, true);
+	VpeEnable en;
+	 // Set the VPE basic control configuration
+    VpeBasicControlRegister vpeControl;
+    vpeControl.enable = en;
+    vpeControl.headingMode = HEADINGMODE_ABSOLUTE;
+    vpeControl.filteringMode = VPEMODE_MODE1;
+
+    vs.writeVpeBasicControl(vpeControl);
+
+	float c[3][3];
+	vn::math::mat3f rot = vs.readReferenceFrameRotation();
+
+	for(int i=0;i<9;i++){
+		printf(" %f ", rot.e[i]);
+	}
+	printf("\n");
+
+	// Configure binary output message
+	BinaryOutputRegister bor(
+		ASYNCMODE_PORT2,
+		50,  // update rate [ms]
+		COMMONGROUP_QUATERNION| COMMONGROUP_ACCEL | 0,
+		TIMEGROUP_NONE, 
+		IMUGROUP_NONE,
+		GPSGROUP_NONE,
+		ATTITUDEGROUP_NONE, //ATTITUDEGROUP_YPRU,  //<-- returning yaw pitch roll uncertainties
+		INSGROUP_NONE, //INSGROUP_INSSTATUS | INSGROUP_POSECEF | INSGROUP_VELBODY | INSGROUP_ACCELECEF |
+		//INSGROUP_VELNED | INSGROUP_POSU | INSGROUP_VELU,
+		GPSGROUP_NONE);
+
+	// An empty output register for disabling output 2 and 3 if previously set
+	BinaryOutputRegister bor_none(
+		0, 1, COMMONGROUP_NONE, TIMEGROUP_NONE, IMUGROUP_NONE, GPSGROUP_NONE, ATTITUDEGROUP_NONE,
+		INSGROUP_NONE, GPSGROUP_NONE);
+
+	vs.writeBinaryOutput1(bor);
+	vs.writeBinaryOutput2(bor_none);
+	vs.writeBinaryOutput3(bor_none);
+
+	vs.registerAsyncPacketReceivedHandler(&user_data, BinaryAsyncMessageReceived);
+
+	// read IMU
+	while(1){
+
+		usleep(25);
+	}
+
+}
+
+void BinaryAsyncMessageReceived(void * userData, Packet & p, size_t index)
+{
+	vn::sensors::CompositeData cd = vn::sensors::CompositeData::parse(p);
+
+	vec3f ypr;// = cd.yawPitchRoll();
+	// vec4f quat = cd.quaternion();
+	// quaternion_to_euler(quat[0], quat[1], quat[2], quat[3], ypr[2], ypr[1], ypr[0]);
+	// printf("YPR: %f,\t %f,\t %f\n",ypr[0]*(180.0/M_PI), ypr[1]*(180.0/M_PI), ypr[2]*(180.0/M_PI));
+}

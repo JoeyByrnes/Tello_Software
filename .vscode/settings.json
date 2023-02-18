@@ -57,6 +57,7 @@
         "fcn_ik_q_2_p.h": "c",
         "complex": "cpp",
         "cstring": "cpp",
-        "list": "cpp"
+        "list": "cpp",
+        "cinttypes": "cpp"
     }
 }

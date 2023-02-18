@@ -65,5 +65,3 @@ VectorXd motor_torque_to_joint_torque(const VectorXd& joint_positions, const Vec
     VectorXd joint_torques = jacobian_inverse.transpose()*motor_torques;
     return joint_torques;
 }
-
-

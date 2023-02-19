@@ -10,8 +10,12 @@
 #include <pthread.h>
 #include <string.h>
 #include <iostream>
+#include <termios.h>
+#include <sys/ioctl.h>
+#include <fcntl.h>
+#include <linux/serial.h>
+#include <termios.h>
 #include <cstdlib>
-#include <unistd.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include "PCANBasic.h"

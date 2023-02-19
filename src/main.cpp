@@ -28,6 +28,7 @@
 #include "user_config.h"
 #include "utilities.h"
 #include "kinematics.h"
+#include "vn/sensors.h"
 
 #include <pcanfd.h>
 
@@ -70,17 +71,6 @@ unsigned int pcd2 = PCAN_PCIBUS2;
 unsigned int pcd3 = PCAN_PCIBUS3;
 unsigned int pcd4 = PCAN_PCIBUS4;
 
-CheetahMotor *m1 ;
-CheetahMotor *m2 ;
-CheetahMotor *m3 ;
-CheetahMotor *m4 ;
-CheetahMotor *m5 ;
-CheetahMotor *m6 ;
-CheetahMotor *m7 ;
-CheetahMotor *m8 ;
-CheetahMotor *m9 ;
-CheetahMotor *m10;
-
 int enable_motors = 0;
 
 uint16_t encoders[10];
@@ -89,7 +79,7 @@ uint16_t encoder_positions[10];
 uint16_t encoder_offsets[10]  = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int motor_directions[10] =      { 1,-1, 1, 1,-1, 1,-1, 1, 1,-1};
 								//1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-int motor_zeros[10] = {35534,35149,33481,33917-KNEE_OFFSET_ENC,33116+KNEE_OFFSET_ENC,32713,35168,34134,33648-KNEE_OFFSET_ENC,34552+KNEE_OFFSET_ENC}; // offsets handled
+int motor_zeros[10] = {35534,35149,33481,33917-KNEE_OFFSET_ENC,33116+KNEE_OFFSET_ENC,32713,35168,34134,35148-KNEE_OFFSET_ENC,34552+KNEE_OFFSET_ENC}; // offsets handled
 int motor_init_config[10] = {35540, 36558, 31813, 38599, 31811, 32767, 36712, 32718, 38436, 33335};
 int motor_initialized[10] = {0,0,0,0,0,0,0,0,0,0};
 int motor_move_complete[10] = {0,0,0,0,0,0,0,0,0,0};
@@ -99,6 +89,8 @@ int stop_recording = 0;
 int recording_initialized = 0;
 int playback_initialized = 0;
 int* motor_targets;
+
+vn::math::vec3f tello_ypr;
 
 double joint_setpoints_deg[10] = {0,0,0,0,0,0,0,0,0,0};
 
@@ -269,32 +261,122 @@ void handle_motor_init(){
 	}
 }
 
+int init_sum = 0;
+
 void moveMotors(int* positions){
-	int init_sum = 0;
+	
 	for(int i=0;i<10;i++){
-		if(fabs(encoder_positions[i] - positions[i])  < 50) 
-		{
-			motor_move_complete[i] = 1;
-		}
-		else
-		{
-			if(encoder_positions[i] < positions[i])
+		if(init_sum < 10){
+			if(fabs(encoder_positions[i] - positions[i])  < 50) 
 			{
-				motors[i]->setPos(encoder_positions[i]+10);
+				motor_move_complete[i] = 1;
 			}
 			else
 			{
-				motors[i]->setPos(encoder_positions[i]-10);
+				if(encoder_positions[i] < positions[i])
+				{
+					motors[i]->setPos(encoder_positions[i]+10);
+				}
+				else
+				{
+					motors[i]->setPos(encoder_positions[i]-10);
+				}
+
+			}
+			init_sum = 0;
+			for(int x=0;x<10;x++){
+				init_sum += motor_move_complete[x];
 			}
 
 		}
-		init_sum += motor_move_complete[i];
+		else
+		{
+			motors[i]->setPos(positions[i]);
+		}
+		
 	}
 	if(init_sum == 10){
-		fsm_state = 0;
-		set_kp_kd_all(200,100);
-		for(int x=0; x<10; x++) motor_move_complete[x] = 0;
+		//fsm_state = 0;
+		//set_kp_kd_all(1200,600);
+		//for(int x=0; x<10; x++) motor_move_complete[x] = 0;
 	}
+}
+double integral = 0;
+double last_error = 0;
+double kp = 1;
+double pid_controller(double error) {
+	if(error < 0){
+		kp = 1;
+	}
+	else{
+		kp = 1;
+	}
+    double ki = 0.0;   // Integral gain
+    double kd = 0.0;   // Derivative gain
+    double dt = 0.1;   // Time step
+    double integral = 0;
+    double derivative = 0;
+    
+    
+    // Calculate the proportional term
+    double proportional = kp * error;
+    
+    // Calculate the integral term
+    integral += error * dt;
+	if(integral > 1){
+		integral = 1;
+	}
+	if(integral < -1){
+		integral = -1;
+	}
+    double integral_term = ki * integral;
+    
+    // Calculate the derivative term
+    derivative = (error - last_error) / dt;
+    double derivative_term = kd * derivative;
+    
+    // Calculate the overall effort
+    double effort = proportional + integral_term + derivative_term;
+    
+    // Update the last error for the next iteration
+    last_error = error;
+    
+    return effort;
+}
+
+Eigen::Matrix<double,5,1> jointsL, jointsR;
+Eigen::VectorXd motorsL, motorsR;
+int targets1[10];
+
+void updateJointPositions()
+{
+	double effort = pid_controller(tello_ypr[1]);
+	jointsL(0) = 0.0			*DEGREES_TO_RADIANS;
+	jointsL(1) = 0.0			*DEGREES_TO_RADIANS;
+	jointsL(2) = -19.0			*DEGREES_TO_RADIANS;
+	jointsL(3) = 25.0		*DEGREES_TO_RADIANS; // must be above 11
+	jointsL(4) = (-0.55*effort-20)			*DEGREES_TO_RADIANS; 
+	motorsL = fcn_ik_q_2_p(jointsL);
+
+	jointsR(0) = 0.0		*DEGREES_TO_RADIANS;
+	jointsR(1) = 0.0		*DEGREES_TO_RADIANS;
+	jointsR(2) = -19.0		*DEGREES_TO_RADIANS;
+	jointsR(3) = 25.0		*DEGREES_TO_RADIANS; // must be above 11
+	jointsR(4) = (-0.55*effort-18)		*DEGREES_TO_RADIANS; 
+	motorsR = fcn_ik_q_2_p(jointsR);
+
+
+	targets1[0] = joint_pos_to_motor_pos(0, motorsL(0));
+	targets1[1] = joint_pos_to_motor_pos(1, motorsL(1));
+	targets1[2] = joint_pos_to_motor_pos(2, motorsL(2));
+	targets1[3] = joint_pos_to_motor_pos(3, motorsL(3));
+	targets1[4] = joint_pos_to_motor_pos(4, motorsL(4));
+	targets1[5] = joint_pos_to_motor_pos(5, motorsR(0));
+	targets1[6] = joint_pos_to_motor_pos(6, motorsR(1));
+	targets1[7] = joint_pos_to_motor_pos(7, motorsR(2));
+	targets1[8] = joint_pos_to_motor_pos(8, motorsR(3));
+	targets1[9] = joint_pos_to_motor_pos(9, motorsR(4));
+	motor_targets = targets1;
 }
 
 
@@ -386,7 +468,8 @@ static void* update_1kHz( void * arg )
 				handle_Motion_Playback();
 				break;
 			case 4:
-				set_kp_kd_all(3500,1000);
+				updateJointPositions();
+				set_kp_kd_all(2000,600);
 				moveMotors(motor_targets);
 				break;
 			default:
@@ -588,14 +671,14 @@ int main() {
 				jointsLeft(0) = 0.0			*DEGREES_TO_RADIANS;
 				jointsLeft(1) = 0.0			*DEGREES_TO_RADIANS;
 				jointsLeft(2) = 0.0			*DEGREES_TO_RADIANS;
-				jointsLeft(3) = 90.0		*DEGREES_TO_RADIANS; // must be above 11
+				jointsLeft(3) = 15.0		*DEGREES_TO_RADIANS; // must be above 11
 				jointsLeft(4) = 0.0			*DEGREES_TO_RADIANS; 
 				motorsLeft = fcn_ik_q_2_p(jointsLeft);
 
 				jointsRight(0) = 0.0		*DEGREES_TO_RADIANS;
 				jointsRight(1) = 0.0		*DEGREES_TO_RADIANS;
 				jointsRight(2) = 0.0		*DEGREES_TO_RADIANS;
-				jointsRight(3) = 90.0		*DEGREES_TO_RADIANS; // must be above 11
+				jointsRight(3) = 15.0		*DEGREES_TO_RADIANS; // must be above 11
 				jointsRight(4) = 0.0		*DEGREES_TO_RADIANS; 
 				motorsRight = fcn_ik_q_2_p(jointsRight);
 
@@ -614,20 +697,6 @@ int main() {
 				fsm_state = 4;
 				
 				scheduleEnable();
-				for(int i = 0;i<5;i++){
-					printf("M%d: %f ",i+1, (float)(motorsLeft(i)));
-				}
-				printf("\n");
-				// printf("\nMotor Setpoints:\n");
-				// for(int i = 0;i<5;i++){
-				// 	printf("M%d: %d ",i+1, (int)((float)(motorsLeft(i))*((float)(motor_directions[i])/ENCODER_TO_RADIANS))+motor_zeros[i]);
-				// }
-				// printf("\n");
-				// printf("\nRelative to these motor zeros:\n");
-				// for(int i = 0;i<5;i++){
-				// 	printf("M%d: %d ",i+1, motor_zeros[i] );
-				// }
-				// printf("\n");
 
 				break;
 			case 'd':

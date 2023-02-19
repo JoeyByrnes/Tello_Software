@@ -14,6 +14,8 @@ extern char udp_control_packet[UDP_MAXLINE];
 extern pthread_mutex_t mutex_CAN_recv;
 extern int can_data_ready_to_save;
 
+extern vn::math::vec3f tello_ypr;
+
 void* rx_CAN( void * arg ){
 	
     
@@ -193,13 +195,33 @@ struct UserData
   unsigned int output_stride;
 };
 
+bool optimize_serial_communication(std::string portName)
+{
+  int portFd = -1;
+
+  portFd = ::open(portName.c_str(), O_RDWR | O_NOCTTY);
+
+  if (portFd == -1) {
+    return false;
+  }
+
+  struct serial_struct serial;
+  ioctl(portFd, TIOCGSERIAL, &serial);
+  serial.flags |= ASYNC_LOW_LATENCY;
+  ioctl(portFd, TIOCSSERIAL, &serial);
+  ::close(portFd);
+  return true;
+}
+std::chrono::_V2::system_clock::time_point lastTime;
+
 void* IMU_Comms( void * arg ){
 	// Initialize IMU 
 	UserData user_data;
 
 	// Open the serial port to communicate with the VN100 IMU
     const std::string port = "/dev/imu";
-    const int baudrate = 115200;
+	optimize_serial_communication(port);
+    const int baudrate = 921600;
     VnSensor vs;
     vs.connect(port, baudrate);
     std::cout << "\n\nConnected to VN100 IMU on port " << port << std::endl;
@@ -215,31 +237,28 @@ void* IMU_Comms( void * arg ){
 	printf("Model Number: %s, Firmware Version: %s\n", mn.c_str(), fv.c_str());
 	printf("Hardware Revision : %d, Serial Number : %d\n\n", hv, sn);
 
-	// Define the quaternion for the rotation (-90deg about original y axis)
-    vn::math::vec4f q(0.7071, 0, -0.7071, 0);
-	Eigen::Quaternionf eigenQuat(q[0], q[1], q[2], q[3]);
-    Eigen::Matrix3f eigenMat = eigenQuat.toRotationMatrix();
     vn::math::mat3f vnMat;
-	double a = 0;
 
-	vnMat.e00 = 0;
+	vnMat.e00 = -1;
 	vnMat.e01 = 0;
-	vnMat.e02 = -1;
+	vnMat.e02 = 0;
 
 	vnMat.e10 = 0;
-	vnMat.e11 = 1;
+	vnMat.e11 = -1;
 	vnMat.e12 = 0;
 
-	vnMat.e20 = 1;
+	vnMat.e20 = 0;
 	vnMat.e21 = 0;
-	vnMat.e22 = 0;
+	vnMat.e22 = 1;
 
 	vs.writeReferenceFrameRotation(vnMat, true);
+
+
 	VpeEnable en;
 	 // Set the VPE basic control configuration
     VpeBasicControlRegister vpeControl;
     vpeControl.enable = en;
-    vpeControl.headingMode = HEADINGMODE_ABSOLUTE;
+    vpeControl.headingMode = HEADINGMODE_RELATIVE;
     vpeControl.filteringMode = VPEMODE_MODE1;
 
     vs.writeVpeBasicControl(vpeControl);
@@ -255,8 +274,8 @@ void* IMU_Comms( void * arg ){
 	// Configure binary output message
 	BinaryOutputRegister bor(
 		ASYNCMODE_PORT2,
-		50,  // update rate [ms]
-		COMMONGROUP_QUATERNION| COMMONGROUP_ACCEL | 0,
+		1,  // update rate [ms]
+		COMMONGROUP_YAWPITCHROLL | COMMONGROUP_QUATERNION | COMMONGROUP_ANGULARRATE | COMMONGROUP_ACCEL,
 		TIMEGROUP_NONE, 
 		IMUGROUP_NONE,
 		GPSGROUP_NONE,
@@ -274,22 +293,42 @@ void* IMU_Comms( void * arg ){
 	vs.writeBinaryOutput2(bor_none);
 	vs.writeBinaryOutput3(bor_none);
 
+	vs.writeSettings();
+
 	vs.registerAsyncPacketReceivedHandler(&user_data, BinaryAsyncMessageReceived);
 
 	// read IMU
 	while(1){
 
-		usleep(25);
+		usleep(2500);
 	}
 
+}
+long long getLastTime() {
+  auto currentTime = chrono::high_resolution_clock::now();
+  auto duration = chrono::duration_cast<chrono::microseconds>(currentTime - lastTime).count();
+  lastTime = currentTime;
+  return duration;
+}
+#define FILTER_LEN 20
+vector<float> samples(FILTER_LEN, 0.0);
+long idx = 0;
+float filterFloat(const vector<float>& samples) {
+  // Compute the average of the last 25 samples
+  float sum = 0.0;
+  for (int i = 0; i < FILTER_LEN; i++) {
+    sum += samples[i];
+  }
+  return sum / (float)FILTER_LEN;
 }
 
 void BinaryAsyncMessageReceived(void * userData, Packet & p, size_t index)
 {
 	vn::sensors::CompositeData cd = vn::sensors::CompositeData::parse(p);
 
-	vec3f ypr;// = cd.yawPitchRoll();
-	// vec4f quat = cd.quaternion();
-	// quaternion_to_euler(quat[0], quat[1], quat[2], quat[3], ypr[2], ypr[1], ypr[0]);
-	// printf("YPR: %f,\t %f,\t %f\n",ypr[0]*(180.0/M_PI), ypr[1]*(180.0/M_PI), ypr[2]*(180.0/M_PI));
+	vec3f ypr = cd.yawPitchRoll();
+	tello_ypr = ypr;
+	// printf("YPR: %.2f,\t %.2f,\t %.2f\n",ypr[0], ypr[1], ypr[2]);
+	// cout << getLastTime() << endl;
+	// cout.flush();
 }

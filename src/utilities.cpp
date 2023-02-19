@@ -60,34 +60,3 @@ void scheduleZero()
 }
 
 using namespace Eigen;
-
-// void quaternion_to_euler(double q0, double q1, double q2, double q3, double &roll, double &pitch, double &yaw) {
-//     Quaterniond q(q0, q1, q2, q3);
-//     Matrix3d rotation_matrix = q.toRotationMatrix();
-//     roll = atan2(rotation_matrix(2, 1), rotation_matrix(2, 2));
-//     pitch = asin(-rotation_matrix(2, 0));
-//     yaw = atan2(rotation_matrix(1, 0), rotation_matrix(0, 0));
-// }
-void quaternion_to_euler(double q0, double q1, double q2, double q3, float &roll, float &pitch, float &yaw) {
-    Quaterniond q(q0, q1, q2, q3);
-    Matrix3d rotation_matrix = q.toRotationMatrix();
-
-    // Get the Euler angles from the rotation matrix
-    if (rotation_matrix(2, 0) < 1.0) {
-        if (rotation_matrix(2, 0) > -1.0) {
-            pitch = asin(-rotation_matrix(2, 0));
-            roll = atan2(rotation_matrix(2, 1), rotation_matrix(2, 2));
-            yaw = atan2(rotation_matrix(1, 0), rotation_matrix(0, 0));
-        } else { // r2,0 = -1
-            // Not a unique solution: yaw - roll = atan2(r0,1,r1,1)
-            pitch = M_PI / 2.0;
-            roll = -atan2(-rotation_matrix(0, 1), rotation_matrix(1, 1));
-            yaw = 0.0;
-        }
-    } else { // r2,0 = 1
-        // Not a unique solution: yaw + roll = atan2(-r0,1,-r1,1)
-        pitch = -M_PI / 2.0;
-        roll = atan2(-rotation_matrix(0, 1), rotation_matrix(1, 1));
-        yaw = 0.0;
-    }
-}

@@ -21,11 +21,12 @@ void* rx_CAN( void * arg ){
     
 	TPCANStatus Status;
 	TPCANMsg Message;
-	//int pcd = *((int*)arg);
-	// int pcd = *((int*) (std::get<1>(*((std::tuple<void*, void*, int, int>*)arg))) );
 	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
     void* arg1 = std::get<1>(*arg_tuple_ptr);
+	void* arg0 = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
     int pcd = *reinterpret_cast<int*>(arg1);
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(arg0);
 	// Print the core and priority of the thread
 	int core = sched_getcpu();
 	int policy;
@@ -50,22 +51,22 @@ void* rx_CAN( void * arg ){
 			{
 				uint8_t id = Message.DATA[0];
 				if(id < 11){
-					process_motor_data(Message);
+					process_motor_data(Message, tello);
 				}
 				else if(id == 18 || id == 19){
-					process_foot_sensor_data(Message);
+					process_foot_sensor_data(Message, tello);
 				}
 
 			}
 
 		}
 
-		usleep(50);
+		usleep(period);
 	}
     return NULL;
 }
 
-void process_motor_data(TPCANMsg Message)
+void process_motor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot)
 {
 	unsigned int id = Message.DATA[0];
 	unsigned int pos = (Message.DATA[1] << 8) + Message.DATA[2];
@@ -83,12 +84,12 @@ void process_motor_data(TPCANMsg Message)
 	}
 
 	encoders[id-1] = pos;
-	// motors[id-1]->updateState(pos,vel,cur);
+	robot->motors[id-1]->updateState(pos,vel,cur);
 
 	pthread_mutex_unlock(&mutex_CAN_recv);
 }
 
-void process_foot_sensor_data(TPCANMsg Message){
+void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot){
 	// uint8_t id = Message.DATA[0];
 	// uint16_t front_force = (Message.DATA[1] << 8) | Message.DATA[2];
 	// uint16_t back_force = (Message.DATA[3] << 8) | Message.DATA[4];

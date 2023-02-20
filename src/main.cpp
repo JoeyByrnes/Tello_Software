@@ -101,8 +101,6 @@ int motor_kp = 50;
 int motor_kd = 600;
 int playback_kp = 1000;
 
-CheetahMotor* motors[10];
-
 pthread_mutex_t mutex_CAN_recv = PTHREAD_MUTEX_INITIALIZER;
 int can_data_ready_to_save = 1;
 int disabled = 1;
@@ -118,32 +116,32 @@ extern bool zeroScheduled;
 void enable_all(){
 	for(int i=0;i<10;i++)
 	{
-		motors[i]->enableMotor();
+		tello->motors[i]->enableMotor();
 	}
 }
 void disable_all(){
 	for(int i=0;i<10;i++)
 	{
-		motors[i]->disableMotor();
+		tello->motors[i]->disableMotor();
 	}
 }
 void set_kp_kd_all(uint16_t kp, uint16_t kd){
 	for(int i=0;i<10;i++)
 	{
 		if(i == 3 || i == 4 || i == 8 || i == 9){
-			motors[i]->setKp(kp*3);
-			motors[i]->setKd(kd);
+			tello->motors[i]->setKp(kp*3);
+			tello->motors[i]->setKd(kd);
 		}
 		else{
-			motors[i]->setKp(kp);
-			motors[i]->setKd(kd);
+			tello->motors[i]->setKp(kp);
+			tello->motors[i]->setKd(kd);
 		}
 	}
 }
 void update_all_motors(){
 	for(int i=0;i<10;i++)
 	{
-		motors[i]->updateMotor();
+		tello->motors[i]->updateMotor();
 	}
 }
 
@@ -164,17 +162,17 @@ void handle_UDP_Commands(){
 		}
 		for(int i=0;i<10;i++){
 			uint16_t pos_set = (uint16_t)((int)encoder_offsets[i] + (int)(24*((int)pos_cmds[i]-180))*motor_directions[i]);
-			motors[i]->setPos(pos_set);
+			tello->motors[i]->setPos(pos_set);
 		}
 		enable_motors = udp_control_packet[0];
 		if(enable_motors){
 			for(int i=0;i<10;i++){
-				motors[i]->enableMotor();
+				tello->motors[i]->enableMotor();
 			}
 		}
 		else{
 			for(int i=0;i<10;i++){
-				motors[i]->disableMotor();
+				tello->motors[i]->disableMotor();
 			}
 		}
 	}
@@ -228,7 +226,7 @@ void handle_Motion_Playback(){
 		int idx = 0;
 		for (int i : values) {
 			//std::cout << i << " " << std::flush;
-			motors[idx++]->setPos((uint16_t)i);
+			tello->motors[idx++]->setPos((uint16_t)i);
 		}
 		if(motor_kp < playback_kp){
 			motor_kp = motor_kp+1;
@@ -248,11 +246,11 @@ void handle_motor_init(){
 		{
 			if(encoder_positions[i] < motor_zeros[i])
 			{
-				motors[i]->setPos(encoder_positions[i]+10);
+				tello->motors[i]->setPos(encoder_positions[i]+10);
 			}
 			else
 			{
-				motors[i]->setPos(encoder_positions[i]-10);
+				tello->motors[i]->setPos(encoder_positions[i]-10);
 			}
 
 		}
@@ -278,11 +276,11 @@ void moveMotors(int* positions){
 			{
 				if(encoder_positions[i] < positions[i])
 				{
-					motors[i]->setPos(encoder_positions[i]+10);
+					tello->motors[i]->setPos(encoder_positions[i]+10);
 				}
 				else
 				{
-					motors[i]->setPos(encoder_positions[i]-10);
+					tello->motors[i]->setPos(encoder_positions[i]-10);
 				}
 
 			}
@@ -294,7 +292,7 @@ void moveMotors(int* positions){
 		}
 		else
 		{
-			motors[i]->setPos(positions[i]);
+			tello->motors[i]->setPos(positions[i]);
 		}
 		
 	}
@@ -395,23 +393,23 @@ static void* update_1kHz( void * arg )
 	int priority = param.sched_priority;
 	printf("Main Update thread running on core %d, with priority %d\n", core, priority);
     
-	motors[0] = new CheetahMotor(0x01,PCAN_PCIBUS1);
-	motors[1] = new CheetahMotor(0x02,PCAN_PCIBUS1);
-	motors[2] = new CheetahMotor(0x03,PCAN_PCIBUS2);
-	motors[3] = new CheetahMotor(0x04,PCAN_PCIBUS1);
-	motors[4] = new CheetahMotor(0x05,PCAN_PCIBUS2);
-	motors[5] = new CheetahMotor(0x06,PCAN_PCIBUS3);
-	motors[6] = new CheetahMotor(0x07,PCAN_PCIBUS4);
-	motors[7] = new CheetahMotor(0x08,PCAN_PCIBUS3);
-	motors[8] = new CheetahMotor(0x09,PCAN_PCIBUS4);
-	motors[9] = new CheetahMotor(0x0A,PCAN_PCIBUS3);
+	tello->motors[0] = new CheetahMotor(0x01,PCAN_PCIBUS1);
+	tello->motors[1] = new CheetahMotor(0x02,PCAN_PCIBUS1);
+	tello->motors[2] = new CheetahMotor(0x03,PCAN_PCIBUS2);
+	tello->motors[3] = new CheetahMotor(0x04,PCAN_PCIBUS1);
+	tello->motors[4] = new CheetahMotor(0x05,PCAN_PCIBUS2);
+	tello->motors[5] = new CheetahMotor(0x06,PCAN_PCIBUS3);
+	tello->motors[6] = new CheetahMotor(0x07,PCAN_PCIBUS4);
+	tello->motors[7] = new CheetahMotor(0x08,PCAN_PCIBUS3);
+	tello->motors[8] = new CheetahMotor(0x09,PCAN_PCIBUS4);
+	tello->motors[9] = new CheetahMotor(0x0A,PCAN_PCIBUS3);
 
 	for(int i=0;i<10;i++)
 	{
-		motors[i]->setKp(50);
-		motors[i]->setKd(1);
-		motors[i]->setPos(32768);
-		motors[i]->disableMotor();
+		tello->motors[i]->setKp(50);
+		tello->motors[i]->setKd(1);
+		tello->motors[i]->setPos(32768);
+		tello->motors[i]->disableMotor();
 	}
 	usleep(1000);
 
@@ -434,8 +432,8 @@ static void* update_1kHz( void * arg )
 	printf("\nAll motors Initialized, Enabling.\n");
 	for(int i=0;i<10;i++)
 	{
-		motors[i]->setPos(encoder_offsets[i]);
-		motors[i]->updateMotor();
+		tello->motors[i]->setPos(encoder_offsets[i]);
+		tello->motors[i]->updateMotor();
 	}
 
 	usleep(100000); // 100ms
@@ -501,7 +499,7 @@ static void* update_1kHz( void * arg )
 void signal_callback_handler(int signum){
 	fsm_state = 0;
 	for(int i=0;i<10;i++){
-		// motors[i]->disableMotor();
+		// tello->motors[i]->disableMotor();
 	}
 
 	//fclose(log_file);
@@ -572,8 +570,26 @@ int main() {
 		printf("with NICE Priority: %d\n\n",prio);
 	}
 
-	tello = new RoboDesignLab::DynamicRobot();
+	RoboDesignLab::BipedActuatorTree actuators;
+	actuators.leftLeg.push_back(new CheetahMotor(0x01,PCAN_PCIBUS1));
+	actuators.leftLeg.push_back(new CheetahMotor(0x02,PCAN_PCIBUS1));
+	actuators.leftLeg.push_back(new CheetahMotor(0x03,PCAN_PCIBUS2));
+	actuators.leftLeg.push_back(new CheetahMotor(0x04,PCAN_PCIBUS1));
+	actuators.leftLeg.push_back(new CheetahMotor(0x05,PCAN_PCIBUS2));
+	actuators.rightLeg.push_back(new CheetahMotor(0x06,PCAN_PCIBUS3));
+	actuators.rightLeg.push_back(new CheetahMotor(0x07,PCAN_PCIBUS4));
+	actuators.rightLeg.push_back(new CheetahMotor(0x08,PCAN_PCIBUS3));
+	actuators.rightLeg.push_back(new CheetahMotor(0x09,PCAN_PCIBUS4));
+	actuators.rightLeg.push_back(new CheetahMotor(0x0A,PCAN_PCIBUS3));
 
+	tello = new RoboDesignLab::DynamicRobot(actuators);
+
+	// Assign existing kinematics functions for the tello DynamicRobot object to use
+	tello->assign_ik_joints_to_motors(fcn_ik_q_2_p);
+	tello->assign_jacobian_joints_to_motors(fcn_Jaco_dq_2_dp);
+	tello->assign_jacobian_motors_to_joints(fcn_Jaco_dp_2_dq);
+
+	// Initialize Peak Systems CAN adapters
 	TPCANStatus s1,s2,s3,s4;
     s1 = CAN_Initialize(pcd1, PCAN_BAUD_1M, 0, 0, 0);
     s2 = CAN_Initialize(pcd2, PCAN_BAUD_1M, 0, 0, 0);
@@ -591,6 +607,7 @@ int main() {
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd2),"rx_bus2",TASK_CONSTANT_DELAY, 50);
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd3),"rx_bus3",TASK_CONSTANT_DELAY, 50);
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd4),"rx_bus4",TASK_CONSTANT_DELAY, 50);
+	tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 	tello->addPeriodicTask(&IMU_Comms, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL, "imu_task", TASK_CONSTANT_DELAY, 1000);
 	tello->addPeriodicTask(&update_1kHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, NULL, "update_task",TASK_CONSTANT_PERIOD, 1000);
 	

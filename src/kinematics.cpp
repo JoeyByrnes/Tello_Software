@@ -143,7 +143,7 @@ Eigen::MatrixXd fcn_Jaco_dq_2_dp(const Eigen::VectorXd& q)
     return J;
 }
 
-Eigen::MatrixXd fcn_Jaco_dp_2_dq(Eigen::VectorXd q) {
+Eigen::MatrixXd fcn_Jaco_dp_2_dq(const Eigen::VectorXd& q) {
   VectorXd p = fcn_ik_q_2_p(q);
   double alpha = fcn_q5_2_alpha(q(4));
   double beta = fcn_q5_2_beta(q(4));

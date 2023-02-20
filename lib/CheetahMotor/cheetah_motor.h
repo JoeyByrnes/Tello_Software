@@ -1,3 +1,5 @@
+#ifndef __CHEETAH_MOTOR_H__
+#define __CHEETAH_MOTOR_H__
 #include <stdint.h>
 #include "PCANBasic.h"
 #include <string.h>
@@ -59,3 +61,5 @@ class CheetahMotor
         bool _enabled = 0;
 
 };
+
+#endif

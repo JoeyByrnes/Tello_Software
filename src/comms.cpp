@@ -21,7 +21,11 @@ void* rx_CAN( void * arg ){
     
 	TPCANStatus Status;
 	TPCANMsg Message;
-	int pcd = *((int*)arg);
+	//int pcd = *((int*)arg);
+	// int pcd = *((int*) (std::get<1>(*((std::tuple<void*, void*, int, int>*)arg))) );
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+    void* arg1 = std::get<1>(*arg_tuple_ptr);
+    int pcd = *reinterpret_cast<int*>(arg1);
 	// Print the core and priority of the thread
 	int core = sched_getcpu();
 	int policy;
@@ -263,13 +267,12 @@ void* IMU_Comms( void * arg ){
 
     vs.writeVpeBasicControl(vpeControl);
 
-	float c[3][3];
-	vn::math::mat3f rot = vs.readReferenceFrameRotation();
+	// vn::math::mat3f rot = vs.readReferenceFrameRotation();
 
-	for(int i=0;i<9;i++){
-		printf(" %f ", rot.e[i]);
-	}
-	printf("\n");
+	// for(int i=0;i<9;i++){
+	// 	printf(" %f ", rot.e[i]);
+	// }
+	// printf("\n");
 
 	// Configure binary output message
 	BinaryOutputRegister bor(

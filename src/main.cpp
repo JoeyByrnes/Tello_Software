@@ -29,6 +29,7 @@
 #include "utilities.h"
 #include "kinematics.h"
 #include "vn/sensors.h"
+#include "dynamic_robot.h"
 
 #include <pcanfd.h>
 
@@ -36,6 +37,8 @@
 #define ENCODER_TO_RADIANS ((double)(12.5/32768.0))
 #define RADIANS_TO_DEGREES ((double)(180.0/M_PI))
 #define KNEE_OFFSET_ENC 503
+
+RoboDesignLab::DynamicRobot* tello;
 
 int udp_data_ready = 0;
 char udp_control_packet[UDP_MAXLINE];
@@ -144,7 +147,7 @@ void update_all_motors(){
 	}
 }
 
-int joint_pos_to_motor_pos(int id, double joint_position_radians)
+int motor_pos_model_to_real(int id, double joint_position_radians)
 {
     return (int)((float)( joint_position_radians)*((float)(motor_directions[id])/ENCODER_TO_RADIANS))+motor_zeros[id];
 }
@@ -366,16 +369,16 @@ void updateJointPositions()
 	motorsR = fcn_ik_q_2_p(jointsR);
 
 
-	targets1[0] = joint_pos_to_motor_pos(0, motorsL(0));
-	targets1[1] = joint_pos_to_motor_pos(1, motorsL(1));
-	targets1[2] = joint_pos_to_motor_pos(2, motorsL(2));
-	targets1[3] = joint_pos_to_motor_pos(3, motorsL(3));
-	targets1[4] = joint_pos_to_motor_pos(4, motorsL(4));
-	targets1[5] = joint_pos_to_motor_pos(5, motorsR(0));
-	targets1[6] = joint_pos_to_motor_pos(6, motorsR(1));
-	targets1[7] = joint_pos_to_motor_pos(7, motorsR(2));
-	targets1[8] = joint_pos_to_motor_pos(8, motorsR(3));
-	targets1[9] = joint_pos_to_motor_pos(9, motorsR(4));
+	targets1[0] = motor_pos_model_to_real(0, motorsL(0));
+	targets1[1] = motor_pos_model_to_real(1, motorsL(1));
+	targets1[2] = motor_pos_model_to_real(2, motorsL(2));
+	targets1[3] = motor_pos_model_to_real(3, motorsL(3));
+	targets1[4] = motor_pos_model_to_real(4, motorsL(4));
+	targets1[5] = motor_pos_model_to_real(5, motorsR(0));
+	targets1[6] = motor_pos_model_to_real(6, motorsR(1));
+	targets1[7] = motor_pos_model_to_real(7, motorsR(2));
+	targets1[8] = motor_pos_model_to_real(8, motorsR(3));
+	targets1[9] = motor_pos_model_to_real(9, motorsR(4));
 	motor_targets = targets1;
 }
 
@@ -569,19 +572,13 @@ int main() {
 		printf("with NICE Priority: %d\n\n",prio);
 	}
 
-	//log_file = fopen("tello_log.txt", "w+"); // open file for logging data
+	tello = new RoboDesignLab::DynamicRobot();
 
-	
-	char buffer[UDP_MAXLINE];
-    int cnt = 0;
-  	TPCANMsg Message;
 	TPCANStatus s1,s2,s3,s4;
-
     s1 = CAN_Initialize(pcd1, PCAN_BAUD_1M, 0, 0, 0);
     s2 = CAN_Initialize(pcd2, PCAN_BAUD_1M, 0, 0, 0);
 	s3 = CAN_Initialize(pcd3, PCAN_BAUD_1M, 0, 0, 0);
 	s4 = CAN_Initialize(pcd4, PCAN_BAUD_1M, 0, 0, 0);
-
 	std::string channels = "";
 	if(!s1)channels+="1, ";
 	if(!s2)channels+="2, ";
@@ -590,69 +587,22 @@ int main() {
 	
 	printf("CAN Channels opened: %s \n",(channels).c_str());
 
-	// Thread setup:
-	pthread_t rx_bus1, rx_bus2, rx_bus3, rx_bus4, rx_udp, update_main, imu_thread;
-	pthread_attr_t tattr;
-	pthread_attr_t tattr_high_prio;
-	int ret;
-	sched_param param, param_high_prio;
-	/* initialized with default attributes */
-	ret = pthread_attr_init (&tattr);
-	ret = pthread_attr_init (&tattr_high_prio);
-	/* set the scheduler of the thread to use a realtime policy */
-	pthread_attr_setschedpolicy(&tattr, SCHED_FIFO);
-	pthread_attr_setschedpolicy(&tattr_high_prio, SCHED_FIFO);
-	/* safe to get existing scheduling param */
-	ret = pthread_attr_getschedparam (&tattr, &param);
-	ret = pthread_attr_getschedparam (&tattr_high_prio, &param_high_prio);
-	/* set the priority; others are unchanged */
-	param.sched_priority = 40;
-	param_high_prio.sched_priority = 99;
-    pthread_attr_setschedparam(&tattr, &param);
-	pthread_attr_setschedparam(&tattr_high_prio, &param_high_prio);
-
-	// Set the CPU affinity of the thread to the specified core
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(ISOLATED_CORE_2_THREAD_1, &cpuset);
-    pthread_attr_setaffinity_np(&tattr, sizeof(cpu_set_t), &cpuset); // set the following threads to core 6
-
-	// initialize one receive thread per CAN channel
-	int rx1 = pthread_create( &rx_bus1, &tattr, &rx_CAN, (void*)(&pcd1));
-	int rx2 = pthread_create( &rx_bus2, &tattr, &rx_CAN, (void*)(&pcd2));
-	int rx3 = pthread_create( &rx_bus3, &tattr, &rx_CAN, (void*)(&pcd3));
-	int rx4 = pthread_create( &rx_bus4, &tattr, &rx_CAN, (void*)(&pcd4));
-	// pthread_setschedparam(rx_bus1, SCHED_RR, &param);
-	// pthread_setschedparam(rx_bus2, SCHED_RR, &param);
-	// pthread_setschedparam(rx_bus3, SCHED_RR, &param);
-	// pthread_setschedparam(rx_bus4, SCHED_RR, &param);
-
-	int imu_th = pthread_create( &imu_thread, &tattr, &IMU_Comms, (void*)(NULL));
-
-    CPU_ZERO(&cpuset);
-    CPU_SET(ISOLATED_CORE_2_THREAD_2, &cpuset);
-    pthread_attr_setaffinity_np(&tattr, sizeof(cpu_set_t), &cpuset); // set the following threads to core 7
-
-	// initialize receive thread for UDP communication
-	int rxUDP = pthread_create( &rx_udp, &tattr, &rx_UDP, (void*)(NULL));
-
-    CPU_ZERO(&cpuset);
-    CPU_SET(ISOLATED_CORE_1_THREAD_2, &cpuset);
-    pthread_attr_setaffinity_np(&tattr, sizeof(cpu_set_t), &cpuset); // set the following threads to core 5
-
-	// initialize main update thread that sends commands to motors
-	int update_th = pthread_create( &update_main, &tattr_high_prio, &update_1kHz, (void*)(NULL));
-	pthread_setschedparam(update_main, SCHED_FIFO, &param_high_prio);
-
+	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd1),"rx_bus1",TASK_CONSTANT_DELAY, 50);
+	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd2),"rx_bus2",TASK_CONSTANT_DELAY, 50);
+	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd3),"rx_bus3",TASK_CONSTANT_DELAY, 50);
+	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd4),"rx_bus4",TASK_CONSTANT_DELAY, 50);
+	tello->addPeriodicTask(&IMU_Comms, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL, "imu_task", TASK_CONSTANT_DELAY, 1000);
+	tello->addPeriodicTask(&update_1kHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, NULL, "update_task",TASK_CONSTANT_PERIOD, 1000);
+	
 	usleep(1000);
 	
 	while(1){
-		// printf("\n\nTello Software Menu:\n");
-		// printf("u : Enter UDP Control Mode\n");
-		// printf("r : Enter Motion Recording Mode\n");
-		// printf("e : Exit Motion Recording Mode\n");
-		// printf("p : Enter Motion Playback Mode\n");
-		// printf("i : Enter Idle Mode (or press any other unused key)\n\n");
+		printf("\n\nTello Software Menu:\n");
+		printf("u : Enter UDP Control Mode\n");
+		printf("r : Enter Motion Recording Mode\n");
+		printf("e : Exit Motion Recording Mode\n");
+		printf("p : Enter Motion Playback Mode\n");
+		printf("i : Enter Idle Mode (or press any other unused key)\n\n");
 		Eigen::Matrix<double,5,1> jointsLeft, jointsRight;
 		Eigen::VectorXd motorsLeft, motorsRight;
 		int targets[10];
@@ -683,16 +633,16 @@ int main() {
 				motorsRight = fcn_ik_q_2_p(jointsRight);
 
 
-				targets[0] = joint_pos_to_motor_pos(0, motorsLeft(0));
-				targets[1] = joint_pos_to_motor_pos(1, motorsLeft(1));
-				targets[2] = joint_pos_to_motor_pos(2, motorsLeft(2));
-				targets[3] = joint_pos_to_motor_pos(3, motorsLeft(3));
-				targets[4] = joint_pos_to_motor_pos(4, motorsLeft(4));
-				targets[5] = joint_pos_to_motor_pos(5, motorsRight(0));
-				targets[6] = joint_pos_to_motor_pos(6, motorsRight(1));
-				targets[7] = joint_pos_to_motor_pos(7, motorsRight(2));
-				targets[8] = joint_pos_to_motor_pos(8, motorsRight(3));
-				targets[9] = joint_pos_to_motor_pos(9, motorsRight(4));
+				targets[0] = motor_pos_model_to_real(0, motorsLeft(0));
+				targets[1] = motor_pos_model_to_real(1, motorsLeft(1));
+				targets[2] = motor_pos_model_to_real(2, motorsLeft(2));
+				targets[3] = motor_pos_model_to_real(3, motorsLeft(3));
+				targets[4] = motor_pos_model_to_real(4, motorsLeft(4));
+				targets[5] = motor_pos_model_to_real(5, motorsRight(0));
+				targets[6] = motor_pos_model_to_real(6, motorsRight(1));
+				targets[7] = motor_pos_model_to_real(7, motorsRight(2));
+				targets[8] = motor_pos_model_to_real(8, motorsRight(3));
+				targets[9] = motor_pos_model_to_real(9, motorsRight(4));
 				motor_targets = targets;
 				fsm_state = 4;
 				

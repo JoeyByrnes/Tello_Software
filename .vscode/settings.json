@@ -59,6 +59,7 @@
         "cstring": "cpp",
         "list": "cpp",
         "cinttypes": "cpp",
-        "map": "cpp"
+        "map": "cpp",
+        "core": "cpp"
     }
 }

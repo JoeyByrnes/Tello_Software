@@ -66,3 +66,16 @@ void handle_end_of_periodic_task(struct timespec &next){
   clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &next, NULL);
 
 }
+
+void handle_end_of_periodic_task(struct timespec &next,int period_us){
+
+  next.tv_nsec += (period_us-2) * 1000;
+  if (next.tv_nsec >= 1000000000)
+  {
+      next.tv_nsec -= 1000000000;
+      next.tv_sec += 1;
+  }
+
+  clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &next, NULL);
+
+}

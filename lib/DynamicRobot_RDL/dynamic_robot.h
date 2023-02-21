@@ -74,12 +74,12 @@ namespace RoboDesignLab {
         Eigen::VectorXd motor_vel_to_joint_vel(Eigen::VectorXd motor_velocites);
         Eigen::VectorXd joint_vel_to_motor_vel(Eigen::VectorXd joint_velocites);
         Eigen::VectorXd joint_vel_to_task_vel(Eigen::VectorXd joint_velocites);
-        Eigen::VectorXd task_vel_to_joint_vel(Eigen::VectorXd task_velocites);
+        Eigen::VectorXd task_vel_to_joint_vel(Eigen::VectorXd task_velocites_front, Eigen::VectorXd task_velocites_back );
 
         Eigen::VectorXd motor_torque_to_joint_torque(Eigen::VectorXd motor_torques);
         Eigen::VectorXd joint_torque_to_motor_torque(Eigen::VectorXd joint_torques);
         Eigen::VectorXd joint_torque_to_task_force(Eigen::VectorXd joint_torques);
-        Eigen::VectorXd task_force_to_joint_torque(Eigen::VectorXd task_forces);
+        Eigen::VectorXd task_force_to_joint_torque(Eigen::VectorXd task_forces_front, Eigen::VectorXd task_forces_back);
 
         Eigen::VectorXd motor_pos_to_joint_pos(Eigen::VectorXd motor_positions){ return (*_fk_motor2joint)(motor_positions); }
         Eigen::VectorXd joint_pos_to_motor_pos(Eigen::VectorXd joint_positions){ return (*_ik_joint2motor)(joint_positions); }
@@ -87,6 +87,8 @@ namespace RoboDesignLab {
         Eigen::VectorXd task_pos_to_joint_pos(Eigen::VectorXd task_positions)  { return (*_ik_task2joint)(task_positions);   }
 
         void addPeriodicTask(void *(*start_routine)(void *), int sched_policy, int priority, int cpu_affinity, void *arg, std::string task_name,int task_type, int period);
+
+        Eigen::VectorXd getJointConfig();
 
         // Actuators
         CheetahMotor* motors[10]; // move this to private soon

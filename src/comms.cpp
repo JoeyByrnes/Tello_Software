@@ -49,6 +49,7 @@ void* rx_CAN( void * arg ){
 			}
 			else
 			{
+				pthread_mutex_lock(&mutex_CAN_recv);
 				uint8_t id = Message.DATA[0];
 				if(id < 11){
 					process_motor_data(Message, tello);
@@ -56,6 +57,7 @@ void* rx_CAN( void * arg ){
 				else if(id == 18 || id == 19){
 					process_foot_sensor_data(Message, tello);
 				}
+				pthread_mutex_unlock(&mutex_CAN_recv);
 
 			}
 
@@ -73,7 +75,7 @@ void process_motor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot)
 	unsigned int vel  = (Message.DATA[3] << 4) + ((Message.DATA[4] & 0xF0) >> 4);
 	unsigned int cur = ((Message.DATA[4] & 0x0F) << 8) + Message.DATA[5];
 	
-	pthread_mutex_lock(&mutex_CAN_recv);
+	
 
 	encoder_positions[id-1] = pos;
 	if(!position_initialized[id-1]){
@@ -86,7 +88,6 @@ void process_motor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot)
 	encoders[id-1] = pos;
 	robot->motors[id-1]->updateState(pos,vel,cur);
 
-	pthread_mutex_unlock(&mutex_CAN_recv);
 }
 
 void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot){

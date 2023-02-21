@@ -350,6 +350,68 @@ Eigen::Matrix<double,5,1> jointsL, jointsR;
 Eigen::VectorXd motorsL, motorsR;
 int targets1[10];
 
+double pd_control(double pos, double pos_des, double vel, double vel_des, double kp, double kd) {
+    // Calculate position error
+    double pos_error = pos_des - pos;
+
+    // Calculate velocity error
+    double vel_error = vel_des - vel;
+
+    // Calculate control effort with damping term
+    double effort = kp * pos_error - kd * vel_error;
+
+    return effort;
+}
+
+void joint_pd_control(){
+	// get motor positions and velocities
+	Eigen::Matrix<double,5,1> motor_positions_left;
+	Eigen::Matrix<double,5,1> motor_velocities_left;
+	Eigen::Matrix<double,5,1> motor_positions_right;
+	Eigen::Matrix<double,5,1> motor_velocities_right;
+	pthread_mutex_lock(&mutex_CAN_recv);
+	for(int i=0;i<5;i++){
+		motor_positions_left[i] = tello->motors[i]->getMotorState().pos;
+		motor_velocities_left[i] = tello->motors[i]->getMotorState().vel;
+		motor_positions_right[i] = tello->motors[i+5]->getMotorState().pos;
+		motor_velocities_right[i] = tello->motors[i+5]->getMotorState().vel;
+	}
+	// get joint positions and velocities from IK and Jacobian
+	// VectorXd joint_pos_left = tello->motor_pos_to_joint_pos(motor_positions_left);
+	// VectorXd joint_pos_right = tello->motor_pos_to_joint_pos(motor_positions_right);
+	VectorXd joint_vel_left = tello->motor_vel_to_joint_vel(motor_velocities_left);
+	// VectorXd joint_vel_right = tello->motor_vel_to_joint_vel(motor_velocities_right);
+	// // perform Joint PD
+	// Eigen::Matrix<double,5,1> joint_torques_left;
+	// Eigen::Matrix<double,5,1> joint_torques_right;
+	// for(int i = 0;i<5;i++){
+	// 	joint_torques_left[i] = pd_control(joint_pos_left[i], jointsL[i], joint_vel_left[i], 0, 100, 10);
+	// 	joint_torques_right[i] = pd_control(joint_pos_right[i], jointsR[i], joint_vel_right[i], 0, 100, 10);
+	// }
+
+	// // convert joint pd torques to motor torques
+	// VectorXd motor_torques_left = tello->joint_torque_to_motor_torque(joint_torques_left);
+	// VectorXd motor_torques_right = tello->joint_torque_to_motor_torque(joint_torques_right);
+	pthread_mutex_unlock(&mutex_CAN_recv);
+	// write motor torques with feedforward control
+	for(int i=0; i<5; i++){
+		// tello->motors[i]->setKp(0);
+		// tello->motors[i]->setKd(0);
+		// tello->motors[i]->setff(motor_torques_left[i]);
+
+		// tello->motors[i+5]->setKp(0);
+		// tello->motors[i+5]->setKd(0);
+		// tello->motors[i+5]->setff(motor_torques_right[i]);
+
+		// print the torques here for me to know if they make sense:
+	}
+	// printf("LEFT: %d,\t %d,\t %d,\t %d,\t %d \n",	(int)motor_torques_left[0], 
+	// 													(int)motor_torques_left[1],
+	// 													(int)motor_torques_left[2],
+	// 													(int)motor_torques_left[3],
+	// 													(int)motor_torques_left[4]);
+}
+
 void updateJointPositions()
 {
 	double effort = pid_controller(tello_ypr[1]);
@@ -471,8 +533,9 @@ static void* update_1kHz( void * arg )
 				break;
 			case 4:
 				updateJointPositions();
-				set_kp_kd_all(2000,600);
-				moveMotors(motor_targets);
+				// set_kp_kd_all(2000,600);
+				// moveMotors(motor_targets);
+				joint_pd_control();
 				break;
 			default:
 				// do nothing
@@ -644,14 +707,14 @@ int main() {
 				jointsLeft(2) = 0.0			*DEGREES_TO_RADIANS;
 				jointsLeft(3) = 15.0		*DEGREES_TO_RADIANS; // must be above 11
 				jointsLeft(4) = 0.0			*DEGREES_TO_RADIANS; 
-				motorsLeft = fcn_ik_q_2_p(jointsLeft);
+				motorsLeft = tello->joint_pos_to_motor_pos(jointsLeft);
 
 				jointsRight(0) = 0.0		*DEGREES_TO_RADIANS;
 				jointsRight(1) = 0.0		*DEGREES_TO_RADIANS;
 				jointsRight(2) = 0.0		*DEGREES_TO_RADIANS;
 				jointsRight(3) = 15.0		*DEGREES_TO_RADIANS; // must be above 11
 				jointsRight(4) = 0.0		*DEGREES_TO_RADIANS; 
-				motorsRight = fcn_ik_q_2_p(jointsRight);
+				motorsRight = tello->joint_pos_to_motor_pos(jointsRight);
 
 
 				targets[0] = motor_pos_model_to_real(0, motorsLeft(0));
@@ -667,7 +730,7 @@ int main() {
 				motor_targets = targets;
 				fsm_state = 4;
 				
-				scheduleEnable();
+				//scheduleEnable();
 
 				break;
 			case 'd':

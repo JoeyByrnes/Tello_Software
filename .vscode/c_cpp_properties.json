@@ -18,6 +18,8 @@
                 "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/Eigen/**",
                 "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/Kinematics/**",
                 "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/VectorNav/include",
+                "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/SRBM_Kin",
+                "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib",
                 "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/PeriodicTask_RDL",
                 "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/Tello_IMU",
                 ""
@@ -35,6 +37,8 @@
                     "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/Eigen/**",
                     "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/Kinematics/**",
                     "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/VectorNav/include",
+                    "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/SRBM_Kin",
+                    "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib",
                     "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/PeriodicTask_RDL",
                     "/home/tello/Documents/PlatformIO/Projects/Tello_Software/lib/Tello_IMU",
                     ""

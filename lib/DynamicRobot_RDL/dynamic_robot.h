@@ -54,8 +54,10 @@ namespace RoboDesignLab {
 
         void assign_jacobian_motors_to_joints(MatrixXd_function fcn){ _jaco_motor2joint = fcn; }
         void assign_jacobian_joints_to_motors(MatrixXd_function fcn){ _jaco_joint2motor = fcn; }
-        void assign_jacobian_joints_to_task(MatrixXd_function fcn)  { _jaco_joint2task = fcn;  }
-        void assign_jacobian_task_to_joints(MatrixXd_function fcn)  { _jaco_task2joint = fcn;  }
+
+        // This part is specific to a line foot robot:
+        void assign_jacobian_joints_to_task_lf_front(MatrixXd_function fcn)  { _jaco_joint2taskFront = fcn;  }
+        void assign_jacobian_joints_to_task_lf_back(MatrixXd_function fcn)  { _jaco_joint2taskBack = fcn;  }
 
         void assign_ik_joints_to_motors(VectorXd_function fcn){ _ik_joint2motor = fcn; }
         void assign_fk_motors_to_joints(VectorXd_function fcn){ _fk_motor2joint = fcn; }
@@ -64,13 +66,10 @@ namespace RoboDesignLab {
 
         Eigen::MatrixXd jacobian_joint(Eigen::VectorXd joint_config)        { return (*_jaco_motor2joint)(joint_config); }
         Eigen::MatrixXd jacobian_joint_inverse(Eigen::VectorXd joint_config){ return (*_jaco_joint2motor)(joint_config); }
-        Eigen::MatrixXd jacobian_task(Eigen::VectorXd joint_config)         { return (*_jaco_joint2task)(joint_config);  }
-        Eigen::MatrixXd jacobian_task_inverse(Eigen::VectorXd joint_config) { return (*_jaco_task2joint)(joint_config);  }
 
-        Eigen::MatrixXd jacobian_joint_transpose(Eigen::VectorXd joint_config)        { return (*_jaco_motor2joint)(joint_config).transpose(); }
-        Eigen::MatrixXd jacobian_joint_inverse_transpose(Eigen::VectorXd joint_config){ return (*_jaco_joint2motor)(joint_config).transpose(); }
-        Eigen::MatrixXd jacobian_task_transpose(Eigen::VectorXd joint_config)         { return (*_jaco_joint2task)(joint_config).transpose();  }
-        Eigen::MatrixXd jacobian_task_inverse_transpose(Eigen::VectorXd joint_config) { return (*_jaco_task2joint)(joint_config).transpose();  }
+        // This part is specific to a line foot robot:
+        Eigen::MatrixXd jacobian_task_lf_front(Eigen::VectorXd joint_config){ return (*_jaco_joint2taskFront)(joint_config); }
+        Eigen::MatrixXd jacobian_task_lf_back(Eigen::VectorXd joint_config) { return (*_jaco_joint2taskBack)(joint_config);  }
 
         Eigen::VectorXd motor_vel_to_joint_vel(Eigen::VectorXd motor_velocites);
         Eigen::VectorXd joint_vel_to_motor_vel(Eigen::VectorXd joint_velocites);
@@ -80,12 +79,12 @@ namespace RoboDesignLab {
         Eigen::VectorXd motor_torque_to_joint_torque(Eigen::VectorXd motor_torques);
         Eigen::VectorXd joint_torque_to_motor_torque(Eigen::VectorXd joint_torques);
         Eigen::VectorXd joint_torque_to_task_force(Eigen::VectorXd joint_torques);
-        Eigen::VectorXd task_forces_to_joint_torque(Eigen::VectorXd task_forces);
+        Eigen::VectorXd task_force_to_joint_torque(Eigen::VectorXd task_forces);
 
         Eigen::VectorXd motor_pos_to_joint_pos(Eigen::VectorXd motor_positions){ return (*_fk_motor2joint)(motor_positions); }
         Eigen::VectorXd joint_pos_to_motor_pos(Eigen::VectorXd joint_positions){ return (*_ik_joint2motor)(joint_positions); }
         Eigen::VectorXd joint_pos_to_task_pos(Eigen::VectorXd joint_positions) { return (*_fk_joint2task)(joint_positions);  }
-        Eigen::VectorXd task_pos_to_joint_pos(Eigen::VectorXd task_positions)  { return (*_ik_task2joint)(task_positions);  }
+        Eigen::VectorXd task_pos_to_joint_pos(Eigen::VectorXd task_positions)  { return (*_ik_task2joint)(task_positions);   }
 
         void addPeriodicTask(void *(*start_routine)(void *), int sched_policy, int priority, int cpu_affinity, void *arg, std::string task_name,int task_type, int period);
 
@@ -95,8 +94,8 @@ namespace RoboDesignLab {
         // Kinematics Functions
         MatrixXd_function _jaco_motor2joint;
         MatrixXd_function _jaco_joint2motor;
-        MatrixXd_function _jaco_joint2task;
-        MatrixXd_function _jaco_task2joint;
+        MatrixXd_function _jaco_joint2taskFront;
+        MatrixXd_function _jaco_joint2taskBack;
 
         VectorXd_function _ik_joint2motor;
         VectorXd_function _fk_motor2joint;

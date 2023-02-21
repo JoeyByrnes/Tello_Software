@@ -30,6 +30,7 @@
 #include "kinematics.h"
 #include "vn/sensors.h"
 #include "dynamic_robot.h"
+#include "srbm_kinematics.h"
 
 #include <pcanfd.h>
 
@@ -588,6 +589,9 @@ int main() {
 	tello->assign_ik_joints_to_motors(fcn_ik_q_2_p);
 	tello->assign_jacobian_joints_to_motors(fcn_Jaco_dq_2_dp);
 	tello->assign_jacobian_motors_to_joints(fcn_Jaco_dp_2_dq);
+	tello->assign_ik_task_to_joints(tello_leg_IK_pointFoot);
+	tello->assign_jacobian_joints_to_task_lf_front(fcn_Jaco_dq_2_dT_front);
+	tello->assign_jacobian_joints_to_task_lf_back(fcn_Jaco_dq_2_dT_back);
 
 	// Initialize Peak Systems CAN adapters
 	TPCANStatus s1,s2,s3,s4;

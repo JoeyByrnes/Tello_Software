@@ -1,4 +1,7 @@
 #include "kinematics.h"
+#include "srbm_structs.h"
+
+#define DEGREE_TO_RADIANS (M_PI/180.0)
 
 using namespace Eigen;
 
@@ -176,4 +179,57 @@ Eigen::MatrixXd fcn_Jaco_dp_2_dq(const Eigen::VectorXd& q) {
   J(4, 4) = -lambda/2.0;
 
   return J;
+}
+
+Eigen::VectorXd tello_leg_IK(Eigen::Vector3d& lf1, Eigen::Vector3d& lf2)
+{
+  SRB_Params srb_params;
+  srb_params.q1_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
+  srb_params.q2_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
+  srb_params.thigh_length = 0.2286;
+  srb_params.calf_length = 0.260;
+  srb_params.heel_length = 0.0485;
+  srb_params.foot_length = 0.060;
+
+  return dash_kin::SRB_Leg_IK(srb_params,lf1,lf2);
+}
+
+Eigen::VectorXd tello_leg_IK_pointFoot(const Eigen::VectorXd& pos)
+{
+  SRB_Params srb_params;
+  srb_params.q1_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
+  srb_params.q2_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
+  srb_params.thigh_length = 0.2286;
+  srb_params.calf_length = 0.260;
+  srb_params.heel_length = 0.0485;
+  srb_params.foot_length = 0.060;
+  Vector3d lf1 = pos + Vector3d(srb_params.foot_length,0,0);
+  Vector3d lf2 = pos - Vector3d(srb_params.foot_length,0,0);
+
+  return dash_kin::SRB_Leg_IK(srb_params,lf1,lf2);
+}
+
+Eigen::MatrixXd fcn_Jaco_dq_2_dT_front(const Eigen::VectorXd& q){
+  SRB_Params srb_params;
+  srb_params.q1_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
+  srb_params.q2_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
+  srb_params.thigh_length = 0.2286;
+  srb_params.calf_length = 0.260;
+  srb_params.heel_length = 0.0485;
+  srb_params.foot_length = 0.060;
+
+  VectorXd p = Vector4d(srb_params.thigh_length,srb_params.calf_length,srb_params.foot_length,srb_params.heel_length);
+  return dash_kin::fcn_lf1_J(q, p);
+}
+Eigen::MatrixXd fcn_Jaco_dq_2_dT_back(const Eigen::VectorXd& q){
+  SRB_Params srb_params;
+  srb_params.q1_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
+  srb_params.q2_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
+  srb_params.thigh_length = 0.2286;
+  srb_params.calf_length = 0.260;
+  srb_params.heel_length = 0.0485;
+  srb_params.foot_length = 0.060;
+
+  VectorXd p = Vector4d(srb_params.thigh_length,srb_params.calf_length,srb_params.foot_length,srb_params.heel_length);
+  return dash_kin::fcn_lf2_J(q, p);
 }

@@ -14,32 +14,32 @@ Eigen::VectorXd DynamicRobot::joint_vel_to_motor_vel(Eigen::VectorXd joint_veloc
 
 Eigen::VectorXd DynamicRobot::joint_vel_to_task_vel(Eigen::VectorXd joint_velocites)
 {
-    return this->jacobian_task(this->_joint_config)*joint_velocites;
+    //return this->jacobian_task(this->_joint_config)*joint_velocites;
 }
 
 Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel(Eigen::VectorXd task_velocites)
 {
-    return this->jacobian_task_inverse(this->_joint_config)*task_velocites;
+   // return this->jacobian_task_inverse(this->_joint_config)*task_velocites;
 }
 
 Eigen::VectorXd DynamicRobot::motor_torque_to_joint_torque(Eigen::VectorXd motor_torques)
 {
-    return this->jacobian_joint_inverse_transpose(this->_joint_config)*motor_torques;
+    return this->jacobian_joint_inverse(this->_joint_config).transpose()*motor_torques;
 }
 
 Eigen::VectorXd DynamicRobot::joint_torque_to_motor_torque(Eigen::VectorXd joint_torques)
 {
-    return this->jacobian_joint_transpose(this->_joint_config)*joint_torques;
+    return this->jacobian_joint(this->_joint_config).transpose()*joint_torques;
 }
 
 Eigen::VectorXd DynamicRobot::joint_torque_to_task_force(Eigen::VectorXd joint_torques)
 {
-    return this->jacobian_task_inverse_transpose(this->_joint_config)*joint_torques;
+   // return this->jacobian_task_inverse(this->_joint_config).transpose()*joint_torques;
 }
 
-Eigen::VectorXd DynamicRobot::task_forces_to_joint_torque(Eigen::VectorXd task_forces)
+Eigen::VectorXd DynamicRobot::task_force_to_joint_torque(Eigen::VectorXd task_forces)
 {
-    return this->jacobian_task_transpose(this->_joint_config)*task_forces;
+   // return this->jacobian_task(this->_joint_config).transpose()*task_forces;
 }
 
 void DynamicRobot::addPeriodicTask(void *(*start_routine)(void *), int sched_policy, int priority, int cpu_affinity, void *arg, std::string task_name,int task_type, int period){

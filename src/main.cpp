@@ -151,6 +151,11 @@ int motor_pos_model_to_real(int id, double joint_position_radians)
     return (int)((float)( joint_position_radians)*((float)(motor_directions[id])/ENCODER_TO_RADIANS))+motor_zeros[id];
 }
 
+double motor_pos_real_to_model(int id, int motor_position_units)
+{
+    return ((double)(motor_position_units - motor_zeros[id]))*((double)(motor_directions[id]))*ENCODER_TO_RADIANS;
+}
+
 void handle_UDP_Commands(){
 	if(udp_data_ready)
 	{
@@ -362,7 +367,7 @@ double pd_control(double pos, double pos_des, double vel, double vel_des, double
 
     return effort;
 }
-
+uint64_t print_idx = 0;
 void joint_pd_control(){
 	// get motor positions and velocities
 	Eigen::Matrix<double,5,1> motor_positions_left;
@@ -371,27 +376,42 @@ void joint_pd_control(){
 	Eigen::Matrix<double,5,1> motor_velocities_right;
 	pthread_mutex_lock(&mutex_CAN_recv);
 	for(int i=0;i<5;i++){
-		motor_positions_left[i] = tello->motors[i]->getMotorState().pos;
+		motor_positions_left[i] = motor_pos_real_to_model(i, tello->motors[i]->getMotorState().pos);
 		motor_velocities_left[i] = tello->motors[i]->getMotorState().vel;
-		motor_positions_right[i] = tello->motors[i+5]->getMotorState().pos;
+		motor_positions_right[i] = motor_pos_real_to_model(i+5, tello->motors[i+5]->getMotorState().pos);
 		motor_velocities_right[i] = tello->motors[i+5]->getMotorState().vel;
 	}
 	// get joint positions and velocities from IK and Jacobian
-	// VectorXd joint_pos_left = tello->motor_pos_to_joint_pos(motor_positions_left);
-	// VectorXd joint_pos_right = tello->motor_pos_to_joint_pos(motor_positions_right);
-	VectorXd joint_vel_left = tello->motor_vel_to_joint_vel(motor_velocities_left);
-	// VectorXd joint_vel_right = tello->motor_vel_to_joint_vel(motor_velocities_right);
-	// // perform Joint PD
-	// Eigen::Matrix<double,5,1> joint_torques_left;
-	// Eigen::Matrix<double,5,1> joint_torques_right;
-	// for(int i = 0;i<5;i++){
-	// 	joint_torques_left[i] = pd_control(joint_pos_left[i], jointsL[i], joint_vel_left[i], 0, 100, 10);
-	// 	joint_torques_right[i] = pd_control(joint_pos_right[i], jointsR[i], joint_vel_right[i], 0, 100, 10);
-	// }
+	VectorXd joint_pos_left = tello->motor_pos_to_joint_pos(motor_positions_left);
+	VectorXd joint_pos_right = tello->motor_pos_to_joint_pos(motor_positions_right);
+	
+	// if(print_idx%500 == 0)
+	// {
+	// 	printf("LEFT: %f,\t %f,\t %f,\t %f,\t %f \n",	joint_pos_left[0]*RADIANS_TO_DEGREES, 
+	// 												joint_pos_left[1]*RADIANS_TO_DEGREES,
+	// 												joint_pos_left[2]*RADIANS_TO_DEGREES,
+	// 												joint_pos_left[3]*RADIANS_TO_DEGREES,
+	// 												joint_pos_left[4]*RADIANS_TO_DEGREES);
+	// 	std::cout.flush();
 
-	// // convert joint pd torques to motor torques
-	// VectorXd motor_torques_left = tello->joint_torque_to_motor_torque(joint_torques_left);
-	// VectorXd motor_torques_right = tello->joint_torque_to_motor_torque(joint_torques_right);
+	// }
+	// print_idx += 1;
+
+
+
+	VectorXd joint_vel_left = tello->motor_vel_to_joint_vel(motor_velocities_left);
+	VectorXd joint_vel_right = tello->motor_vel_to_joint_vel(motor_velocities_right);
+	// perform Joint PD
+	Eigen::Matrix<double,5,1> joint_torques_left;
+	Eigen::Matrix<double,5,1> joint_torques_right;
+	for(int i = 0;i<5;i++){
+		joint_torques_left[i] = pd_control(joint_pos_left[i], jointsL[i], joint_vel_left[i], 0, 100, 0);
+		joint_torques_right[i] = pd_control(joint_pos_right[i], jointsR[i], joint_vel_right[i], 0, 100, 0);
+	}
+
+	// convert joint pd torques to motor torques
+	VectorXd motor_torques_left = tello->joint_torque_to_motor_torque(joint_torques_left);
+	VectorXd motor_torques_right = tello->joint_torque_to_motor_torque(joint_torques_right);
 	pthread_mutex_unlock(&mutex_CAN_recv);
 	// write motor torques with feedforward control
 	for(int i=0; i<5; i++){
@@ -405,28 +425,47 @@ void joint_pd_control(){
 
 		// print the torques here for me to know if they make sense:
 	}
-	// printf("LEFT: %d,\t %d,\t %d,\t %d,\t %d \n",	(int)motor_torques_left[0], 
-	// 													(int)motor_torques_left[1],
-	// 													(int)motor_torques_left[2],
-	// 													(int)motor_torques_left[3],
-	// 													(int)motor_torques_left[4]);
+	if(print_idx%500 == 0)
+	{
+		printf("LEFT: %f,\t %f,\t %f,\t %f,\t %f \n",	motor_torques_left[0], 
+														motor_torques_left[1],
+														motor_torques_left[2],
+														motor_torques_left[3],
+														motor_torques_left[4]);
+		std::cout.flush();
+
+	}
+	print_idx += 1;
+	
 }
 
 void updateJointPositions()
 {
 	double effort = pid_controller(tello_ypr[1]);
+	// jointsL(0) = 0.0			*DEGREES_TO_RADIANS;
+	// jointsL(1) = 0.0			*DEGREES_TO_RADIANS;
+	// jointsL(2) = -19.0			*DEGREES_TO_RADIANS;
+	// jointsL(3) = 25.0		*DEGREES_TO_RADIANS; // must be above 11
+	// jointsL(4) = (-0.55*effort-20)			*DEGREES_TO_RADIANS; 
+	// motorsL = fcn_ik_q_2_p(jointsL);
 	jointsL(0) = 0.0			*DEGREES_TO_RADIANS;
 	jointsL(1) = 0.0			*DEGREES_TO_RADIANS;
-	jointsL(2) = -19.0			*DEGREES_TO_RADIANS;
-	jointsL(3) = 25.0		*DEGREES_TO_RADIANS; // must be above 11
-	jointsL(4) = (-0.55*effort-20)			*DEGREES_TO_RADIANS; 
+	jointsL(2) = 0.0			*DEGREES_TO_RADIANS;
+	jointsL(3) = 11.0		*DEGREES_TO_RADIANS; // must be above 11
+	jointsL(4) = 0			*DEGREES_TO_RADIANS; 
 	motorsL = fcn_ik_q_2_p(jointsL);
 
 	jointsR(0) = 0.0		*DEGREES_TO_RADIANS;
 	jointsR(1) = 0.0		*DEGREES_TO_RADIANS;
-	jointsR(2) = -19.0		*DEGREES_TO_RADIANS;
-	jointsR(3) = 25.0		*DEGREES_TO_RADIANS; // must be above 11
-	jointsR(4) = (-0.55*effort-18)		*DEGREES_TO_RADIANS; 
+	jointsR(2) = 0.0		*DEGREES_TO_RADIANS;
+	jointsR(3) = 11.0		*DEGREES_TO_RADIANS; // must be above 11
+	jointsR(4) = 0		*DEGREES_TO_RADIANS; 
+
+	// jointsR(0) = 0.0		*DEGREES_TO_RADIANS;
+	// jointsR(1) = 0.0		*DEGREES_TO_RADIANS;
+	// jointsR(2) = -19.0		*DEGREES_TO_RADIANS;
+	// jointsR(3) = 25.0		*DEGREES_TO_RADIANS; // must be above 11
+	// jointsR(4) = (-0.55*effort-18)		*DEGREES_TO_RADIANS; 
 	motorsR = fcn_ik_q_2_p(jointsR);
 
 
@@ -655,6 +694,7 @@ int main() {
 	tello->assign_ik_task_to_joints(tello_leg_IK_pointFoot);
 	tello->assign_jacobian_joints_to_task_lf_front(fcn_Jaco_dq_2_dT_front);
 	tello->assign_jacobian_joints_to_task_lf_back(fcn_Jaco_dq_2_dT_back);
+	tello->assign_fk_motors_to_joints(fk_motors_to_joints);
 
 	// Initialize Peak Systems CAN adapters
 	TPCANStatus s1,s2,s3,s4;

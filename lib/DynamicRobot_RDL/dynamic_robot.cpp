@@ -48,6 +48,8 @@ Eigen::VectorXd DynamicRobot::joint_torque_to_motor_torque(Eigen::VectorXd joint
 Eigen::VectorXd DynamicRobot::joint_torque_to_task_force(Eigen::VectorXd joint_torques)
 {
    // return this->jacobian_task_inverse(this->getJointConfig()).transpose()*joint_torques;
+   Eigen::Matrix<double,5,1> f;
+   return f;
 }
 
 Eigen::VectorXd DynamicRobot::task_force_to_joint_torque(Eigen::VectorXd task_forces_front, Eigen::VectorXd task_forces_back)
@@ -91,6 +93,6 @@ Eigen::VectorXd DynamicRobot::getJointConfig(){
     Eigen::VectorXd joint_pos_left = this->motor_pos_to_joint_pos(motor_positions_left);
     Eigen::VectorXd joint_pos_right = this->motor_pos_to_joint_pos(motor_positions_right);
     joint_config << joint_pos_left, joint_pos_right;
-    _joint_config = joint_config;
-    return _joint_config;
+    return joint_config;
 }
+

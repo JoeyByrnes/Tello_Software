@@ -20,3 +20,5 @@ Eigen::VectorXd tello_leg_IK_pointFoot(const Eigen::VectorXd& pos);
 Eigen::MatrixXd fcn_Jaco_dq_2_dT_front(const Eigen::VectorXd& q);
 Eigen::MatrixXd fcn_Jaco_dq_2_dT_back(const Eigen::VectorXd& q);
 
+Eigen::VectorXd fk_motors_to_joints(const Eigen::VectorXd& p);
+

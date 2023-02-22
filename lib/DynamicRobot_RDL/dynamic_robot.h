@@ -104,8 +104,6 @@ namespace RoboDesignLab {
         VectorXd_function _ik_task2joint;
         VectorXd_function _fk_joint2task;
 
-        Eigen::VectorXd _joint_config;
-
         // Sensors
 
         // Actuators

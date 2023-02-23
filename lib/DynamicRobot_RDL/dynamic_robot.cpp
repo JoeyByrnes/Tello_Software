@@ -4,7 +4,19 @@ using namespace RoboDesignLab;
 
 Eigen::VectorXd DynamicRobot::motor_vel_to_joint_vel(Eigen::VectorXd motor_velocites)
 {
-    return this->jacobian_joint(this->getJointConfig())*motor_velocites;
+    Eigen::VectorXd motor_velocites_left = motor_velocites.segment(0,5);
+	Eigen::VectorXd motor_velocites_right = motor_velocites.segment(5,5);
+
+    Eigen::VectorXd joint_positions = this->getJointConfig();
+    Eigen::VectorXd joint_positions_left = joint_positions.segment(0,5);
+    Eigen::VectorXd joint_positions_right = joint_positions.segment(5,5);
+
+    Eigen::VectorXd joint_velocities_left  = this->jacobian_joint(joint_positions_left)*motor_velocites_left;
+    Eigen::VectorXd joint_velocities_right = this->jacobian_joint(joint_positions_right)*motor_velocites_right;
+
+    Eigen::VectorXd joint_velocities(10);
+    joint_velocities << joint_velocities_left, joint_velocities_right;
+    return joint_velocities;
 }
 
 Eigen::VectorXd DynamicRobot::joint_vel_to_motor_vel(Eigen::VectorXd joint_velocites)

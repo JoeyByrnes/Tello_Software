@@ -378,22 +378,27 @@ void joint_pd_control(){
 	pthread_mutex_lock(&mutex_CAN_recv);
 	for(int i=0;i<5;i++){
 		motor_positions_left[i] = motor_pos_real_to_model(i, tello->motors[i]->getMotorState().pos);
-		motor_velocities_left[i] = tello->motors[i]->getMotorState().vel;
+		motor_velocities_left[i] = (tello->motors[i]->getMotorState().vel*VELOCITY_TO_RADIANS_PER_SEC-32.484131)*tello->motor_directions[i];
 		motor_positions_right[i] = motor_pos_real_to_model(i+5, tello->motors[i+5]->getMotorState().pos);
-		motor_velocities_right[i] = tello->motors[i+5]->getMotorState().vel;
+		motor_velocities_right[i] = (tello->motors[i+5]->getMotorState().vel*VELOCITY_TO_RADIANS_PER_SEC-32.484131)*tello->motor_directions[i+5];
 	}
+	motor_velocities_left[4] = -motor_velocities_left[4];
+	motor_velocities_right[4] = -motor_velocities_right[4];
 	// get joint positions and velocities from IK and Jacobian
 	VectorXd joint_pos_left = tello->motor_pos_to_joint_pos(motor_positions_left);
 	VectorXd joint_pos_right = tello->motor_pos_to_joint_pos(motor_positions_right);
 	
-	VectorXd joint_vel_left = tello->motor_vel_to_joint_vel(motor_velocities_left);
-	VectorXd joint_vel_right = tello->motor_vel_to_joint_vel(motor_velocities_right);
+	VectorXd motor_velocities(10);
+	motor_velocities << motor_velocities_left, motor_velocities_right;
+	VectorXd joint_velocities = tello->motor_vel_to_joint_vel(motor_velocities);
+	VectorXd joint_velocities_left = joint_velocities.segment(0,5);
+	VectorXd joint_velocities_right = joint_velocities.segment(5,5);
 	// perform Joint PD
 	Eigen::Matrix<double,5,1> joint_torques_left;
 	Eigen::Matrix<double,5,1> joint_torques_right;
 	for(int i = 0;i<5;i++){
-		joint_torques_left[i] = pd_control(joint_pos_left[i], jointsL[i], joint_vel_left[i], 0, 2500, 0);
-		joint_torques_right[i] = pd_control(joint_pos_right[i], jointsR[i], joint_vel_right[i], 0, 2500, 0);
+		joint_torques_left[i] = pd_control(joint_pos_left[i], jointsL[i], joint_velocities_left[i], 0, 2500, 0);
+		joint_torques_right[i] = pd_control(joint_pos_right[i], jointsR[i], joint_velocities_right[i], 0, 2500, 0);
 	}
 	joint_torques_left[4] = -joint_torques_left[4];
 	joint_torques_right[4] = -joint_torques_right[4];
@@ -415,6 +420,16 @@ void joint_pd_control(){
 		tello->motors[i+5]->setff(2048+motor_torques_right[i]*motor_directions[i+5]);
 
 		// print the torques here for me to know if they make sense:
+		if(print_idx%200 == 0){
+			printf("VELS LEFT: %f,\t %f,\t %f,\t %f,\t %f \n", joint_velocities_left[0],
+															joint_velocities_left[1],
+															joint_velocities_left[2],
+															joint_velocities_left[3],
+															joint_velocities_left[4]
+															);
+			cout.flush();
+		}
+		print_idx++;
 	}
 	
 }
@@ -754,7 +769,7 @@ int main() {
 				motor_targets = targets;
 				fsm_state = 4;
 				
-				scheduleEnable();
+				// scheduleEnable();
 
 				break;
 			case 'd':

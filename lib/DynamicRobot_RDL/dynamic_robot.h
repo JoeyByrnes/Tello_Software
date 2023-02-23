@@ -36,6 +36,7 @@
 #define TASK_CONSTANT_PERIOD 0
 #define TASK_CONSTANT_DELAY 1
 #define ENCODER_TO_RADIANS ((double)(12.5/32768.0))
+#define VELOCITY_TO_RADIANS_PER_SEC ((double)(65.0/4096.0))
 
 typedef Eigen::VectorXd (*VectorXd_function)(const Eigen::VectorXd&);
 typedef Eigen::MatrixXd (*MatrixXd_function)(const Eigen::VectorXd&);

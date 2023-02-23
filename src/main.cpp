@@ -392,10 +392,11 @@ void joint_pd_control(){
 	Eigen::Matrix<double,5,1> joint_torques_left;
 	Eigen::Matrix<double,5,1> joint_torques_right;
 	for(int i = 0;i<5;i++){
-		joint_torques_left[i] = ((double)motor_directions[i])*pd_control(joint_pos_left[i], jointsL[i], joint_vel_left[i], 0, 200, 0);
-		joint_torques_right[i] = ((double)motor_directions[i+5])*pd_control(joint_pos_right[i], jointsR[i], joint_vel_right[i], 0, 200, 0);
+		joint_torques_left[i] = pd_control(joint_pos_left[i], jointsL[i], joint_vel_left[i], 0, 2500, 0);
+		joint_torques_right[i] = pd_control(joint_pos_right[i], jointsR[i], joint_vel_right[i], 0, 2500, 0);
 	}
-
+	joint_torques_left[4] = -joint_torques_left[4];
+	joint_torques_right[4] = -joint_torques_right[4];
 	// convert joint pd torques to motor torques
 	VectorXd joint_torques(10);
 	joint_torques << joint_torques_left, joint_torques_right;
@@ -407,26 +408,14 @@ void joint_pd_control(){
 	for(int i=0; i<5; i++){
 		tello->motors[i]->setKp(0);
 		tello->motors[i]->setKd(0);
-		tello->motors[i]->setff(2048+motor_torques_left[i]);
+		tello->motors[i]->setff(2048+motor_torques_left[i]*motor_directions[i]);
 
 		tello->motors[i+5]->setKp(0);
 		tello->motors[i+5]->setKd(0);
-		tello->motors[i+5]->setff(2048+motor_torques_right[i]);
+		tello->motors[i+5]->setff(2048+motor_torques_right[i]*motor_directions[i+5]);
 
 		// print the torques here for me to know if they make sense:
 	}
-
-	// if(print_idx%200 == 0)
-	// {
-	// 	printf("LEFT: %f,\t %f,\t %f,\t %f,\t %f \n",	motor_torques_left[0], 
-	// 													motor_torques_left[1],
-	// 													motor_torques_left[2],
-	// 													motor_torques_left[3],
-	// 													motor_torques_left[4]);
-	// 	std::cout.flush();
-
-	// }
-	// print_idx += 1;
 	
 }
 
@@ -442,14 +431,14 @@ void updateJointPositions()
 	jointsL(0) = 0.0			*DEGREES_TO_RADIANS;
 	jointsL(1) = 0.0			*DEGREES_TO_RADIANS;
 	jointsL(2) = 0.0			*DEGREES_TO_RADIANS;
-	jointsL(3) = 60.0		*DEGREES_TO_RADIANS; // must be above 11
+	jointsL(3) = 15.0		*DEGREES_TO_RADIANS; // must be above 11
 	jointsL(4) = 0			*DEGREES_TO_RADIANS; 
 	motorsL = fcn_ik_q_2_p(jointsL);
 
 	jointsR(0) = 0.0		*DEGREES_TO_RADIANS;
 	jointsR(1) = 0.0		*DEGREES_TO_RADIANS;
 	jointsR(2) = 0.0		*DEGREES_TO_RADIANS;
-	jointsR(3) = 60.0		*DEGREES_TO_RADIANS; // must be above 11
+	jointsR(3) = 15.0		*DEGREES_TO_RADIANS; // must be above 11
 	jointsR(4) = 0		*DEGREES_TO_RADIANS; 
 
 	// jointsR(0) = 0.0		*DEGREES_TO_RADIANS;
@@ -765,9 +754,7 @@ int main() {
 				motor_targets = targets;
 				fsm_state = 4;
 				
-				// scheduleEnable();
-				tello->motors[3]->enableMotor();
-				tello->motors[4]->enableMotor();
+				scheduleEnable();
 
 				break;
 			case 'd':

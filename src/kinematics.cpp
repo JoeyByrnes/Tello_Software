@@ -287,12 +287,7 @@ VectorXd fk_motors_to_joints(const VectorXd& p)
            - 0.15647;
   q(2) = fe;
   // KNEE
-  double kn = 3.111e-07 * pow(p(3), 2) 
-            + 6.1188e-07 * p(3) * p(4) 
-            + 0.5 * p(3) 
-            + 3.0396e-07 * pow(p(4), 2) 
-            + 0.5 * p(4) 
-            + 4.5219e-07; 
+  double kn = 0.5*p(3) + 0.5*p(4);
   q(3) = kn;
   // ANKLE
   double a = -0.0072907 * pow(p(3), 4)

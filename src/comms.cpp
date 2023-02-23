@@ -70,10 +70,10 @@ void* rx_CAN( void * arg ){
 
 void process_motor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot)
 {
-	unsigned int id = Message.DATA[0];
-	unsigned int pos = (Message.DATA[1] << 8) + Message.DATA[2];
-	unsigned int vel  = (Message.DATA[3] << 4) + ((Message.DATA[4] & 0xF0) >> 4);
-	unsigned int cur = ((Message.DATA[4] & 0x0F) << 8) + Message.DATA[5];
+	uint8_t id = Message.DATA[0];
+	uint16_t pos = (Message.DATA[1] << 8) + Message.DATA[2];
+	uint16_t vel  = (Message.DATA[3] << 4) + ((Message.DATA[4] & 0xF0) >> 4);
+	uint16_t cur = ((Message.DATA[4] & 0x0F) << 8) + Message.DATA[5];
 	
 	
 

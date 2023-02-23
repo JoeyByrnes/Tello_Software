@@ -35,6 +35,7 @@
 
 #define TASK_CONSTANT_PERIOD 0
 #define TASK_CONSTANT_DELAY 1
+#define ENCODER_TO_RADIANS ((double)(12.5/32768.0))
 
 typedef Eigen::VectorXd (*VectorXd_function)(const Eigen::VectorXd&);
 typedef Eigen::MatrixXd (*MatrixXd_function)(const Eigen::VectorXd&);
@@ -91,7 +92,11 @@ namespace RoboDesignLab {
         Eigen::VectorXd getJointConfig();
 
         // Actuators
+        int motor_pos_model_to_real(int id, double joint_position_radians);
+        double motor_pos_real_to_model(int id, int motor_position_units);
         CheetahMotor* motors[10]; // move this to private soon
+        int motor_directions[10]; // temporary, need to change
+        int motor_zeros[10];
     private:
         // Kinematics Functions
         MatrixXd_function _jaco_motor2joint;
@@ -109,6 +114,7 @@ namespace RoboDesignLab {
         // Actuators
         BipedActuatorTree _actuators;
         int _leg_DoF; // automatically set from actuator tree
+
 
     };
 }

@@ -42,7 +42,19 @@ Eigen::VectorXd DynamicRobot::motor_torque_to_joint_torque(Eigen::VectorXd motor
 
 Eigen::VectorXd DynamicRobot::joint_torque_to_motor_torque(Eigen::VectorXd joint_torques)
 {
-    return this->jacobian_joint(this->getJointConfig()).transpose()*joint_torques;
+    Eigen::VectorXd joint_torques_left = joint_torques.segment(0,5);
+	Eigen::VectorXd joint_torques_right = joint_torques.segment(5,5);
+
+    Eigen::VectorXd joint_positions = this->getJointConfig();
+    Eigen::VectorXd joint_positions_left = joint_positions.segment(0,5);
+    Eigen::VectorXd joint_positions_right = joint_positions.segment(5,5);
+
+    Eigen::VectorXd motor_torques_left  = this->jacobian_joint(joint_positions_left).transpose()*joint_torques_left;
+    Eigen::VectorXd motor_torques_right = this->jacobian_joint(joint_positions_right).transpose()*joint_torques_right;
+
+    Eigen::VectorXd motor_torques(10);
+    motor_torques << motor_torques_left, motor_torques_right;
+    return motor_torques;
 }
 
 Eigen::VectorXd DynamicRobot::joint_torque_to_task_force(Eigen::VectorXd joint_torques)
@@ -82,13 +94,24 @@ void DynamicRobot::addPeriodicTask(void *(*start_routine)(void *), int sched_pol
     int th = pthread_create( &thread, &tattr, start_routine, arg_tuple);
 }
 
+
+int DynamicRobot::motor_pos_model_to_real(int id, double joint_position_radians)
+{
+    return (int)((float)( joint_position_radians)*((float)(this->motor_directions[id])/ENCODER_TO_RADIANS))+this->motor_zeros[id];
+}
+
+double DynamicRobot::motor_pos_real_to_model(int id, int motor_position_units)
+{
+    return ((double)(motor_position_units - this->motor_zeros[id]))*((double)(this->motor_directions[id]))*ENCODER_TO_RADIANS;
+}
+
 Eigen::VectorXd DynamicRobot::getJointConfig(){
     Eigen::Matrix<double,10,1> joint_config;
     Eigen::Matrix<double,5,1> motor_positions_left; 
     Eigen::Matrix<double,5,1> motor_positions_right;
     for(int i=0;i<5;i++){
-        motor_positions_left[i] = this->motors[i]->getMotorState().pos;
-        motor_positions_right[i] = this->motors[i+5]->getMotorState().pos;
+        motor_positions_left[i] = motor_pos_real_to_model(i, this->motors[i]->getMotorState().pos);
+        motor_positions_right[i] = motor_pos_real_to_model(i+5, this->motors[i+5]->getMotorState().pos);
     }
     Eigen::VectorXd joint_pos_left = this->motor_pos_to_joint_pos(motor_positions_left);
     Eigen::VectorXd joint_pos_right = this->motor_pos_to_joint_pos(motor_positions_right);

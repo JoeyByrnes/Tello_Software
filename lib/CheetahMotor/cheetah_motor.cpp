@@ -116,3 +116,11 @@ void CheetahMotor::setKd(uint16_t kd){
 void CheetahMotor::setPos(uint16_t pos){
     _command.pos = pos;
 }
+
+void CheetahMotor::setVel(uint16_t vel){
+    _command.vel = vel;
+}
+
+void CheetahMotor::setff(uint16_t ff){
+    _command.feedforward = ff;
+}

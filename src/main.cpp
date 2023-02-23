@@ -107,6 +107,7 @@ int can_data_ready_to_save = 1;
 int disabled = 1;
 
 std::ofstream *motion_log;
+std::ofstream *jacobian_debug;
 std::ifstream *motion_log_in;
 std::ofstream output_file("tello_time_log.txt", std::ios::out | std::ios::trunc);
 
@@ -363,7 +364,7 @@ double pd_control(double pos, double pos_des, double vel, double vel_des, double
     double vel_error = vel_des - vel;
 
     // Calculate control effort with damping term
-    double effort = kp * pos_error - kd * vel_error;
+    double effort = kp * pos_error;// - kd * vel_error;
 
     return effort;
 }
@@ -385,57 +386,47 @@ void joint_pd_control(){
 	VectorXd joint_pos_left = tello->motor_pos_to_joint_pos(motor_positions_left);
 	VectorXd joint_pos_right = tello->motor_pos_to_joint_pos(motor_positions_right);
 	
-	// if(print_idx%500 == 0)
-	// {
-	// 	printf("LEFT: %f,\t %f,\t %f,\t %f,\t %f \n",	joint_pos_left[0]*RADIANS_TO_DEGREES, 
-	// 												joint_pos_left[1]*RADIANS_TO_DEGREES,
-	// 												joint_pos_left[2]*RADIANS_TO_DEGREES,
-	// 												joint_pos_left[3]*RADIANS_TO_DEGREES,
-	// 												joint_pos_left[4]*RADIANS_TO_DEGREES);
-	// 	std::cout.flush();
-
-	// }
-	// print_idx += 1;
-
-
-
 	VectorXd joint_vel_left = tello->motor_vel_to_joint_vel(motor_velocities_left);
 	VectorXd joint_vel_right = tello->motor_vel_to_joint_vel(motor_velocities_right);
 	// perform Joint PD
 	Eigen::Matrix<double,5,1> joint_torques_left;
 	Eigen::Matrix<double,5,1> joint_torques_right;
 	for(int i = 0;i<5;i++){
-		joint_torques_left[i] = pd_control(joint_pos_left[i], jointsL[i], joint_vel_left[i], 0, 100, 0);
-		joint_torques_right[i] = pd_control(joint_pos_right[i], jointsR[i], joint_vel_right[i], 0, 100, 0);
+		joint_torques_left[i] = ((double)motor_directions[i])*pd_control(joint_pos_left[i], jointsL[i], joint_vel_left[i], 0, 200, 0);
+		joint_torques_right[i] = ((double)motor_directions[i+5])*pd_control(joint_pos_right[i], jointsR[i], joint_vel_right[i], 0, 200, 0);
 	}
 
 	// convert joint pd torques to motor torques
-	VectorXd motor_torques_left = tello->joint_torque_to_motor_torque(joint_torques_left);
-	VectorXd motor_torques_right = tello->joint_torque_to_motor_torque(joint_torques_right);
+	VectorXd joint_torques(10);
+	joint_torques << joint_torques_left, joint_torques_right;
+	VectorXd motor_torques = tello->joint_torque_to_motor_torque(joint_torques);
+	VectorXd motor_torques_left = motor_torques.segment(0,5);
+	VectorXd motor_torques_right = motor_torques.segment(5,5);
 	pthread_mutex_unlock(&mutex_CAN_recv);
 	// write motor torques with feedforward control
 	for(int i=0; i<5; i++){
-		// tello->motors[i]->setKp(0);
-		// tello->motors[i]->setKd(0);
-		// tello->motors[i]->setff(motor_torques_left[i]);
+		tello->motors[i]->setKp(0);
+		tello->motors[i]->setKd(0);
+		tello->motors[i]->setff(2048+motor_torques_left[i]);
 
-		// tello->motors[i+5]->setKp(0);
-		// tello->motors[i+5]->setKd(0);
-		// tello->motors[i+5]->setff(motor_torques_right[i]);
+		tello->motors[i+5]->setKp(0);
+		tello->motors[i+5]->setKd(0);
+		tello->motors[i+5]->setff(2048+motor_torques_right[i]);
 
 		// print the torques here for me to know if they make sense:
 	}
-	if(print_idx%500 == 0)
-	{
-		printf("LEFT: %f,\t %f,\t %f,\t %f,\t %f \n",	motor_torques_left[0], 
-														motor_torques_left[1],
-														motor_torques_left[2],
-														motor_torques_left[3],
-														motor_torques_left[4]);
-		std::cout.flush();
 
-	}
-	print_idx += 1;
+	// if(print_idx%200 == 0)
+	// {
+	// 	printf("LEFT: %f,\t %f,\t %f,\t %f,\t %f \n",	motor_torques_left[0], 
+	// 													motor_torques_left[1],
+	// 													motor_torques_left[2],
+	// 													motor_torques_left[3],
+	// 													motor_torques_left[4]);
+	// 	std::cout.flush();
+
+	// }
+	// print_idx += 1;
 	
 }
 
@@ -451,14 +442,14 @@ void updateJointPositions()
 	jointsL(0) = 0.0			*DEGREES_TO_RADIANS;
 	jointsL(1) = 0.0			*DEGREES_TO_RADIANS;
 	jointsL(2) = 0.0			*DEGREES_TO_RADIANS;
-	jointsL(3) = 11.0		*DEGREES_TO_RADIANS; // must be above 11
+	jointsL(3) = 60.0		*DEGREES_TO_RADIANS; // must be above 11
 	jointsL(4) = 0			*DEGREES_TO_RADIANS; 
 	motorsL = fcn_ik_q_2_p(jointsL);
 
 	jointsR(0) = 0.0		*DEGREES_TO_RADIANS;
 	jointsR(1) = 0.0		*DEGREES_TO_RADIANS;
 	jointsR(2) = 0.0		*DEGREES_TO_RADIANS;
-	jointsR(3) = 11.0		*DEGREES_TO_RADIANS; // must be above 11
+	jointsR(3) = 60.0		*DEGREES_TO_RADIANS; // must be above 11
 	jointsR(4) = 0		*DEGREES_TO_RADIANS; 
 
 	// jointsR(0) = 0.0		*DEGREES_TO_RADIANS;
@@ -686,6 +677,10 @@ int main() {
 	actuators.rightLeg.push_back(new CheetahMotor(0x0A,PCAN_PCIBUS3));
 
 	tello = new RoboDesignLab::DynamicRobot(actuators);
+	for(int i = 0; i<10; i++){
+		tello->motor_zeros[i] = motor_zeros[i];
+		tello->motor_directions[i] = motor_directions[i];
+	}
 
 	// Assign existing kinematics functions for the tello DynamicRobot object to use
 	tello->assign_ik_joints_to_motors(fcn_ik_q_2_p);
@@ -770,7 +765,9 @@ int main() {
 				motor_targets = targets;
 				fsm_state = 4;
 				
-				//scheduleEnable();
+				// scheduleEnable();
+				tello->motors[3]->enableMotor();
+				tello->motors[4]->enableMotor();
 
 				break;
 			case 'd':

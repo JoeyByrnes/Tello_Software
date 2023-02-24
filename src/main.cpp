@@ -83,7 +83,7 @@ uint16_t encoder_positions[10];
 uint16_t encoder_offsets[10]  = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int motor_directions[10] =      { 1,-1, 1, 1,-1, 1,-1, 1, 1,-1};
 								//1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-int motor_zeros[10] = {35534,35149,33481,33917-KNEE_OFFSET_ENC,33116+KNEE_OFFSET_ENC,32713,35168,34134,35148-KNEE_OFFSET_ENC,34552+KNEE_OFFSET_ENC}; // offsets handled
+int motor_zeros[10] = {35534,35149,33481,33917-KNEE_OFFSET_ENC,33116+KNEE_OFFSET_ENC,32713,35168,34134,35148-262-KNEE_OFFSET_ENC,34552+KNEE_OFFSET_ENC}; // offsets handled
 int motor_init_config[10] = {35540, 36558, 31813, 38599, 31811, 32767, 36712, 32718, 38436, 33335};
 int motor_initialized[10] = {0,0,0,0,0,0,0,0,0,0};
 int motor_move_complete[10] = {0,0,0,0,0,0,0,0,0,0};
@@ -98,6 +98,7 @@ vn::math::vec3f tello_ypr;
 
 double joint_setpoints_deg[10] = {0,0,0,0,0,0,0,0,0,0};
 
+int gain_adjustment = 0;
 int motor_kp = 50;
 int motor_kd = 600;
 int playback_kp = 1000;
@@ -397,18 +398,20 @@ void joint_pd_control(){
 	Eigen::Matrix<double,5,1> joint_torques_left;
 	Eigen::Matrix<double,5,1> joint_torques_right;
 	for(int i = 0;i<5;i++){
-		joint_torques_left[i] = pd_control(joint_pos_left[i], jointsL[i], joint_velocities_left[i], 0, 5000, 100);
-		joint_torques_right[i] = pd_control(joint_pos_right[i], jointsR[i], joint_velocities_right[i], 0, 5000, 100);
+		joint_torques_left[i] = pd_control(joint_pos_left[i], jointsL[i], joint_velocities_left[i], 0, 2000+gain_adjustment, 100);
+		joint_torques_right[i] = pd_control(joint_pos_right[i], jointsR[i], joint_velocities_right[i], 0, 2000+gain_adjustment, 100);
 	}
-	joint_torques_left[4] = -joint_torques_left[4]*3;
-	joint_torques_right[4] = -joint_torques_right[4]*3;
+	joint_torques_left[3] = joint_torques_left[3];
+	joint_torques_right[3] = joint_torques_right[3];
+	joint_torques_left[4] = -joint_torques_left[4]*1.5;
+	joint_torques_right[4] = -joint_torques_right[4]*1.5;
 	// convert joint pd torques to motor torques
 	VectorXd joint_torques(10);
 	joint_torques << joint_torques_left, joint_torques_right;
 	VectorXd motor_torques = tello->joint_torque_to_motor_torque(joint_torques);
 	VectorXd motor_torques_left = motor_torques.segment(0,5);
 	VectorXd motor_torques_right = motor_torques.segment(5,5);
-	pthread_mutex_unlock(&mutex_CAN_recv);
+	
 	// write motor torques with feedforward control
 	for(int i=0; i<5; i++){
 		tello->motors[i]->setKp(0);
@@ -420,17 +423,18 @@ void joint_pd_control(){
 		tello->motors[i+5]->setff(2048+motor_torques_right[i]*motor_directions[i+5]);
 
 		// print the torques here for me to know if they make sense:
-		if(print_idx%200 == 0){
-			printf("VELS LEFT: %f,\t %f,\t %f,\t %f,\t %f \n", joint_velocities_left[0],
-															joint_velocities_left[1],
-															joint_velocities_left[2],
-															joint_velocities_left[3],
-															joint_velocities_left[4]
-															);
-			cout.flush();
-		}
-		print_idx++;
+		// if(print_idx%200 == 0){
+		// 	printf("tau_L %f,\t %f,\t %f,\t %f,\t %f\n", joint_torques_left[0],
+		// 												 joint_torques_left[1],
+		// 												 joint_torques_left[2],
+		// 												 joint_torques_left[3],
+		// 												 joint_torques_left[4]
+		// 												 );
+		// 	cout.flush();
+		// }
+		// print_idx++;
 	}
+	pthread_mutex_unlock(&mutex_CAN_recv);
 	
 }
 
@@ -438,17 +442,17 @@ void updateJointPositions()
 {
 	double effort = pid_controller(tello_ypr[1]);
 	jointsL(0) = 0.0			*DEGREES_TO_RADIANS;
-	jointsL(1) = 0.0			*DEGREES_TO_RADIANS;
-	jointsL(2) = -19.0			*DEGREES_TO_RADIANS;
-	jointsL(3) = 25.0		*DEGREES_TO_RADIANS; // must be above 11
-	jointsL(4) = (-0.55*effort-20)			*DEGREES_TO_RADIANS; 
+	jointsL(1) = 3.0			*DEGREES_TO_RADIANS;
+	jointsL(2) = (-16.0)			*DEGREES_TO_RADIANS;
+	jointsL(3) = 26.0		*DEGREES_TO_RADIANS; // must be above 11
+	jointsL(4) = (-0.55*effort-17)			*DEGREES_TO_RADIANS; 
 	motorsL = fcn_ik_q_2_p(jointsL);
 
 	jointsR(0) = 0.0		*DEGREES_TO_RADIANS;
-	jointsR(1) = 0.0		*DEGREES_TO_RADIANS;
-	jointsR(2) = -19.0		*DEGREES_TO_RADIANS;
-	jointsR(3) = 25.0		*DEGREES_TO_RADIANS; // must be above 11
-	jointsR(4) = (-0.55*effort-18)		*DEGREES_TO_RADIANS; 
+	jointsR(1) = -3.0		*DEGREES_TO_RADIANS;
+	jointsR(2) = (-13.0)		*DEGREES_TO_RADIANS;
+	jointsR(3) = 26.0		*DEGREES_TO_RADIANS; // must be above 11
+	jointsR(4) = (-0.55*effort-17)		*DEGREES_TO_RADIANS; 
 	motorsR = fcn_ik_q_2_p(jointsR);
 
 
@@ -517,8 +521,10 @@ static void* update_1kHz( void * arg )
 	printf("\nAll motors Initialized, Enabling.\n");
 	for(int i=0;i<10;i++)
 	{
+		pthread_mutex_lock(&mutex_CAN_recv);
 		tello->motors[i]->setPos(encoder_offsets[i]);
 		tello->motors[i]->updateMotor();
+		pthread_mutex_unlock(&mutex_CAN_recv);
 	}
 
 	usleep(100000); // 100ms
@@ -563,6 +569,7 @@ static void* update_1kHz( void * arg )
 				// do nothing
 				break;
 		}
+		pthread_mutex_lock(&mutex_CAN_recv);
 		if(disableScheduled){
 			disable_all();
 			disableScheduled = false;
@@ -574,6 +581,7 @@ static void* update_1kHz( void * arg )
 		else{
 			update_all_motors();
 		}
+		pthread_mutex_unlock(&mutex_CAN_recv);
 		// Write update loop code above this line ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		handle_end_of_periodic_task(next);
 	}
@@ -585,7 +593,7 @@ static void* update_1kHz( void * arg )
 void signal_callback_handler(int signum){
 	fsm_state = 0;
 	for(int i=0;i<10;i++){
-		// tello->motors[i]->disableMotor();
+		tello->motors[i]->disableMotor();
 	}
 
 	//fclose(log_file);
@@ -720,6 +728,14 @@ int main() {
 		char choice;
 		std::cin >> choice;
 		switch(choice){
+			case 'w':
+				gain_adjustment+=500;
+				printf("New Adj. : %d \n", gain_adjustment);
+				break;
+			case 'q':
+				gain_adjustment-=500;
+				printf("New Adj. : %d \n", gain_adjustment);
+				break;
 			case 'm':
 				printf("\nMotor Positions:\n");
 				for(int i = 0;i<10;i++){
@@ -757,10 +773,10 @@ int main() {
 				motor_targets = targets;
 				fsm_state = 4;
 				
-				//scheduleEnable();
-				tello->motors[5]->enableMotor();
-				tello->motors[6]->enableMotor();
-				tello->motors[7]->enableMotor();
+				scheduleEnable();
+				// tello->motors[5]->enableMotor();
+				// tello->motors[6]->enableMotor();
+				// tello->motors[7]->enableMotor(); 
 				// tello->motors[8]->enableMotor();
 				// tello->motors[9]->enableMotor();
 

@@ -483,7 +483,7 @@ void task_pd_control(){
 	VectorXd task_velocities_right = task_velocities.segment(3,3);
 
 	// do pd control on task position and velocity
-	Vector3d kp(10000, 10000, 10000);
+	Vector3d kp(10000+gain_adjustment, 10000+gain_adjustment, 10000+gain_adjustment);
 	Vector3d kd(40, 40, 40);
 
 	VectorXd task_forces_left = pd_control_3D(task_position_left, task_velocities_left, Vector3d(0, 0, -520), Vector3d(0,0,0), kp, kd);
@@ -494,7 +494,8 @@ void task_pd_control(){
 	task_forces << task_forces_left, task_forces_right;
 
 	VectorXd joint_torques = tello->task_force_to_joint_torque(task_forces, task_forces);
-
+	joint_torques(4) = -joint_torques(4);
+	joint_torques(9) = -joint_torques(9);
 	// torques from joint get converted back to motor
 	VectorXd motor_torques = tello->joint_torque_to_motor_torque(joint_torques);
 	VectorXd motor_torques_left = motor_torques.segment(0,5);
@@ -511,17 +512,17 @@ void task_pd_control(){
 		tello->motors[i+5]->setKd(0);
 		tello->motors[i+5]->setff(2048+motor_torques_right[i]*motor_directions[i+5]);
 
-		//print the torques here for me to know if they make sense:
-		if(print_idx%200 == 0){
-			printf("tau_L %f,\t %f,\t %f,\t %f,\t %f\n", motor_torques_left[0],
-														 motor_torques_left[1],
-														 motor_torques_left[2],
-														 motor_torques_left[3],
-														 motor_torques_left[4]
-														 );
-			cout.flush();
-		}
-		print_idx++;
+		// //print the torques here for me to know if they make sense:
+		// if(print_idx%200 == 0){
+		// 	printf("tau_L %f,\t %f,\t %f,\t %f,\t %f\n", motor_torques_left[0],
+		// 												 motor_torques_left[1],
+		// 												 motor_torques_left[2],
+		// 												 motor_torques_left[3],
+		// 												 motor_torques_left[4]
+		// 												 );
+		// 	cout.flush();
+		// }
+		// print_idx++;
 	}
 	pthread_mutex_unlock(&mutex_CAN_recv);
 }

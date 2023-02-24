@@ -99,6 +99,7 @@ vn::math::vec3f tello_ypr;
 double joint_setpoints_deg[10] = {0,0,0,0,0,0,0,0,0,0};
 
 int gain_adjustment = 0;
+int ANKLE_COMP = 0;
 int motor_kp = 50;
 int motor_kd = 600;
 int playback_kp = 1000;
@@ -445,14 +446,14 @@ void updateJointPositions()
 	jointsL(1) = 3.0			*DEGREES_TO_RADIANS;
 	jointsL(2) = (-16.0)			*DEGREES_TO_RADIANS;
 	jointsL(3) = 26.0		*DEGREES_TO_RADIANS; // must be above 11
-	jointsL(4) = (-0.55*effort-17)			*DEGREES_TO_RADIANS; 
+	jointsL(4) = (-0.55*effort-17+ANKLE_COMP)			*DEGREES_TO_RADIANS; 
 	motorsL = fcn_ik_q_2_p(jointsL);
 
 	jointsR(0) = 0.0		*DEGREES_TO_RADIANS;
 	jointsR(1) = -3.0		*DEGREES_TO_RADIANS;
 	jointsR(2) = (-13.0)		*DEGREES_TO_RADIANS;
 	jointsR(3) = 26.0		*DEGREES_TO_RADIANS; // must be above 11
-	jointsR(4) = (-0.55*effort-17)		*DEGREES_TO_RADIANS; 
+	jointsR(4) = (-0.55*effort-17+ANKLE_COMP)		*DEGREES_TO_RADIANS; 
 	motorsR = fcn_ik_q_2_p(jointsR);
 
 
@@ -728,6 +729,14 @@ int main() {
 		char choice;
 		std::cin >> choice;
 		switch(choice){
+			case 't':
+				ANKLE_COMP-=1;
+				printf("ANKLE_COMP: %d \n", ANKLE_COMP);
+				break;
+			case 'y':
+				ANKLE_COMP+=1;
+				printf("ANKLE_COMP: %d \n", ANKLE_COMP);
+				break;
 			case 'w':
 				gain_adjustment+=500;
 				printf("New Adj. : %d \n", gain_adjustment);

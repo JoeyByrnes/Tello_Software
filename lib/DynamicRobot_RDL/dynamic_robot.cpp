@@ -16,6 +16,8 @@ Eigen::VectorXd DynamicRobot::motor_vel_to_joint_vel(Eigen::VectorXd motor_veloc
 
     Eigen::VectorXd joint_velocities(10);
     joint_velocities << joint_velocities_left, joint_velocities_right;
+    joint_velocities(4) = -joint_velocities(4);
+	joint_velocities(9) = -joint_velocities(9);
     return joint_velocities;
 }
 
@@ -26,8 +28,19 @@ Eigen::VectorXd DynamicRobot::joint_vel_to_motor_vel(Eigen::VectorXd joint_veloc
 
 Eigen::VectorXd DynamicRobot::joint_vel_to_task_vel(Eigen::VectorXd joint_velocites)
 {
-    //return this->jacobian_task(this->getJointConfig())*joint_velocites;
-    return this->jacobian_task_lf_front(this->getJointConfig())*joint_velocites;
+    Eigen::VectorXd joint_velocites_left = joint_velocites.segment(0,5);
+	Eigen::VectorXd joint_velocites_right = joint_velocites.segment(5,5);
+
+    Eigen::VectorXd joint_positions = this->getJointConfig();
+    Eigen::VectorXd joint_positions_left = joint_positions.segment(0,5);
+    Eigen::VectorXd joint_positions_right = joint_positions.segment(5,5);
+
+    Eigen::VectorXd task_velocities_left  = (this->jacobian_task_lf_front(joint_positions_left)*joint_velocites_left).segment(0,3);
+    Eigen::VectorXd task_velocities_right = (this->jacobian_task_lf_front(joint_positions_right)*joint_velocites_right).segment(0,3);
+
+    Eigen::VectorXd task_velocities(6);
+    task_velocities << task_velocities_left, task_velocities_right;
+    return task_velocities;
 }
 
 Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel(Eigen::VectorXd task_velocites_front, Eigen::VectorXd task_velocites_back )
@@ -71,18 +84,34 @@ Eigen::VectorXd DynamicRobot::joint_torque_to_motor_torque(Eigen::VectorXd joint
 
 Eigen::VectorXd DynamicRobot::joint_torque_to_task_force(Eigen::VectorXd joint_torques)
 {
-   // return this->jacobian_task_inverse(this->getJointConfig()).transpose()*joint_torques;
-   Eigen::Matrix<double,5,1> f;
-   return f;
+    // return this->jacobian_task_inverse(this->getJointConfig()).transpose()*joint_torques;
+    Eigen::Matrix<double,5,1> f;
+    return f;
 }
 
 Eigen::VectorXd DynamicRobot::task_force_to_joint_torque(Eigen::VectorXd task_forces_front, Eigen::VectorXd task_forces_back)
 {
-   // return this->jacobian_task(this->getJointConfig()).transpose()*task_forces;
-   Eigen::VectorXd torques_for_front_force = this->jacobian_task_lf_front(this->getJointConfig()).transpose()*task_forces_front;
-   Eigen::VectorXd torques_for_back_force = this->jacobian_task_lf_back(this->getJointConfig()).transpose()*task_forces_back;
+    Eigen::VectorXd task_forces_front_left(6), task_forces_front_right(6), task_forces_back_left(6), task_forces_back_right(6);
+    task_forces_front_left << task_forces_front.segment(0,3), 0, 0, 0;
+    task_forces_front_right << task_forces_front.segment(3,3), 0, 0, 0;
+    task_forces_back_left << task_forces_front.segment(0,3), 0, 0, 0;
+    task_forces_back_right << task_forces_front.segment(3,3), 0, 0, 0;
 
-   return torques_for_front_force + torques_for_back_force;
+    Eigen::VectorXd joint_positions = this->getJointConfig();
+    Eigen::VectorXd joint_positions_left = joint_positions.segment(0,5);
+    Eigen::VectorXd joint_positions_right = joint_positions.segment(5,5);
+
+    Eigen::VectorXd torques_for_front_force_left = this->jacobian_task_lf_front(joint_positions_left).transpose()*task_forces_front_left;
+    Eigen::VectorXd torques_for_back_force_left = this->jacobian_task_lf_back(joint_positions_left).transpose()*task_forces_back_left;
+
+    Eigen::VectorXd torques_for_front_force_right = this->jacobian_task_lf_front(joint_positions_right).transpose()*task_forces_front_right;
+    Eigen::VectorXd torques_for_back_force_right = this->jacobian_task_lf_back(joint_positions_right).transpose()*task_forces_back_right;
+
+    Eigen::VectorXd joint_torques_left = torques_for_front_force_left + torques_for_back_force_left;
+    Eigen::VectorXd joint_torques_right = torques_for_front_force_right + torques_for_back_force_right;
+    Eigen::VectorXd joint_torques(10);
+    joint_torques << joint_torques_left, joint_torques_right;
+    return joint_torques;
 }
 
 void DynamicRobot::addPeriodicTask(void *(*start_routine)(void *), int sched_policy, int priority, int cpu_affinity, void *arg, std::string task_name,int task_type, int period){

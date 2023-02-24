@@ -98,6 +98,8 @@ namespace RoboDesignLab {
         CheetahMotor* motors[10]; // move this to private soon
         int motor_directions[10]; // temporary, need to change
         int motor_zeros[10];
+        int motor_timeouts[10] = {0};
+        int motor_connected[10] = {0};
     private:
         // Kinematics Functions
         MatrixXd_function _jaco_motor2joint;

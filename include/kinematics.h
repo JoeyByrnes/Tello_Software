@@ -2,6 +2,7 @@
 #include <cmath>
 #include <../lib/Eigen/Dense>
 #include <srbm_kinematics.h>
+#include "srbm_structs.h"
 
 // typedef Eigen::Matrix<double, 5, 1> Vector5d;
 
@@ -21,4 +22,5 @@ Eigen::MatrixXd fcn_Jaco_dq_2_dT_front(const Eigen::VectorXd& q);
 Eigen::MatrixXd fcn_Jaco_dq_2_dT_back(const Eigen::VectorXd& q);
 
 Eigen::VectorXd fk_motors_to_joints(const Eigen::VectorXd& p);
+Eigen::VectorXd fk_joints_to_task(const Eigen::VectorXd& q);
 

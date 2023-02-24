@@ -1,5 +1,4 @@
 #include "kinematics.h"
-#include "srbm_structs.h"
 
 #define DEGREE_TO_RADIANS (M_PI/180.0)
 
@@ -308,6 +307,28 @@ VectorXd fk_motors_to_joints(const VectorXd& p)
   q(4) = a;
 
   return q;
+}
+
+Eigen::VectorXd fk_joints_to_task(const Eigen::VectorXd& q)
+{
+  Eigen::MatrixXd HTMwd2hip = Eigen::MatrixXd::Identity(4,4);
+
+  SRB_Params srb_params;
+  srb_params.q1_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
+  srb_params.q2_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
+  srb_params.thigh_length = 0.2286;
+  srb_params.calf_length = 0.260;
+  srb_params.heel_length = 0.0485;
+  srb_params.foot_length = 0.060;
+
+  VectorXd p = Vector4d(srb_params.thigh_length,srb_params.calf_length,srb_params.foot_length,srb_params.heel_length);
+
+
+  Eigen::MatrixXd fk = dash_kin::leg_FK(HTMwd2hip, q, p);
+
+  Eigen::VectorXd ee_pos = fk.col(4);
+
+  return ee_pos;
 }
 
 

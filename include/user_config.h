@@ -10,3 +10,5 @@
 #define UDP_PORT 2000
 
 #define MOTION_LOG_NAME "motion_log.txt"
+
+#define MOTOR_TIMEOUT 3 //Milliseconds until motors cut out

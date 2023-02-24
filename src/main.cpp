@@ -99,7 +99,7 @@ vn::math::vec3f tello_ypr;
 double joint_setpoints_deg[10] = {0,0,0,0,0,0,0,0,0,0};
 
 int gain_adjustment = 0;
-int ANKLE_COMP = 0;
+double ANKLE_COMP = 0;
 int motor_kp = 50;
 int motor_kd = 600;
 int playback_kp = 1000;
@@ -393,8 +393,6 @@ void joint_pd_control(){
 	VectorXd joint_velocities = tello->motor_vel_to_joint_vel(motor_velocities);
 	VectorXd joint_velocities_left = joint_velocities.segment(0,5);
 	VectorXd joint_velocities_right = joint_velocities.segment(5,5);
-	joint_velocities_left(4) = -joint_velocities_left(4);
-	joint_velocities_right(4) = -joint_velocities_right(4);
 	// perform Joint PD
 	Eigen::Matrix<double,5,1> joint_torques_left;
 	Eigen::Matrix<double,5,1> joint_torques_right;
@@ -437,6 +435,95 @@ void joint_pd_control(){
 	}
 	pthread_mutex_unlock(&mutex_CAN_recv);
 	
+}
+
+Eigen::VectorXd pd_control_3D(Eigen::VectorXd position, Eigen::VectorXd velocity, Eigen::VectorXd desiredPosition, Eigen::VectorXd desiredVelocity, Eigen::VectorXd Kp, Eigen::VectorXd Kd) {
+  // Compute position error
+  Eigen::VectorXd positionError = desiredPosition/1000.0 - position;
+
+  // Compute velocity error
+  Eigen::VectorXd velocityError = desiredVelocity - velocity;
+
+  // Compute control output
+  Eigen::VectorXd controlOutput(3);
+  controlOutput << Kp(0)*positionError(0) + Kd(0)*velocityError(0),
+                   Kp(1)*positionError(1) + Kd(1)*velocityError(1),
+                   Kp(2)*positionError(2) + Kd(2)*velocityError(2);
+
+  return controlOutput;
+}
+
+void task_pd_control(){
+	// get motor positions and velocities
+	Eigen::Matrix<double,5,1> motor_positions_left;
+	Eigen::Matrix<double,5,1> motor_velocities_left;
+	Eigen::Matrix<double,5,1> motor_positions_right;
+	Eigen::Matrix<double,5,1> motor_velocities_right;
+	pthread_mutex_lock(&mutex_CAN_recv);
+	for(int i=0;i<5;i++){
+		motor_positions_left[i] = motor_pos_real_to_model(i, tello->motors[i]->getMotorState().pos);
+		motor_velocities_left[i] = (tello->motors[i]->getMotorState().vel*VELOCITY_TO_RADIANS_PER_SEC-32.484131)*tello->motor_directions[i];
+		motor_positions_right[i] = motor_pos_real_to_model(i+5, tello->motors[i+5]->getMotorState().pos);
+		motor_velocities_right[i] = (tello->motors[i+5]->getMotorState().vel*VELOCITY_TO_RADIANS_PER_SEC-32.484131)*tello->motor_directions[i+5];
+	}
+	// get joint positions and velocities from FK and Jacobian
+	VectorXd joint_pos_left = tello->motor_pos_to_joint_pos(motor_positions_left);
+	VectorXd joint_pos_right = tello->motor_pos_to_joint_pos(motor_positions_right);
+	
+	VectorXd motor_velocities(10);
+	motor_velocities << motor_velocities_left, motor_velocities_right;
+	VectorXd joint_velocities = tello->motor_vel_to_joint_vel(motor_velocities);
+	
+	// get task position and velocity from FK and Jacobian
+	VectorXd task_position_left = fk_joints_to_task(joint_pos_left);
+	VectorXd task_position_right = fk_joints_to_task(joint_pos_right);
+	// print the torques here for me to know if they make sense:
+	VectorXd task_velocities = tello->joint_vel_to_task_vel(joint_velocities);
+	VectorXd task_velocities_left = task_velocities.segment(0,3);
+	VectorXd task_velocities_right = task_velocities.segment(3,3);
+
+	// do pd control on task position and velocity
+	Vector3d kp(10000, 10000, 10000);
+	Vector3d kd(40, 40, 40);
+
+	VectorXd task_forces_left = pd_control_3D(task_position_left, task_velocities_left, Vector3d(0, 0, -520), Vector3d(0,0,0), kp, kd);
+	VectorXd task_forces_right = pd_control_3D(task_position_right, task_velocities_right, Vector3d(0, 0, -520), Vector3d(0,0,0), kp, kd);
+
+	// forces from pd control get converted back to joint torques
+	Eigen::VectorXd task_forces(6);
+	task_forces << task_forces_left, task_forces_right;
+
+	VectorXd joint_torques = tello->task_force_to_joint_torque(task_forces, task_forces);
+
+	// torques from joint get converted back to motor
+	VectorXd motor_torques = tello->joint_torque_to_motor_torque(joint_torques);
+	VectorXd motor_torques_left = motor_torques.segment(0,5);
+	VectorXd motor_torques_right = motor_torques.segment(5,5);
+
+	// apply to motor
+	// write motor torques with feedforward control
+	for(int i=0; i<5; i++){
+		tello->motors[i]->setKp(0);
+		tello->motors[i]->setKd(0);
+		tello->motors[i]->setff(2048+motor_torques_left[i]*motor_directions[i]);
+
+		tello->motors[i+5]->setKp(0);
+		tello->motors[i+5]->setKd(0);
+		tello->motors[i+5]->setff(2048+motor_torques_right[i]*motor_directions[i+5]);
+
+		//print the torques here for me to know if they make sense:
+		if(print_idx%200 == 0){
+			printf("tau_L %f,\t %f,\t %f,\t %f,\t %f\n", motor_torques_left[0],
+														 motor_torques_left[1],
+														 motor_torques_left[2],
+														 motor_torques_left[3],
+														 motor_torques_left[4]
+														 );
+			cout.flush();
+		}
+		print_idx++;
+	}
+	pthread_mutex_unlock(&mutex_CAN_recv);
 }
 
 void updateJointPositions()
@@ -561,10 +648,10 @@ static void* update_1kHz( void * arg )
 				handle_Motion_Playback();
 				break;
 			case 4:
-				updateJointPositions();
+				//updateJointPositions();
 				// set_kp_kd_all(2000,600);
 				// moveMotors(motor_targets);
-				joint_pd_control();
+				task_pd_control();
 				break;
 			default:
 				// do nothing
@@ -691,6 +778,7 @@ int main() {
 	tello->assign_jacobian_joints_to_task_lf_front(fcn_Jaco_dq_2_dT_front);
 	tello->assign_jacobian_joints_to_task_lf_back(fcn_Jaco_dq_2_dT_back);
 	tello->assign_fk_motors_to_joints(fk_motors_to_joints);
+	tello->assign_fk_joints_to_task(fk_joints_to_task);
 
 	// Initialize Peak Systems CAN adapters
 	TPCANStatus s1,s2,s3,s4;
@@ -730,12 +818,12 @@ int main() {
 		std::cin >> choice;
 		switch(choice){
 			case 't':
-				ANKLE_COMP-=1;
-				printf("ANKLE_COMP: %d \n", ANKLE_COMP);
+				ANKLE_COMP-=0.5;
+				printf("ANKLE_COMP: %f \n", ANKLE_COMP);
 				break;
 			case 'y':
-				ANKLE_COMP+=1;
-				printf("ANKLE_COMP: %d \n", ANKLE_COMP);
+				ANKLE_COMP+=0.5;
+				printf("ANKLE_COMP: %f \n", ANKLE_COMP);
 				break;
 			case 'w':
 				gain_adjustment+=500;
@@ -783,11 +871,11 @@ int main() {
 				fsm_state = 4;
 				
 				scheduleEnable();
-				// tello->motors[5]->enableMotor();
-				// tello->motors[6]->enableMotor();
-				// tello->motors[7]->enableMotor(); 
-				// tello->motors[8]->enableMotor();
-				// tello->motors[9]->enableMotor();
+				// tello->motors[0]->enableMotor();
+				// tello->motors[1]->enableMotor();
+				// tello->motors[2]->enableMotor(); 
+				// tello->motors[3]->enableMotor();
+				// tello->motors[4]->enableMotor();
 
 				break;
 			case 'd':

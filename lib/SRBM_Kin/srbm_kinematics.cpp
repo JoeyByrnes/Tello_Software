@@ -6,11 +6,13 @@ MatrixXd dash_kin::fcn_HTM0lf1(VectorXd q, VectorXd p)
 {
     MatrixXd eigen_HTM0lf1 = MatrixXd::Zero(4,4);
     double HTM0lf1[16];
-    double p_data[5];
+    double p_data[4];
     double q_data[5];
     for(int i = 0; i<5;i++){
-        p_data[i] = p(i);
         q_data[i] = q(i);
+    }
+    for(int i = 0; i<4;i++){
+        p_data[i] = p(i);
     }
     //// START MATLAB CODER AUTO_GENERATED CODE
     
@@ -169,11 +171,13 @@ MatrixXd dash_kin::fcn_HTM0lf2(VectorXd q, VectorXd p)
 {
     MatrixXd eigen_HTM0lf2 = MatrixXd::Zero(4,4);
     double HTM0lf2[16];
-    double p_data[5];
+    double p_data[4];
     double q_data[5];
     for(int i = 0; i<5;i++){
-        p_data[i] = p(i);
         q_data[i] = q(i);
+    }
+    for(int i = 0; i<4;i++){
+        p_data[i] = p(i);
     }
     //// START MATLAB CODER AUTO_GENERATED CODE
 
@@ -349,11 +353,13 @@ MatrixXd dash_kin::fcn_HTM01(VectorXd q, VectorXd p)
 {
     MatrixXd eigen_HTM01 = MatrixXd::Zero(4,4);
     double HTM01[16];
-    double p_data[5];
+    double p_data[4];
     double q_data[5];
     for(int i = 0; i<5;i++){
-        p_data[i] = p(i);
         q_data[i] = q(i);
+    }
+    for(int i = 0; i<4;i++){
+        p_data[i] = p(i);
     }
     //// START MATLAB CODER AUTO_GENERATED CODE
 
@@ -389,11 +395,13 @@ MatrixXd dash_kin::fcn_HTM02(VectorXd q, VectorXd p)
 {
     MatrixXd eigen_HTM02 = MatrixXd::Zero(4,4);
     double HTM02[16];
-    double p_data[5];
+    double p_data[4];
     double q_data[5];
     for(int i = 0; i<5;i++){
-        p_data[i] = p(i);
         q_data[i] = q(i);
+    }
+    for(int i = 0; i<4;i++){
+        p_data[i] = p(i);
     }
     //// START MATLAB CODER AUTO_GENERATED CODE
 
@@ -457,11 +465,13 @@ MatrixXd dash_kin::fcn_HTM03(VectorXd q, VectorXd p)
 {
     MatrixXd eigen_HTM03 = MatrixXd::Zero(4,4);
     double HTM03[16];
-    double p_data[5];
+    double p_data[4];
     double q_data[5];
     for(int i = 0; i<5;i++){
-        p_data[i] = p(i);
         q_data[i] = q(i);
+    }
+    for(int i = 0; i<4;i++){
+        p_data[i] = p(i);
     }
     //// START MATLAB CODER AUTO_GENERATED CODE
 
@@ -559,11 +569,13 @@ MatrixXd dash_kin::fcn_lf1_J(VectorXd q, VectorXd p)
 {
     MatrixXd eigen_lf1_J = MatrixXd::Zero(6,5);
     double lf1_J[30];
-    double p_data[5];
+    double p_data[4];
     double q_data[5];
     for(int i = 0; i<5;i++){
-        p_data[i] = p(i);
         q_data[i] = q(i);
+    }
+    for(int i = 0; i<4;i++){
+        p_data[i] = p(i);
     }
     //// START MATLAB CODER AUTO_GENERATED CODE
 
@@ -993,11 +1005,13 @@ MatrixXd dash_kin::fcn_lf2_J(VectorXd q, VectorXd p)
 {
     MatrixXd eigen_lf2_J = MatrixXd::Zero(6,5);
     double lf2_J[30];
-    double p_data[5];
+    double p_data[4];
     double q_data[5];
     for(int i = 0; i<5;i++){
-        p_data[i] = p(i);
         q_data[i] = q(i);
+    }
+    for(int i = 0; i<4;i++){
+        p_data[i] = p(i);
     }
     //// START MATLAB CODER AUTO_GENERATED CODE
 
@@ -1419,7 +1433,7 @@ MatrixXd dash_kin::fcn_lf2_J(VectorXd q, VectorXd p)
     lf2_J[29] = sin(q_data[1]);
 
     // END MATLAB CODER AUTO_GENERATED CODE
-    eigen_lf2_J = Eigen::Map<MatrixXd>(lf2_J, 6, 5); // uses column moajor by default
+    eigen_lf2_J = Eigen::Map<MatrixXd, Eigen::ColMajor>(lf2_J, 6, 5); // uses column moajor by default
     return eigen_lf2_J;
 }
 

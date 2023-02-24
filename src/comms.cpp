@@ -51,7 +51,7 @@ void* rx_CAN( void * arg ){
 			{
 				pthread_mutex_lock(&mutex_CAN_recv);
 				uint8_t id = Message.DATA[0];
-				if(id > 0 && id < 11){
+				if(id < 11){
 					process_motor_data(Message, tello);
 				}
 				else if(id == 18 || id == 19){

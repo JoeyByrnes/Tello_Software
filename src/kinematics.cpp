@@ -232,7 +232,7 @@ Eigen::MatrixXd fcn_Jaco_dq_2_dT_back(const Eigen::VectorXd& q){
   srb_params.thigh_length = 0.2286;
   srb_params.calf_length = 0.260;
   srb_params.heel_length = 0.0485;
-  srb_params.foot_length = 0.060;
+  srb_params.foot_length = 0.120;
 
   VectorXd p = Vector4d(srb_params.thigh_length,srb_params.calf_length,srb_params.foot_length,srb_params.heel_length);
   return dash_kin::fcn_lf2_J(q, p);
@@ -319,16 +319,20 @@ Eigen::VectorXd fk_joints_to_task(const Eigen::VectorXd& q)
   srb_params.thigh_length = 0.2286;
   srb_params.calf_length = 0.260;
   srb_params.heel_length = 0.0485;
-  srb_params.foot_length = 0.060;
+  srb_params.foot_length = 0.120;
 
   VectorXd p = Vector4d(srb_params.thigh_length,srb_params.calf_length,srb_params.foot_length,srb_params.heel_length);
 
 
   Eigen::MatrixXd fk = dash_kin::leg_FK(HTMwd2hip, q, p);
 
-  Eigen::VectorXd ee_pos = fk.col(4);
+  Eigen::VectorXd lf1 = fk.col(3);
+  Eigen::VectorXd lf2 = fk.col(4);
 
-  return ee_pos;
+  Eigen::VectorXd task_positions(6);
+  task_positions << lf1, lf2;
+
+  return task_positions;
 }
 
 

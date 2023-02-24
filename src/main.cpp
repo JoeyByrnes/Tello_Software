@@ -100,6 +100,8 @@ double joint_setpoints_deg[10] = {0,0,0,0,0,0,0,0,0,0};
 
 int gain_adjustment = 0;
 double ANKLE_COMP = 0;
+int x_offset = 0;
+int z_offset = 0;
 int motor_kp = 50;
 int motor_kd = 600;
 int playback_kp = 1000;
@@ -475,25 +477,44 @@ void task_pd_control(){
 	VectorXd joint_velocities = tello->motor_vel_to_joint_vel(motor_velocities);
 	
 	// get task position and velocity from FK and Jacobian
-	VectorXd task_position_left = fk_joints_to_task(joint_pos_left);
-	VectorXd task_position_right = fk_joints_to_task(joint_pos_right);
+	VectorXd task_positions_left = fk_joints_to_task(joint_pos_left);
+	VectorXd task_positions_right = fk_joints_to_task(joint_pos_right);
+	VectorXd task_position_left_front = task_positions_left.segment(0,3);
+	VectorXd task_position_left_back = task_positions_left.segment(3,3);
+	VectorXd task_position_right_front = task_positions_right.segment(0,3);
+	VectorXd task_position_right_back = task_positions_right.segment(3,3);
 	// print the torques here for me to know if they make sense:
 	VectorXd task_velocities = tello->joint_vel_to_task_vel(joint_velocities);
-	VectorXd task_velocities_left = task_velocities.segment(0,3);
-	VectorXd task_velocities_right = task_velocities.segment(3,3);
+	VectorXd task_velocities_left_front = task_velocities.segment(0,3);
+	VectorXd task_velocities_left_back = task_velocities.segment(3,3);
+	VectorXd task_velocities_right_front = task_velocities.segment(6,3);
+	VectorXd task_velocities_right_back = task_velocities.segment(9,3);
 
 	// do pd control on task position and velocity
 	Vector3d kp(10000+gain_adjustment, 10000+gain_adjustment, 10000+gain_adjustment);
-	Vector3d kd(40, 40, 40);
+	Vector3d kd(0, 0, 0);
 
-	VectorXd task_forces_left = pd_control_3D(task_position_left, task_velocities_left, Vector3d(0, 0, -520), Vector3d(0,0,0), kp, kd);
-	VectorXd task_forces_right = pd_control_3D(task_position_right, task_velocities_right, Vector3d(0, 0, -520), Vector3d(0,0,0), kp, kd);
+	Vector3d target(0+x_offset, 0, -520+z_offset);
+	int foot_len_half = 60;
+	Vector3d target_front(foot_len_half+target(0), target(1), target(2)), target_back(-foot_len_half+target(0), target(1), target(2));
+
+	VectorXd task_forces_left_front = pd_control_3D(task_position_left_front, task_velocities_left_front, target_front, Vector3d(0,0,0), kp, kd);
+	VectorXd task_forces_right_front = pd_control_3D(task_position_right_front, task_velocities_right_front, target_front, Vector3d(0,0,0), kp, kd);
+
+	Vector3d kp1(2*(10000+gain_adjustment), 2*(10000+gain_adjustment), 2*(10000+gain_adjustment));
+	Vector3d kd1(100, 100, 100);
+
+	VectorXd task_forces_left_back = pd_control_3D(task_position_left_back, task_velocities_left_back, target_back, Vector3d(0,0,0), kp1, kd1);
+	VectorXd task_forces_right_back = pd_control_3D(task_position_right_back, task_velocities_right_back, target_back, Vector3d(0,0,0), kp1, kd1);
+
+	
 
 	// forces from pd control get converted back to joint torques
-	Eigen::VectorXd task_forces(6);
-	task_forces << task_forces_left, task_forces_right;
+	Eigen::VectorXd task_forces_front(6), task_forces_back(6);
+	task_forces_front << task_forces_left_front, task_forces_right_front;
+	task_forces_back << task_forces_left_back, task_forces_right_back;
 
-	VectorXd joint_torques = tello->task_force_to_joint_torque(task_forces, task_forces);
+	VectorXd joint_torques = tello->task_force_to_joint_torque(task_forces_front, task_forces_back);
 	joint_torques(4) = -joint_torques(4);
 	joint_torques(9) = -joint_torques(9);
 	// torques from joint get converted back to motor
@@ -512,13 +533,14 @@ void task_pd_control(){
 		tello->motors[i+5]->setKd(0);
 		tello->motors[i+5]->setff(2048+motor_torques_right[i]*motor_directions[i+5]);
 
-		// //print the torques here for me to know if they make sense:
-		// if(print_idx%200 == 0){
-		// 	printf("tau_L %f,\t %f,\t %f,\t %f,\t %f\n", motor_torques_left[0],
-		// 												 motor_torques_left[1],
-		// 												 motor_torques_left[2],
-		// 												 motor_torques_left[3],
-		// 												 motor_torques_left[4]
+		//print the torques here for me to know if they make sense:
+		// if(print_idx%5000 == 0){
+		// 	printf("FRONT %f,\t %f,\t %f,\tBACK: %f,\t %f,\t %f\n", task_position_right_front[0],
+		// 												 task_position_right_front[1],
+		// 												 task_position_right_front[2],
+		// 												 task_position_right_back[0],
+		// 												 task_position_right_back[1],
+		// 												 task_position_right_back[2]
 		// 												 );
 		// 	cout.flush();
 		// }
@@ -818,13 +840,21 @@ int main() {
 		char choice;
 		std::cin >> choice;
 		switch(choice){
-			case 't':
-				ANKLE_COMP-=0.5;
-				printf("ANKLE_COMP: %f \n", ANKLE_COMP);
+			case '8':
+				z_offset-=5;
+				printf("Z Offset: %d \n", z_offset);
 				break;
-			case 'y':
-				ANKLE_COMP+=0.5;
-				printf("ANKLE_COMP: %f \n", ANKLE_COMP);
+			case '2':
+				z_offset+=5;
+				printf("Z Offset: %d \n", z_offset);
+				break;
+			case '4':
+				x_offset+=5;
+				printf("X Offset: %d \n", x_offset);
+				break;
+			case '6':
+				x_offset-=5;
+				printf("X Offset: %d \n", x_offset);
 				break;
 			case 'w':
 				gain_adjustment+=500;
@@ -921,20 +951,6 @@ int main() {
 					scheduleEnable();
 					printf("\nEnabling\n");
 				}
-				break;
-			case '1':
-				motor_targets = motor_zeros;
-				fsm_state = 4;
-				
-				scheduleEnable();
-				printf("Moving Motors to zero\n");
-				break;
-			case '2':
-				motor_targets = motor_init_config;
-				fsm_state = 4;
-				
-				scheduleEnable();
-				printf("Moving Motors to standing config\n");
 				break;
 			default:
 				fsm_state = 0;

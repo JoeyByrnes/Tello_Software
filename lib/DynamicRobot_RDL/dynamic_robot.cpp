@@ -35,11 +35,14 @@ Eigen::VectorXd DynamicRobot::joint_vel_to_task_vel(Eigen::VectorXd joint_veloci
     Eigen::VectorXd joint_positions_left = joint_positions.segment(0,5);
     Eigen::VectorXd joint_positions_right = joint_positions.segment(5,5);
 
-    Eigen::VectorXd task_velocities_left  = (this->jacobian_task_lf_front(joint_positions_left)*joint_velocites_left).segment(0,3);
-    Eigen::VectorXd task_velocities_right = (this->jacobian_task_lf_front(joint_positions_right)*joint_velocites_right).segment(0,3);
+    Eigen::VectorXd task_velocities_left_front  = (this->jacobian_task_lf_front(joint_positions_left)*joint_velocites_left).segment(0,3);
+    Eigen::VectorXd task_velocities_right_front = (this->jacobian_task_lf_front(joint_positions_right)*joint_velocites_right).segment(0,3);
 
-    Eigen::VectorXd task_velocities(6);
-    task_velocities << task_velocities_left, task_velocities_right;
+    Eigen::VectorXd task_velocities_left_back  = (this->jacobian_task_lf_back(joint_positions_left)*joint_velocites_left).segment(0,3);
+    Eigen::VectorXd task_velocities_right_back = (this->jacobian_task_lf_back(joint_positions_right)*joint_velocites_right).segment(0,3);
+
+    Eigen::VectorXd task_velocities(12);
+    task_velocities << task_velocities_left_front, task_velocities_left_back, task_velocities_right_front, task_velocities_right_back;
     return task_velocities;
 }
 

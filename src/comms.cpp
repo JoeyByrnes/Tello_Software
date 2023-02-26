@@ -230,7 +230,7 @@ void* IMU_Comms( void * arg ){
     const int baudrate = 921600;
     VnSensor vs;
     vs.connect(port, baudrate);
-    std::cout << "\n\nConnected to VN100 IMU on port " << port << std::endl;
+    printf('g',"\n\nConnected to VN100 IMU on port %s \n",port.c_str());
 
 	// Make sure no generic async output is registered
   	vs.writeAsyncDataOutputType(VNOFF);

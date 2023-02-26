@@ -2,6 +2,10 @@
 #include "vn/sensors.h"
 #include "../lib/Eigen/Dense"
 
+#include <cstdio>
+#include <cstdarg>
+#include <cstring>
+
 cpu_set_t  mask;
 
 bool enableScheduled = 0;
@@ -59,4 +63,43 @@ void scheduleZero()
     zeroScheduled = true;
 }
 
-using namespace Eigen;
+void printf(char color, const char* message, ...) {
+    va_list args;
+    va_start(args, message);
+
+    switch (color) {
+        case 'r':
+            printf("\033[1;31m");
+            break;
+        case 'g':
+            printf("\033[1;32m");
+            break;
+        case 'y':
+            printf("\033[1;33m");
+            break;
+        case 'o':
+            printf("\033[1;38;5;208m");
+            break;
+        case 'b':
+            printf("\033[1;34m");
+            break;
+        case 'p':
+            printf("\033[1;35m");
+            break;
+        case 'c':
+            printf("\033[1;36m");
+            break;
+        case 'w':
+            printf("\033[1;37m");
+            break;
+        case 'u':
+            printf("\033[4;37m");
+            break;
+        default:
+            break;
+    }
+
+    vprintf(message, args);
+    printf("\033[0m");  // Reset text color to default
+    va_end(args);
+}

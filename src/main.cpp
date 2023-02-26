@@ -31,6 +31,7 @@
 #include "vn/sensors.h"
 #include "dynamic_robot.h"
 #include "srbm_kinematics.h"
+#include "compile_time_tracker.h"
 
 #include <pcanfd.h>
 
@@ -629,7 +630,7 @@ static void* update_1kHz( void * arg )
 	for(int i = 0;i<10;i++){
 		printf("Motor %d: %u\n",i+1,encoder_offsets[i]);
 	}
-	printf("\nAll motors Initialized, Enabling.\n");
+	printf('g',"\nAll motors Initialized, Enabling.\n");
 	for(int i=0;i<10;i++)
 	{
 		pthread_mutex_lock(&mutex_CAN_recv);
@@ -642,7 +643,7 @@ static void* update_1kHz( void * arg )
 
 	uint16_t pos_cmds[10];
 
-	printf("\n\nEnter CTRL+C in terminal to exit.\n\n");
+	printf('o',"\n\nEnter CTRL+C in terminal to exit.\n\n");
 
 	auto start = std::chrono::high_resolution_clock::now();
 	usleep(1000);
@@ -733,15 +734,26 @@ void signal_callback_handler(int signum){
 int main() {
 	setvbuf(stdout, NULL, _IONBF, 0); // no buffering on printf, change to _IOLBF for buffering until \n character
 	std::cout << std::setprecision(2);
-	printf("\n==================== Running Tello Software ====================\n\n");
+	printf('b',"\n==================== Running Tello Software ====================\n\n");
+	printf("Software last compiled on: %s \n",getCompileTime().c_str());
+	int minutes_since_compile = (int)(std::chrono::duration_cast<std::chrono::minutes>(minutesSinceLastCompile()).count());
+	if(minutes_since_compile > 15){
+		printf('o',"It has been %d minutes since this program was last compiled. \n\n", minutes_since_compile);
+	}
+	else if(minutes_since_compile > 2){
+		printf('y',"It has been %d minutes since this program was last compiled. \n\n", minutes_since_compile);
+	}
+	else{
+		printf('g',"It has been %d minutes since this program was last compiled. \n\n", minutes_since_compile);
+	}
 	assignToCore(ISOLATED_CORE_1_THREAD_1);
 	setpriority(PRIO_PROCESS, 0, 19); // Set NICE Priority in case user doesn't have RT Permission
 
 	if(set_cpu_governor(GOV_PERFORMANCE)){
-		printf("CPU Governor set to Performance\n");
+		printf('g',"CPU Governor set to Performance\n");
 	}
 	else{
-		printf("Failed to set CPU Governor. (does user have write access to file?)\n");
+		printf('r',"Failed to set CPU Governor. (does user have write access to file?)\n");
 	}
 	print_cpu_speed(ISOLATED_CORE_1_THREAD_1);
 
@@ -752,15 +764,15 @@ int main() {
 
     int policy = sched_getscheduler(0);
     if (chrt_err == -1) {
-        perror("Your user does not have RealTime Scheduler Permissions.");
+        printf('r',"Your user does not have RealTime Scheduler Permissions.\n");
 		setpriority(PRIO_PROCESS, 0, 19); // Set NICE Priority in case user doesn't have RT Permission
     }
 	else{
 		switch(policy) {
-			case SCHED_OTHER: printf("Scheduler in use does not support Real-Time\n"); break;
-			case SCHED_RR:   printf("Using Round Robin Scheduler (Real-Time Capable)\n"); break;
-			case SCHED_FIFO:  printf("Using FIFO Scheduler(Real-Time Capable)\n"); break;
-			default:   printf("Unknown Scheduler...does not support Real-Time\n");
+			case SCHED_OTHER: printf('o',"Scheduler in use does not support Real-Time\n"); break;
+			case SCHED_RR:   printf('g',"Using Round Robin Scheduler (Real-Time Capable)\n"); break;
+			case SCHED_FIFO:  printf('g',"Using FIFO Scheduler(Real-Time Capable)\n"); break;
+			default:   printf('r',"Unknown Scheduler...does not support Real-Time\n");
 		}
 	}
 
@@ -769,10 +781,10 @@ int main() {
 	printf("Main process assigned to core %d, ",core);
 	int prio = getpriority(0,0);
 	if(!chrt_err){
-		printf("with RT Priority: %d\n\n",sp.sched_priority);
+		printf('g',"with RT Priority: %d\n\n",sp.sched_priority);
 	}
 	else{
-		printf("with NICE Priority: %d\n\n",prio);
+		printf('o',"with NICE Priority: %d\n\n",prio);
 	}
 
 	RoboDesignLab::BipedActuatorTree actuators;

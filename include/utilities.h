@@ -24,3 +24,5 @@ void scheduleZero();
 
 void quaternion_to_euler(double q0, double q1, double q2, double q3, float &roll, float &pitch, float &yaw);
 vn::math::mat3f eigenToVnMatrix(const Eigen::Matrix3d& eigenMat);
+
+void printf(char color, const char* message, ...);

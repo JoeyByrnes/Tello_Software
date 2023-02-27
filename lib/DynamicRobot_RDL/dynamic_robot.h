@@ -33,13 +33,15 @@
 // #include "kinematics.h"
 #include "vn/sensors.h"
 
+using namespace Eigen;
+
 #define TASK_CONSTANT_PERIOD 0
 #define TASK_CONSTANT_DELAY 1
 #define ENCODER_TO_RADIANS ((double)(12.5/32768.0))
 #define VELOCITY_TO_RADIANS_PER_SEC ((double)(65.0/4096.0))
 
-typedef Eigen::VectorXd (*VectorXd_function)(const Eigen::VectorXd&);
-typedef Eigen::MatrixXd (*MatrixXd_function)(const Eigen::VectorXd&);
+typedef VectorXd (*VectorXd_function)(const VectorXd&);
+typedef MatrixXd (*MatrixXd_function)(const VectorXd&);
 
 namespace RoboDesignLab {
 
@@ -66,39 +68,39 @@ namespace RoboDesignLab {
         void assign_ik_task_to_joints(VectorXd_function fcn)  { _ik_task2joint = fcn;  }
         void assign_fk_joints_to_task(VectorXd_function fcn)  { _fk_joint2task = fcn;  }
 
-        Eigen::MatrixXd jacobian_joint(Eigen::VectorXd joint_config)        { return (*_jaco_motor2joint)(joint_config); }
-        Eigen::MatrixXd jacobian_joint_inverse(Eigen::VectorXd joint_config){ return (*_jaco_joint2motor)(joint_config); }
+        MatrixXd jacobian_joint(VectorXd joint_config)        { return (*_jaco_motor2joint)(joint_config); }
+        MatrixXd jacobian_joint_inverse(VectorXd joint_config){ return (*_jaco_joint2motor)(joint_config); }
 
         // This part is specific to a line foot robot:
-        Eigen::MatrixXd jacobian_task_lf_front(Eigen::VectorXd joint_config){ return (*_jaco_joint2taskFront)(joint_config); }
-        Eigen::MatrixXd jacobian_task_lf_back(Eigen::VectorXd joint_config) { return (*_jaco_joint2taskBack)(joint_config);  }
+        MatrixXd jacobian_task_lf_front(VectorXd joint_config){ return (*_jaco_joint2taskFront)(joint_config); }
+        MatrixXd jacobian_task_lf_back(VectorXd joint_config) { return (*_jaco_joint2taskBack)(joint_config);  }
 
-        Eigen::VectorXd motor_vel_to_joint_vel(Eigen::VectorXd motor_velocites);
-        Eigen::VectorXd joint_vel_to_motor_vel(Eigen::VectorXd joint_velocites);
-        Eigen::VectorXd joint_vel_to_task_vel(Eigen::VectorXd joint_velocites);
-        Eigen::VectorXd task_vel_to_joint_vel(Eigen::VectorXd task_velocites_front, Eigen::VectorXd task_velocites_back );
-        Eigen::VectorXd task_vel_to_joint_vel(Eigen::VectorXd task_velocites);
+        VectorXd motor_vel_to_joint_vel(VectorXd motor_velocites);
+        VectorXd joint_vel_to_motor_vel(VectorXd joint_velocites);
+        VectorXd joint_vel_to_task_vel(VectorXd joint_velocites);
+        VectorXd task_vel_to_joint_vel(VectorXd task_velocites_front, VectorXd task_velocites_back );
+        VectorXd task_vel_to_joint_vel(VectorXd task_velocites);
 
-        Eigen::VectorXd motor_torque_to_joint_torque(Eigen::VectorXd motor_torques);
-        Eigen::VectorXd joint_torque_to_motor_torque(Eigen::VectorXd joint_torques);
-        Eigen::VectorXd joint_torque_to_task_force(Eigen::VectorXd joint_torques);
-        Eigen::VectorXd task_force_to_joint_torque(Eigen::VectorXd task_forces_front, Eigen::VectorXd task_forces_back);
-        Eigen::VectorXd task_force_to_joint_torque(Eigen::VectorXd task_forces);
+        VectorXd motor_torque_to_joint_torque(VectorXd motor_torques);
+        VectorXd joint_torque_to_motor_torque(VectorXd joint_torques);
+        VectorXd joint_torque_to_task_force(VectorXd joint_torques);
+        VectorXd task_force_to_joint_torque(VectorXd task_forces_front, VectorXd task_forces_back);
+        VectorXd task_force_to_joint_torque(VectorXd task_forces);
 
-        Eigen::VectorXd motor_pos_to_joint_pos(Eigen::VectorXd motor_positions){ return (*_fk_motor2joint)(motor_positions); }
-        Eigen::VectorXd joint_pos_to_motor_pos(Eigen::VectorXd joint_positions){ return (*_ik_joint2motor)(joint_positions); }
-        Eigen::VectorXd joint_pos_to_task_pos(Eigen::VectorXd joint_positions) { return (*_fk_joint2task)(joint_positions);  }
-        Eigen::VectorXd task_pos_to_joint_pos(Eigen::VectorXd task_positions)  { return (*_ik_task2joint)(task_positions);   }
+        VectorXd motor_pos_to_joint_pos(VectorXd motor_positions){ return (*_fk_motor2joint)(motor_positions); }
+        VectorXd joint_pos_to_motor_pos(VectorXd joint_positions){ return (*_ik_joint2motor)(joint_positions); }
+        VectorXd joint_pos_to_task_pos(VectorXd joint_positions) { return (*_fk_joint2task)(joint_positions);  }
+        VectorXd task_pos_to_joint_pos(VectorXd task_positions)  { return (*_ik_task2joint)(task_positions);   }
 
         void addPeriodicTask(void *(*start_routine)(void *), int sched_policy, int priority, int cpu_affinity, void *arg, std::string task_name,int task_type, int period);
 
-        Eigen::VectorXd getJointVelocities();
-        Eigen::VectorXd getJointPositions();
+        VectorXd getJointVelocities();
+        VectorXd getJointPositions();
 
-        void motorPD(Eigen::VectorXd pos_desired, Eigen::VectorXd vel_desired, Eigen::VectorXd kp, Eigen::VectorXd kd);
-        void jointPD(Eigen::VectorXd pos_desired, Eigen::VectorXd vel_desired, Eigen::VectorXd kp, Eigen::VectorXd kd);
-        void taskPD( Eigen::VectorXd pos_desired, Eigen::VectorXd vel_desired, Eigen::VectorXd kp, Eigen::VectorXd kd);
-        Eigen::VectorXd calc_pd_effort(Eigen::VectorXd position, Eigen::VectorXd velocity, Eigen::VectorXd desiredPosition, Eigen::VectorXd desiredVelocity, Eigen::VectorXd Kp, Eigen::VectorXd Kd);
+        void motorPD(VectorXd pos_desired, VectorXd vel_desired, VectorXd kp, VectorXd kd);
+        void jointPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd j_kp, MatrixXd j_kd, MatrixXd m_kp, MatrixXd m_kd);
+        void taskPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd t_kp, MatrixXd t_kd, MatrixXd j_kp, MatrixXd j_kd, MatrixXd m_kp, MatrixXd m_kd);
+        VectorXd calc_pd_effort(VectorXd position, VectorXd velocity, VectorXd desiredPosition, VectorXd desiredVelocity, MatrixXd Kp, MatrixXd Kd);
 
         // Actuators
         int motor_pos_model_to_real(int id, double joint_position_radians);
@@ -107,8 +109,8 @@ namespace RoboDesignLab {
         void disable_all_motors();
         void set_kp_kd_all_motors(uint16_t kp, uint16_t kd);
         void update_all_motors();
-        void set_motor_torques(Eigen::VectorXd motor_torques);
-        void add_motor_torques(Eigen::VectorXd motor_torques);
+        void set_motor_torques(VectorXd motor_torques);
+        void add_motor_torques(VectorXd motor_torques);
         CheetahMotor* motors[10]; // move this to private soon
         int motor_directions[10]; // temporary, need to change
         int motor_zeros[10];
@@ -132,10 +134,10 @@ namespace RoboDesignLab {
         BipedActuatorTree _actuators;
         int _leg_DoF; // automatically set from actuator tree
         int _num_actuators;
-        Eigen::Matrix<double,10,1> _motor_kp;
-        Eigen::Matrix<double,10,1> _motor_kd;
-        Eigen::Matrix<double,10,1> _joint_kp;
-        Eigen::Matrix<double,10,1> _joint_kd;
+        Matrix<double,10,1> _motor_kp;
+        Matrix<double,10,1> _motor_kd;
+        Matrix<double,10,1> _joint_kp;
+        Matrix<double,10,1> _joint_kd;
     };
 }
 

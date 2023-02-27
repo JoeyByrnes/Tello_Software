@@ -457,6 +457,11 @@ Eigen::VectorXd pd_control_3D(Eigen::VectorXd position, Eigen::VectorXd velocity
 }
 
 void task_pd_control(){
+	// get motor positions and velocities
+	Eigen::Matrix<double,5,1> motor_positions_left;
+	Eigen::Matrix<double,5,1> motor_velocities_left;
+	Eigen::Matrix<double,5,1> motor_positions_right;
+	Eigen::Matrix<double,5,1> motor_velocities_right;
 	pthread_mutex_lock(&mutex_CAN_recv);
 	for(int i=0;i<5;i++){
 		motor_positions_left[i] = motor_pos_real_to_model(i, tello->motors[i]->getMotorState().pos);

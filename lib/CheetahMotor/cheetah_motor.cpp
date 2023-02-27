@@ -111,6 +111,31 @@ cmd_packet CheetahMotor::getCmdPacket(){
     return _command;
 }
 
+void CheetahMotor::setSoftLimits(int pos_min, int pos_max, int ff_min, int ff_max){
+    _pos_min = pos_min;
+    _pos_max = pos_max;
+    _ff_min = ff_min;
+    _ff_max = ff_min;
+}
+
+void CheetahMotor::limitPos(uint16_t &pos){
+    if(pos > _pos_max){
+        pos = _pos_max;
+    }
+    else if(pos < _pos_min){
+        pos = _pos_min;
+    }
+}
+
+void CheetahMotor::limitTorque(uint16_t &ff){
+    if(ff > _ff_max){
+        ff = _ff_max;
+    }
+    else if(ff < _ff_min){
+        ff = _ff_min;
+    }
+}
+
 void CheetahMotor::setKp(uint16_t kp){
     _command.kp = kp;
 }
@@ -120,6 +145,7 @@ void CheetahMotor::setKd(uint16_t kd){
 }
 
 void CheetahMotor::setPos(uint16_t pos){
+    limitPos(pos);
     _command.pos = pos;
 }
 
@@ -128,9 +154,13 @@ void CheetahMotor::setVel(uint16_t vel){
 }
 
 void CheetahMotor::setff(uint16_t ff){
+    limitTorque(ff);
     _command.feedforward = 2048+ff;
 }
 
 void CheetahMotor::addff(uint16_t ff){
-    _command.feedforward += ff;
+    uint16_t new_ff = _command.feedforward + ff;
+    limitTorque(new_ff);
+    _command.feedforward =new_ff;
 }
+

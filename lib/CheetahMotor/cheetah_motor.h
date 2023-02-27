@@ -48,6 +48,8 @@ class CheetahMotor
         void addff(uint16_t ff);
         void setVel(uint16_t vel);
 
+        void setSoftLimits(int pos_min, int pos_max, int ff_min, int ff_max);
+
         bool isEnabled();
 
         motor_state getMotorState();
@@ -55,6 +57,10 @@ class CheetahMotor
         int _trajectory_setpoint = 0;
 
     private:
+
+        void limitPos(uint16_t &pos);
+        void limitTorque(uint16_t &ff);
+
         int _pcan_bus;
         //CAN_FRAME _can_msg;
         TPCANMsg Message;
@@ -62,6 +68,11 @@ class CheetahMotor
         cmd_packet _command;
         bool _enabled = 0;
         int _direction = 1;
+
+        int _pos_min=0;
+        int _pos_max=65535;
+        int _ff_min=0;
+        int _ff_max = 4095;
 
 };
 

@@ -238,7 +238,6 @@ void handle_motor_init(){
 int init_sum = 0;
 
 void moveMotors(int* positions){
-	
 	for(int i=0;i<10;i++){
 		if(init_sum < 10){
 			if(fabs(encoder_positions[i] - positions[i])  < 50) 
@@ -247,27 +246,21 @@ void moveMotors(int* positions){
 			}
 			else
 			{
-				if(encoder_positions[i] < positions[i])
-				{
+				if(encoder_positions[i] < positions[i]){
 					tello->motors[i]->setPos(encoder_positions[i]+10);
 				}
-				else
-				{
+				else{
 					tello->motors[i]->setPos(encoder_positions[i]-10);
 				}
-
 			}
 			init_sum = 0;
 			for(int x=0;x<10;x++){
 				init_sum += motor_move_complete[x];
 			}
-
 		}
-		else
-		{
+		else{
 			tello->motors[i]->setPos(positions[i]);
 		}
-		
 	}
 	if(init_sum == 10){
 		//fsm_state = 0;
@@ -551,7 +544,7 @@ int main() {
 	actuators.rightLeg.push_back(new CheetahMotor(0x0A,PCAN_PCIBUS3));
 
 	tello = new RoboDesignLab::DynamicRobot(actuators);
-	for(int i = 0; i<10; i++){
+	for(int i = 0; i<10; i++){ // not in the constructor becuase I want to change how this works
 		tello->motor_zeros[i] = motor_zeros[i];
 		tello->motor_directions[i] = motor_directions[i];
 	}
@@ -636,41 +629,9 @@ int main() {
 				printf("\n");
 				break;
 			case 'J':
-				printf("\nJoint Inputs:\n");
-				jointsLeft(0) = 0.0			*DEGREES_TO_RADIANS;
-				jointsLeft(1) = 0.0			*DEGREES_TO_RADIANS;
-				jointsLeft(2) = 0.0			*DEGREES_TO_RADIANS;
-				jointsLeft(3) = 15.0		*DEGREES_TO_RADIANS; // must be above 11
-				jointsLeft(4) = 0.0			*DEGREES_TO_RADIANS; 
-				motorsLeft = tello->joint_pos_to_motor_pos(jointsLeft);
-
-				jointsRight(0) = 0.0		*DEGREES_TO_RADIANS;
-				jointsRight(1) = 0.0		*DEGREES_TO_RADIANS;
-				jointsRight(2) = 0.0		*DEGREES_TO_RADIANS;
-				jointsRight(3) = 15.0		*DEGREES_TO_RADIANS; // must be above 11
-				jointsRight(4) = 0.0		*DEGREES_TO_RADIANS; 
-				motorsRight = tello->joint_pos_to_motor_pos(jointsRight);
-
-
-				targets[0] = tello->motor_pos_model_to_real(0, motorsLeft(0));
-				targets[1] = tello->motor_pos_model_to_real(1, motorsLeft(1));
-				targets[2] = tello->motor_pos_model_to_real(2, motorsLeft(2));
-				targets[3] = tello->motor_pos_model_to_real(3, motorsLeft(3));
-				targets[4] = tello->motor_pos_model_to_real(4, motorsLeft(4));
-				targets[5] = tello->motor_pos_model_to_real(5, motorsRight(0));
-				targets[6] = tello->motor_pos_model_to_real(6, motorsRight(1));
-				targets[7] = tello->motor_pos_model_to_real(7, motorsRight(2));
-				targets[8] = tello->motor_pos_model_to_real(8, motorsRight(3));
-				targets[9] = tello->motor_pos_model_to_real(9, motorsRight(4));
-				motor_targets = targets;
 				fsm_state = 4;
-				
+				printf("\nTask Space Testing Mode:\n");
 				scheduleEnable();
-				// tello->motors[0]->enableMotor();
-				// tello->motors[1]->enableMotor();
-				// tello->motors[2]->enableMotor(); 
-				// tello->motors[3]->enableMotor();
-				// tello->motors[4]->enableMotor();
 
 				break;
 			case 'd':

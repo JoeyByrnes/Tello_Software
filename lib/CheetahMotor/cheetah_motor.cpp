@@ -38,6 +38,12 @@ CheetahMotor::CheetahMotor(int can_id,int pcan_channel){
     memset(Message.DATA, 0xff, sizeof(Message.DATA));
 }
 
+CheetahMotor::CheetahMotor(int can_id,int pcan_channel, int direction)
+:CheetahMotor(can_id,pcan_channel)
+{
+    _direction = direction;
+}
+
 void CheetahMotor::disableMotor(){
     Message.DATA[0] = 0xFF;
     Message.DATA[1] = 0xFF;
@@ -118,9 +124,13 @@ void CheetahMotor::setPos(uint16_t pos){
 }
 
 void CheetahMotor::setVel(uint16_t vel){
-    _command.vel = vel;
+    _command.vel = 2048+vel;
 }
 
 void CheetahMotor::setff(uint16_t ff){
-    _command.feedforward = ff;
+    _command.feedforward = 2048+ff;
+}
+
+void CheetahMotor::addff(uint16_t ff){
+    _command.feedforward += ff;
 }

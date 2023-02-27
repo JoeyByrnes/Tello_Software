@@ -83,8 +83,8 @@ void printf(char color, const char* message, ...) {
         case 'b':
             printf("\033[1;34m");
             break;
-        case 'p':
-            printf("\033[1;35m");
+        case 'm':
+            printf("\033[1;95m");
             break;
         case 'c':
             printf("\033[1;36m");

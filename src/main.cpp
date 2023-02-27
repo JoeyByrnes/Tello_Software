@@ -114,7 +114,7 @@ int disabled = 1;
 std::ofstream *motion_log;
 std::ofstream *jacobian_debug;
 std::ifstream *motion_log_in;
-std::ofstream output_file("tello_time_log.txt", std::ios::out | std::ios::trunc);
+// std::ofstream output_file("tello_time_log.txt", std::ios::out | std::ios::trunc);
 
 extern bool enableScheduled;
 extern bool disableScheduled;
@@ -457,11 +457,6 @@ Eigen::VectorXd pd_control_3D(Eigen::VectorXd position, Eigen::VectorXd velocity
 }
 
 void task_pd_control(){
-	// get motor positions and velocities
-	Eigen::Matrix<double,5,1> motor_positions_left;
-	Eigen::Matrix<double,5,1> motor_velocities_left;
-	Eigen::Matrix<double,5,1> motor_positions_right;
-	Eigen::Matrix<double,5,1> motor_velocities_right;
 	pthread_mutex_lock(&mutex_CAN_recv);
 	for(int i=0;i<5;i++){
 		motor_positions_left[i] = motor_pos_real_to_model(i, tello->motors[i]->getMotorState().pos);
@@ -528,11 +523,11 @@ void task_pd_control(){
 	for(int i=0; i<5; i++){
 		tello->motors[i]->setKp(0);
 		tello->motors[i]->setKd(0);
-		tello->motors[i]->setff(2048+motor_torques_left[i]*motor_directions[i]);
+		tello->motors[i]->setff(motor_torques_left[i]*motor_directions[i]);
 
 		tello->motors[i+5]->setKp(0);
 		tello->motors[i+5]->setKd(0);
-		tello->motors[i+5]->setff(2048+motor_torques_right[i]*motor_directions[i+5]);
+		tello->motors[i+5]->setff(motor_torques_right[i]*motor_directions[i+5]);
 
 		//print the torques here for me to know if they make sense:
 		// if(print_idx%5000 == 0){
@@ -609,7 +604,7 @@ static void* update_1kHz( void * arg )
 	{
 		tello->motors[i]->setKp(50);
 		tello->motors[i]->setKd(1);
-		tello->motors[i]->setPos(32768);
+		tello->motors[i]->setPos(32768); // (Zero)
 		tello->motors[i]->disableMotor();
 	}
 	usleep(1000);
@@ -704,27 +699,26 @@ static void* update_1kHz( void * arg )
 // This callback handles CTRL+C Input
 void signal_callback_handler(int signum){
 	fsm_state = 0;
-	for(int i=0;i<10;i++){
-		tello->motors[i]->disableMotor();
-	}
+	if (signum == SIGINT) {
+        printf('o',"\rProgram disabled by user.\n");
+    }
+    else if (signum == SIGSEGV) {
+        printf('r',"Program crashed due to Seg Fault");
+    }
+	disable_all();
+	printf('o',"Disable command set to all motors.\n");
 
-	//fclose(log_file);
-	output_file.close();
-	motion_log->close();
-	motion_log_in->close();
-	if(recording_initialized){
-		usleep(1000);
-		recording_initialized = 0;
-	}
-	
-	printf("\n\n==================== Exiting Tello Software ====================\n");
+	// motion_log->close();
+	// motion_log_in->close();
 	
 	if(set_cpu_governor(GOV_POWERSAVE)){
-		printf("CPU Governor set to Powersave\n");
+		printf('o',"CPU Governor set to Powersave\n");
 	}
 	else{
-		printf("Failed to set CPU Governor. (does user have write access to file?)\n");
+		printf('r',"Failed to set CPU Governor. (does user have write access to file?)\n");
 	}
+
+	printf('o',"\n==================== Exiting Tello Software ====================\n\n");
 	
 	usleep(1000);
 	exit(signum);
@@ -758,7 +752,7 @@ int main() {
 	print_cpu_speed(ISOLATED_CORE_1_THREAD_1);
 
 	signal(SIGINT, signal_callback_handler); // Handle CTRL+C input
-
+	signal(SIGSEGV, signal_callback_handler);
 
     int chrt_err = sched_setscheduler(0, SCHED_FIFO, &sp); // set scheduler to FIFO
 
@@ -784,7 +778,7 @@ int main() {
 		printf('g',"with RT Priority: %d\n\n",sp.sched_priority);
 	}
 	else{
-		printf('o',"with NICE Priority: %d\n\n",prio);
+		printf('r',"with NICE Priority: %d\n\n",prio);
 	}
 
 	RoboDesignLab::BipedActuatorTree actuators;
@@ -806,7 +800,7 @@ int main() {
 	}
 
 	// Assign existing kinematics functions for the tello DynamicRobot object to use
-	tello->assign_ik_joints_to_motors(fcn_ik_q_2_p);
+	tello->assign_ik_joints_to_motors(ik_joints_to_motors);
 	tello->assign_jacobian_joints_to_motors(fcn_Jaco_dq_2_dp);
 	tello->assign_jacobian_motors_to_joints(fcn_Jaco_dp_2_dq);
 	tello->assign_ik_task_to_joints(tello_leg_IK_pointFoot);
@@ -840,12 +834,12 @@ int main() {
 	usleep(1000);
 	
 	while(1){
-		printf("\n\nTello Software Menu:\n");
+		printf('u',"\n\nTello Software Menu:\n");
 		printf("u : Enter UDP Control Mode\n");
 		printf("r : Enter Motion Recording Mode\n");
 		printf("e : Exit Motion Recording Mode\n");
 		printf("p : Enter Motion Playback Mode\n");
-		printf("i : Enter Idle Mode (or press any other unused key)\n\n");
+		printf("i : Enter Idle Mode\n\n");
 		Eigen::Matrix<double,5,1> jointsLeft, jointsRight;
 		Eigen::VectorXd motorsLeft, motorsRight;
 		int targets[10];

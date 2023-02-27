@@ -33,6 +33,7 @@ class CheetahMotor
     public:
         CheetahMotor();
         CheetahMotor(int can_id,int pcan_channel); // pcan_channel = PCAN_PCIBUS1, PCAN_PCIBUS2 , etc...
+        CheetahMotor(int can_id,int pcan_channel, int direction);
 
         void disableMotor();
         void enableMotor();
@@ -44,6 +45,7 @@ class CheetahMotor
         void setKp(uint16_t kp);
         void setKd(uint16_t kd);
         void setff(uint16_t ff);
+        void addff(uint16_t ff);
         void setVel(uint16_t vel);
 
         bool isEnabled();
@@ -59,6 +61,7 @@ class CheetahMotor
         motor_state _state;
         cmd_packet _command;
         bool _enabled = 0;
+        int _direction = 1;
 
 };
 

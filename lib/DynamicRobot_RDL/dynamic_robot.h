@@ -51,7 +51,7 @@ namespace RoboDesignLab {
     class DynamicRobot {
     public:
         // Constructor and destructor
-        DynamicRobot(BipedActuatorTree actuators){ this->_actuators = actuators; }
+        DynamicRobot(BipedActuatorTree actuators);
         ~DynamicRobot();
 
         void assign_jacobian_motors_to_joints(MatrixXd_function fcn){ _jaco_motor2joint = fcn; }
@@ -77,11 +77,13 @@ namespace RoboDesignLab {
         Eigen::VectorXd joint_vel_to_motor_vel(Eigen::VectorXd joint_velocites);
         Eigen::VectorXd joint_vel_to_task_vel(Eigen::VectorXd joint_velocites);
         Eigen::VectorXd task_vel_to_joint_vel(Eigen::VectorXd task_velocites_front, Eigen::VectorXd task_velocites_back );
+        Eigen::VectorXd task_vel_to_joint_vel(Eigen::VectorXd task_velocites);
 
         Eigen::VectorXd motor_torque_to_joint_torque(Eigen::VectorXd motor_torques);
         Eigen::VectorXd joint_torque_to_motor_torque(Eigen::VectorXd joint_torques);
         Eigen::VectorXd joint_torque_to_task_force(Eigen::VectorXd joint_torques);
         Eigen::VectorXd task_force_to_joint_torque(Eigen::VectorXd task_forces_front, Eigen::VectorXd task_forces_back);
+        Eigen::VectorXd task_force_to_joint_torque(Eigen::VectorXd task_forces);
 
         Eigen::VectorXd motor_pos_to_joint_pos(Eigen::VectorXd motor_positions){ return (*_fk_motor2joint)(motor_positions); }
         Eigen::VectorXd joint_pos_to_motor_pos(Eigen::VectorXd joint_positions){ return (*_ik_joint2motor)(joint_positions); }
@@ -90,16 +92,28 @@ namespace RoboDesignLab {
 
         void addPeriodicTask(void *(*start_routine)(void *), int sched_policy, int priority, int cpu_affinity, void *arg, std::string task_name,int task_type, int period);
 
-        Eigen::VectorXd getJointConfig();
+        Eigen::VectorXd getJointVelocities();
+        Eigen::VectorXd getJointPositions();
+
+        void motorPD(Eigen::VectorXd pos_desired, Eigen::VectorXd vel_desired, Eigen::VectorXd kp, Eigen::VectorXd kd);
+        void jointPD(Eigen::VectorXd pos_desired, Eigen::VectorXd vel_desired, Eigen::VectorXd kp, Eigen::VectorXd kd);
+        void taskPD( Eigen::VectorXd pos_desired, Eigen::VectorXd vel_desired, Eigen::VectorXd kp, Eigen::VectorXd kd);
+        Eigen::VectorXd calc_pd_effort(Eigen::VectorXd position, Eigen::VectorXd velocity, Eigen::VectorXd desiredPosition, Eigen::VectorXd desiredVelocity, Eigen::VectorXd Kp, Eigen::VectorXd Kd);
 
         // Actuators
         int motor_pos_model_to_real(int id, double joint_position_radians);
         double motor_pos_real_to_model(int id, int motor_position_units);
+        void enable_all_motors();
+        void disable_all_motors();
+        void set_kp_kd_all_motors(uint16_t kp, uint16_t kd);
+        void update_all_motors();
+        void set_motor_torques(Eigen::VectorXd motor_torques);
+        void add_motor_torques(Eigen::VectorXd motor_torques);
         CheetahMotor* motors[10]; // move this to private soon
         int motor_directions[10]; // temporary, need to change
         int motor_zeros[10];
-        int motor_timeouts[10] = {0};
-        int motor_connected[10] = {0};
+        int motor_timeouts[10] = {0,0,0,0,0,0,0,0,0,0};
+        int motor_connected[10] = {0,0,0,0,0,0,0,0,0,0};
     private:
         // Kinematics Functions
         MatrixXd_function _jaco_motor2joint;
@@ -117,8 +131,11 @@ namespace RoboDesignLab {
         // Actuators
         BipedActuatorTree _actuators;
         int _leg_DoF; // automatically set from actuator tree
-
-
+        int _num_actuators;
+        Eigen::Matrix<double,10,1> _motor_kp;
+        Eigen::Matrix<double,10,1> _motor_kd;
+        Eigen::Matrix<double,10,1> _joint_kp;
+        Eigen::Matrix<double,10,1> _joint_kd;
     };
 }
 

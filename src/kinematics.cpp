@@ -309,7 +309,7 @@ VectorXd fk_motors_to_joints(const VectorXd& p)
   return q;
 }
 
-Eigen::VectorXd fk_joints_to_task(const Eigen::VectorXd& q)
+Eigen::VectorXd fk_joints_to_task_leg(const Eigen::VectorXd& q)
 {
   Eigen::MatrixXd HTMwd2hip = Eigen::MatrixXd::Identity(4,4);
 
@@ -333,6 +333,33 @@ Eigen::VectorXd fk_joints_to_task(const Eigen::VectorXd& q)
   task_positions << lf1, lf2;
 
   return task_positions;
+}
+
+Eigen::VectorXd fk_joints_to_task(const Eigen::VectorXd& q)
+{
+  Eigen::VectorXd q_left = q.segment(0,5);
+  Eigen::VectorXd q_right = q.segment(5,5);
+
+  Eigen::VectorXd task_pos_left = fk_joints_to_task_leg(q_left);
+  Eigen::VectorXd task_pos_right = fk_joints_to_task_leg(q_right);
+  Eigen::VectorXd task_positions(12);
+  task_positions << task_pos_left, task_pos_right;
+  return task_positions;
+}
+
+Eigen::VectorXd ik_joints_to_motors(const Eigen::VectorXd& q)
+{
+  Eigen::VectorXd q_left(5), q_right(5);
+  VectorXd p_left = fcn_ik_q_2_p(q_left);
+  VectorXd p_right = fcn_ik_q_2_p(q_right);
+  VectorXd p(10);
+  p << p_left , p_right;
+  return p;
+}
+
+Eigen::VectorXd ik_task_to_joints(const Eigen::VectorXd& q)
+{
+
 }
 
 

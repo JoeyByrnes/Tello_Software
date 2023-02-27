@@ -24,3 +24,5 @@ Eigen::MatrixXd fcn_Jaco_dq_2_dT_back(const Eigen::VectorXd& q);
 Eigen::VectorXd fk_motors_to_joints(const Eigen::VectorXd& p);
 Eigen::VectorXd fk_joints_to_task(const Eigen::VectorXd& q);
 
+Eigen::VectorXd ik_joints_to_motors(const Eigen::VectorXd& q);
+

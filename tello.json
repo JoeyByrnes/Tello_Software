@@ -1,0 +1,85 @@
+{
+    "Robot": {
+        "KinematicModel": "Biped",
+        "FootContactModel": "Line",
+        "Computer": {
+            "Isolated cores": [4, 5, 6, 7]
+        },
+        "Sensors": {
+            "IMU": {
+                "Type": "vn100",
+                "Port": "/dev/imu"
+            }
+        },
+        "Leg": [
+            {
+                "Side": "Left",
+                "Motor_CAN_IDs": [1, 2, 3, 4, 5],
+                "Motor_Directions": [1, -1, 1, 1, -1],
+                "Motor_zero_offsets_Enc": [ 32768,  // Hip Yaw
+                                            32768,  // Hip Roll/Pitch 1
+                                            32768,  // Hip Roll/Pitch 2
+                                            32768,  // Knee/Ankle 1
+                                            32768], // Knee/Ankle 2
+
+                "Motor_position_limits_Enc": [  [0, 65535],     // Hip Yaw
+                                                [0, 65535],     // Hip Roll/Pitch 1
+                                                [0, 65535],     // Hip Roll/Pitch 2
+                                                [0, 65535],     // Knee/Ankle 1
+                                                [0, 65535]],    // Knee/Ankle 2
+
+                "Joint_position_limits_Deg": [  [-65.0, 65.0],  // Hip Yaw
+                                                [-65.0, 65.0],  // Hip Roll
+                                                [-65.0, 65.0],  // Hip Pitch
+                                                [-65.0, 65.0],  // Knee
+                                                [-65.0, 65.0]], // Ankle
+
+                "Motor_torque_limits_Nm": [ 5,  // Hip Yaw
+                                            5,  // Hip Roll/Pitch 1
+                                            5,  // Hip Roll/Pitch 2
+                                            5,  // Knee/Ankle 1
+                                            5], // Knee/Ankle 2
+
+                "Joint_torque_limits_Nm": [ 5,  // Hip Yaw
+                                            5,  // Hip Roll
+                                            5,  // Hip Pitch
+                                            5,  // Knee
+                                            5]  // Ankle
+            },
+            {
+                "Side": "Right",
+                "Motor_CAN_IDs": [5, 6, 7, 8, 9],
+                "Motor_Directions": [1, -1, 1, 1, -1],
+                "Motor_zero_offsets_Enc": [ 32768,  // Hip Yaw
+                                            32768,  // Hip Roll/Pitch 1
+                                            32768,  // Hip Roll/Pitch 2
+                                            32768,  // Knee/Ankle 1
+                                            32768], // Knee/Ankle 2
+
+                "Motor_position_limits_Enc": [  [0, 65535],     // Hip Yaw
+                                                [0, 65535],     // Hip Roll/Pitch 1
+                                                [0, 65535],     // Hip Roll/Pitch 2
+                                                [0, 65535],     // Knee/Ankle 1
+                                                [0, 65535]],    // Knee/Ankle 2
+
+                "Joint_position_limits_Deg": [  [-65.0, 65.0],  // Hip Yaw
+                                                [-65.0, 65.0],  // Hip Roll
+                                                [-65.0, 65.0],  // Hip Pitch
+                                                [-65.0, 65.0],  // Knee
+                                                [-65.0, 65.0]], // Ankle
+
+                "Motor_torque_limits_Nm": [ 5,  // Hip Yaw
+                                            5,  // Hip Roll/Pitch 1
+                                            5,  // Hip Roll/Pitch 2
+                                            5,  // Knee/Ankle 1
+                                            5], // Knee/Ankle 2
+
+                "Joint_torque_limits_Nm": [ 5,  // Hip Yaw
+                                            5,  // Hip Roll
+                                            5,  // Hip Pitch
+                                            5,  // Knee
+                                            5]  // Ankle
+            }
+        ]
+    }
+}

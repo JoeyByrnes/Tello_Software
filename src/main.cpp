@@ -80,6 +80,7 @@ int enable_motors = 0;
 
 uint16_t encoders[10];
 int position_initialized[10] = {0,0,0,0,0,0,0,0,0,0};
+int all_motors_initialized = 0;
 uint16_t encoder_positions[10];
 uint16_t encoder_offsets[10]  = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int motor_directions[10] =      { 1,-1, 1, 1,-1, 1,-1, 1, 1,-1};
@@ -120,47 +121,7 @@ extern bool enableScheduled;
 extern bool disableScheduled;
 extern bool zeroScheduled;
 
-void enable_all(){
-	for(int i=0;i<10;i++)
-	{
-		tello->motors[i]->enableMotor();
-	}
-}
-void disable_all(){
-	for(int i=0;i<10;i++)
-	{
-		tello->motors[i]->disableMotor();
-	}
-}
-void set_kp_kd_all(uint16_t kp, uint16_t kd){
-	for(int i=0;i<10;i++)
-	{
-		if(i == 3 || i == 4 || i == 8 || i == 9){
-			tello->motors[i]->setKp(kp*3);
-			tello->motors[i]->setKd(kd);
-		}
-		else{
-			tello->motors[i]->setKp(kp);
-			tello->motors[i]->setKd(kd);
-		}
-	}
-}
-void update_all_motors(){
-	for(int i=0;i<10;i++)
-	{
-		tello->motors[i]->updateMotor();
-	}
-}
-
-int motor_pos_model_to_real(int id, double joint_position_radians)
-{
-    return (int)((float)( joint_position_radians)*((float)(motor_directions[id])/ENCODER_TO_RADIANS))+motor_zeros[id];
-}
-
-double motor_pos_real_to_model(int id, int motor_position_units)
-{
-    return ((double)(motor_position_units - motor_zeros[id]))*((double)(motor_directions[id]))*ENCODER_TO_RADIANS;
-}
+void signal_callback_handler(int signum);
 
 void handle_UDP_Commands(){
 	if(udp_data_ready)
@@ -242,7 +203,7 @@ void handle_Motion_Playback(){
 		}
 		if(motor_kp < playback_kp){
 			motor_kp = motor_kp+1;
-			set_kp_kd_all(motor_kp,motor_kd);
+			tello->set_kp_kd_all_motors(motor_kp,motor_kd);
 		}
 	}
 }
@@ -270,7 +231,7 @@ void handle_motor_init(){
 	}
 	if(init_sum == 10){
 		fsm_state = 0;
-		set_kp_kd_all(200,100);
+		tello->set_kp_kd_all_motors(200,100);
 	}
 }
 
@@ -314,271 +275,63 @@ void moveMotors(int* positions){
 		//for(int x=0; x<10; x++) motor_move_complete[x] = 0;
 	}
 }
-double integral = 0;
-double last_error = 0;
-double kp = 1;
-double pid_controller(double error) {
-	if(error < 0){
-		kp = 1;
-	}
-	else{
-		kp = 1;
-	}
-    double ki = 0.0;   // Integral gain
-    double kd = 0.0;   // Derivative gain
-    double dt = 0.1;   // Time step
-    double integral = 0;
-    double derivative = 0;
-    
-    
-    // Calculate the proportional term
-    double proportional = kp * error;
-    
-    // Calculate the integral term
-    integral += error * dt;
-	if(integral > 1){
-		integral = 1;
-	}
-	if(integral < -1){
-		integral = -1;
-	}
-    double integral_term = ki * integral;
-    
-    // Calculate the derivative term
-    derivative = (error - last_error) / dt;
-    double derivative_term = kd * derivative;
-    
-    // Calculate the overall effort
-    double effort = proportional + integral_term + derivative_term;
-    
-    // Update the last error for the next iteration
-    last_error = error;
-    
-    return effort;
-}
 
 Eigen::Matrix<double,5,1> jointsL, jointsR;
 Eigen::VectorXd motorsL, motorsR;
-int targets1[10];
-
-double pd_control(double pos, double pos_des, double vel, double vel_des, double kp, double kd) {
-    // Calculate position error
-    double pos_error = pos_des - pos;
-
-    // Calculate velocity error
-    double vel_error = vel_des - vel;
-
-    // Calculate control effort with damping term
-    double effort = kp * pos_error + kd * vel_error;
-
-    return effort;
-}
-uint64_t print_idx = 0;
-void joint_pd_control(){
-	// get motor positions and velocities
-	Eigen::Matrix<double,5,1> motor_positions_left;
-	Eigen::Matrix<double,5,1> motor_velocities_left;
-	Eigen::Matrix<double,5,1> motor_positions_right;
-	Eigen::Matrix<double,5,1> motor_velocities_right;
-	pthread_mutex_lock(&mutex_CAN_recv);
-	for(int i=0;i<5;i++){
-		motor_positions_left[i] = motor_pos_real_to_model(i, tello->motors[i]->getMotorState().pos);
-		motor_velocities_left[i] = (tello->motors[i]->getMotorState().vel*VELOCITY_TO_RADIANS_PER_SEC-32.484131)*tello->motor_directions[i];
-		motor_positions_right[i] = motor_pos_real_to_model(i+5, tello->motors[i+5]->getMotorState().pos);
-		motor_velocities_right[i] = (tello->motors[i+5]->getMotorState().vel*VELOCITY_TO_RADIANS_PER_SEC-32.484131)*tello->motor_directions[i+5];
-	}
-	// get joint positions and velocities from IK and Jacobian
-	VectorXd joint_pos_left = tello->motor_pos_to_joint_pos(motor_positions_left);
-	VectorXd joint_pos_right = tello->motor_pos_to_joint_pos(motor_positions_right);
-	
-	VectorXd motor_velocities(10);
-	motor_velocities << motor_velocities_left, motor_velocities_right;
-	VectorXd joint_velocities = tello->motor_vel_to_joint_vel(motor_velocities);
-	VectorXd joint_velocities_left = joint_velocities.segment(0,5);
-	VectorXd joint_velocities_right = joint_velocities.segment(5,5);
-	// perform Joint PD
-	Eigen::Matrix<double,5,1> joint_torques_left;
-	Eigen::Matrix<double,5,1> joint_torques_right;
-	for(int i = 0;i<5;i++){
-		joint_torques_left[i] = pd_control(joint_pos_left[i], jointsL[i], joint_velocities_left[i], 0, 2000+gain_adjustment, 100);
-		joint_torques_right[i] = pd_control(joint_pos_right[i], jointsR[i], joint_velocities_right[i], 0, 2000+gain_adjustment, 100);
-	}
-	joint_torques_left[3] = joint_torques_left[3];
-	joint_torques_right[3] = joint_torques_right[3];
-	joint_torques_left[4] = -joint_torques_left[4]*1.5;
-	joint_torques_right[4] = -joint_torques_right[4]*1.5;
-	// convert joint pd torques to motor torques
-	VectorXd joint_torques(10);
-	joint_torques << joint_torques_left, joint_torques_right;
-	VectorXd motor_torques = tello->joint_torque_to_motor_torque(joint_torques);
-	VectorXd motor_torques_left = motor_torques.segment(0,5);
-	VectorXd motor_torques_right = motor_torques.segment(5,5);
-	
-	// write motor torques with feedforward control
-	for(int i=0; i<5; i++){
-		tello->motors[i]->setKp(0);
-		tello->motors[i]->setKd(0);
-		tello->motors[i]->setff(2048+motor_torques_left[i]*motor_directions[i]);
-
-		tello->motors[i+5]->setKp(0);
-		tello->motors[i+5]->setKd(0);
-		tello->motors[i+5]->setff(2048+motor_torques_right[i]*motor_directions[i+5]);
-
-		// print the torques here for me to know if they make sense:
-		// if(print_idx%200 == 0){
-		// 	printf("tau_L %f,\t %f,\t %f,\t %f,\t %f\n", joint_torques_left[0],
-		// 												 joint_torques_left[1],
-		// 												 joint_torques_left[2],
-		// 												 joint_torques_left[3],
-		// 												 joint_torques_left[4]
-		// 												 );
-		// 	cout.flush();
-		// }
-		// print_idx++;
-	}
-	pthread_mutex_unlock(&mutex_CAN_recv);
-	
-}
-
-Eigen::VectorXd pd_control_3D(Eigen::VectorXd position, Eigen::VectorXd velocity, Eigen::VectorXd desiredPosition, Eigen::VectorXd desiredVelocity, Eigen::VectorXd Kp, Eigen::VectorXd Kd) {
-  // Compute position error
-  Eigen::VectorXd positionError = desiredPosition/1000.0 - position;
-
-  // Compute velocity error
-  Eigen::VectorXd velocityError = desiredVelocity - velocity;
-
-  // Compute control output
-  Eigen::VectorXd controlOutput(3);
-  controlOutput << Kp(0)*positionError(0) + Kd(0)*velocityError(0),
-                   Kp(1)*positionError(1) + Kd(1)*velocityError(1),
-                   Kp(2)*positionError(2) + Kd(2)*velocityError(2);
-
-  return controlOutput;
-}
-
-void task_pd_control(){
-	// get motor positions and velocities
-	Eigen::Matrix<double,5,1> motor_positions_left;
-	Eigen::Matrix<double,5,1> motor_velocities_left;
-	Eigen::Matrix<double,5,1> motor_positions_right;
-	Eigen::Matrix<double,5,1> motor_velocities_right;
-	pthread_mutex_lock(&mutex_CAN_recv);
-	for(int i=0;i<5;i++){
-		motor_positions_left[i] = motor_pos_real_to_model(i, tello->motors[i]->getMotorState().pos);
-		motor_velocities_left[i] = (tello->motors[i]->getMotorState().vel*VELOCITY_TO_RADIANS_PER_SEC-32.484131)*tello->motor_directions[i];
-		motor_positions_right[i] = motor_pos_real_to_model(i+5, tello->motors[i+5]->getMotorState().pos);
-		motor_velocities_right[i] = (tello->motors[i+5]->getMotorState().vel*VELOCITY_TO_RADIANS_PER_SEC-32.484131)*tello->motor_directions[i+5];
-	}
-	// get joint positions and velocities from FK and Jacobian
-	VectorXd joint_pos_left = tello->motor_pos_to_joint_pos(motor_positions_left);
-	VectorXd joint_pos_right = tello->motor_pos_to_joint_pos(motor_positions_right);
-	
-	VectorXd motor_velocities(10);
-	motor_velocities << motor_velocities_left, motor_velocities_right;
-	VectorXd joint_velocities = tello->motor_vel_to_joint_vel(motor_velocities);
-	
-	// get task position and velocity from FK and Jacobian
-	VectorXd task_positions_left = fk_joints_to_task(joint_pos_left);
-	VectorXd task_positions_right = fk_joints_to_task(joint_pos_right);
-	VectorXd task_position_left_front = task_positions_left.segment(0,3);
-	VectorXd task_position_left_back = task_positions_left.segment(3,3);
-	VectorXd task_position_right_front = task_positions_right.segment(0,3);
-	VectorXd task_position_right_back = task_positions_right.segment(3,3);
-	// print the torques here for me to know if they make sense:
-	VectorXd task_velocities = tello->joint_vel_to_task_vel(joint_velocities);
-	VectorXd task_velocities_left_front = task_velocities.segment(0,3);
-	VectorXd task_velocities_left_back = task_velocities.segment(3,3);
-	VectorXd task_velocities_right_front = task_velocities.segment(6,3);
-	VectorXd task_velocities_right_back = task_velocities.segment(9,3);
-
-	// do pd control on task position and velocity
-	Vector3d kp(10000+gain_adjustment, 10000+gain_adjustment, 10000+gain_adjustment);
-	Vector3d kd(0, 0, 0);
-
-	Vector3d target(0+x_offset, 0, -520+z_offset);
-	int foot_len_half = 60;
-	Vector3d target_front(foot_len_half+target(0), target(1), target(2)), target_back(-foot_len_half+target(0), target(1), target(2));
-
-	VectorXd task_forces_left_front = pd_control_3D(task_position_left_front, task_velocities_left_front, target_front, Vector3d(0,0,0), kp, kd);
-	VectorXd task_forces_right_front = pd_control_3D(task_position_right_front, task_velocities_right_front, target_front, Vector3d(0,0,0), kp, kd);
-
-	Vector3d kp1(2*(10000+gain_adjustment), 2*(10000+gain_adjustment), 2*(10000+gain_adjustment));
-	Vector3d kd1(100, 100, 100);
-
-	VectorXd task_forces_left_back = pd_control_3D(task_position_left_back, task_velocities_left_back, target_back, Vector3d(0,0,0), kp1, kd1);
-	VectorXd task_forces_right_back = pd_control_3D(task_position_right_back, task_velocities_right_back, target_back, Vector3d(0,0,0), kp1, kd1);
-
-	
-
-	// forces from pd control get converted back to joint torques
-	Eigen::VectorXd task_forces_front(6), task_forces_back(6);
-	task_forces_front << task_forces_left_front, task_forces_right_front;
-	task_forces_back << task_forces_left_back, task_forces_right_back;
-
-	VectorXd joint_torques = tello->task_force_to_joint_torque(task_forces_front, task_forces_back);
-	joint_torques(4) = -joint_torques(4);
-	joint_torques(9) = -joint_torques(9);
-	// torques from joint get converted back to motor
-	VectorXd motor_torques = tello->joint_torque_to_motor_torque(joint_torques);
-	VectorXd motor_torques_left = motor_torques.segment(0,5);
-	VectorXd motor_torques_right = motor_torques.segment(5,5);
-
-	// apply to motor
-	// write motor torques with feedforward control
-	for(int i=0; i<5; i++){
-		tello->motors[i]->setKp(0);
-		tello->motors[i]->setKd(0);
-		tello->motors[i]->setff(motor_torques_left[i]*motor_directions[i]);
-
-		tello->motors[i+5]->setKp(0);
-		tello->motors[i+5]->setKd(0);
-		tello->motors[i+5]->setff(motor_torques_right[i]*motor_directions[i+5]);
-
-		//print the torques here for me to know if they make sense:
-		// if(print_idx%5000 == 0){
-		// 	printf("FRONT %f,\t %f,\t %f,\tBACK: %f,\t %f,\t %f\n", task_position_right_front[0],
-		// 												 task_position_right_front[1],
-		// 												 task_position_right_front[2],
-		// 												 task_position_right_back[0],
-		// 												 task_position_right_back[1],
-		// 												 task_position_right_back[2]
-		// 												 );
-		// 	cout.flush();
-		// }
-		// print_idx++;
-	}
-	pthread_mutex_unlock(&mutex_CAN_recv);
-}
-
 void updateJointPositions()
 {
-	double effort = pid_controller(tello_ypr[1]);
-	jointsL(0) = 0.0			*DEGREES_TO_RADIANS;
-	jointsL(1) = 3.0			*DEGREES_TO_RADIANS;
-	jointsL(2) = (-16.0)			*DEGREES_TO_RADIANS;
+	jointsL(0) = 0.0		*DEGREES_TO_RADIANS;
+	jointsL(1) = 3.0		*DEGREES_TO_RADIANS;
+	jointsL(2) = (-16.0)	*DEGREES_TO_RADIANS;
 	jointsL(3) = 26.0		*DEGREES_TO_RADIANS; // must be above 11
-	jointsL(4) = (-0.55*effort-17+ANKLE_COMP)			*DEGREES_TO_RADIANS; 
+	jointsL(4) = (-0.55*tello_ypr[1]-17+ANKLE_COMP)	*DEGREES_TO_RADIANS; 
 	motorsL = fcn_ik_q_2_p(jointsL);
 
 	jointsR(0) = 0.0		*DEGREES_TO_RADIANS;
 	jointsR(1) = -3.0		*DEGREES_TO_RADIANS;
-	jointsR(2) = (-13.0)		*DEGREES_TO_RADIANS;
+	jointsR(2) = (-13.0)	*DEGREES_TO_RADIANS;
 	jointsR(3) = 26.0		*DEGREES_TO_RADIANS; // must be above 11
-	jointsR(4) = (-0.55*effort-17+ANKLE_COMP)		*DEGREES_TO_RADIANS; 
+	jointsR(4) = (-0.55*tello_ypr[1]-17+ANKLE_COMP)	*DEGREES_TO_RADIANS; 
 	motorsR = fcn_ik_q_2_p(jointsR);
 
-
-	targets1[0] = motor_pos_model_to_real(0, motorsL(0));
-	targets1[1] = motor_pos_model_to_real(1, motorsL(1));
-	targets1[2] = motor_pos_model_to_real(2, motorsL(2));
-	targets1[3] = motor_pos_model_to_real(3, motorsL(3));
-	targets1[4] = motor_pos_model_to_real(4, motorsL(4));
-	targets1[5] = motor_pos_model_to_real(5, motorsR(0));
-	targets1[6] = motor_pos_model_to_real(6, motorsR(1));
-	targets1[7] = motor_pos_model_to_real(7, motorsR(2));
-	targets1[8] = motor_pos_model_to_real(8, motorsR(3));
-	targets1[9] = motor_pos_model_to_real(9, motorsR(4));
+	int targets1[10];
+	targets1[0] = tello->motor_pos_model_to_real(0, motorsL(0));
+	targets1[1] = tello->motor_pos_model_to_real(1, motorsL(1));
+	targets1[2] = tello->motor_pos_model_to_real(2, motorsL(2));
+	targets1[3] = tello->motor_pos_model_to_real(3, motorsL(3));
+	targets1[4] = tello->motor_pos_model_to_real(4, motorsL(4));
+	targets1[5] = tello->motor_pos_model_to_real(5, motorsR(0));
+	targets1[6] = tello->motor_pos_model_to_real(6, motorsR(1));
+	targets1[7] = tello->motor_pos_model_to_real(7, motorsR(2));
+	targets1[8] = tello->motor_pos_model_to_real(8, motorsR(3));
+	targets1[9] = tello->motor_pos_model_to_real(9, motorsR(4));
 	motor_targets = targets1;
+}
+
+// If a motor becomes unresponsive for 5 milliseconds, this function calls signal handler
+static void* motor_monitor( void * arg )
+{
+	while(!all_motors_initialized);
+
+	struct timespec next;
+    clock_gettime(CLOCK_MONOTONIC, &next);
+
+	while(1)
+	{
+		handle_start_of_periodic_task(next);
+		pthread_mutex_lock(&mutex_CAN_recv);
+		for(int i=0;i<10;i++)
+		{
+			tello->motor_timeouts[i] = tello->motor_timeouts[i] + 1;
+			if(tello->motor_timeouts[i] > 5)
+			{
+				printf('r',"Motor %d Unresponsive. Exiting Program for Safety.\n");
+				signal_callback_handler(SIGINT);
+			}
+		}
+		pthread_mutex_unlock(&mutex_CAN_recv);
+		handle_end_of_periodic_task(next);
+	}
 }
 
 
@@ -626,6 +379,7 @@ static void* update_1kHz( void * arg )
 		pthread_mutex_unlock(&mutex_CAN_recv);
 		usleep(1000);
 	}
+	all_motors_initialized = 1;
 	printf("Motor zero Positions:\n");
 	for(int i = 0;i<10;i++){
 		printf("Motor %d: %u\n",i+1,encoder_offsets[i]);
@@ -660,7 +414,7 @@ static void* update_1kHz( void * arg )
 				// do nothing
 				break;
 			case 1:
-				set_kp_kd_all(400,200);
+				tello->set_kp_kd_all_motors(400,200);
 				handle_UDP_Commands();
 				break;
 			case 2:
@@ -673,9 +427,7 @@ static void* update_1kHz( void * arg )
 				break;
 			case 4:
 				//updateJointPositions();
-				// set_kp_kd_all(2000,600);
-				// moveMotors(motor_targets);
-				task_pd_control();
+
 				break;
 			default:
 				// do nothing
@@ -683,15 +435,15 @@ static void* update_1kHz( void * arg )
 		}
 		pthread_mutex_lock(&mutex_CAN_recv);
 		if(disableScheduled){
-			disable_all();
+			tello->disable_all_motors();
 			disableScheduled = false;
 		}
 		else if(enableScheduled){
-			enable_all();
+			tello->enable_all_motors();
 			enableScheduled = false;
 		}
 		else{
-			update_all_motors();
+			tello->update_all_motors();
 		}
 		pthread_mutex_unlock(&mutex_CAN_recv);
 		// Write update loop code above this line ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -701,7 +453,7 @@ static void* update_1kHz( void * arg )
 	return NULL;
 }
 
-// This callback handles CTRL+C Input
+// This callback handles CTRL+C and Segaults
 void signal_callback_handler(int signum){
 	fsm_state = 0;
 	if (signum == SIGINT) {
@@ -710,7 +462,7 @@ void signal_callback_handler(int signum){
     else if (signum == SIGSEGV) {
         printf('r',"Program crashed due to Seg Fault");
     }
-	disable_all();
+	tello->disable_all_motors();
 	printf('o',"Disable command set to all motors.\n");
 
 	// motion_log->close();
@@ -835,6 +587,7 @@ int main() {
 	tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 	tello->addPeriodicTask(&IMU_Comms, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL, "imu_task", TASK_CONSTANT_DELAY, 1000);
 	tello->addPeriodicTask(&update_1kHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, NULL, "update_task",TASK_CONSTANT_PERIOD, 1000);
+	tello->addPeriodicTask(&motor_monitor, SCHED_FIFO, 98, ISOLATED_CORE_1_THREAD_2, NULL, "monitor_task",TASK_CONSTANT_PERIOD, 1000);
 	
 	usleep(1000);
 	
@@ -899,16 +652,16 @@ int main() {
 				motorsRight = tello->joint_pos_to_motor_pos(jointsRight);
 
 
-				targets[0] = motor_pos_model_to_real(0, motorsLeft(0));
-				targets[1] = motor_pos_model_to_real(1, motorsLeft(1));
-				targets[2] = motor_pos_model_to_real(2, motorsLeft(2));
-				targets[3] = motor_pos_model_to_real(3, motorsLeft(3));
-				targets[4] = motor_pos_model_to_real(4, motorsLeft(4));
-				targets[5] = motor_pos_model_to_real(5, motorsRight(0));
-				targets[6] = motor_pos_model_to_real(6, motorsRight(1));
-				targets[7] = motor_pos_model_to_real(7, motorsRight(2));
-				targets[8] = motor_pos_model_to_real(8, motorsRight(3));
-				targets[9] = motor_pos_model_to_real(9, motorsRight(4));
+				targets[0] = tello->motor_pos_model_to_real(0, motorsLeft(0));
+				targets[1] = tello->motor_pos_model_to_real(1, motorsLeft(1));
+				targets[2] = tello->motor_pos_model_to_real(2, motorsLeft(2));
+				targets[3] = tello->motor_pos_model_to_real(3, motorsLeft(3));
+				targets[4] = tello->motor_pos_model_to_real(4, motorsLeft(4));
+				targets[5] = tello->motor_pos_model_to_real(5, motorsRight(0));
+				targets[6] = tello->motor_pos_model_to_real(6, motorsRight(1));
+				targets[7] = tello->motor_pos_model_to_real(7, motorsRight(2));
+				targets[8] = tello->motor_pos_model_to_real(8, motorsRight(3));
+				targets[9] = tello->motor_pos_model_to_real(9, motorsRight(4));
 				motor_targets = targets;
 				fsm_state = 4;
 				

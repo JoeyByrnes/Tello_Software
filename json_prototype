@@ -1,0 +1,27 @@
+Robot
+- KinematicModel: "Biped"
+- FootContactModel: "Line"
+- Computer
+-- Isolated cores: [4,5,6,7]
+- Sensors
+-- IMU
+--- type: vn100
+--- port: "/dev/imu"
+- Leg
+-- Side: "Left"
+-- Motor_CAN_IDs: [1,2,3,4,5]
+-- Motor_Directions: [1,-1,1,1,-1]
+-- Motor_zero_offsets_Enc: [0,0,0,0,0,0,0,0,0,0]
+-- motor_position_limits_Deg: [ [0,65535],[0,65535],[0,65535],[0,65535],[0,65535] ]
+-- joint_position_limits_Deg: [ [-65.0,65.0],[-65.0,65.0],[-65.0,65.0],[-65.0,65.0],[-65.0,65.0] ]
+-- motor_torque_limits_Nm: [5,5,5,5,5]
+-- joint_torque_limits_Nm: [5,5,5,5,5]
+- Leg
+-- Side: "Right"
+-- Motor_CAN_IDs: [5,6,7,8,9]
+-- Motor_Directions: [1,-1,1,1,-1]
+-- Motor_zero_offsets_Enc: [0,0,0,0,0,0,0,0,0,0]
+-- motor_position_limits_Deg: [ [0,65535],[0,65535],[0,65535],[0,65535],[0,65535] ]
+-- joint_position_limits_Deg: [ [-65.0,65.0],[-65.0,65.0],[-65.0,65.0],[-65.0,65.0],[-65.0,65.0] ]
+-- motor_torque_limits_Nm: [5,5,5,5,5]
+-- joint_torque_limits_Nm: [5,5,5,5,5]

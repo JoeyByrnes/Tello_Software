@@ -87,6 +87,7 @@ void process_motor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot)
 
 	encoders[id-1] = pos;
 	robot->motors[id-1]->updateState(pos,vel,cur);
+	robot->motor_timeouts[id-1] = 0;
 
 }
 
@@ -259,7 +260,6 @@ void* IMU_Comms( void * arg ){
 
 	vs.writeReferenceFrameRotation(vnMat, true);
 
-
 	VpeEnable en;
 	 // Set the VPE basic control configuration
     VpeBasicControlRegister vpeControl;
@@ -268,13 +268,6 @@ void* IMU_Comms( void * arg ){
     vpeControl.filteringMode = VPEMODE_MODE1;
 
     vs.writeVpeBasicControl(vpeControl);
-
-	// vn::math::mat3f rot = vs.readReferenceFrameRotation();
-
-	// for(int i=0;i<9;i++){
-	// 	printf(" %f ", rot.e[i]);
-	// }
-	// printf("\n");
 
 	// Configure binary output message
 	BinaryOutputRegister bor(
@@ -304,7 +297,6 @@ void* IMU_Comms( void * arg ){
 
 	// read IMU
 	while(1){
-
 		usleep(2500);
 	}
 

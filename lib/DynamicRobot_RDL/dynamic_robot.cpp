@@ -279,7 +279,6 @@ void DynamicRobot::jointPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd 
 	
 	// Add the motor torques from the Joint PD as feedforward commands
 	add_motor_torques(motor_torques);
-
 }
 
 // pos/vel is 12x1 vector: (3x1) left front, (3x1) left back, (3x1) right front, (3x1) right back

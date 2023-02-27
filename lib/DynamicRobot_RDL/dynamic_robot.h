@@ -24,6 +24,7 @@
 #include <chrono>
 #include <math.h>
 
+#include "json.hpp"
 #include "../Eigen/Dense"
 #include "cheetah_motor.h"
 // #include "comms.h"
@@ -32,6 +33,8 @@
 // #include "utilities.h"
 // #include "kinematics.h"
 #include "vn/sensors.h"
+#include "vn/compositedata.h"
+#include "vn/util.h"
 
 using namespace Eigen;
 
@@ -129,15 +132,12 @@ namespace RoboDesignLab {
         VectorXd_function _fk_joint2task;
 
         // Sensors
+        
 
         // Actuators
         BipedActuatorTree _actuators;
         int _leg_DoF; // automatically set from actuator tree
         int _num_actuators;
-        Matrix<double,10,1> _motor_kp;
-        Matrix<double,10,1> _motor_kd;
-        Matrix<double,10,1> _joint_kp;
-        Matrix<double,10,1> _joint_kd;
     };
 }
 

@@ -86,7 +86,7 @@ uint16_t encoder_positions[10];
 uint16_t encoder_offsets[10]  = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int motor_directions[10] =      { 1,-1, 1, 1,-1, 1,-1, 1, 1,-1};
 								//1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-int motor_zeros[10] = {35530,35265,33314,34257-KNEE_OFFSET_ENC,33896+KNEE_OFFSET_ENC,32746,35253,34193,33789-KNEE_OFFSET_ENC,34193+KNEE_OFFSET_ENC}; // offsets handled
+int motor_zeros[10] = {35530,35265,33314,34257-KNEE_OFFSET_ENC,33896+KNEE_OFFSET_ENC,32746,35253,34193,34832-KNEE_OFFSET_ENC,34300+KNEE_OFFSET_ENC}; // offsets handled
 int motor_init_config[10] = {35540, 36558, 31813, 38599, 31811, 32767, 36712, 32718, 38436, 33335};
 int motor_initialized[10] = {0,0,0,0,0,0,0,0,0,0};
 int motor_move_complete[10] = {0,0,0,0,0,0,0,0,0,0};
@@ -102,6 +102,7 @@ vn::math::vec3f tello_ypr;
 double joint_setpoints_deg[10] = {0,0,0,0,0,0,0,0,0,0};
 
 int gain_adjustment = 0;
+int task_gain_adjustment = 0;
 double ANKLE_COMP = 0;
 int x_offset = 0;
 int z_offset = 0;
@@ -312,45 +313,41 @@ void run_tello_pd()
 {
 	pthread_mutex_lock(&mutex_CAN_recv);
 	int joint_kp = 1000;
-	int joint_kd = 0;
-	VectorXd kp_vec_joint = VectorXd::Ones(10)*joint_kp;
+	int joint_kd = 10;
+	VectorXd kp_vec_joint = VectorXd::Ones(10)*(joint_kp+gain_adjustment);
 	VectorXd kd_vec_joint = VectorXd::Ones(10)*joint_kd;
 
 	MatrixXd kp_mat_joint = kp_vec_joint.asDiagonal();
 	MatrixXd kd_mat_joint = kd_vec_joint.asDiagonal();
 
 	int motor_kp = 0;
-	int motor_kd = 500;
+	int motor_kd = 1000;
 	VectorXd kp_vec_motor = VectorXd::Ones(10)*motor_kp;
 	VectorXd kd_vec_motor = VectorXd::Ones(10)*motor_kd;
-
-	VectorXd joint_vel_desired = VectorXd::Zero(10);
-
-	// tello->jointPD(joint_pos_desired,joint_vel_desired,kp_mat_joint,kd_mat_joint,kp_vec_motor,kd_vec_motor);
 
 	VectorXd vel_desired = VectorXd::Zero(12);
 
 	if(move_up_down){
 			h_offset+=delta_task;
 	}
-	if(h_offset > 100){
-		delta_task = -0.08;
+	if(h_offset > 70){
+		delta_task = -0.02;
 	}
 	if(h_offset < 0){
-		delta_task = 0.08;
+		delta_task = 0.02;
 	}
-	Vector3d target(0, 0, -0.480+(h_offset/1000.0));
+	Vector3d target(0, 0, -0.510+(h_offset/1000.0));
 
 	double foot_len_half = 0.060;
-	Vector3d target_front_left(foot_len_half+target(0), target(1), target(2));
-	Vector3d target_back_left(-foot_len_half+target(0), target(1), target(2));
-	Vector3d target_front_right(foot_len_half+target(0), target(1), target(2));
-	Vector3d target_back_right(-foot_len_half+target(0), target(1), target(2));
+	Vector3d target_front_left(foot_len_half+target(0), target(1)+0.050, target(2)+(tello_ypr[1]/4000.0));
+	Vector3d target_back_left(-foot_len_half+target(0), target(1)+0.050, target(2)-(tello_ypr[1]/4000.0));
+	Vector3d target_front_right(foot_len_half+target(0), target(1)-0.050, target(2)+(tello_ypr[1]/4000.0));
+	Vector3d target_back_right(-foot_len_half+target(0), target(1)-0.050, target(2)-(tello_ypr[1]/4000.0));
 
 	VectorXd pos_desired(12);
 	pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
 
-	int task_kp = 1000+gain_adjustment;
+	int task_kp = 0;
 	int task_kd = 0;
 	VectorXd kp_vec_task = VectorXd::Ones(12)*task_kp;
 	VectorXd kd_vec_task = VectorXd::Ones(12)*task_kd;
@@ -366,6 +363,9 @@ void run_tello_pd()
 static void* update_1kHz( void * arg )
 {
 	startTimer();
+	
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	int period = std::get<2>(*arg_tuple_ptr);
 
 	int core = sched_getcpu();
 	int policy;
@@ -478,7 +478,7 @@ static void* update_1kHz( void * arg )
 		}
 		pthread_mutex_unlock(&mutex_CAN_recv);
 		// Write update loop code above this line ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-		handle_end_of_periodic_task(next);
+		handle_end_of_periodic_task(next,period);
 	}
 
 	return NULL;
@@ -646,13 +646,13 @@ int main() {
 				move_up_down = !move_up_down;
 				printf("Running Move Up-Down\n");
 				break;
-			case '2':
-				z_offset+=5;
-				printf("Z Offset: %d \n", z_offset);
+			case '1':
+				task_gain_adjustment-=1000;
+				printf("Task Gain: %d \n", task_gain_adjustment);
 				break;
-			case '4':
-				x_offset+=5;
-				printf("X Offset: %d \n", x_offset);
+			case '2':
+				task_gain_adjustment+=1000;
+				printf("Task Gain: %d \n", task_gain_adjustment);
 				break;
 			case '6':
 				x_offset-=5;

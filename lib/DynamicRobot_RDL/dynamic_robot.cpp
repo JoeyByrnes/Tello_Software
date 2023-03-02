@@ -267,7 +267,7 @@ void DynamicRobot::jointPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd 
 	VectorXd joint_velocities = this->getJointVelocities();
 
 	// Calculate Joint PD
-	VectorXd joint_torques = calc_pd_effort(joint_positions,joint_velocities,pos_desired,vel_desired,j_kp,j_kd);
+	VectorXd joint_torques = calc_pd(joint_positions,joint_velocities,pos_desired,vel_desired,j_kp,j_kd);
 
 	// Convert joint PD torques to motor torques
 	VectorXd motor_torques_from_joint_pd = this->joint_torque_to_motor_torque(joint_torques);
@@ -301,7 +301,12 @@ void DynamicRobot::taskPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd t
     VectorXd task_velocities = joint_vel_to_task_vel(joint_velocities);
 
     // Calculate Task PD
-    VectorXd task_forces = calc_pd_effort(task_positions,task_velocities,pos_desired,vel_desired,t_kp,t_kd);
+    VectorXd task_forces = calc_pd(task_positions,task_velocities,pos_desired,vel_desired,t_kp,t_kd);
+
+    task_forces[2] -= 5000; // - - 2 - - 5 - - 8 - - 11
+    task_forces[5] -= 5000;
+    task_forces[8] -= 5000;
+    task_forces[11] -= 5000;
 
     // // Get joint torques from task forces
     VectorXd joint_torques = this->task_force_to_joint_torque(task_forces);
@@ -318,21 +323,9 @@ void DynamicRobot::taskPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd t
     // Add the motor torques from the Task PD as feedforward commands
     motor_torques = _motor_direction_matrix*motor_torques;
     add_motor_torques(motor_torques);
-
-    // if(debug_print_idx%200==0)
-    // {
-    //     printf("Joint des: %f,\t %f,\t %f,\t %f,\t %f       \r",    joint_pos_desired[0],
-    //                                                                 joint_pos_desired[1],
-    //                                                                 joint_pos_desired[2],
-    //                                                                 joint_pos_desired[3],
-    //                                                                 joint_pos_desired[4]);
-    //     std::cout.flush();
-    // }
-    // debug_print_idx++;
-
 }
 
-Eigen::VectorXd DynamicRobot::calc_pd_effort(VectorXd position, VectorXd velocity, VectorXd desiredPosition, VectorXd desiredVelocity, MatrixXd Kp, MatrixXd Kd) 
+Eigen::VectorXd DynamicRobot::calc_pd(VectorXd position, VectorXd velocity, VectorXd desiredPosition, VectorXd desiredVelocity, MatrixXd Kp, MatrixXd Kd) 
 {
   // Compute position error
   Eigen::VectorXd positionError = desiredPosition - position;

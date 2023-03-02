@@ -304,6 +304,10 @@ void updateJointPositions()
 	motor_targets[9] = tello->motor_pos_model_to_real(9, motors(9));
 }
 
+bool move_up_down = false;
+int force_ctrl = 0;
+double delta_task = 0.02;
+double h_offset = 0;
 void run_tello_pd()
 {
 	pthread_mutex_lock(&mutex_CAN_recv);
@@ -325,8 +329,19 @@ void run_tello_pd()
 	// tello->jointPD(joint_pos_desired,joint_vel_desired,kp_mat_joint,kd_mat_joint,kp_vec_motor,kd_vec_motor);
 
 	VectorXd vel_desired = VectorXd::Zero(12);
-	Vector3d target(0, 0, -0.450);
-	int foot_len_half = 0.060;
+
+	if(move_up_down){
+			h_offset+=delta_task;
+	}
+	if(h_offset > 100){
+		delta_task = -0.08;
+	}
+	if(h_offset < 0){
+		delta_task = 0.08;
+	}
+	Vector3d target(0, 0, -0.480+(h_offset/1000.0));
+
+	double foot_len_half = 0.060;
 	Vector3d target_front_left(foot_len_half+target(0), target(1), target(2));
 	Vector3d target_back_left(-foot_len_half+target(0), target(1), target(2));
 	Vector3d target_front_right(foot_len_half+target(0), target(1), target(2));
@@ -335,7 +350,7 @@ void run_tello_pd()
 	VectorXd pos_desired(12);
 	pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
 
-	int task_kp = 0;
+	int task_kp = 1000+gain_adjustment;
 	int task_kd = 0;
 	VectorXd kp_vec_task = VectorXd::Ones(12)*task_kp;
 	VectorXd kd_vec_task = VectorXd::Ones(12)*task_kd;
@@ -627,9 +642,9 @@ int main() {
 		char choice;
 		std::cin >> choice;
 		switch(choice){
-			case '8':
-				z_offset-=5;
-				printf("Z Offset: %d \n", z_offset);
+			case 'D':
+				move_up_down = !move_up_down;
+				printf("Running Move Up-Down\n");
 				break;
 			case '2':
 				z_offset+=5;

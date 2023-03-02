@@ -269,13 +269,6 @@ void DynamicRobot::jointPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd 
 	// Calculate Joint PD
 	VectorXd joint_torques = calc_pd_effort(joint_positions,joint_velocities,pos_desired,vel_desired,j_kp,j_kd);
 
-    if(debug_print_idx%200==0)
-    {
-        printf("Knee:  pos des: %f,\t\t tau: %f\r", pos_desired[3]/DEGREES_TO_RADIANS, joint_torques[8]);
-        std::cout.flush();
-    }
-    debug_print_idx++;
-
 	// Convert joint PD torques to motor torques
 	VectorXd motor_torques_from_joint_pd = this->joint_torque_to_motor_torque(joint_torques);
 
@@ -325,6 +318,17 @@ void DynamicRobot::taskPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd t
     // Add the motor torques from the Task PD as feedforward commands
     motor_torques = _motor_direction_matrix*motor_torques;
     add_motor_torques(motor_torques);
+
+    // if(debug_print_idx%200==0)
+    // {
+    //     printf("Joint des: %f,\t %f,\t %f,\t %f,\t %f       \r",    joint_pos_desired[0],
+    //                                                                 joint_pos_desired[1],
+    //                                                                 joint_pos_desired[2],
+    //                                                                 joint_pos_desired[3],
+    //                                                                 joint_pos_desired[4]);
+    //     std::cout.flush();
+    // }
+    // debug_print_idx++;
 
 }
 

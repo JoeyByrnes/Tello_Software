@@ -2,6 +2,41 @@
 
 using namespace Eigen;
 
+
+static double atan2_safe(double u0, double u1)
+{
+  double y;
+  int i;
+  int i1;
+  if (std::isnan(u0) || std::isnan(u1)) {
+    y = 0;
+  } 
+  else if (std::isinf(u0) && std::isinf(u1)) {
+    if (u0 > 0.0) {
+      i = 1;
+    } else {
+      i = -1;
+    }
+    if (u1 > 0.0) {
+      i1 = 1;
+    } else {
+      i1 = -1;
+    }
+    y = atan2(i, i1);
+  } else if (u1 == 0.0) {
+    if (u0 > 0.0) {
+      y = M_PI / 2.0;
+    } else if (u0 < 0.0) {
+      y = -(M_PI / 2.0);
+    } else {
+      y = 0.0;
+    }
+  } else {
+    y = atan2(u0, u1);
+  }
+  return y;
+}
+
 MatrixXd dash_kin::fcn_HTM0lf1(VectorXd q, VectorXd p)
 {
     MatrixXd eigen_HTM0lf1 = MatrixXd::Zero(4,4);
@@ -1600,7 +1635,7 @@ double dash_kin::Paden_Kahan_subproblem1(const Vector3d& p_PK_subp1, const Vecto
     Vector3d v_prime = v - omega_PK_subp1 * (omega_PK_subp1.transpose() * v);
 
     // compute theta (i.e., solution)
-    double theta_PK_subp1 = atan2(omega_PK_subp1.transpose() * u_prime.cross(v_prime), u_prime.dot(v_prime));
+    double theta_PK_subp1 = atan2_safe(omega_PK_subp1.transpose() * u_prime.cross(v_prime), u_prime.dot(v_prime));
     return theta_PK_subp1;
 }
 

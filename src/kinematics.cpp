@@ -206,8 +206,8 @@ Eigen::VectorXd tello_leg_IK_biped(const Eigen::VectorXd& task_positions)
   VectorXd lf2_right = task_positions.segment(9,3);
 
   SRB_Params srb_params;
-  srb_params.q1_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
-  srb_params.q2_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
+  srb_params.q1_lim = Vector2d(-20*DEGREE_TO_RADIANS,20*DEGREE_TO_RADIANS);
+  srb_params.q2_lim = Vector2d(-15*DEGREE_TO_RADIANS,15*DEGREE_TO_RADIANS);
   srb_params.thigh_length = 0.2286;
   srb_params.calf_length = 0.260;
   srb_params.heel_length = 0.0485;

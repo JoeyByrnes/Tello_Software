@@ -101,13 +101,13 @@ namespace RoboDesignLab {
         VectorXd getJointPositions();
 
         void motorPD(VectorXd pos_desired, VectorXd vel_desired, VectorXd kp, VectorXd kd);
-        void jointPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd j_kp, MatrixXd j_kd, MatrixXd m_kp, MatrixXd m_kd);
-        void taskPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd t_kp, MatrixXd t_kd, MatrixXd j_kp, MatrixXd j_kd, MatrixXd m_kp, MatrixXd m_kd);
+        void jointPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd j_kp, MatrixXd j_kd, VectorXd m_kp, VectorXd m_kd);
+        void taskPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd t_kp, MatrixXd t_kd, MatrixXd j_kp, MatrixXd j_kd, VectorXd m_kp, VectorXd m_kd);
         VectorXd calc_pd_effort(VectorXd position, VectorXd velocity, VectorXd desiredPosition, VectorXd desiredVelocity, MatrixXd Kp, MatrixXd Kd);
 
         // Actuators
-        int motor_pos_model_to_real(int id, double joint_position_radians);
-        double motor_pos_real_to_model(int id, int motor_position_units);
+        int motor_pos_model_to_real(int id, double actuator_position_radians);
+        double motor_pos_real_to_model(int id, int motor_position_enc_counts);
         void enable_all_motors();
         void disable_all_motors();
         void set_kp_kd_all_motors(uint16_t kp, uint16_t kd);
@@ -116,6 +116,7 @@ namespace RoboDesignLab {
         void add_motor_torques(VectorXd motor_torques);
         CheetahMotor* motors[10]; // move this to private soon
         int motor_directions[10]; // temporary, need to change
+        MatrixXd _motor_direction_matrix;
         int motor_zeros[10];
         int motor_timeouts[10] = {0,0,0,0,0,0,0,0,0,0};
         int motor_connected[10] = {0,0,0,0,0,0,0,0,0,0};

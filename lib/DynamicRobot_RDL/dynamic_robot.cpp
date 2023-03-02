@@ -5,11 +5,13 @@ using namespace Eigen;
 
 extern pthread_mutex_t mutex_CAN_recv;
 
+uint64_t debug_print_idx = 0;
+
 DynamicRobot::DynamicRobot(BipedActuatorTree actuators)
 { 
     this->_actuators = actuators; 
-    _leg_DoF = _actuators.leftLeg.size();
-    _num_actuators = _actuators.leftLeg.size()+_actuators.rightLeg.size();
+    _leg_DoF = 5;
+    _num_actuators = 10;
 }
 
 Eigen::VectorXd DynamicRobot::motor_vel_to_joint_vel(Eigen::VectorXd motor_velocites)
@@ -68,45 +70,43 @@ Eigen::VectorXd DynamicRobot::joint_vel_to_task_vel(Eigen::VectorXd joint_veloci
     return task_velocities;
 }
 
-Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel(Eigen::VectorXd task_velocites_front, Eigen::VectorXd task_velocites_back )
-{
-   // return this->jacobian_task_inverse(this->getJointPositions())*task_velocites;
-   Eigen::MatrixXd J_front = this->jacobian_task_lf_front(this->getJointPositions());
-   Eigen::MatrixXd J_back = this->jacobian_task_lf_back(this->getJointPositions());
-   Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> cod_front(J_front);
-   Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> cod_back(J_back);
-
-   Eigen::MatrixXd J_front_inverse = cod_front.pseudoInverse();
-   Eigen::MatrixXd J_back_inverse = cod_back.pseudoInverse();
-
-   Eigen::VectorXd joint_vels_from_front = J_front_inverse*task_velocites_front;
-   Eigen::VectorXd joint_vels_from_back = J_back_inverse*task_velocites_back;
-
-   return joint_vels_from_front + joint_vels_from_back; // TODO: ask Guillermo, this seems wrong to add them this way
-}
 Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel(Eigen::VectorXd task_velocities)
 {
-    Eigen::VectorXd task_velocites_front_left = task_velocities.segment(0,3);
-    Eigen::VectorXd task_velocites_back_left = task_velocities.segment(3,3);
-    Eigen::VectorXd task_velocites_front_right = task_velocities.segment(6,3);
-    Eigen::VectorXd task_velocites_back_right = task_velocities.segment(9,3);
+    Eigen::VectorXd task_velocites_front_left(6);
+    task_velocites_front_left << task_velocities.segment(0,3), 0, 0, 0;
+    Eigen::VectorXd task_velocites_back_left(6);
+    task_velocites_back_left << task_velocities.segment(3,3), 0, 0, 0;
+    Eigen::VectorXd task_velocites_front_right(6);
+    task_velocites_front_right << task_velocities.segment(6,3), 0, 0, 0;
+    Eigen::VectorXd task_velocites_back_right(6);
+    task_velocites_back_right << task_velocities.segment(9,3), 0, 0, 0;
 
     // return this->jacobian_task_inverse(this->getJointPositions())*task_velocites;
-    Eigen::MatrixXd J_front = this->jacobian_task_lf_front(this->getJointPositions());
-    Eigen::MatrixXd J_back = this->jacobian_task_lf_back(this->getJointPositions());
-    Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> cod_front(J_front);
-    Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> cod_back(J_back);
+    Eigen::MatrixXd J_front_left = this->jacobian_task_lf_front(this->getJointPositions().segment(0,5));
+    Eigen::MatrixXd J_back_left = this->jacobian_task_lf_back(this->getJointPositions().segment(0,5));
 
-    Eigen::MatrixXd J_front_inverse = cod_front.pseudoInverse();
-    Eigen::MatrixXd J_back_inverse = cod_back.pseudoInverse();
+    Eigen::MatrixXd J_front_right = this->jacobian_task_lf_front(this->getJointPositions().segment(5,5));
+    Eigen::MatrixXd J_back_right = this->jacobian_task_lf_back(this->getJointPositions().segment(5,5));
 
-    Eigen::VectorXd joint_vels_from_front_left = J_front_inverse*task_velocites_front_left;
-    Eigen::VectorXd joint_vels_from_back_left = J_back_inverse*task_velocites_back_left;
-    Eigen::VectorXd joint_vels_from_front_right = J_front_inverse*task_velocites_front_right;
-    Eigen::VectorXd joint_vels_from_back_right = J_back_inverse*task_velocites_back_right;
+    Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> cod_front_left(J_front_left);
+    Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> cod_back_left(J_back_left);
+    Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> cod_front_right(J_front_right);
+    Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> cod_back_right(J_back_right);
+
+    Eigen::MatrixXd J_front_left_inverse = cod_front_left.pseudoInverse();
+    Eigen::MatrixXd J_back_left_inverse = cod_back_left.pseudoInverse();
+
+    Eigen::MatrixXd J_front_right_inverse = cod_front_right.pseudoInverse();
+    Eigen::MatrixXd J_back_right_inverse = cod_back_right.pseudoInverse();
+
+    Eigen::VectorXd joint_vels_from_front_left = J_front_left_inverse*task_velocites_front_left;
+    Eigen::VectorXd joint_vels_from_back_left = J_back_left_inverse*task_velocites_back_left;
+    Eigen::VectorXd joint_vels_from_front_right = J_front_right_inverse*task_velocites_front_right;
+    Eigen::VectorXd joint_vels_from_back_right = J_back_right_inverse*task_velocites_back_right;
 
     Eigen::VectorXd joint_velocities(10);
     joint_velocities << joint_vels_from_front_left + joint_vels_from_back_left, joint_vels_from_front_right + joint_vels_from_back_right;
+    return joint_velocities;
 }
 
 Eigen::VectorXd DynamicRobot::motor_torque_to_joint_torque(Eigen::VectorXd motor_torques)
@@ -213,14 +213,14 @@ void DynamicRobot::addPeriodicTask(void *(*start_routine)(void *), int sched_pol
 }
 
 
-int DynamicRobot::motor_pos_model_to_real(int id, double joint_position_radians)
+int DynamicRobot::motor_pos_model_to_real(int id, double actuator_position_radians)
 {
-    return (int)((float)( joint_position_radians)*((float)(this->motor_directions[id])/ENCODER_TO_RADIANS))+this->motor_zeros[id];
+    return (int)((float)( actuator_position_radians)*((float)(this->motor_directions[id])/ENCODER_TO_RADIANS))+this->motor_zeros[id];
 }
 
-double DynamicRobot::motor_pos_real_to_model(int id, int motor_position_units)
+double DynamicRobot::motor_pos_real_to_model(int id, int motor_position_enc_counts)
 {
-    return ((double)(motor_position_units - this->motor_zeros[id]))*((double)(this->motor_directions[id]))*ENCODER_TO_RADIANS;
+    return ((double)(motor_position_enc_counts - this->motor_zeros[id]))*((double)(this->motor_directions[id]))*ENCODER_TO_RADIANS;
 }
 
 Eigen::VectorXd DynamicRobot::getJointPositions()
@@ -239,10 +239,11 @@ Eigen::VectorXd DynamicRobot::getJointPositions()
 }
 Eigen::VectorXd DynamicRobot::getJointVelocities()
 {
-	Matrix<double,5,1> motor_velocities_left;
-	Matrix<double,5,1> motor_velocities_right;
     VectorXd motor_velocities(10);
-	motor_velocities << motor_velocities_left, motor_velocities_right;
+	for(int i=0; i<10; i++)
+    {
+        motor_velocities(i) = (this->motors[i]->getMotorState().vel*VELOCITY_TO_RADIANS_PER_SEC-32.484131)*this->motor_directions[i];
+    }
 	VectorXd joint_velocities = this->motor_vel_to_joint_vel(motor_velocities);
     return joint_velocities;
 }
@@ -259,7 +260,7 @@ void DynamicRobot::motorPD(VectorXd pos_desired, VectorXd vel_desired, VectorXd 
     }
 }
 
-void DynamicRobot::jointPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd j_kp, MatrixXd j_kd, MatrixXd m_kp, MatrixXd m_kd)
+void DynamicRobot::jointPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd j_kp, MatrixXd j_kd, VectorXd m_kp, VectorXd m_kd)
 {
 	// Get joint positions and velocities
 	VectorXd joint_positions = this->getJointPositions();
@@ -268,21 +269,35 @@ void DynamicRobot::jointPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd 
 	// Calculate Joint PD
 	VectorXd joint_torques = calc_pd_effort(joint_positions,joint_velocities,pos_desired,vel_desired,j_kp,j_kd);
 
+    if(debug_print_idx%200==0)
+    {
+        printf("Knee:  pos des: %f,\t\t tau: %f\r", pos_desired[3]/DEGREES_TO_RADIANS, joint_torques[8]);
+        std::cout.flush();
+    }
+    debug_print_idx++;
+
 	// Convert joint PD torques to motor torques
-	VectorXd motor_torques = this->joint_torque_to_motor_torque(joint_torques);
+	VectorXd motor_torques_from_joint_pd = this->joint_torque_to_motor_torque(joint_torques);
 
     // Use inverse kinematics to calculate motor PD
     VectorXd motor_pos_desired = this->joint_pos_to_motor_pos(pos_desired);
-    VectorXd motor_vel_desired = this->joint_pos_to_motor_pos(vel_desired);
+    VectorXd motor_vel_desired = VectorXd::Zero(10);//this->joint_vel_to_motor_vel(vel_desired);
 
-    this->motorPD(motor_pos_desired, motor_vel_desired,m_kp,m_kd);
+    VectorXd motor_pos_desired_real(10);
+    for(int i=0; i<10; i++){
+        motor_pos_desired_real[i] = motor_pos_model_to_real(i, motor_pos_desired[i]);
+        motor_vel_desired[i] = (int)((double)(motor_vel_desired[i]*motor_directions[i])/VELOCITY_TO_RADIANS_PER_SEC);
+    }
+    this->motorPD(motor_pos_desired_real, motor_vel_desired,m_kp,m_kd);
 	
 	// Add the motor torques from the Joint PD as feedforward commands
-	add_motor_torques(motor_torques);
+    motor_torques_from_joint_pd = _motor_direction_matrix*motor_torques_from_joint_pd;
+
+	set_motor_torques(motor_torques_from_joint_pd);
 }
 
 // pos/vel is 12x1 vector: (3x1) left front, (3x1) left back, (3x1) right front, (3x1) right back
-void DynamicRobot::taskPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd t_kp, MatrixXd t_kd, MatrixXd j_kp, MatrixXd j_kd, MatrixXd m_kp, MatrixXd m_kd)
+void DynamicRobot::taskPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd t_kp, MatrixXd t_kd, MatrixXd j_kp, MatrixXd j_kd, VectorXd m_kp, VectorXd m_kd)
 {
     // Get joint positions and velocities
 	VectorXd joint_positions = this->getJointPositions();
@@ -295,12 +310,12 @@ void DynamicRobot::taskPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd t
     // Calculate Task PD
     VectorXd task_forces = calc_pd_effort(task_positions,task_velocities,pos_desired,vel_desired,t_kp,t_kd);
 
-    // Get joint torques from task forces
+    // // Get joint torques from task forces
     VectorXd joint_torques = this->task_force_to_joint_torque(task_forces);
 
-    // Use inverse kinematics to calculate joint pd
+    // // Use inverse kinematics to calculate joint pd
     VectorXd joint_pos_desired = this->task_pos_to_joint_pos(pos_desired);
-    VectorXd joint_vel_desired = this->task_vel_to_joint_vel(vel_desired);
+    VectorXd joint_vel_desired = VectorXd::Zero(10); //this->task_vel_to_joint_vel(vel_desired);
 
     jointPD(joint_pos_desired,joint_vel_desired,j_kp,j_kd,m_kp,m_kd);
 
@@ -308,6 +323,7 @@ void DynamicRobot::taskPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd t
 	VectorXd motor_torques = this->joint_torque_to_motor_torque(joint_torques);
 
     // Add the motor torques from the Task PD as feedforward commands
+    motor_torques = _motor_direction_matrix*motor_torques;
     add_motor_torques(motor_torques);
 
 }

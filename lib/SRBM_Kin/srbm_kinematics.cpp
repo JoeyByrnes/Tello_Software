@@ -1604,11 +1604,11 @@ double dash_kin::Paden_Kahan_subproblem1(const Vector3d& p_PK_subp1, const Vecto
     return theta_PK_subp1;
 }
 
-VectorXd dash_kin::SRB_Leg_IK(SRB_Params& srb_params, Vector3d& lf1, Vector3d& lf2)
+VectorXd dash_kin::SRB_Leg_IK(SRB_Params& srb_params, VectorXd& lf1, VectorXd& lf2)
 {
     // This function computes the joint positions for a 5 DoF (hip = 3, knee = 1, ankle = 1) serial revolute-joint bipedal robot leg.
     // The inputs are the end-effector (line foot front and back) positions in the body frame.
-
+    
     // Parameters
     Vector2d q1_lim = srb_params.q1_lim; // ab joint limit
     Vector2d q2_lim = srb_params.q2_lim; // hip joint limit
@@ -1621,24 +1621,24 @@ VectorXd dash_kin::SRB_Leg_IK(SRB_Params& srb_params, Vector3d& lf1, Vector3d& l
     // unit vectors perpendicular to foot plane in world frame and body frame
     Vector3d n1(0, 1, 0);
     Vector3d n2 = (dash_utils::hatMap(lf1)*lf2)/(dash_utils::hatMap(lf1)*lf2).norm();
-
+    
     // Solve Paden_Kahan_subproblem2 to get q1 and q2 (we get two solutions --
     // only one is correct)
     // n2 = Rbh*n1
     // Rbh = rz(q1)*rx(q2)
     Vector2d sol1, sol2;
     Paden_Kahan_subproblem2(sol1, sol2, n1, n2, Vector3d::Zero(), Vector3d(0, 0, 1), Vector3d(1, 0, 0));
-
+    
     // Asses two solutions
     VectorXd sol = Assess_PKsubp2_sols(sol1, sol2, n1, n2, q1_lim, q2_lim);
     double q1 = sol(0);
     double q2 = sol(1);
-
+    
     // convert to new hip frame before thigh angle (q3)
     Matrix3d Rbh = dash_utils::rz(q1)*dash_utils::rx(q2);
     Vector3d h2lff_h_p = Rbh.transpose() * lf1;
     Vector3d h2lfb_h_p = Rbh.transpose() * lf2;
-
+    
     // thigh (q3), calf (q4), and ankle (q5) joint angles
 
     // calculations
@@ -1652,14 +1652,14 @@ VectorXd dash_kin::SRB_Leg_IK(SRB_Params& srb_params, Vector3d& lf1, Vector3d& l
     Vector3d h2mf_p = h2lfb_h_p + lfb2mf_p;
     Vector3d h2a_p = h2mf_p + mf2a_p;
     double h2a_l = h2a_p.norm();
-
+    
     // HKA triangle angles
     double theta = acos((pow(h2a_l, 2) - pow(thigh_length, 2) - pow(calf_length, 2)) / (-2 * thigh_length * calf_length));
     double alpha = acos((pow(calf_length, 2) - pow(thigh_length, 2) - pow(h2a_l, 2)) / (-2 * thigh_length * h2a_l));
 
     // HBA triangle angle
     double beta = atan(h2a_p(0) / h2a_p(2));
-
+    
     // calf (knee) joint angle (q4) -- always greater than 0!!
     double q4 = M_PI - theta;
 
@@ -1679,7 +1679,7 @@ VectorXd dash_kin::SRB_Leg_IK(SRB_Params& srb_params, Vector3d& lf1, Vector3d& l
 
     // KAS triangle angle
     double psi = acos(a2k_p.dot(mf2a_p) / (heel_length * calf_length));
-
+    
     // ankle joint angle magnitude
     double q5_magnitude = M_PI - psi;
 
@@ -1705,8 +1705,8 @@ VectorXd dash_kin::SRB_Leg_IK(SRB_Params& srb_params, Vector3d& lf1, Vector3d& l
 
 VectorXd dash_kin::Assess_PKsubp2_sols(Vector2d sol1,Vector2d sol2,Vector3d n1,Vector3d n2,Vector2d q1_lim,Vector2d q2_lim)
 {
-    double q1_sol1 = sol1(1);
-    double q2_sol1 = sol1(2);
+    double q1_sol1 = sol1(0);
+    double q2_sol1 = sol1(1);
     Matrix3d rz_q1_sol1;
     rz_q1_sol1 << cos(q1_sol1), -sin(q1_sol1), 0,
                 sin(q1_sol1), cos(q1_sol1), 0,
@@ -1719,8 +1719,8 @@ VectorXd dash_kin::Assess_PKsubp2_sols(Vector2d sol1,Vector2d sol2,Vector3d n1,V
 
     Matrix3d Rbh_sol1 = rz_q1_sol1 * rx_q2_sol1;
 
-    double q1_sol2 = sol2(1);
-    double q2_sol2 = sol2(2);
+    double q1_sol2 = sol2(0);
+    double q2_sol2 = sol2(1);
     Matrix3d rz_q1_sol2;
     rz_q1_sol2 << cos(q1_sol2), -sin(q1_sol2), 0,
                 sin(q1_sol2), cos(q1_sol2), 0,
@@ -1771,7 +1771,7 @@ MatrixXd dash_kin::SRB_IK(SRB_Params srb_params, VectorXd CoM, MatrixXd R, Matri
     double W = srb_params.W;
     double CoM2H_z_dist = srb_params.CoM2H_z_dist;
     Eigen::Matrix4d HTMwd2com, HTMcom2hr, HTMcom2hl, HTMwd2hr, HTMwd2hl;
-    Eigen::Vector3d pc_curr, lf1R, lf2R, lf1L, lf2L, hr_wd_p, hl_wd_p, h2lf1R_wd_p, h2lf2R_wd_p, h2lf1L_wd_p, h2lf2L_wd_p;
+    Eigen::VectorXd pc_curr, lf1R, lf2R, lf1L, lf2L, hr_wd_p, hl_wd_p, h2lf1R_wd_p, h2lf2R_wd_p, h2lf1L_wd_p, h2lf2L_wd_p;
     Eigen::VectorXd q_leg_R, q_leg_L;
     Eigen::MatrixXd q_leg;
     Eigen::Matrix3d R_curr;

@@ -31,7 +31,7 @@ namespace  dash_kin
     double Paden_Kahan_subproblem1(const Vector3d& p_PK_subp1, const Vector3d& q_PK_subp1, const Vector3d& r_PK_subp1, const Vector3d& omega_PK_subp1);
     void Paden_Kahan_subproblem2(Vector2d& sol1_PK_subp2,Vector2d& sol2_PK_subp2, Vector3d p_PK_subp2, Vector3d q_PK_subp2, Vector3d r_PK_subp2, Vector3d omega1_PK_subp2, Vector3d omega2_PK_subp2);
 
-    VectorXd SRB_Leg_IK(SRB_Params& srb_params, Vector3d& lf1, Vector3d& lf2);
+    VectorXd SRB_Leg_IK(SRB_Params& srb_params, VectorXd& lf1, VectorXd& lf2);
     VectorXd Assess_PKsubp2_sols(Vector2d sol1,Vector2d sol2,Vector3d n1,Vector3d n2,Vector2d q1_lim,Vector2d q2_lim);
 
     VectorXd calc_joint_vel(MatrixXd qd_b, Matrix3d Rwb,Vector3d x_torso, MatrixXd x_dot_trans, MatrixXd J_leg);

@@ -185,7 +185,7 @@ Eigen::MatrixXd fcn_Jaco_dq_2_dp(const Eigen::VectorXd& q)
 //   return J;
 // }
 
-Eigen::VectorXd tello_leg_IK(Eigen::Vector3d& lf1, Eigen::Vector3d& lf2)
+Eigen::VectorXd tello_leg_IK(Eigen::VectorXd& lf1, Eigen::VectorXd& lf2)
 {
   SRB_Params srb_params;
   srb_params.q1_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
@@ -196,6 +196,28 @@ Eigen::VectorXd tello_leg_IK(Eigen::Vector3d& lf1, Eigen::Vector3d& lf2)
   srb_params.foot_length = 0.060;
 
   return dash_kin::SRB_Leg_IK(srb_params,lf1,lf2);
+}
+
+Eigen::VectorXd tello_leg_IK_biped(const Eigen::VectorXd& task_positions)
+{
+  VectorXd lf1_left = task_positions.segment(0,3);
+  VectorXd lf2_left = task_positions.segment(3,3);
+  VectorXd lf1_right = task_positions.segment(6,3);
+  VectorXd lf2_right = task_positions.segment(9,3);
+
+  SRB_Params srb_params;
+  srb_params.q1_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
+  srb_params.q2_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
+  srb_params.thigh_length = 0.2286;
+  srb_params.calf_length = 0.260;
+  srb_params.heel_length = 0.0485;
+  srb_params.foot_length = 0.060;
+
+  VectorXd q_left = dash_kin::SRB_Leg_IK(srb_params,lf1_left,lf2_left);
+  VectorXd q_right = dash_kin::SRB_Leg_IK(srb_params,lf1_right,lf2_right);
+  VectorXd q(10);
+  q << q_left, q_right;
+  return q;
 }
 
 Eigen::VectorXd tello_leg_IK_pointFoot(const Eigen::VectorXd& pos)
@@ -207,8 +229,8 @@ Eigen::VectorXd tello_leg_IK_pointFoot(const Eigen::VectorXd& pos)
   srb_params.calf_length = 0.260;
   srb_params.heel_length = 0.0485;
   srb_params.foot_length = 0.060;
-  Vector3d lf1 = pos + Vector3d(srb_params.foot_length,0,0);
-  Vector3d lf2 = pos - Vector3d(srb_params.foot_length,0,0);
+  VectorXd lf1 = pos + Vector3d(srb_params.foot_length,0,0);
+  VectorXd lf2 = pos - Vector3d(srb_params.foot_length,0,0);
 
   return dash_kin::SRB_Leg_IK(srb_params,lf1,lf2);
 }
@@ -220,7 +242,7 @@ Eigen::MatrixXd fcn_Jaco_dq_2_dT_front(const Eigen::VectorXd& q){
   srb_params.thigh_length = 0.2286;
   srb_params.calf_length = 0.260;
   srb_params.heel_length = 0.0485;
-  srb_params.foot_length = 0.060;
+  srb_params.foot_length = 0.120;
 
   VectorXd p = Vector4d(srb_params.thigh_length,srb_params.calf_length,srb_params.foot_length,srb_params.heel_length);
   return dash_kin::fcn_lf1_J(q, p);
@@ -350,6 +372,8 @@ Eigen::VectorXd fk_joints_to_task(const Eigen::VectorXd& q)
 Eigen::VectorXd ik_joints_to_motors(const Eigen::VectorXd& q)
 {
   Eigen::VectorXd q_left(5), q_right(5);
+  q_left = q.segment(0,5);
+  q_right = q.segment(5,5);
   VectorXd p_left = fcn_ik_q_2_p(q_left);
   VectorXd p_right = fcn_ik_q_2_p(q_right);
   VectorXd p(10);

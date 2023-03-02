@@ -145,22 +145,22 @@ void CheetahMotor::setKd(uint16_t kd){
 }
 
 void CheetahMotor::setPos(uint16_t pos){
-    limitPos(pos);
+    //limitPos(pos);
     _command.pos = pos;
 }
 
-void CheetahMotor::setVel(uint16_t vel){
+void CheetahMotor::setVel(int vel){
     _command.vel = 2048+vel;
 }
 
-void CheetahMotor::setff(uint16_t ff){
-    limitTorque(ff);
+void CheetahMotor::setff(int ff){
+    //limitTorque(ff);
     _command.feedforward = 2048+ff;
 }
 
-void CheetahMotor::addff(uint16_t ff){
+void CheetahMotor::addff(int ff){
     uint16_t new_ff = _command.feedforward + ff;
-    limitTorque(new_ff);
+    //limitTorque(new_ff);
     _command.feedforward =new_ff;
 }
 

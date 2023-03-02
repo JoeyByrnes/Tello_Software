@@ -4,11 +4,11 @@
 #include "PCANBasic.h"
 #include <string.h>
 
-#define ENCODER_COUNTS 16384
-#define POSITION_MIDPOINT (double)32768
-#define COUNTS_TO_RADIANS (double)(TWO_PI/(double)ENCODER_COUNTS)
-#define COUNTS_TO_DEGREES (double)(360.0/(double)ENCODER_COUNTS)
-#define DEGREES_TO_COUNTS (double)((double)ENCODER_COUNTS/360.0)
+// #define ENCODER_COUNTS 16384
+// #define POSITION_MIDPOINT (double)32768
+// #define COUNTS_TO_RADIANS (double)(TWO_PI/(double)ENCODER_COUNTS)
+// #define COUNTS_TO_DEGREES (double)(360.0/(double)ENCODER_COUNTS)
+// #define DEGREES_TO_COUNTS (double)((double)ENCODER_COUNTS/360.0)
 #define DEGREES_TO_RADIANS (double)0.01745329252
 
 struct cmd_packet
@@ -44,9 +44,9 @@ class CheetahMotor
         void setPos(uint16_t pos);
         void setKp(uint16_t kp);
         void setKd(uint16_t kd);
-        void setff(uint16_t ff);
-        void addff(uint16_t ff);
-        void setVel(uint16_t vel);
+        void setff(int ff);
+        void addff(int ff);
+        void setVel(int vel);
 
         void setSoftLimits(int pos_min, int pos_max, int ff_min, int ff_max);
 
@@ -71,8 +71,8 @@ class CheetahMotor
 
         int _pos_min=0;
         int _pos_max=65535;
-        int _ff_min=0;
-        int _ff_max = 4095;
+        int _ff_min=1048;
+        int _ff_max = 3048;
 
 };
 

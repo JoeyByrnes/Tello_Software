@@ -15,8 +15,9 @@ Eigen::MatrixXd fcn_Jaco_dq_2_dp(const Eigen::VectorXd& q);
 Eigen::MatrixXd fcn_Jaco_dp_2_dq(const Eigen::VectorXd& q);
 
 // Joint to Task Kinematics helpers
-Eigen::VectorXd tello_leg_IK(Eigen::Vector3d& lf1, Eigen::Vector3d& lf2);
+Eigen::VectorXd tello_leg_IK(Eigen::VectorXd& lf1, Eigen::VectorXd& lf2);
 Eigen::VectorXd tello_leg_IK_pointFoot(const Eigen::VectorXd& pos);
+Eigen::VectorXd tello_leg_IK_biped(const Eigen::VectorXd& task_positions);
 
 Eigen::MatrixXd fcn_Jaco_dq_2_dT_front(const Eigen::VectorXd& q);
 Eigen::MatrixXd fcn_Jaco_dq_2_dT_back(const Eigen::VectorXd& q);

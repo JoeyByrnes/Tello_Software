@@ -105,6 +105,9 @@ namespace RoboDesignLab {
         void taskPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd t_kp, MatrixXd t_kd, MatrixXd j_kp, MatrixXd j_kd, VectorXd m_kp, VectorXd m_kd);
         VectorXd calc_pd(VectorXd position, VectorXd velocity, VectorXd desiredPosition, VectorXd desiredVelocity, MatrixXd Kp, MatrixXd Kd);
 
+        void addGravityCompensation();
+        Vector3d transformForceToWorldFrame(const Eigen::VectorXd& force, vn::math::vec3f ypr);
+        
         // Actuators
         int motor_pos_model_to_real(int id, double actuator_position_radians);
         double motor_pos_real_to_model(int id, int motor_position_enc_counts);
@@ -120,6 +123,11 @@ namespace RoboDesignLab {
         int motor_zeros[10];
         int motor_timeouts[10] = {0,0,0,0,0,0,0,0,0,0};
         int motor_connected[10] = {0,0,0,0,0,0,0,0,0,0};
+
+
+         // Sensors
+        vn::math::vec3f _ypr;
+        int _balance_adjust = 0;
     private:
         // Kinematics Functions
         MatrixXd_function _jaco_motor2joint;
@@ -131,9 +139,6 @@ namespace RoboDesignLab {
         VectorXd_function _fk_motor2joint;
         VectorXd_function _ik_task2joint;
         VectorXd_function _fk_joint2task;
-
-        // Sensors
-        
 
         // Actuators
         BipedActuatorTree _actuators;

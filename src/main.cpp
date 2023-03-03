@@ -312,8 +312,8 @@ double h_offset = 0;
 void run_tello_pd()
 {
 	pthread_mutex_lock(&mutex_CAN_recv);
-	int joint_kp = 1000;
-	int joint_kd = 10;
+	int joint_kp = 3000;
+	int joint_kd = 100;
 	VectorXd kp_vec_joint = VectorXd::Ones(10)*(joint_kp+gain_adjustment);
 	VectorXd kd_vec_joint = VectorXd::Ones(10)*joint_kd;
 
@@ -336,13 +336,13 @@ void run_tello_pd()
 	if(h_offset < 0){
 		delta_task = 0.02;
 	}
-	Vector3d target(0, 0, -0.510+(h_offset/1000.0));
+	Vector3d target(0, 0, -0.500+(h_offset/1000.0));
 
 	double foot_len_half = 0.060;
-	Vector3d target_front_left(foot_len_half+target(0), target(1)+0.050, target(2)+(tello_ypr[1]/4000.0));
-	Vector3d target_back_left(-foot_len_half+target(0), target(1)+0.050, target(2)-(tello_ypr[1]/4000.0));
-	Vector3d target_front_right(foot_len_half+target(0), target(1)-0.050, target(2)+(tello_ypr[1]/4000.0));
-	Vector3d target_back_right(-foot_len_half+target(0), target(1)-0.050, target(2)-(tello_ypr[1]/4000.0));
+	Vector3d target_front_left(foot_len_half+target(0), target(1)+0.050, target(2)-(tello_ypr[1]/4000.0));
+	Vector3d target_back_left(-foot_len_half+target(0), target(1)+0.050, target(2)+(tello_ypr[1]/4000.0));
+	Vector3d target_front_right(foot_len_half+target(0), target(1)-0.050, target(2)-(tello_ypr[1]/4000.0));
+	Vector3d target_back_right(-foot_len_half+target(0), target(1)-0.050, target(2)+(tello_ypr[1]/4000.0));
 
 	VectorXd pos_desired(12);
 	pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
@@ -647,23 +647,26 @@ int main() {
 				printf("Running Move Up-Down\n");
 				break;
 			case '1':
-				task_gain_adjustment-=1000;
-				printf("Task Gain: %d \n", task_gain_adjustment);
+				tello->_balance_adjust-=100;
+				printf("Balance_Adjust: %d \n", tello->_balance_adjust);
 				break;
 			case '2':
-				task_gain_adjustment+=1000;
-				printf("Task Gain: %d \n", task_gain_adjustment);
+				tello->_balance_adjust+=100;
+				printf("Balance_Adjust: %d \n", tello->_balance_adjust);
 				break;
 			case '6':
 				x_offset-=5;
 				printf("X Offset: %d \n", x_offset);
 				break;
 			case 'w':
-				gain_adjustment+=1000;
+				gain_adjustment+=2000;
 				printf("New Adj. : %d \n", gain_adjustment);
 				break;
 			case 'q':
-				gain_adjustment-=1000;
+				if(gain_adjustment>=2000){
+					gain_adjustment-=2000;
+				}
+				
 				printf("New Adj. : %d \n", gain_adjustment);
 				break;
 			case 'm':

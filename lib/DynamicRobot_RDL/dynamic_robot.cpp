@@ -303,15 +303,10 @@ void DynamicRobot::taskPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd t
     // Calculate Task PD
     VectorXd task_forces = calc_pd(task_positions,task_velocities,pos_desired,vel_desired,t_kp,t_kd);
 
-    task_forces[2] -= 5000; // - - 2 - - 5 - - 8 - - 11
-    task_forces[5] -= 5000;
-    task_forces[8] -= 5000;
-    task_forces[11] -= 5000;
-
-    // // Get joint torques from task forces
+    // Get joint torques from task forces
     VectorXd joint_torques = this->task_force_to_joint_torque(task_forces);
 
-    // // Use inverse kinematics to calculate joint pd
+    // Use inverse kinematics to calculate joint pd
     VectorXd joint_pos_desired = this->task_pos_to_joint_pos(pos_desired);
     VectorXd joint_vel_desired = VectorXd::Zero(10); //this->task_vel_to_joint_vel(vel_desired);
 
@@ -323,6 +318,48 @@ void DynamicRobot::taskPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd t
     // Add the motor torques from the Task PD as feedforward commands
     motor_torques = _motor_direction_matrix*motor_torques;
     add_motor_torques(motor_torques);
+    //addGravityCompensation();
+}
+
+void DynamicRobot::addGravityCompensation()
+{
+    // Get joint positions and velocities
+	VectorXd joint_positions = this->getJointPositions();
+	VectorXd joint_velocities = this->getJointVelocities();
+
+    VectorXd gcf_fl = Vector3d(0, 0, -_balance_adjust);
+    VectorXd gcf_bl = Vector3d(0, 0, -_balance_adjust);
+    VectorXd gcf_fr = Vector3d(0, 0, -_balance_adjust);
+    VectorXd gcf_br = Vector3d(0, 0, -_balance_adjust);
+
+    VectorXd gcf_fl_world = transformForceToWorldFrame(gcf_fl, this->_ypr);
+    VectorXd gcf_bl_world = transformForceToWorldFrame(gcf_bl, this->_ypr);
+    VectorXd gcf_fr_world = transformForceToWorldFrame(gcf_fr, this->_ypr);
+    VectorXd gcf_br_world = transformForceToWorldFrame(gcf_br, this->_ypr);
+
+    VectorXd gravity_comp_world(12);
+    gravity_comp_world << gcf_fl_world,gcf_bl_world,gcf_fr_world,gcf_br_world;
+
+    // Get joint torques from task forces
+    VectorXd joint_torques = this->task_force_to_joint_torque(gravity_comp_world);
+
+    // Convert joint torques to motor torques
+	VectorXd motor_torques = this->joint_torque_to_motor_torque(joint_torques);
+
+    // Add the motor torques from the Task PD as feedforward commands
+    motor_torques = _motor_direction_matrix*motor_torques;
+    // printf("Motor T: %f, %f, %f, %f, %f      \r",motor_torques[0],motor_torques[1],motor_torques[2],motor_torques[3],motor_torques[4]);
+    add_motor_torques(motor_torques);
+}
+
+Eigen::Vector3d DynamicRobot::transformForceToWorldFrame(const Eigen::VectorXd& force, vn::math::vec3f ypr) {
+    Eigen::Matrix3d rotMat;
+    rotMat = //Eigen::AngleAxisd(0, Eigen::Vector3d::UnitZ()) *
+             Eigen::AngleAxisd(-ypr[1]*DEGREES_TO_RADIANS, Eigen::Vector3d::UnitY());// *
+             //Eigen::AngleAxisd(0, Eigen::Vector3d::UnitX());
+
+    Eigen::VectorXd worldForce = rotMat * force;
+    return worldForce;
 }
 
 Eigen::VectorXd DynamicRobot::calc_pd(VectorXd position, VectorXd velocity, VectorXd desiredPosition, VectorXd desiredVelocity, MatrixXd Kp, MatrixXd Kd) 

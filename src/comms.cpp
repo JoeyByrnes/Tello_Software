@@ -170,7 +170,7 @@ using namespace vn::protocol::uart;
 using namespace vn::xplat;
 using namespace vn::math;
 using namespace std;
-void BinaryAsyncMessageReceived(void * userData, Packet & p, size_t index);
+void BinaryAsyncMessageReceived(void * robot, Packet & p, size_t index);
 
 // Custom user data to pass to packet callback function
 struct UserData
@@ -222,6 +222,11 @@ bool optimize_serial_communication(std::string portName)
 std::chrono::_V2::system_clock::time_point lastTime;
 
 void* IMU_Comms( void * arg ){
+
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	void* arg0 = std::get<0>(*arg_tuple_ptr);
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(arg0);
+
 	// Initialize IMU 
 	UserData user_data;
 
@@ -293,7 +298,7 @@ void* IMU_Comms( void * arg ){
 
 	vs.writeSettings();
 
-	vs.registerAsyncPacketReceivedHandler(&user_data, BinaryAsyncMessageReceived);
+	vs.registerAsyncPacketReceivedHandler(tello, BinaryAsyncMessageReceived);
 
 	// read IMU
 	while(1){
@@ -319,13 +324,22 @@ float filterFloat(const vector<float>& samples) {
   return sum / (float)FILTER_LEN;
 }
 
-void BinaryAsyncMessageReceived(void * userData, Packet & p, size_t index)
+void BinaryAsyncMessageReceived(void * robot, Packet & p, size_t index)
 {
+	RoboDesignLab::DynamicRobot* tello = (RoboDesignLab::DynamicRobot*) robot;
 	vn::sensors::CompositeData cd = vn::sensors::CompositeData::parse(p);
 
 	vec3f ypr = cd.yawPitchRoll();
+	if(ypr[2] > 0){
+		ypr[2] = -180.0 + ypr[2];
+	}
+	else if(ypr[2] < 0){
+		ypr[2] = 180.0 + ypr[2];
+	}
+	ypr[1] = -ypr[1];
+	ypr[0] = 0;			// CHANGE THIS WHEN WE CARE ABOUT YAW
 	tello_ypr = ypr;
-	// printf("YPR: %.2f,\t %.2f,\t %.2f\n",ypr[0], ypr[1], ypr[2]);
-	// cout << getLastTime() << endl;
+	tello->_ypr = ypr;
+	// printf("YPR: %.2f,\t %.2f,\t %.2f          \r",ypr[0], ypr[1], ypr[2]);
 	// cout.flush();
 }

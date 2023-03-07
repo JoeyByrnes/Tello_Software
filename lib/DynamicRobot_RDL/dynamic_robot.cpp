@@ -47,6 +47,7 @@ Eigen::VectorXd DynamicRobot::joint_vel_to_motor_vel(Eigen::VectorXd joint_veloc
 
     Eigen::VectorXd motor_velocities(10);
     motor_velocities << motor_velocities_left, motor_velocities_right;
+    motor_velocities = _motor_direction_matrix*motor_velocities;
     return motor_velocities;
 }
 

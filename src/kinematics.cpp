@@ -81,109 +81,128 @@ VectorXd fcn_ik_q_2_p(const VectorXd &q)
     return p;
 }
 
-double fcn_q5_2_alpha(double q5) { // checked for .0
-    double num1 = ((7.0 * sin((19.0 * M_PI) / 30.0 + q5)) / 2500.0 + (21.0 * sin(M_PI / 9.0)) / 6250.0);
-    double num2 = (147.0 * cos((19.0 * M_PI) / 30.0 + q5) * cos(M_PI / 9.0)) / 50000.0 -
-                  (273.0 * cos(M_PI / 9.0)) / 12500.0 - (91.0 * cos((19.0 * M_PI) / 30.0 + q5)) / 5000.0 +
-                  (147.0 * sin((19.0 * M_PI) / 30.0 + q5) * sin(M_PI / 9.0)) / 50000.0 + 163349.0 / 6250000.0;
-    double den1 = ((7.0 * cos((19.0 * M_PI) / 30.0 + q5)) / 2500.0 + (21.0 * cos(M_PI / 9.0)) / 6250.0 - 13.0 / 625.0);
-    double den2 = (147.0 * cos((19.0 * M_PI) / 30.0 + q5) * cos(M_PI / 9.0)) / 50000.0 -
-                  (273.0 * cos(M_PI / 9.0)) / 12500.0 - (91.0 * cos((19.0 * M_PI) / 30.0 + q5)) / 5000.0 +
-                  (147.0 * sin((19.0 * M_PI) / 30.0 + q5) * sin(M_PI / 9.0)) / 50000.0 + 163349.0 / 6250000.0;
-    double den3 = pow(pow((7.0 * sin((19.0 * M_PI) / 30.0 + q5)) / 2500.0 + (21.0 * sin(M_PI / 9.0)) / 6250.0, 2) +
-                      pow((7.0 * cos((19.0 * M_PI) / 30.0 + q5)) / 2500.0 + (21.0 * cos(M_PI / 9.0)) / 6250.0 - 13.0 / 625.0, 2) -
-                      pow((147.0 * cos((19.0 * M_PI) / 30.0 + q5) * cos(M_PI / 9.0)) / 50000.0 -
-                          (273.0 * cos(M_PI / 9.0)) / 12500.0 - (91.0 * cos((19.0 * M_PI) / 30.0 + q5)) / 5000.0 +
-                          (147.0 * sin((19.0 * M_PI) / 30.0 + q5) * sin(M_PI / 9.0)) / 50000.0 + 163349.0 / 6250000.0, 2),
-                    0.5);
-    double out = atan2_safe(num1 * num2 - den1 * den2, den1 * den2 + num1 * den3);
-    return out;
-}
 
-double fcn_q5_2_beta(double q5) { // checked for .0
-    return q5 + (19.0 * M_PI) / 30.0;
-}
-
-double fcn_alphabeta2_lambda(double alpha, double beta) { // checked for .0
-    double top = (168.0 * sin(alpha - M_PI / 9.0) - 1040.0 * sin(alpha) + 
-            140.0 * sin(alpha - beta));
-
-    double bottom = (147.0 * sin(beta - M_PI / 9.0) - 910.0 * sin(beta) + 140.0 * sin(alpha - beta));
-    if(bottom == 0){
-      cout << "FUCK" << endl;
-      cout.flush();
-    }
-}
-
-Eigen::MatrixXd fcn_Jaco_dq_2_dp(const Eigen::VectorXd& q)
+Eigen::MatrixXd fcn_Jaco_dq_2_dp(const Eigen::VectorXd& eig_q)
 {
-    double alpha_ = fcn_q5_2_alpha(q(4));
-    double beta_ = fcn_q5_2_beta(q(4));
-    double lambda_ = fcn_alphabeta2_lambda(alpha_, beta_);
-    Eigen::VectorXd p_ = fcn_ik_q_2_p(q);
+  double q[5];
+  for(int i = 0; i<5; i++){
+    q[i] = eig_q(i);
+  }
+  double J[25];
+  double J_tmp;
+  double a1;
+  double a1_tmp_tmp;
+  double a2;
+  double b1_tmp;
+  double b1_tmp_tmp;
+  double b_a1_tmp_tmp;
+  double c1;
+  double c2;
+  double c_a1_tmp_tmp;
+  double d1;
+  double d2;
+  double p__idx_1;
+  double p__idx_2;
 
-    Eigen::MatrixXd J(5, 5);
-    J.setZero();
+  /*  first actuation group  */
+  /*  hip yaw (q1) - hip yaw actuator (p1) */
+  /*  second actuation group - hip differential */
+  /*  {hip roll (q2), hip pitch (q3)} - {actuator2 (p2), actuator3 (p3)} */
+  a1_tmp_tmp = cos(q[1]);
+  b_a1_tmp_tmp = sin(q[1]);
+  c_a1_tmp_tmp = sin(q[2]);
+  a1 = (0.0228 - 8.0 * a1_tmp_tmp * c_a1_tmp_tmp / 625.0) -
+        7.0 * b_a1_tmp_tmp / 625.0;
+  b1_tmp_tmp = cos(q[2]);
+  b1_tmp = -(8.0 * b1_tmp_tmp) / 625.0;
+  c1 = (((49.0 * a1_tmp_tmp / 5000.0 + 399.0 * b_a1_tmp_tmp / 20000.0) +
+          57.0 * a1_tmp_tmp * c_a1_tmp_tmp / 2500.0) -
+        7.0 * sin(q[1]) * c_a1_tmp_tmp / 625.0) -
+        0.01888125;
+  d2 = b1_tmp * b1_tmp;
+  d1 = sqrt((a1 * a1 + d2) - c1 * c1);
+  a2 = (7.0 * sin(q[1]) / 625.0 - 8.0 * cos(q[1]) * sin(q[2]) / 625.0) + 0.0228;
+  c2 = (((49.0 * cos(q[1]) / 5000.0 - 399.0 * sin(q[1]) / 20000.0) +
+          57.0 * cos(q[1]) * sin(q[2]) / 2500.0) +
+        7.0 * sin(q[1]) * sin(q[2]) / 625.0) -
+        0.01888125;
+  d2 = sqrt((a2 * a2 + d2) - c2 * c2);
+  p__idx_1 = atan2_safe(-b1_tmp * d1 + a1 * c1, b1_tmp * c1 + a1 * d1);
+  p__idx_2 = atan2_safe(-b1_tmp * d2 + a2 * c2, b1_tmp * c2 + a2 * d2);
+  /*  third actuation group - knee-ankle differential */
+  /*  {knee pitch (q4), ankle pitch (q5)} - {actuator4 (p4), actuator5 (p5)} */
+  /*  alpha_0 */
+  /*  beta_0 */
+  d2 = cos(q[4] + 1.9896753472735356);
+  b1_tmp = sin(q[4] + 1.9896753472735356);
+  d1 = (7.0 * d2 / 2500.0 + 0.0031573672058406521) - 0.0208;
+  a1 = (((147.0 * d2 * 0.93969262078590843 / 50000.0 - 0.020522886837964237) -
+          91.0 * d2 / 5000.0) +
+        147.0 * b1_tmp * 0.34202014332566871 / 50000.0) +
+        0.02613584;
+  d2 = 7.0 * b1_tmp / 2500.0 + 0.001149187681574247;
+  c1 = sqrt((d1 * d1 - a1 * a1) + d2 * d2);
+  d2 = atan2_safe(d2 * a1 - c1 * d1, d1 * a1 + d2 * c1);
+  a1 = 140.0 * sin(d2 - (q[4] + 1.9896753472735356));
+  c2 = ((168.0 * sin(d2 - 0.3490658503988659) - 1040.0 * sin(d2)) + a1) /
+        ((147.0 * sin((q[4] + 1.9896753472735356) - 0.3490658503988659) -
+          910.0 * b1_tmp) +
+        a1);
+  memset(&J[0], 0, 25U * sizeof(double));
+  J[0] = 1.0;
+  J_tmp = sin(p__idx_1);
+  a1 = cos(p__idx_1);
+  c1 = 224.0 * a1_tmp_tmp;
+  d1 = c1 * c_a1_tmp_tmp;
+  d2 = 456.0 * b_a1_tmp_tmp * c_a1_tmp_tmp;
+  J[6] =
+      -(((((196.0 * b_a1_tmp_tmp - 399.0 * a1_tmp_tmp) -
+            224.0 * a1_tmp_tmp * J_tmp) +
+          d1) +
+          d2) +
+        256.0 * J_tmp * b_a1_tmp_tmp * c_a1_tmp_tmp) /
+      (((456.0 * a1 - 224.0 * a1 * b_a1_tmp_tmp) + 256.0 * b1_tmp_tmp * J_tmp) -
+        256.0 * a1 * a1_tmp_tmp * c_a1_tmp_tmp);
+  b1_tmp = 32.0 * a1;
+  a2 = 32.0 * a1_tmp_tmp * b1_tmp_tmp;
+  J[11] =
+      (((57.0 * a1_tmp_tmp * b1_tmp_tmp - b1_tmp * c_a1_tmp_tmp) -
+        28.0 * b1_tmp_tmp * b_a1_tmp_tmp) +
+        a2 * J_tmp) /
+      (((57.0 * a1 - 28.0 * a1 * b_a1_tmp_tmp) + 32.0 * b1_tmp_tmp * J_tmp) -
+        b1_tmp * a1_tmp_tmp * c_a1_tmp_tmp);
+  J_tmp = sin(p__idx_2);
+  a1 = cos(p__idx_2);
+  J[7] =
+      -(((((399.0 * a1_tmp_tmp + 196.0 * b_a1_tmp_tmp) + c1 * J_tmp) - d1) +
+          d2) +
+        256.0 * J_tmp * b_a1_tmp_tmp * c_a1_tmp_tmp) /
+      (((456.0 * a1 + 224.0 * a1 * b_a1_tmp_tmp) + 256.0 * cos(q[2]) * J_tmp) -
+        256.0 * a1 * a1_tmp_tmp * c_a1_tmp_tmp);
+  c1 = 32.0 * a1;
+  J[12] = (((57.0 * cos(q[1]) * b1_tmp_tmp - c1 * c_a1_tmp_tmp) +
+            28.0 * cos(q[2]) * b_a1_tmp_tmp) +
+            a2 * J_tmp) /
+          (((57.0 * a1 + 28.0 * a1 * b_a1_tmp_tmp) + 32.0 * cos(q[2]) * J_tmp) -
+            c1 * a1_tmp_tmp * c_a1_tmp_tmp);
+  J[18] = 1.0;
+  J[23] = 1.0 / c2;
+  J[19] = 1.0;
+  J[24] = -1.0 / c2;
 
-    J(0, 0) = 1.0;
-    J(1, 1) = -(196.0 * sin(q(1)) - 399.0 * cos(q(1)) - 224.0 * cos(q(1)) * sin(p_(1)) + 
-              224.0 * cos(q(1)) * sin(q(2)) + 456.0 * sin(q(1)) * sin(q(2)) + 256.0 * sin(p_(1)) * 
-              sin(q(1)) * sin(q(2))) / (456.0 * cos(p_(1)) - 224.0 * cos(p_(1)) * sin(q(1)) + 
-              256.0 * cos(q(2)) * sin(p_(1)) - 256.0 * cos(p_(1)) * cos(q(1)) * sin(q(2)));
-    J(1, 2) = (57.0 * cos(q(1)) * cos(q(2)) - 32.0 * cos(p_(1)) * sin(q(2)) - 28.0 * cos(q(2)) * 
-              sin(q(1)) + 32.0 * cos(q(1)) * cos(q(2)) * sin(p_(1))) / (57.0 * cos(p_(1)) - 28.0 * 
-              cos(p_(1)) * sin(q(1)) + 32.0 * cos(q(2)) * sin(p_(1)) - 32.0 * cos(p_(1)) * 
-              cos(q(1)) * sin(q(2)));
-    J(2, 1) = -(399.0 * cos(q(1)) + 196.0 * sin(q(1)) + 224.0 * cos(q(1)) * sin(p_(2)) - 224.0 * 
-              cos(q(1)) * sin(q(2)) + 456.0 * sin(q(1)) * sin(q(2)) + 256.0 * sin(p_(2)) * 
-              sin(q(1)) * sin(q(2))) / (456.0 * cos(p_(2)) + 224.0 * cos(p_(2)) * sin(q(1)) + 
-              256.0 * cos(q(2)) * sin(p_(2)) - 256.0 * cos(p_(2)) * cos(q(1)) * sin(q(2)));
-    J(2, 2) = (57.0 * cos(q(1)) * cos(q(2)) - 32.0 * cos(p_(2)) * sin(q(2)) + 28.0 * cos(q(2)) * 
-              sin(q(1)) + 32.0 * cos(q(1)) * cos(q(2)) * sin(p_(2))) / (57.0 * cos(p_(2)) + 28.0 * 
-              cos(p_(2)) * sin(q(1)) + 32.0 * cos(q(2)) * sin(p_(2)) - 32.0 * cos(p_(2)) * 
-              cos(q(1)) * sin(q(2)));
-    J(3, 3) = 1.0;
-    J(3, 4) = 1.0 / lambda_;
-    J(4, 3) = 1.0;
-    J(4, 4) = -1.0 / lambda_;
+  // Create a 5x5 Eigen::MatrixXd object
+  Eigen::MatrixXd Jaco(5, 5);
 
-    return J;
+  // Copy the values from the Jacobian array to the Eigen::MatrixXd object
+  for (int j = 0; j < 5; j++) {
+      for (int i = 0; i < 5; i++) {
+          Jaco(i, j) = J[j * 5 + i];
+      }
+  }
+
+  return Jaco;
+
 }
-
-// Eigen::MatrixXd fcn_Jaco_dp_2_dq(const Eigen::VectorXd& q) {
-//   VectorXd p = fcn_ik_q_2_p(q);
-//   double alpha = fcn_q5_2_alpha(q(4));
-//   double beta = fcn_q5_2_beta(q(4));
-//   double lambda = fcn_alphabeta2_lambda(alpha, beta);
-
-//   MatrixXd J_q_hip(2,2);
-//   J_q_hip(0,0) = (49.0*sin(q(1)))/5000.0 - (399.0*cos(q(1)))/20000.0 - (7.0*cos(q(1))*sin(p(1)))/625.0
-//                   + (7.0*cos(q(1))*sin(q(2)))/625.0 + (57.0*sin(q(1))*sin(q(2)))/2500.0
-//                   + (8.0*sin(p(1))*sin(q(1))*sin(q(2)))/625.0;
-//   J_q_hip(0,1) = (8.0*cos(p(1))*sin(q(2)))/625.0 - (57.0*cos(q(1))*cos(q(2)))/2500.0
-//                   + (7.0*cos(q(2))*sin(q(1)))/625.0 - (8.0*cos(q(1))*cos(q(2))*sin(p(1)))/625.0;
-//   J_q_hip(1,0) = (399.0*cos(q(1)))/20000.0 + (49.0*sin(q(1)))/5000.0 + (7.0*cos(q(1))*sin(p(2)))/625.0
-//                   - (7.0*cos(q(1))*sin(q(2)))/625.0 + (57.0*sin(q(1))*sin(q(2)))/2500.0
-//                   + (8.0*sin(p(2))*sin(q(1))*sin(q(2)))/625.0;
-//   J_q_hip(1,1) = (8.0*cos(p(2))*sin(q(2)))/625.0 - (57.0*cos(q(1))*cos(q(2)))/2500.0
-//                   - (7.0*cos(q(2))*sin(q(1)))/625.0 - (8.0*cos(q(1))*cos(q(2))*sin(p(2)))/625.0;
-
-//   MatrixXd J_p_hip(2,2);
-//   J_p_hip(0,0) = (57.0*cos(p(1)))/2500.0 - (7.0*cos(p(1))*sin(q(1)))/625.0 + (8.0*cos(q(2))*sin(p(1)))/625.0
-//                   - (8.0*cos(p(1))*cos(q(1))*sin(q(2)))/625.0;
-//   J_p_hip(1,1) = (57.0*cos(p(2)))/2500.0 + (7.0*cos(p(2))*sin(q(1)))/625.0
-//                   + (8.0*cos(q(2))*sin(p(2)))/625.0 - (8.0*cos(p(2))*cos(q(1))*sin(q(2)))/625.0;
-//   MatrixXd J_dp_2_dq_hip = -J_q_hip.lu().solve(J_p_hip); //J_dp_2_dq_hip = -J_q_hip.lu().solve(J_p_hip);
-//   MatrixXd J = MatrixXd::Zero(5, 5);
-//   J(0, 0) = 1.0;
-//   J.block(1, 1, 2, 2) = J_dp_2_dq_hip;
-//   J(3, 3) = 0.5;
-//   J(3, 4) = 0.5;
-//   J(4, 3) = lambda/2.0;
-//   J(4, 4) = -lambda/2.0;
-
-//   return J;
-// }
 
 Eigen::VectorXd tello_leg_IK(Eigen::VectorXd& lf1, Eigen::VectorXd& lf2)
 {
@@ -381,11 +400,6 @@ Eigen::VectorXd ik_joints_to_motors(const Eigen::VectorXd& q)
   return p;
 }
 
-Eigen::VectorXd ik_task_to_joints(const Eigen::VectorXd& q)
-{
-
-}
-
 
 // ============= CODER =========================================================================================
 
@@ -548,3 +562,13 @@ Eigen::MatrixXd fcn_Jaco_dp_2_dq(const Eigen::VectorXd& eig_q)
   return Jaco;
 
 }
+
+
+// MATLAB CODER INVERSE TASK JACOBIAN: ================================================================================================
+
+
+#define TELLO_THIGH_LENGTH 0.228
+#define TELLO_CALF_LENGTH 0.260
+#define TELLO_HEEL_LENGTH 0.048
+#define TELLO_FOOT_LENGTH 0.120
+

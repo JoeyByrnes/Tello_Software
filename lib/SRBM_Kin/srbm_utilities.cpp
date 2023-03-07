@@ -284,6 +284,7 @@ Teleop_2DLIP_Traj_Data dash_utils::read_teleop_2DLIP_traj(const char * data_txt_
     }
     
     // TODO_DASH : function not finished?
+    return teleop_2DLIP_traj_data;
 }
 
 /*

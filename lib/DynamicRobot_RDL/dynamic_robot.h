@@ -37,6 +37,10 @@
 #include "vn/util.h"
 
 using namespace Eigen;
+using namespace vn::sensors;
+using namespace vn::protocol::uart;
+using namespace vn::xplat;
+using namespace vn::math;
 
 #define TASK_CONSTANT_PERIOD 0
 #define TASK_CONSTANT_DELAY 1
@@ -51,6 +55,36 @@ namespace RoboDesignLab {
     struct BipedActuatorTree{
         std::vector<CheetahMotor*> leftLeg;
         std::vector<CheetahMotor*> rightLeg;
+    };
+
+    struct MotorPDConfig{
+        VectorXd motor_pos_desired;
+        VectorXd motor_vel_desired;
+        VectorXd motor_kp;
+        VectorXd motor_kd;
+        VectorXd motor_ff_torque;
+    };
+
+    struct JointPDConfig{
+        VectorXd joint_pos_desired;
+        VectorXd joint_vel_desired;
+        MatrixXd joint_kp;
+        MatrixXd joint_kd;
+        VectorXd motor_kp;
+        VectorXd motor_kd;
+        VectorXd joint_ff_torque;
+    };
+
+    struct TaskPDConfig{
+        VectorXd task_pos_desired;
+        VectorXd task_vel_desired;
+        MatrixXd task_kp;
+        MatrixXd task_kd;
+        MatrixXd joint_kp;
+        MatrixXd joint_kd;
+        VectorXd motor_kp;
+        VectorXd motor_kd;
+        VectorXd task_ff_torque;
     };
 
     class DynamicRobot {
@@ -100,9 +134,9 @@ namespace RoboDesignLab {
         VectorXd getJointVelocities();
         VectorXd getJointPositions();
 
-        void motorPD(VectorXd pos_desired, VectorXd vel_desired, VectorXd kp, VectorXd kd);
-        void jointPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd j_kp, MatrixXd j_kd, VectorXd m_kp, VectorXd m_kd);
-        void taskPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd t_kp, MatrixXd t_kd, MatrixXd j_kp, MatrixXd j_kd, VectorXd m_kp, VectorXd m_kd);
+        void motorPD(MotorPDConfig motor_conf);
+        void jointPD(JointPDConfig joint_conf);
+        void taskPD(TaskPDConfig task_conf);
         VectorXd calc_pd(VectorXd position, VectorXd velocity, VectorXd desiredPosition, VectorXd desiredVelocity, MatrixXd Kp, MatrixXd Kd);
 
         void addGravityCompensation();
@@ -125,7 +159,8 @@ namespace RoboDesignLab {
         int motor_connected[10] = {0,0,0,0,0,0,0,0,0,0};
 
 
-         // Sensors
+        // Sensors
+        VnSensor imu;
         vn::math::vec3f _ypr;
         int _balance_adjust = 0;
     private:

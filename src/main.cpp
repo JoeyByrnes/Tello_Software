@@ -309,6 +309,7 @@ bool move_up_down = false;
 int force_ctrl = 0;
 double delta_task = 0.02;
 double h_offset = 0;
+RoboDesignLab::TaskPDConfig task_pd_config;
 void run_tello_pd()
 {
 	pthread_mutex_lock(&mutex_CAN_recv);
@@ -354,7 +355,18 @@ void run_tello_pd()
 	MatrixXd kp_mat_task = kp_vec_task.asDiagonal();
 	MatrixXd kd_mat_task = kd_vec_task.asDiagonal();
 
-	tello->taskPD(pos_desired, vel_desired, kp_mat_task, kd_mat_task, kp_mat_joint, kd_mat_joint, kp_vec_motor, kd_vec_motor);
+	// Set up configuration struct for Task Space Controller
+	task_pd_config.task_ff_torque = VectorXd::Zero(12);
+	task_pd_config.task_pos_desired = pos_desired;
+	task_pd_config.task_vel_desired = vel_desired;
+	task_pd_config.task_kp = kp_mat_task;
+	task_pd_config.task_kd = kd_mat_task;
+	task_pd_config.joint_kp = kp_mat_joint;
+	task_pd_config.joint_kd = kd_mat_joint;
+	task_pd_config.motor_kp = kp_vec_motor;
+	task_pd_config.motor_kd = kd_vec_motor;
+	
+	tello->taskPD(task_pd_config);
 
 	pthread_mutex_unlock(&mutex_CAN_recv);
 }

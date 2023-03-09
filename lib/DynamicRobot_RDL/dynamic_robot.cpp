@@ -249,32 +249,33 @@ Eigen::VectorXd DynamicRobot::getJointVelocities()
     return joint_velocities;
 }
 
-void DynamicRobot::motorPD(VectorXd pos_desired, VectorXd vel_desired, VectorXd kp, VectorXd kd)
+void DynamicRobot::motorPD(MotorPDConfig motor_conf)
 {
     for(int i=0; i<this->_num_actuators; i++)
     {
-        this->motors[i]->setKp(kp[i]);
-        this->motors[i]->setKd(kd[i]);
-        this->motors[i]->setPos(pos_desired[i]);
-        this->motors[i]->setVel(vel_desired[i]);
-        this->motors[i]->setff(0);
+        this->motors[i]->setKp(motor_conf.motor_kp[i]);
+        this->motors[i]->setKd(motor_conf.motor_kd[i]);
+        this->motors[i]->setPos(motor_conf.motor_pos_desired[i]);
+        this->motors[i]->setVel(motor_conf.motor_vel_desired[i]);
+        this->motors[i]->setff(motor_conf.motor_ff_torque[i]);
     }
 }
 
-void DynamicRobot::jointPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd j_kp, MatrixXd j_kd, VectorXd m_kp, VectorXd m_kd)
+void DynamicRobot::jointPD(JointPDConfig joint_conf)
 {
 	// Get joint positions and velocities
 	VectorXd joint_positions = this->getJointPositions();
 	VectorXd joint_velocities = this->getJointVelocities();
 
 	// Calculate Joint PD
-	VectorXd joint_torques = calc_pd(joint_positions,joint_velocities,pos_desired,vel_desired,j_kp,j_kd);
+	VectorXd joint_torques = calc_pd(joint_positions,joint_velocities,joint_conf.joint_pos_desired,
+                                     joint_conf.joint_vel_desired,joint_conf.joint_kp,joint_conf.joint_kd);
 
 	// Convert joint PD torques to motor torques
-	VectorXd motor_torques_from_joint_pd = this->joint_torque_to_motor_torque(joint_torques);
+	VectorXd motor_torques_from_joint_pd = this->joint_torque_to_motor_torque(joint_torques + joint_conf.joint_ff_torque);
 
     // Use inverse kinematics to calculate motor PD
-    VectorXd motor_pos_desired = this->joint_pos_to_motor_pos(pos_desired);
+    VectorXd motor_pos_desired = this->joint_pos_to_motor_pos(joint_conf.joint_pos_desired);
     VectorXd motor_vel_desired = VectorXd::Zero(10);//this->joint_vel_to_motor_vel(vel_desired);
 
     VectorXd motor_pos_desired_real(10);
@@ -282,16 +283,22 @@ void DynamicRobot::jointPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd 
         motor_pos_desired_real[i] = motor_pos_model_to_real(i, motor_pos_desired[i]);
         motor_vel_desired[i] = (int)((double)(motor_vel_desired[i]*motor_directions[i])/VELOCITY_TO_RADIANS_PER_SEC);
     }
-    this->motorPD(motor_pos_desired_real, motor_vel_desired,m_kp,m_kd);
-	
-	// Add the motor torques from the Joint PD as feedforward commands
+
+    // Add the motor torques from the Joint PD as feedforward commands
     motor_torques_from_joint_pd = _motor_direction_matrix*motor_torques_from_joint_pd;
 
-	set_motor_torques(motor_torques_from_joint_pd);
+    MotorPDConfig motor_conf;
+    motor_conf.motor_ff_torque = motor_torques_from_joint_pd;
+    motor_conf.motor_kp = joint_conf.motor_kp;
+    motor_conf.motor_kd = joint_conf.motor_kd;
+    motor_conf.motor_pos_desired = motor_pos_desired_real;
+    motor_conf.motor_vel_desired = motor_vel_desired;
+
+    this->motorPD(motor_conf);
 }
 
 // pos/vel is 12x1 vector: (3x1) left front, (3x1) left back, (3x1) right front, (3x1) right back
-void DynamicRobot::taskPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd t_kp, MatrixXd t_kd, MatrixXd j_kp, MatrixXd j_kd, VectorXd m_kp, VectorXd m_kd)
+void DynamicRobot::taskPD(TaskPDConfig task_conf)
 {
     // Get joint positions and velocities
 	VectorXd joint_positions = this->getJointPositions();
@@ -302,24 +309,27 @@ void DynamicRobot::taskPD(VectorXd pos_desired, VectorXd vel_desired, MatrixXd t
     VectorXd task_velocities = joint_vel_to_task_vel(joint_velocities);
 
     // Calculate Task PD
-    VectorXd task_forces = calc_pd(task_positions,task_velocities,pos_desired,vel_desired,t_kp,t_kd);
+    VectorXd task_forces = calc_pd(task_positions,task_velocities,task_conf.task_pos_desired,
+                                   task_conf.task_vel_desired,task_conf.task_kp,task_conf.task_kd);
 
     // Get joint torques from task forces
     VectorXd joint_torques = this->task_force_to_joint_torque(task_forces);
 
     // Use inverse kinematics to calculate joint pd
-    VectorXd joint_pos_desired = this->task_pos_to_joint_pos(pos_desired);
+    VectorXd joint_pos_desired = this->task_pos_to_joint_pos(task_conf.task_pos_desired);
     VectorXd joint_vel_desired = VectorXd::Zero(10); //this->task_vel_to_joint_vel(vel_desired);
 
-    jointPD(joint_pos_desired,joint_vel_desired,j_kp,j_kd,m_kp,m_kd);
+    JointPDConfig joint_conf;
+    joint_conf.joint_ff_torque = joint_torques;
+    joint_conf.joint_pos_desired = joint_pos_desired;
+    joint_conf.joint_vel_desired = joint_vel_desired;
+    joint_conf.joint_kp = task_conf.joint_kp;
+    joint_conf.joint_kd = task_conf.joint_kd;
+    joint_conf.motor_kp = task_conf.motor_kp;
+    joint_conf.motor_kd = task_conf.motor_kd;
 
-    // Convert joint torques to motor torques
-	VectorXd motor_torques = this->joint_torque_to_motor_torque(joint_torques);
+    jointPD(joint_conf);
 
-    // Add the motor torques from the Task PD as feedforward commands
-    motor_torques = _motor_direction_matrix*motor_torques;
-    add_motor_torques(motor_torques);
-    //addGravityCompensation();
 }
 
 void DynamicRobot::addGravityCompensation()

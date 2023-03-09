@@ -103,3 +103,22 @@ void printf(char color, const char* message, ...) {
     printf("\033[0m");  // Reset text color to default
     va_end(args);
 }
+
+
+bool optimize_serial_communication(std::string portName)
+{
+  int portFd = -1;
+
+  portFd = ::open(portName.c_str(), O_RDWR | O_NOCTTY);
+
+  if (portFd == -1) {
+    return false;
+  }
+
+  struct serial_struct serial;
+  ioctl(portFd, TIOCGSERIAL, &serial);
+  serial.flags |= ASYNC_LOW_LATENCY;
+  ioctl(portFd, TIOCSSERIAL, &serial);
+  ::close(portFd);
+  return true;
+}

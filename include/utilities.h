@@ -7,6 +7,11 @@
 #include <sys/resource.h>
 #include <iostream>
 #include <iomanip>
+#include <sys/ioctl.h>
+#include <fcntl.h>
+#include <linux/serial.h>
+#include <termios.h>
+#include <cstdlib>
 #include "vn/sensors.h"
 #include "../lib/Eigen/Dense"
 
@@ -26,3 +31,5 @@ void quaternion_to_euler(double q0, double q1, double q2, double q3, float &roll
 vn::math::mat3f eigenToVnMatrix(const Eigen::Matrix3d& eigenMat);
 
 void printf(char color, const char* message, ...);
+
+bool optimize_serial_communication(std::string portName);

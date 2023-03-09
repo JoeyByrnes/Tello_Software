@@ -170,55 +170,8 @@ using namespace vn::protocol::uart;
 using namespace vn::xplat;
 using namespace vn::math;
 using namespace std;
-void BinaryAsyncMessageReceived(void * robot, Packet & p, size_t index);
+void IMUMessageReceived(void * robot, Packet & p, size_t index);
 
-// Custom user data to pass to packet callback function
-struct UserData
-{
-  // the vectornav device identifier
-  int device_family;
-  // frame id used only for Odom header.frame_id
-  std::string map_frame_id;
-  // frame id used for header.frame_id of other messages and for Odom child_frame_id
-  std::string frame_id;
-  // Boolean to use ned or enu frame. Defaults to enu which is data format from sensor.
-  bool tf_ned_to_enu;
-  bool frame_based_enu;
-  // Initial position after getting a GPS fix.
-  vec3d initial_position;
-  bool initial_position_set = false;
-
-  //Unused covariances initialized to zero's
-//   boost::array<double, 9ul> linear_accel_covariance = {};
-//   boost::array<double, 9ul> angular_vel_covariance = {};
-//   boost::array<double, 9ul> orientation_covariance = {};
-
-  // ROS header time stamp adjustments
-  double average_time_difference{0};
-  bool adjust_ros_timestamp{false};
-
-  // strides
-  unsigned int imu_stride;
-  unsigned int output_stride;
-};
-
-bool optimize_serial_communication(std::string portName)
-{
-  int portFd = -1;
-
-  portFd = ::open(portName.c_str(), O_RDWR | O_NOCTTY);
-
-  if (portFd == -1) {
-    return false;
-  }
-
-  struct serial_struct serial;
-  ioctl(portFd, TIOCGSERIAL, &serial);
-  serial.flags |= ASYNC_LOW_LATENCY;
-  ioctl(portFd, TIOCSSERIAL, &serial);
-  ::close(portFd);
-  return true;
-}
 std::chrono::_V2::system_clock::time_point lastTime;
 
 void* IMU_Comms( void * arg ){
@@ -226,9 +179,6 @@ void* IMU_Comms( void * arg ){
 	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
 	void* arg0 = std::get<0>(*arg_tuple_ptr);
 	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(arg0);
-
-	// Initialize IMU 
-	UserData user_data;
 
 	// Open the serial port to communicate with the VN100 IMU
     const std::string port = "/dev/imu";
@@ -298,7 +248,7 @@ void* IMU_Comms( void * arg ){
 
 	vs.writeSettings();
 
-	vs.registerAsyncPacketReceivedHandler(tello, BinaryAsyncMessageReceived);
+	vs.registerAsyncPacketReceivedHandler(tello, IMUMessageReceived);
 
 	// read IMU
 	while(1){
@@ -324,7 +274,7 @@ float filterFloat(const vector<float>& samples) {
   return sum / (float)FILTER_LEN;
 }
 
-void BinaryAsyncMessageReceived(void * robot, Packet & p, size_t index)
+void IMUMessageReceived(void * robot, Packet & p, size_t index)
 {
 	RoboDesignLab::DynamicRobot* tello = (RoboDesignLab::DynamicRobot*) robot;
 	vn::sensors::CompositeData cd = vn::sensors::CompositeData::parse(p);

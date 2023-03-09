@@ -356,7 +356,7 @@ void run_tello_pd()
 	MatrixXd kd_mat_task = kd_vec_task.asDiagonal();
 
 	// Set up configuration struct for Task Space Controller
-	task_pd_config.task_ff_torque = VectorXd::Zero(12);
+	task_pd_config.task_ff_force = VectorXd::Zero(12);
 	task_pd_config.task_pos_desired = pos_desired;
 	task_pd_config.task_vel_desired = vel_desired;
 	task_pd_config.task_kp = kp_mat_task;

@@ -22,7 +22,6 @@
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/JSON",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Jacobian_Task_Inverse",
-                "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/PeriodicTask_RDL",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Tello_IMU",
                 ""
             ],
@@ -43,7 +42,6 @@
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/JSON",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Jacobian_Task_Inverse",
-                    "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/PeriodicTask_RDL",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Tello_IMU",
                     ""
                 ]

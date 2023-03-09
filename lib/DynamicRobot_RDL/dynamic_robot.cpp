@@ -313,7 +313,7 @@ void DynamicRobot::taskPD(TaskPDConfig task_conf)
                                    task_conf.task_vel_desired,task_conf.task_kp,task_conf.task_kd);
 
     // Get joint torques from task forces
-    VectorXd joint_torques = this->task_force_to_joint_torque(task_forces);
+    VectorXd joint_torques = this->task_force_to_joint_torque(task_forces+ task_conf.task_ff_force);
 
     // Use inverse kinematics to calculate joint pd
     VectorXd joint_pos_desired = this->task_pos_to_joint_pos(task_conf.task_pos_desired);

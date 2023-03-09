@@ -84,7 +84,7 @@ namespace RoboDesignLab {
         MatrixXd joint_kd;
         VectorXd motor_kp;
         VectorXd motor_kd;
-        VectorXd task_ff_torque;
+        VectorXd task_ff_force;
     };
 
     class DynamicRobot {

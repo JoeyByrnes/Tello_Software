@@ -87,6 +87,13 @@ namespace RoboDesignLab {
         VectorXd task_ff_force;
     };
 
+    struct GRFs{
+        double left_front = 0;
+        double left_back = 0;
+        double right_front = 0;
+        double right_back = 0;
+    };
+
     class DynamicRobot {
     public:
         // Constructor and destructor
@@ -140,7 +147,7 @@ namespace RoboDesignLab {
         VectorXd calc_pd(VectorXd position, VectorXd velocity, VectorXd desiredPosition, VectorXd desiredVelocity, MatrixXd Kp, MatrixXd Kd);
 
         void addGravityCompensation();
-        Vector3d transformForceToWorldFrame(const Eigen::VectorXd& force, vn::math::vec3f ypr);
+        Vector3d transformForceToWorldFrame(const Eigen::VectorXd& force, VectorXd ypr);
         
         // Actuators
         int motor_pos_model_to_real(int id, double actuator_position_radians);
@@ -160,9 +167,19 @@ namespace RoboDesignLab {
 
 
         // Sensors
+        Eigen::Vector3d updatePosFromIMU(const Eigen::Vector3d& acc, const Eigen::Vector3d& ypr, double delta_t, Eigen::Vector3d& pos, Eigen::Vector3d& vel);
         VnSensor imu;
-        vn::math::vec3f _ypr;
+        Vector3d _ypr;
+        Vector3d _acc = VectorXd::Zero(3);
+        Vector3d _vel = VectorXd::Zero(3);
+        Vector3d _pos = VectorXd::Zero(3);
         int _balance_adjust = 0;
+
+        // ground contact sensors:
+        GRFs _GRFs;
+        GRFs _GRF_biases;
+        bool _right_loadcells_calibrated = false;
+        bool _left_loadcells_calibrated = false;
     private:
         // Kinematics Functions
         MatrixXd_function _jaco_motor2joint;

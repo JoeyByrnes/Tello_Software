@@ -363,7 +363,7 @@ void DynamicRobot::addGravityCompensation()
     add_motor_torques(motor_torques);
 }
 
-Eigen::Vector3d DynamicRobot::transformForceToWorldFrame(const Eigen::VectorXd& force, vn::math::vec3f ypr) {
+Eigen::Vector3d DynamicRobot::transformForceToWorldFrame(const Eigen::VectorXd& force, VectorXd ypr) {
     Eigen::Matrix3d rotMat;
     rotMat = //Eigen::AngleAxisd(0, Eigen::Vector3d::UnitZ()) *
              Eigen::AngleAxisd(-ypr[1]*DEGREES_TO_RADIANS, Eigen::Vector3d::UnitY());// *
@@ -426,4 +426,30 @@ void DynamicRobot::add_motor_torques(Eigen::VectorXd motor_torques)
     {
 		this->motors[i]->addff(motor_torques[i]);
 	}
+}
+
+Eigen::Vector3d DynamicRobot::updatePosFromIMU(const Eigen::Vector3d& acc, const Eigen::Vector3d& ypr, double delta_t, Eigen::Vector3d& pos, Eigen::Vector3d& vel) {
+  // Compute the change in velocity due to acceleration
+  Eigen::Vector3d delta_v = acc * delta_t;
+
+  // Update the velocity due to acceleration
+  vel += delta_v;
+
+  // Compute the change in position due to velocity and time
+  Eigen::Vector3d delta_p = vel * delta_t;
+
+  // Compute the rotation matrix based on roll, pitch, and yaw
+  Eigen::Matrix3d rot_mat;
+  rot_mat = (  Eigen::AngleAxisd(ypr[0], Eigen::Vector3d::UnitZ())
+             * Eigen::AngleAxisd(ypr[1], Eigen::Vector3d::UnitY())
+             * Eigen::AngleAxisd(ypr[2], Eigen::Vector3d::UnitX()));
+
+  // Transform the change in position from the IMU frame to the world frame
+  delta_p = rot_mat * delta_p;
+
+  // Update the position of the IMU relative to the start position in the world frame
+  pos += delta_p;
+
+  // Return the updated position
+  return pos;
 }

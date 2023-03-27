@@ -41,6 +41,7 @@
 #define KNEE_OFFSET_ENC 503
 
 RoboDesignLab::DynamicRobot* tello;
+bool calibrate_IMU_bias = false;
 
 int udp_data_ready = 0;
 char udp_control_packet[UDP_MAXLINE];
@@ -365,6 +366,32 @@ void run_tello_pd()
 	task_pd_config.joint_kd = kd_mat_joint;
 	task_pd_config.motor_kp = kp_vec_motor;
 	task_pd_config.motor_kd = kd_vec_motor;
+
+	// ff force must be negative, make it about 1000
+
+	if(tello->_GRFs.left_front > 0.3){
+		//printf("LEFT CONTACT\n");
+		task_pd_config.task_kp.topRows(6).setZero();
+		task_pd_config.task_kd.topRows(6).setZero();
+		task_pd_config.joint_kp.topRows(6).setZero();
+		task_pd_config.joint_kd.topRows(6).setZero();
+
+		task_pd_config.task_ff_force(2) = -200;
+		task_pd_config.task_ff_force(5) = -200;
+
+	}
+	if(tello->_GRFs.right_front > 0.3){
+		//printf("LEFT CONTACT\n");
+		task_pd_config.task_kp.bottomRows(6).setZero();
+		task_pd_config.task_kd.bottomRows(6).setZero();
+		task_pd_config.joint_kp.bottomRows(6).setZero();
+		task_pd_config.joint_kd.bottomRows(6).setZero();
+
+		task_pd_config.task_ff_force(8) = -200;
+		task_pd_config.task_ff_force(11) = -200;
+
+	}
+
 	
 	tello->taskPD(task_pd_config);
 
@@ -476,6 +503,7 @@ static void* update_1kHz( void * arg )
 				// do nothing
 				break;
 		}
+		
 		pthread_mutex_lock(&mutex_CAN_recv);
 		if(disableScheduled){
 			tello->disable_all_motors();
@@ -637,6 +665,7 @@ int main() {
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd4),"rx_bus4",TASK_CONSTANT_DELAY, 50);
 	tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 	tello->addPeriodicTask(&IMU_Comms, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL, "imu_task", TASK_CONSTANT_DELAY, 1000);
+	tello->addPeriodicTask(&BNO055_Comms, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL, "bno_imu_task", TASK_CONSTANT_DELAY, 1000);
 	tello->addPeriodicTask(&update_1kHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, NULL, "update_task",TASK_CONSTANT_PERIOD, 1000);
 	
 	usleep(1000);
@@ -654,6 +683,10 @@ int main() {
 		char choice;
 		std::cin >> choice;
 		switch(choice){
+			case 'C':
+				calibrate_IMU_bias = true;
+				printf("Calibrating IMU\n");
+				break;
 			case 'D':
 				move_up_down = !move_up_down;
 				printf("Running Move Up-Down\n");

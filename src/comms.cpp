@@ -15,6 +15,11 @@ extern pthread_mutex_t mutex_CAN_recv;
 extern int can_data_ready_to_save;
 
 extern vn::math::vec3f tello_ypr;
+extern bool calibrate_IMU_bias;
+int cal_index = 0;
+MatrixXd acc_cal(1000,3);
+
+long long print_index = 0;
 
 void* rx_CAN( void * arg ){
 	
@@ -56,6 +61,10 @@ void* rx_CAN( void * arg ){
 				}
 				else if(id == 18 || id == 19){
 					process_foot_sensor_data(Message, tello);
+					// if(id == 18){
+					// 	printf("L: %f, \t %f \t\t R: %f, \t %f          \r",tello->_GRFs.left_front,tello->_GRFs.left_back,tello->_GRFs.right_front,tello->_GRFs.right_back);
+					// 	std::cout.flush();
+					// }
 				}
 				pthread_mutex_unlock(&mutex_CAN_recv);
 
@@ -92,15 +101,35 @@ void process_motor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot)
 }
 
 void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot){
-	// uint8_t id = Message.DATA[0];
-	// uint16_t front_force = (Message.DATA[1] << 8) | Message.DATA[2];
-	// uint16_t back_force = (Message.DATA[3] << 8) | Message.DATA[4];
-	// if(id == 18){
-	// 	// write to left foot
-	// }
-	// if(id == 19){
-	// 	// write to right foot
-	// }
+	
+	uint8_t id = Message.DATA[0];
+	uint16_t back_force_uint16 = (Message.DATA[1] << 8) | Message.DATA[2];
+	uint16_t front_force_uint16 = (Message.DATA[3] << 8) | Message.DATA[4];
+
+	// Given front_force_uint16 and back_force_uint16 variables
+	double front_force = (double)((int)front_force_uint16 - 32768)/1000.0;
+	double back_force = (double)((int)back_force_uint16 - 32768)/1000.0;
+
+	if(id == 18){
+		if(!robot->_left_loadcells_calibrated){
+			robot->_GRF_biases.left_front = front_force;
+			robot->_GRF_biases.left_back = back_force;
+			robot->_left_loadcells_calibrated = true;
+		}
+		// write to left foot
+		robot->_GRFs.left_front = -(front_force - robot->_GRF_biases.left_front);
+		robot->_GRFs.left_back = -(back_force - robot->_GRF_biases.left_back);
+	}
+	if(id == 19){
+		if(!robot->_right_loadcells_calibrated){
+			robot->_GRF_biases.right_front = front_force;
+			robot->_GRF_biases.right_back = back_force;
+			robot->_right_loadcells_calibrated = true;
+		}
+		// write to right foot
+		robot->_GRFs.right_front = -(front_force - robot->_GRF_biases.right_front);
+		robot->_GRFs.right_back = -(back_force - robot->_GRF_biases.right_back);
+	}
 }
 
 void* rx_UDP( void * arg ){
@@ -165,14 +194,150 @@ void* rx_UDP( void * arg ){
 
 //    IMU   =================================================================================
 
+using namespace std;
+
+Eigen::Matrix3d rotateAlign(Eigen::Vector3d v1, Eigen::Vector3d v2)
+{
+    Eigen::Vector3d axis = v1.cross(v2).normalized();
+    float dotProduct = v1.dot(v2);
+	if(dotProduct< -1) dotProduct = -1;
+	if(dotProduct > 1) dotProduct = 1;
+    float angleRadians = acos(dotProduct);
+
+    const float sinA = sin(angleRadians);
+    const float cosA = cos(angleRadians);
+    const float oneMinusCosA = 1.0f - cosA;
+
+    Eigen::Matrix3d result;
+    result << (axis[0] * axis[0] * oneMinusCosA) + cosA,
+              (axis[1] * axis[0] * oneMinusCosA) - (sinA * axis[2]), 
+              (axis[2] * axis[0] * oneMinusCosA) + (sinA * axis[1]),
+              (axis[0] * axis[1] * oneMinusCosA) + (sinA * axis[2]),  
+              (axis[1] * axis[1] * oneMinusCosA) + cosA,      
+              (axis[2] * axis[1] * oneMinusCosA) - (sinA * axis[0]),
+              (axis[0] * axis[2] * oneMinusCosA) - (sinA * axis[1]),  
+              (axis[1] * axis[2] * oneMinusCosA) + (sinA * axis[0]),  
+              (axis[2] * axis[2] * oneMinusCosA) + cosA;
+
+    return result;
+}
+
+VectorXd calculate_accelerometer_bias(const MatrixXd& acceleration_data) {
+    int num_samples = acceleration_data.rows(); // get the number of samples
+    VectorXd accelerometer_bias(3); // create a vector to store the biases
+
+    // compute the mean of each column
+    accelerometer_bias = acceleration_data.colwise().mean();
+
+    return accelerometer_bias;
+}
+
+std::chrono::_V2::system_clock::time_point lastTime;
+long long getDeltaT() {
+  auto currentTime = chrono::high_resolution_clock::now();
+  auto duration = chrono::duration_cast<chrono::microseconds>(currentTime - lastTime).count();
+  lastTime = currentTime;
+  return duration;
+}
+
+Eigen::VectorXd subtractGravity2(const Eigen::Vector3d& ypr, const Eigen::VectorXd& acc)
+{
+    // Construct rotation matrix from roll-pitch-yaw angles
+    AngleAxisd pitchRotation(ypr[1], Vector3d::UnitY());
+    AngleAxisd rollRotation(ypr[2], Vector3d::UnitX());
+
+    Matrix3d R = pitchRotation.matrix() * rollRotation.matrix();
+
+
+    // Calculate gravitational acceleration in body frame
+    Eigen::Vector3d g_body(0, 0, 10.02);
+    Eigen::Vector3d g_enu = R.transpose() * g_body;
+
+    // Subtract gravitational acceleration from measured acceleration
+    Eigen::VectorXd acc_out(3);
+    acc_out = acc - g_enu;
+
+	// printf("    %.5f, \t\t %.5f, \t\t %.5f                   \r", g_enu[0], g_enu[1], g_enu[2]);
+	// cout.flush();
+    return acc_out;
+}
+
+void* BNO055_Comms( void * arg ){
+
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	void* arg0 = std::get<0>(*arg_tuple_ptr);
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(arg0);
+
+	BNO055* imu = new BNO055(0,40,3);
+	imu->begin(BNO055::OPERATION_MODE_CONFIG);
+	imu->setExtCrystalUse(false);
+	imu->setAxisRemap(BNO055::REMAP_CONFIG_P7);
+	imu->setAxisSign(BNO055::REMAP_SIGN_P7);
+
+	imu->setAccelConfig(BNO055::BNO055_ACCEL_CONFIG_16G, BNO055::BNO055_ACCEL_CONFIG_1000Hz);
+	imu->setMode(BNO055::OPERATION_MODE_ACCGYRO);
+
+
+	Eigen::Vector3d v(0.05, -0.99, 9.84);
+    Eigen::Vector3d z_axis(0, 0, 1);
+
+    // Step 1: Calculate the angle between v and the z-axis
+    double angle = std::acos(v.dot(z_axis) / v.norm());
+
+    // Step 2: Calculate the rotation axis using cross product between v and z-axis
+    Eigen::Vector3d axis = v.cross(z_axis).normalized();
+
+    // Step 3: Construct the rotation matrix
+    Eigen::AngleAxisd rotation(angle, axis);
+    Eigen::Matrix3d offset_correction = rotation.toRotationMatrix();
+
+    std::cout << "Rotation matrix:\n" << offset_correction << std::endl << std::endl;
+
+	
+	lastTime = chrono::high_resolution_clock::now();
+	while(1){
+		
+		VectorXd xyz = (imu->getVector(BNO055::VECTOR_ACCELEROMETER));
+		xyz = Vector3d(-xyz[1], xyz[0], xyz[2]);
+		xyz = subtractGravity2(tello->_ypr, xyz);
+
+		// if(calibrate_IMU_bias){
+		// 	if(cal_index < 1000){
+		// 		acc_cal.row(cal_index) = xyz.transpose();
+		// 		cal_index++;
+		// 	}
+		// 	else{
+		// 		VectorXd biases = calculate_accelerometer_bias(acc_cal);
+		// 		printf("Biases: %.6f,\t %.6f,\t %.6f                    \n\n",biases[0], biases[1], biases[2]);
+		// 		calibrate_IMU_bias = false;
+		// 	}
+		// }
+		// tello->_acc = xyz;
+		// int delta_T = getDeltaT();
+		// double dt = (double)delta_T/1000000.0;
+		// tello->updatePosFromIMU(tello->_acc, tello->_ypr,dt,tello->_pos, tello->_vel);
+
+		//printf("POS: %.3f,\t %.3f,\t %.3f               \r",tello->_pos[0], tello->_pos[1], tello->_pos[2]);
+		std::cout.flush();
+
+		// if(print_index%50 == 0){
+		// 	printf("    %.5f, \t\t %.5f, \t\t %.5f                   \r", xyz[0], xyz[1], xyz[2]);
+		// 	//printf("IMU: x: %f, \ty: %f, \tz: %f                   \r", xa*10, ya*10, za*10);
+		// 	std::cout.flush();
+		// }
+		// print_index++;
+
+		usleep(1000);
+	}
+
+}
+
 using namespace vn::sensors;
 using namespace vn::protocol::uart;
 using namespace vn::xplat;
 using namespace vn::math;
-using namespace std;
-void IMUMessageReceived(void * robot, Packet & p, size_t index);
 
-std::chrono::_V2::system_clock::time_point lastTime;
+void IMUMessageReceived(void * robot, Packet & p, size_t index);
 
 void* IMU_Comms( void * arg ){
 
@@ -224,6 +389,7 @@ void* IMU_Comms( void * arg ){
 
     vs.writeVpeBasicControl(vpeControl);
 
+
 	// Configure binary output message
 	BinaryOutputRegister bor(
 		ASYNCMODE_PORT2,
@@ -248,6 +414,7 @@ void* IMU_Comms( void * arg ){
 
 	vs.writeSettings();
 
+	lastTime = chrono::high_resolution_clock::now();
 	vs.registerAsyncPacketReceivedHandler(tello, IMUMessageReceived);
 
 	// read IMU
@@ -256,12 +423,7 @@ void* IMU_Comms( void * arg ){
 	}
 
 }
-long long getLastTime() {
-  auto currentTime = chrono::high_resolution_clock::now();
-  auto duration = chrono::duration_cast<chrono::microseconds>(currentTime - lastTime).count();
-  lastTime = currentTime;
-  return duration;
-}
+
 #define FILTER_LEN 20
 vector<float> samples(FILTER_LEN, 0.0);
 long idx = 0;
@@ -274,12 +436,50 @@ float filterFloat(const vector<float>& samples) {
   return sum / (float)FILTER_LEN;
 }
 
+Eigen::Vector3d vn2Eig_3D(const vn::math::vec3f& vec) {
+  // Create a new Eigen::Vector3d object and copy the x, y, and z values from the vn::math::vec3f object
+  Eigen::Vector3d result(vec.x, vec.y, vec.z);
+  return result;
+}
+
+void subtractGravity(Eigen::Vector3d& accel, const Eigen::Vector3d& ypr) {
+	// Calculate the gravity vector based on the yaw, pitch, and roll angles
+	Eigen::Matrix3d R;
+	double yaw = ypr(0);
+	double pitch = ypr(1);
+	double roll = ypr(2);
+	double cy = cos(yaw);
+	double sy = sin(yaw);
+	double cp = cos(pitch);
+	double sp = sin(pitch);
+	double cr = cos(roll);
+	double sr = sin(roll);
+	R << cy*cp, cy*sp*sr - sy*cr, cy*sp*cr + sy*sr,
+		sy*cp, sy*sp*sr + cy*cr, sy*sp*cr - cy*sr,
+		-sp, cp*sr, cp*cr;
+		
+	double calibration_error = 0.227395;
+	Eigen::Vector3d gravity(0.0, 0.0, 9.81+calibration_error);
+	Eigen::Vector3d biases(-0.001718,-0.000485,0.227395);
+	Eigen::Vector3d gravity_in_imu_frame = R.transpose() * (gravity);
+
+	// Subtract the gravity vector from the acceleration vector
+	accel -= gravity_in_imu_frame;
+}
+int cutoff = 0; // 15 millisecond cutoff;
 void IMUMessageReceived(void * robot, Packet & p, size_t index)
 {
 	RoboDesignLab::DynamicRobot* tello = (RoboDesignLab::DynamicRobot*) robot;
 	vn::sensors::CompositeData cd = vn::sensors::CompositeData::parse(p);
 
 	vec3f ypr = cd.yawPitchRoll();
+	vec3f acc = cd.acceleration();
+
+	// if(fabs(acc[0]) < 0.5) acc[0] = 0;
+	// if(fabs(acc[1]) < 0.5) acc[1] = 0;
+	// if(fabs(acc[2]) < 0.5) acc[2] = 0;
+	// if( fabs(acc[0]) < 0.5 && fabs(acc[1]) < 0.5 && fabs(acc[2]) < 0.5 ) tello->_vel = VectorXd::Zero(3);
+
 	if(ypr[2] > 0){
 		ypr[2] = -180.0 + ypr[2];
 	}
@@ -287,9 +487,34 @@ void IMUMessageReceived(void * robot, Packet & p, size_t index)
 		ypr[2] = 180.0 + ypr[2];
 	}
 	ypr[1] = -ypr[1];
-	ypr[0] = 0;			// CHANGE THIS WHEN WE CARE ABOUT YAW
+	
 	tello_ypr = ypr;
-	tello->_ypr = ypr;
+	tello->_ypr = vn2Eig_3D(ypr)*DEGREES_TO_RADIANS;
+	Vector3d acc_eig = vn2Eig_3D(acc);
+	acc_eig = subtractGravity2(tello->_ypr,acc_eig);
+	tello->_acc = acc_eig;
+	if(calibrate_IMU_bias){
+		if(cal_index < 1000){
+			acc_cal.row(cal_index) = acc_eig.transpose();
+			cal_index++;
+		}
+		else{
+			VectorXd biases = calculate_accelerometer_bias(acc_cal);
+			printf("Biases: %.6f,\t\t %.6f,\t\t %.6f                    \n\n",biases[0], biases[1], biases[2]);
+			calibrate_IMU_bias = false;
+			cal_index = 0;
+		}
+	}
 	// printf("YPR: %.2f,\t %.2f,\t %.2f          \r",ypr[0], ypr[1], ypr[2]);
 	// cout.flush();
+	// printf("%.4f,\t\t %.4f,\t\t %.4f               \n",acc_eig[0], acc_eig[1], acc_eig[2]);
+	// cout.flush();
+
+	int delta_T = getDeltaT();
+	double dt = (double)delta_T/1000000.0;
+
+	tello->updatePosFromIMU(tello->_acc, tello->_ypr,dt,tello->_pos, tello->_vel);
+	// printf("POS: %.3f,\t %.3f,\t %.3f         \n",tello->_pos[0], tello->_pos[1], tello->_pos[2]);
+	// cout.flush();
+
 }

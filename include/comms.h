@@ -31,6 +31,9 @@
 #include "vn/util.h"
 #include "../lib/Eigen/Dense"
 #include "../lib/DynamicRobot_RDL/dynamic_robot.h"
+// #include "RTIMULib.h"
+#include "BNO055.h"
+
 
 #define UDP_MAXLINE 1024
 
@@ -48,3 +51,7 @@ void* rx_UDP( void * arg );
 // ========================= SERIAL ===========================
 
 void* IMU_Comms( void * arg );
+
+// ========================== I2C =============================
+
+void* BNO055_Comms( void * arg );

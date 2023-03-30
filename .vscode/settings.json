@@ -75,6 +75,7 @@
         "codecvt": "cpp",
         "forward_list": "cpp",
         "rt_nonfinite.h": "c",
-        "future": "cpp"
+        "future": "cpp",
+        "image": "cpp"
     }
 }

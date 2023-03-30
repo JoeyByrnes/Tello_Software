@@ -339,7 +339,7 @@ using namespace vn::math;
 
 void IMUMessageReceived(void * robot, Packet & p, size_t index);
 
-void* IMU_Comms( void * arg ){
+void* IMU_Comms( void * arg ){ //readImuMeasurements()
 
 	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
 	void* arg0 = std::get<0>(*arg_tuple_ptr);

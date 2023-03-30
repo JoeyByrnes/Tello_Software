@@ -1,8 +1,8 @@
 #include <iostream>
 #include <cmath>
 #include <../lib/Eigen/Dense>
-#include <srbm_kinematics.h>
-#include "srbm_structs.h"
+#include "SRBM-Ctrl/kinematics.h"
+#include "SRBM-Ctrl/structs.h"
 
 // typedef Eigen::Matrix<double, 5, 1> Vector5d;
 

@@ -249,6 +249,49 @@ Eigen::VectorXd DynamicRobot::getJointVelocities()
     return joint_velocities;
 }
 
+MotorPDConfig DynamicRobot::switchController(const MotorPDConfig& stanceCtrl, const MotorPDConfig& swingCtrl,
+                               int durationMs, bool isSwingToStance, int currTimeStep) {
+    MotorPDConfig output;
+
+    int numTimeSteps = durationMs;  // Calculate the number of time steps to use for the transition
+
+    if (!isSwingToStance) {
+        currTimeStep = numTimeSteps - currTimeStep;  // If transitioning from stance to swing, invert the current time step
+    }
+
+    for (int i = 0; i < 12; i++) {
+        double stancePos = stanceCtrl.motor_pos_desired[i];
+        double swingPos = swingCtrl.motor_pos_desired[i];
+        double stanceVel = stanceCtrl.motor_vel_desired[i];
+        double swingVel = swingCtrl.motor_vel_desired[i];
+        double stanceKp = stanceCtrl.motor_kp[i];
+        double swingKp = swingCtrl.motor_kp[i];
+        double stanceKd = stanceCtrl.motor_kd[i];
+        double swingKd = swingCtrl.motor_kd[i];
+        double stanceFF = stanceCtrl.motor_ff_torque[i];
+        double swingFF = swingCtrl.motor_ff_torque[i];
+
+        double switchFactor = currTimeStep / double(numTimeSteps);  // Calculate the switch factor based on the current time step and direction flag
+        if (!isSwingToStance) {
+            switchFactor = 1 - switchFactor;  // If transitioning from stance to swing, invert the switch factor
+        }
+        double smoothVal = sigmoid((switchFactor - 0.5) * 10);  // Scale the switch factor to be between -5 and 5, and apply sigmoid function
+        double posDesired = (1 - smoothVal) * stancePos + smoothVal * swingPos;  // Smoothly transition between the position desired values
+        double velDesired = (1 - smoothVal) * stanceVel + smoothVal * swingVel;  // Smoothly transition between the velocity desired values
+        double kp = (1 - smoothVal) * stanceKp + smoothVal * swingKp;  // Smoothly transition between the proportional gain values
+        double kd = (1 - smoothVal) * stanceKd + smoothVal * swingKd;  // Smoothly transition between the derivative gain values
+        double ffTorque = (1 - smoothVal) * stanceFF + smoothVal * swingFF;  // Smoothly transition between the feedforward torque values
+
+        output.motor_pos_desired[i] = posDesired;
+        output.motor_vel_desired[i] = velDesired;
+        output.motor_kp[i] = kp;
+        output.motor_kd[i] = kd;
+        output.motor_ff_torque[i] = ffTorque;
+    }
+
+    return output;
+}
+
 void DynamicRobot::motorPD(MotorPDConfig motor_conf)
 {
     for(int i=0; i<this->_num_actuators; i++)

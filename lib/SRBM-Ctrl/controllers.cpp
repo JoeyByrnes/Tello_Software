@@ -1,0 +1,1074 @@
+#include "controllers.h"
+
+void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm, Human_dyn_data& human_dyn_data, 
+                                        SRB_Params srb_params, Human_params human_params, Traj_planner_dyn_data traj_planner_dyn_data, 
+                                        int FSM, double t, VectorXd x, MatrixXd lfv, MatrixXd lfdv, VectorXd tau_ext)
+{
+    // Get robot parameters
+    double mR = srb_params.m; 
+    double hR = srb_params.hLIP; 
+    double ft_l = srb_params.foot_length;
+    double lmaxR = srb_params.lmaxR;
+    double g = srb_params.g; 
+    double xDCMH_deadband = srb_params.xDCMH_deadband;
+    double KxDCMH = srb_params.KxDCMH;
+    double Kx_DCM_mult = srb_params.Kx_DCM_mult;
+    double Ky_DCM_mult = srb_params.Ky_DCM_mult;
+    double T_DSP = srb_params.T_DSP;
+
+    // Get human parameters
+    double mH = human_params.m; 
+    double hH = human_params.hLIP; 
+
+    // Get trajectory planner data
+    double t_sw_start = traj_planner_dyn_data.t_sw_start;
+    double T_step = traj_planner_dyn_data.T_step;
+    double sigma1H = traj_planner_dyn_data.sigma1H;
+    double swx0 = traj_planner_dyn_data.sw_beg_step[0];
+    double swy0 = traj_planner_dyn_data.sw_beg_step[1];
+    double swz0 = traj_planner_dyn_data.sw_beg_step[2];
+    double fyH0 = traj_planner_dyn_data.human_leg_joystick_pos_beg_step[1];
+    double fzH0 = traj_planner_dyn_data.human_leg_joystick_pos_beg_step[2];
+
+    // Get human dynamic data
+    double xH = human_dyn_data.xH; 
+    double dxH = human_dyn_data.dxH; 
+    double yH = human_dyn_data.yH; 
+    double dyH = human_dyn_data.dyH;
+    double pyH = human_dyn_data.pyH; 
+    double fyH_R = human_dyn_data.fyH_R;
+    double fzH_R = human_dyn_data.fzH_R;
+    double fyH_L = human_dyn_data.fyH_L;
+    double fzH_L = human_dyn_data.fzH_L;
+    double fdyH_R = human_dyn_data.fdyH_R;
+    double fdzH_R = human_dyn_data.fdzH_R;
+    double fdyH_L = human_dyn_data.fdyH_L;
+    double fdzH_L = human_dyn_data.fdzH_L;
+
+    double FyH, xR, dxR, yR, dyR, FxR_ext = 0.0, FyR_ext = 0.0;
+    double t_step, s, wR, wH, K_DCM, ks, xR_LIP, yH_LIP;
+    double xDCMR_local, xDCMH, yDCMR, yDCMH;
+    Vector3d LIPR_params, LIPH_params;
+
+    // Get SRB states
+    xR = x(0);
+    dxR = x(3);
+    yR = x(1);
+    dyR = x(4);
+
+    // Calculations
+    t_step = t - t_sw_start;
+    s = t_step / T_step;
+
+    wR = std::sqrt(g / hR);
+    wH = std::sqrt(g / hH);
+
+    LIPR_params << mR, hR, wR;
+    LIPH_params << mH, hH, wH;
+
+    K_DCM = mR * hR * wR * wR;
+    ks = mH * wH * wH;
+
+    xR_LIP = xR - swx0;
+    yH_LIP = yH - pyH;
+
+    xDCMR_local = xR_LIP + (dxR / wR);
+    xDCMH = xH + (dxH / wH);
+    yDCMR = yR + (dyR / wR);
+    yDCMH = yH + (dyH / wH);
+
+    FyH = mH * wH * wH * yH_LIP;
+
+    // Human walking reference LIPM generation
+
+    // Human DCM surrogate outside step-in-place deadband -- use CoM position as surrogate since CoM velocity is noisy
+    if (fabs(xDCMH) > xDCMH_deadband) {
+        // scale human DCM command
+        //xDCMH = KxDCMH*xH_curr;     // TODO_DASH: xH_curr not defined in matlab function
+    }
+
+    // if step takes longer than assumed duration then update the orbital slope
+    // -- since we are extending the reference trajectory
+    if (s > 1.0 && fabs(FSM) == 1.0) {
+        // update orbital line slope
+        sigma1H = wH*(1.0/(tanh((t_step/2.0)*wH)));
+    }
+
+    // end of step calculations for human reference trajectory based on assumed step frequency and actual human DCM -- assuming stable P1 orbit
+    double xHf_ref = xDCMH/(1.0 + (sigma1H/wH)); // final human CoM position of reference trajectory
+    double dxHf_ref = wH*(xDCMH - xHf_ref); // final human CoM velocity of reference trajectory
+
+    // corresponding initial conditions of P1 orbit
+    double xH0_ref = -1.0*xHf_ref; // initial human CoM position of reference trajectory
+    double dxH0_ref = dxHf_ref; // initial human CoM velocity of reference trajectory
+
+    // human reference trajectory (based on analytical solution to LIP dyn.)
+    double xDCMH0_ref = xH0_ref + (dxH0_ref/wH); // initial human DCM of reference trajectory
+    double xDCMH_ref = xDCMH0_ref*exp(wH*t_step); // human DCM reference trajectory at current time step
+    double xH_ref, dxH_ref;
+    dash_utils::LIP_dyn_ref(t_step, wH, xH0_ref, dxH0_ref, xH_ref, dxH_ref);
+
+    // human force profile for desired P1 orbit
+    double FxH_ref = mH * wH * wH * xH_ref; // feedforward force to track human reference trajectory
+
+    // virtual spring force to regulate human motion along the force plate
+    double FxH_spring = (-1.0 / KxDCMH) * ks * xHf_ref; // LIP model FF
+
+    // during DSP track actual DCM command and assume constant CoM velocity
+    // perhaps need to revise
+    if (FSM == 0)
+    {
+        // track actual human DCM
+        xDCMH_ref = xDCMH;
+
+        // assumed constant human CoM velocity
+        dxH_ref = dxHf_ref;
+
+        // no feedforward
+        FxH_ref = 0;
+    }
+    // Sagittal Plane Control (x-direction)
+    // Dynamic Bilateral Teleoperation
+
+    // Enforce dynamic similarity of human walking
+    // reference LIP model and robot LIP model
+    VectorXd xLIPR_dyn(2);
+    xLIPR_dyn << xDCMR_local, dxR;
+    VectorXd xLIPH_dyn(2);
+    xLIPH_dyn << xDCMH_ref, dxH_ref;
+    double FxR_ext_est = FxR_ext;
+    double Kx_DCM = Kx_DCM_mult * K_DCM;
+    double FxH_hmi;
+    bilateral_teleop_law(LIPR_params, LIPH_params, xLIPR_dyn, xLIPH_dyn, FxH_ref, FxR_ext_est, Kx_DCM, FxR, FxH_hmi);
+    human_dyn_data.FxH_hmi = FxH_hmi;
+    human_dyn_data.FxH_spring = FxH_spring;
+
+    // -------------------------------------------------------------------------
+
+    // Frontal Plane Control (y-direction)
+    // Dynamic Bilateral Teleoperation
+
+    // Enforce dynamic similarity of actual human
+    // LIP model and robot LIP model
+    VectorXd yLIPR_dyn(2);
+    yLIPR_dyn << yDCMR, dyR;
+    VectorXd yLIPH_dyn(2);
+    yLIPH_dyn << yDCMH, dyH;
+    double FyR_ext_est = FyR_ext;
+    double Ky_DCM = Ky_DCM_mult * K_DCM;
+    double FyH_hmi;
+    bilateral_teleop_law(LIPR_params, LIPH_params, yLIPR_dyn, yLIPH_dyn, FyH, FyR_ext_est, Ky_DCM, FyR, FyH_hmi);
+    human_dyn_data.FyH_hmi = FyH_hmi;
+    // -------------------------------------------------------------------------
+
+    // In dynamic telelocomotion framework swing-leg trajectories are generated
+    // two ways: using human motion capture/re-targeting in the frontal plane
+    // and using step placement law that reduces the normalized DCM of the human
+    // walking reference LIP and robot LIP at step transitions
+
+    // initialize commanded end-effector positions (DSP)
+    lfv_comm = lfv;
+    lfdv_comm = lfdv;
+
+    // swing-leg trajectories
+    if (abs(FSM) == 1) { // SSP
+        // x-direction step placement strategy
+
+        // minimize error in dynamic similarity between human walking reference
+        // LIP model and robot LIP model at step transitions (feedback)
+        double l_fb = xDCMR_local - xDCMH0_ref*(hR/hH);
+        // assume constant CoM velocity through DSP (feedforward)
+        double l_ff = dxR*T_DSP;
+        // overall step length
+        double l_cl = l_fb + l_ff;
+        // step length magnitude
+        double l_mag = abs(l_cl);
+        // step direction
+        int l_dir = 0;
+        if (l_cl > 0)
+            l_dir = 1;
+        else
+            l_dir = -1;
+        // desired swing-leg x-position at the end of the step
+        double swxf = 0.0;
+        if (l_mag > lmaxR)
+            swxf = swx0 + l_dir*lmaxR;
+        else
+            swxf = swx0 + l_cl;
+        // generate x-direction swing-leg trajectory through the step
+        VectorXd swx_traj(2);
+        if (s < 1) 
+            swx_traj = dash_utils::sw_leg_ref_xy(s, swx0, swxf);
+        else {
+            swx_traj[0] = swxf;
+            swx_traj[1] = 0.0;
+        }
+
+        // update commanded task space trajectories
+
+        // set desired end-effector positions based on desired x-direction step
+        // placement and tracking normalized human end-effector dynamics
+        if (FSM == 1) { // SSP_L
+            // x-position trajectories
+            lfv_comm(0,0) = swx_traj[0] + (1.0/2.0)*ft_l; lfv_comm(3,0) = swx_traj[0] - (1.0/2.0)*ft_l;
+            lfdv_comm(0,0) = swx_traj[1]; lfdv_comm(3,0) = lfdv_comm(0,0);
+            // y-position trajectories
+            lfv_comm(1,0) = swy0 + (hR/hH)*(fyH_R - fyH0); lfv_comm(4,0) = lfv_comm(1,0);
+            lfdv_comm(1,0) = (wR/wH)*fdyH_R; lfdv_comm(4,0) = lfdv_comm(1,0);
+            // z-position trajectories
+            lfv_comm(2,0) = swz0 + (hR/hH)*(fzH_R - fzH0); lfv_comm(5,0) = lfv_comm(2,0);
+            lfdv_comm(2,0) = (wR/wH)*fdzH_R; lfdv_comm(5,0) = lfdv_comm(2,0);
+        }
+        else if (FSM == -1) { // SSP_R
+        // x-position trajectories
+            lfv_comm(6,0) = swx_traj(0) + 0.5*ft_l; lfv_comm(9,0) = swx_traj(0) - 0.5*ft_l;
+            lfdv_comm(6,0) = swx_traj(1); lfdv_comm(9,0) = lfdv_comm(6,0);
+            // y-position trajectories
+            lfv_comm(7,0) = swy0 - (hR/hH)*(fyH_L - fyH0); lfv_comm(10,0) = lfv_comm(7,0);
+            lfdv_comm(7,0) = (wR/wH)*fdyH_L; lfdv_comm(10,0) = lfdv_comm(7);
+            // z-position trajectories
+            lfv_comm(8,0) = swz0 + (hR/hH)*(fzH_L - fzH0); lfv_comm(11,0) = lfv_comm(8,0);
+            lfdv_comm(8,0) = (wR/wH)*fdzH_L; lfdv_comm(11,0) = lfdv_comm(8,0);
+        }
+
+    }
+
+}
+
+void dash_ctrl::bilateral_teleop_law(VectorXd LIPR_params, VectorXd LIPH_params, VectorXd LIPR_dyn, VectorXd LIPH_dyn, 
+                            double FH, double FR_ext_est, double FB_gain, double& FR, double& FH_hmi)
+{
+    // Robot LIP Parameters
+    double mR = LIPR_params(0);
+    double hR = LIPR_params(1);
+    double wR = LIPR_params(2);
+
+    // Human LIP Parameters
+    double mH = LIPH_params(0);
+    double hH = LIPH_params(1);
+    double wH = LIPH_params(2);
+
+    // Robot CoM dynamics
+    double DCMR = LIPR_dyn(0);
+    double dR = LIPR_dyn(1);
+
+    // Human CoM dynamics
+    double DCMH = LIPH_dyn(0);
+    double dH = LIPH_dyn(1);
+
+    // feedforward force
+    double FR_ff = ((mR*hR*wR*wR)/(mH*hH*wH*wH))*FH;
+
+    // feedback force (track normalized human DCM)
+    double FR_fb = FB_gain*((DCMH/hH) - (DCMR/hR));
+
+    // robot force
+    FR = FR_ff + FR_fb;
+
+    // haptic feedback force to human
+    FH_hmi = (mH*hH*wH*wH)*((dR/(hR*wR)) - (dH/(hH*wH))) + ((mH*hH*wH*wH)/(mR*hR*wR*wR))*FR_ext_est;
+}
+
+void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm,
+                                        SRB_Params srb_params, Traj_planner_dyn_data traj_planner_dyn_data, 
+                                        int FSM, double t, VectorXd x, MatrixXd lfv, MatrixXd lfdv)
+{
+    // Get robot parameters
+    double m = srb_params.m;
+    double H = srb_params.hLIP;
+    double ft_l = srb_params.foot_length;
+    double g = srb_params.g;
+    double T = srb_params.T;
+    double Kp_xR = srb_params.Kp_xR;
+    double Kd_xR = srb_params.Kd_xR;
+    double Kp_yR = srb_params.Kp_yR;
+    double Kd_yR = srb_params.Kd_yR;
+    VectorXd vx_des_t = srb_params.vx_des_t;
+    VectorXd vx_des_vx = srb_params.vx_des_vx;
+    int num_end_effector_pts = 4;
+    int position_vec_size = 3;
+
+    // Get trajectory planner data
+    double W = traj_planner_dyn_data.step_width;
+    int next_SSP = traj_planner_dyn_data.next_SSP;
+    double t_sw_start = traj_planner_dyn_data.t_sw_start;
+    double T_step = traj_planner_dyn_data.T_step;
+    double xLIP0 = traj_planner_dyn_data.xLIP_init(0);
+    double xd0 = traj_planner_dyn_data.xLIP_init(1);
+
+    // Get SRB states
+    VectorXd pc = x.segment(0, 3);
+    double dx = x(3);
+    double dy = x(4);
+
+    // Calculations ------------------------------------------------------------
+
+    // step time variable
+    double t_step = t - t_sw_start;
+
+    // compute phase variable
+    double s = t_step / T_step;
+
+    // get desired velocity in x-direction at end of next step
+    // vx_des = f(sim_time)
+    double vx_des = 0.0;
+    for (int i = 0; i < vx_des_t.size(); i++) {
+        if (t <= vx_des_t(i)) {
+            vx_des = vx_des_vx(i);
+            break;
+        }
+    }
+    if (vx_des <= 0.0) {
+        vx_des = 0.0;
+    }
+
+    // LIP states
+    
+    MatrixXd lf2CoM_mat = pc.replicate(1, num_end_effector_pts) - lfv.transpose();
+
+    double xLIP, yLIP;
+    // calculate LIP states based on current and next footstep
+    if(FSM == 1) // SSP_L
+    {
+        xLIP = lf2CoM_mat(0, 2) + 0.5*ft_l;
+        yLIP = lf2CoM_mat(1, 2);
+    }
+    else if(FSM == -1) // SSP_R
+    {
+        xLIP = lf2CoM_mat(0, 0) + 0.5*ft_l;
+        yLIP = lf2CoM_mat(1, 0);
+    }
+    else // DSP
+    {
+        if(next_SSP == 1) // next SSP is SSP_L
+        {
+            xLIP = lf2CoM_mat(0, 2) + 0.5*ft_l;
+            yLIP = lf2CoM_mat(1, 2);
+        }
+        else if(next_SSP == -1) // next SSP is SSP_R
+        {
+            xLIP = lf2CoM_mat(0, 0) + 0.5*ft_l;
+            yLIP = lf2CoM_mat(1, 0);
+        }
+        else // terminate walking
+        {
+            xLIP = 0.5*(lf2CoM_mat(0, 0) + lf2CoM_mat(0, 3)); 
+            yLIP = 0.5*(lf2CoM_mat(1, 0) + lf2CoM_mat(1, 2));
+        }
+    }
+    // printf("Next_SSP: %d\n", next_SSP);
+    // printf("lf2CoM_mat:\n");
+    // cout << lf2CoM_mat << endl;
+
+    // compute LIP natural frequency
+    double omega = sqrt(g/H);
+
+    double sw2CoM_end_step_x;
+    double sw2CoM_end_step_y;
+    if (abs(FSM) == 1) // SSP
+    {
+        // compute angular momentum about contact point
+        double Lx = m*H*dx;
+        double Ly = m*H*dy;
+
+        // compute angular momentum about contact point at the end of current step
+        // estimate
+        // Eq. 14 from Angular Momentum about the Contact Point for Control of
+        // Bipedal Locomotion: Validation in a LIP-based Controller
+        double Lxest_end_step = m*H*omega*sinh(omega*(T - t_step))*xLIP + cosh(omega*(T - t_step))*Lx;
+        double Lyest_end_step = m*H*omega*sinh(omega*(T - t_step))*yLIP + cosh(omega*(T - t_step))*Ly;
+
+        // compute desired angular momentum about contact point at the end of the
+        // next step (periodically oscillating LIP)
+        // Eq. 16 from Angular Momentum about the Contact Point for Control of
+        // Bipedal Locomotion: Validation in a LIP-based Controller
+        double Lxdes_end_next_step = m*H*vx_des;
+        double Lydes_end_next_step_mag = (1.0/2.0)*m*H*W*(omega*sinh(omega*T)/(1.0 + cosh(omega*T)));
+        double Lydes_end_next_step = 0.0;
+        if (FSM == 1)
+        {
+            Lydes_end_next_step = 1.0*Lydes_end_next_step_mag;
+        }
+        else if (FSM == -1)
+        {
+            Lydes_end_next_step = -1.0*Lydes_end_next_step_mag;
+        }
+
+        // compute desired step length (s)
+        // Eq. 15 from Angular Momentum about the Contact Point for Control of
+        // Bipedal Locomotion: Validation in a LIP-based Controller
+        sw2CoM_end_step_x = (Lxdes_end_next_step - cosh(omega*T)*Lxest_end_step)/(m*H*omega*sinh(omega*T));
+        sw2CoM_end_step_y = (Lydes_end_next_step - cosh(omega*T)*Lyest_end_step)/(m*H*omega*sinh(omega*T));
+    }
+    else // DSP
+    {
+        // no foot step can be taken
+        sw2CoM_end_step_x = 0.0;
+        sw2CoM_end_step_y = 0.0;
+    }
+
+    // sagittal plane control
+    double xLIP_ref, xd_ref;
+    if (abs(FSM) == 1) 
+    {
+        dash_utils::LIP_dyn_ref(t_step, omega, xLIP0, xd0, xLIP_ref,xd_ref);
+        FxR = Kp_xR*(xLIP_ref - xLIP) + Kd_xR*(xd_ref - dx);
+    }
+    else
+    {
+        FxR = m*omega*omega*xLIP;
+    }
+
+    // frontal plane control
+    if (FSM == 0 && next_SSP == 0) // terminate walking 
+    {
+        FyR = -Kp_yR*yLIP - Kd_yR*dy;
+    }
+
+    else // apply feedforward LIP force
+    {
+        FyR = m*omega*omega*yLIP;
+    }
+
+    // desired step placement
+    const Vector2d sw2CoM_end_step_des = {sw2CoM_end_step_x, sw2CoM_end_step_y};
+    sw2CoM_end_step_strategy(lfv_comm, lfdv_comm, srb_params, traj_planner_dyn_data, FSM, s, x, lfv, lfdv, sw2CoM_end_step_des);
+
+}
+
+void dash_ctrl::sw2CoM_end_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm, const SRB_Params srb_params, const Traj_planner_dyn_data& traj_planner_dyn_data, const int FSM, 
+                                const double s, const VectorXd& x, MatrixXd& lfv, MatrixXd& lfdv, const Vector2d& sw2CoM_end_step_des)
+{
+
+    // Parameters
+    const double H = srb_params.hLIP;
+    const double zcl = srb_params.zcl;
+    const double ft_l = srb_params.foot_length;
+
+    // Planner info
+    const double sw2CoM_beg_step_x = traj_planner_dyn_data.sw2CoM_beg_step(0) + 0.5*ft_l;
+    const double sw2CoM_beg_step_y = traj_planner_dyn_data.sw2CoM_beg_step(1);
+
+    // Get SRB states
+    const Vector3d pc = x.head<3>();
+
+    // Initialize commanded end-effector positions (DSP)
+    lfv_comm = lfv;
+    lfdv_comm = lfdv;
+
+    // Swing-leg trajectories
+    if (abs(FSM) == 1) // SSP
+    {
+        const VectorXd sw2CoM_traj_x = dash_utils::sw_leg_ref_xy(s, sw2CoM_beg_step_x, sw2CoM_end_step_des(0));
+        const VectorXd sw2CoM_traj_y = dash_utils::sw_leg_ref_xy(s, sw2CoM_beg_step_y, sw2CoM_end_step_des(1));
+        const VectorXd sw2CoM_traj_z = dash_utils::sw_leg_ref_z(s, zcl, H);
+        
+        if (FSM == 1) // SSP_L
+        {
+            // x-position trajectories
+            lfv_comm(0, 0) = pc(0) - (sw2CoM_traj_x(0) - (1.0/2.0)*ft_l); lfv_comm(1, 0) = pc(0) - (sw2CoM_traj_x(0) + (1.0/2.0)*ft_l);
+            lfdv_comm(0, 0) = sw2CoM_traj_x(1); lfdv_comm(1, 0) = lfdv_comm(0, 0);
+            // y-position trajectories
+            lfv_comm(0, 1) = pc(1) - sw2CoM_traj_y(0); lfv_comm(1, 1) = lfv_comm(0, 1);
+            lfdv_comm(0, 1) = sw2CoM_traj_y(1); lfdv_comm(1, 1) = lfdv_comm(0, 1);
+            // z-position trajectories
+            lfv_comm(0, 2) = pc(2) - sw2CoM_traj_z(0); lfv_comm(1, 2) = lfv_comm(0, 2);
+            lfdv_comm(0, 2) = sw2CoM_traj_z(1); lfdv_comm(1, 2) = lfdv_comm(0, 2);
+        }
+        else if (FSM == -1) // SSP_R
+        {
+            // x-position trajectories
+            lfv_comm(2, 0) = pc(0) - (sw2CoM_traj_x(0) - (1.0/2.0)*ft_l); lfv_comm(3, 0) = pc(0) - (sw2CoM_traj_x(0) + (1.0/2.0)*ft_l);
+            lfdv_comm(2, 0) = sw2CoM_traj_x(1); lfdv_comm(3, 0) = lfdv_comm(2, 0);        
+            // y-position trajectories
+            lfv_comm(2, 1) = pc(1) - sw2CoM_traj_y(0); lfv_comm(3, 1) = lfv_comm(2, 1);
+            lfdv_comm(2, 1) = sw2CoM_traj_y(1); lfdv_comm(3, 1) = lfdv_comm(2, 1);
+            // z-position trajectories
+            lfv_comm(2, 2) = pc(2) - sw2CoM_traj_z(0); lfv_comm(3, 2) = lfv_comm(2, 2);
+            lfdv_comm(2, 2) = sw2CoM_traj_z(1); lfdv_comm(3, 2) = lfdv_comm(2, 2);
+        }
+    }
+
+}
+
+
+void dash_ctrl::SRB_Balance_Controller(VectorXd& u, VectorXd& tau_legs, SRB_Params srb_params, int FSM, VectorXd x, MatrixXd lfv, MatrixXd qd, MatrixXd* Jv_mat, VectorXd u0, VectorXd SRB_wrench_ref)
+{
+    u = SRB_force_distribution_QP(srb_params, FSM, x, lfv, qd, Jv_mat, u0, SRB_wrench_ref);
+    tau_legs = calc_joint_torques(x, Jv_mat, u);
+}
+
+// convert eigen vector to real_t vector
+void VectorXd2real_t_vec(VectorXd vec, real_t* vec_realt)
+{
+    // number of elements
+    int const num_elements = vec.size();
+
+    // convert vector
+    int i;
+    for (i = 0; i < num_elements; i++) {
+        vec_realt[i] = vec(i);
+    }
+
+}
+
+// convert eigen matrix to real_t vector
+void MatrixXd2real_t_vec(MatrixXd M, real_t* vec_realt)
+{
+    // number of rows and columns
+    int const num_rows = M.rows();
+    int const num_cols = M.cols();
+
+    // create row-major vector
+    int i, j;
+    int idx = 0;
+    for (i = 0; i < num_rows; i++) {
+        for (j = 0; j < num_cols; j++) {
+            vec_realt[idx] = M(i, j);
+            idx++;
+        }
+    }
+
+}
+
+real_t* H_realt;
+real_t* f_realt;;
+real_t* A_realt;;
+real_t* lb_realt;
+real_t* ub_realt;;
+real_t* Aeq_realt;
+real_t* beq_realt; 
+real_t* lbA_realt;
+real_t* ubA_realt; 
+bool real_allocated = false;
+
+// resize optimization matrices
+void resize_qp_mats(int num_opt_vars, int num_constraints)
+{
+    // free up memory for size change
+    if(real_allocated == true) {
+
+        free(H_realt);
+        free(f_realt);
+        free(A_realt);
+        free(lb_realt);
+        free(ub_realt);
+        // free(Aeq_realt);
+        // free(beq_realt);   
+        free(lbA_realt);
+        free(ubA_realt);       
+    
+    }
+
+    // allocate new memory
+    H_realt = (real_t*)malloc(num_opt_vars*num_opt_vars*sizeof(real_t));
+    f_realt = (real_t*)malloc(num_opt_vars*sizeof(real_t));
+    A_realt = (real_t*)malloc(num_constraints*num_opt_vars*sizeof(real_t));
+    lb_realt = (real_t*)malloc(num_opt_vars*sizeof(real_t));
+    ub_realt = (real_t*)malloc(num_opt_vars*sizeof(real_t));
+    // Aeq_realt = (real_t*)malloc(num_constraints*sizeof(real_t));
+    // beq_realt = (real_t*)malloc(num_constraints*sizeof(real_t));  
+    ubA_realt = (real_t*)malloc(num_constraints*sizeof(real_t));
+    lbA_realt = (real_t*)malloc(num_constraints*sizeof(real_t)); 
+
+    // set flag
+    real_allocated == true;  
+ 
+}
+
+VectorXd dash_ctrl::SRB_force_distribution_QP(SRB_Params srb_params,int FSM,VectorXd x,MatrixXd lfv,MatrixXd qd,MatrixXd* Jv_mat,VectorXd u0,VectorXd tau_SRB_des)
+{
+    // Parameters
+    int QP_opt_sol_type = srb_params.QP_opt_sol_type;
+    double W_wrench = srb_params.W_wrench;
+    double W_u_minus_u0_norm = srb_params.W_u_minus_u0_norm;
+    Eigen::VectorXi uix_idx(4);
+    uix_idx << 0, 3, 6, 9;
+    Eigen::VectorXi uiy_idx(4);
+    uiy_idx << 1, 4, 7, 10;
+    Eigen::VectorXi uiz_idx(4);
+    uiz_idx << 2, 5, 8, 11;
+    int num_end_effector_pts = 4;
+    int position_vec_size = 3;
+    
+    // get SRB states
+    Vector3d pc = x.segment<3>(0);
+
+    // calculate position vectors from end-effector (s) to CoM
+    MatrixXd r_mat(position_vec_size, num_end_effector_pts);
+    for (int i = 0; i < num_end_effector_pts; i++) {
+        r_mat = lfv.transpose() - pc.replicate(1,num_end_effector_pts);
+    }
+    
+    // get rx, ry, and rz for each end-effector
+    VectorXd rx = r_mat.row(0);
+    VectorXd ry = r_mat.row(1);
+    VectorXd rz = r_mat.row(2);
+    
+    // get desired net wrench component values
+    double FxR = tau_SRB_des(0);
+    double FyR = tau_SRB_des(1);
+    double FzR = tau_SRB_des(2);
+    double MxR = tau_SRB_des(3);
+    double MyR = tau_SRB_des(4);
+    double MzR = tau_SRB_des(5);
+    
+    // cost function: min_x (1/2)*x^T*H*x + f^T*x
+    VectorXd dummy1 = VectorXd::Zero(4);
+    VectorXd dummy2 = VectorXd::Zero(4);
+    VectorXd dummy3 = VectorXd::Zero(4);
+    VectorXd four_ones = VectorXd::Ones(4).transpose();
+    // get individual contribution from each wrench component and penalize large
+    // internal forces
+    MatrixXd Fx_Q, Fy_Q, Fz_Q, Mx_Q, My_Q, Mz_Q, Q_intF_x, Q_intF_y, Q_intF_z;
+    VectorXd Fx_f, Fy_f, Fz_f, Mx_f, My_f, Mz_f;
+    cost_quadratic_coeff_matrices(four_ones, FxR, uix_idx, 4, Fx_Q, Fx_f); // forces in the x-direction
+    cost_quadratic_coeff_matrices(four_ones, FyR, uiy_idx, 4, Fy_Q, Fy_f); // forces in the y-direction
+    cost_quadratic_coeff_matrices(four_ones, FzR, uiz_idx, 4, Fz_Q, Fz_f); // forces in the z-direction
+    cost_quadratic_coeff_matrices((VectorXd(8) << -1.0*rz, ry).finished(), MxR, (Eigen::VectorXi(8) << uiy_idx, uiz_idx).finished(), 8, Mx_Q, Mx_f); // moments in the x-direction
+    cost_quadratic_coeff_matrices((VectorXd(8) << rz, -1.0*rx).finished(), MyR, (Eigen::VectorXi(8) << uix_idx, uiz_idx).finished(), 8, My_Q, My_f); // moments in the y-direction
+    cost_quadratic_coeff_matrices((VectorXd(8) << -1.0*ry, rx).finished(), MzR, (Eigen::VectorXi(8) << uix_idx, uiy_idx).finished(), 8, Mz_Q, Mz_f); // moments in the z-direction
+
+
+    
+    // Calculate overall cost function with weights
+    MatrixXd Q_wrench = Fx_Q + Fy_Q + Fz_Q + Mx_Q + My_Q + Mz_Q;
+    MatrixXd Q_u_minus_u0_norm = Eigen::MatrixXd::Identity(12, 12);
+    VectorXd f_wrench = Fx_f + Fy_f + Fz_f + Mx_f + My_f + Mz_f;
+    VectorXd f_u_minus_u0_norm = -2.0*u0;
+    MatrixXd Q = W_wrench*Q_wrench + W_u_minus_u0_norm*Q_u_minus_u0_norm;
+    MatrixXd H = 2.0*Q;
+    VectorXd f = W_wrench*f_wrench + W_u_minus_u0_norm*f_u_minus_u0_norm;
+
+    // get QP linear constraints (inequality, equality, upper and lower bounds)
+    MatrixXd Aeq, LB, UB, A;
+    VectorXd b, beq;
+    SRB_force_distribution_QP_constraints(A, b, Aeq, beq, LB, UB, srb_params, FSM, x, qd, Jv_mat);
+
+    
+    
+    // solve QP to get GRFs
+
+    const int nVar = H.rows();  // number of variables
+    const int nCons = A.rows(); // number of constraints
+    
+    // Define options
+    // qpOASES function call
+    
+    QProblem GRFs_distribution_QP(nVar, nCons, qpOASES::HST_POSDEF);
+    
+    Options options;
+    options.setToReliable();
+    options.printLevel = PL_NONE;
+    GRFs_distribution_QP.setOptions(options);
+
+    MatrixXd A1; VectorXd lbA; VectorXd ubA;   
+    lbA = -1000*VectorXd::Ones(b.size());
+
+    // DEBUGGING
+    // dash_utils::setOutputFolder("../../../Outputs/Debug/");
+    // dash_utils::writeMatrixToCsv(H, "H.csv");
+    // dash_utils::writeVectorToCsv(f, "f.csv");
+    // dash_utils::writeMatrixToCsv(A, "A.csv");
+    // dash_utils::writeMatrixToCsv(lbA, "lbA.csv");
+    // dash_utils::writeVectorToCsv(b, "b.csv");
+    // dash_utils::writeMatrixToCsv(LB, "LB.csv");
+    // dash_utils::writeMatrixToCsv(UB, "UB.csv");
+    // END DEBUGGING
+    
+    // Initialize arrays
+    resize_qp_mats(nVar, nCons);
+    
+    MatrixXd2real_t_vec(H, H_realt);
+    VectorXd2real_t_vec(f, f_realt);
+    MatrixXd2real_t_vec(A, A_realt);
+    MatrixXd2real_t_vec(lbA, lbA_realt); 
+    VectorXd2real_t_vec(b, ubA_realt);
+    MatrixXd2real_t_vec(LB, lb_realt); 
+    MatrixXd2real_t_vec(UB, ub_realt); 
+    
+    int_t nWSR = 100;     
+    GRFs_distribution_QP.init(H_realt, f_realt, A_realt, lb_realt, ub_realt, lbA_realt, ubA_realt, nWSR);  
+    real_t xOpt[nVar];
+
+    GRFs_distribution_QP.getPrimalSolution(xOpt);   
+    //printf("U: ");
+    // convert solution
+    VectorXd xOpt_VectorXd = VectorXd::Zero(nVar);
+    int xOpt_comp_idx;
+    for (xOpt_comp_idx = 0; xOpt_comp_idx < nVar; xOpt_comp_idx++) {
+        xOpt_VectorXd(xOpt_comp_idx) = xOpt[xOpt_comp_idx];  
+       // printf("%f, ",xOpt_VectorXd(xOpt_comp_idx));
+    } 
+    //printf("\n");
+    // dash_utils::writeVectorToCsv(xOpt_VectorXd, "u.csv");
+    // exit(0);
+    return xOpt_VectorXd;
+}
+
+VectorXd dash_ctrl::calc_joint_torques(VectorXd x, MatrixXd* Jv_mat, VectorXd GRFs)
+{
+    // Calculate joint torques for each leg
+    
+    // get SRB states
+    Matrix3d R_curr = Eigen::Map<Matrix3d>(x.segment(6,9).data());
+    Matrix3d Rbw = R_curr.transpose();
+    
+    // JvT for each end-effector 
+    MatrixXd JvT_contact_lf1R = Jv_mat[0].transpose();
+    MatrixXd JvT_contact_lf2R = Jv_mat[1].transpose();
+    MatrixXd JvT_contact_lf3L = Jv_mat[2].transpose();
+    MatrixXd JvT_contact_lf4L = Jv_mat[3].transpose();
+    
+    // desired end-effector forces are opposite of ground reaction forces
+    VectorXd GRF_opp = -GRFs;
+    
+    // get ground reaction forces (in world frame) for each contact point
+    Vector3d f1 = GRF_opp.segment(0, 3);
+    Vector3d f2 = GRF_opp.segment(3, 3);
+    Vector3d f3 = GRF_opp.segment(6, 3);
+    Vector3d f4 = GRF_opp.segment(9, 3);
+    
+    // convert GRFs (in world frame) to body frame
+    Vector3d f1_b = Rbw * f1;
+    Vector3d f2_b = Rbw * f2;
+    Vector3d f3_b = Rbw * f3;
+    Vector3d f4_b = Rbw * f4;
+    
+    // calculate joint torques for each leg
+    VectorXd tau_leg_r = JvT_contact_lf1R * f1_b + JvT_contact_lf2R * f2_b;
+    VectorXd tau_leg_l = JvT_contact_lf3L * f3_b + JvT_contact_lf4L * f4_b;
+    
+    // joint torques
+    VectorXd tau_legs(10);
+    tau_legs << tau_leg_r, tau_leg_l;
+    
+    return tau_legs;
+}
+
+void dash_ctrl::cost_quadratic_coeff_matrices(const VectorXd coeff, double C, const Eigen::VectorXi& idx, int num_opt_vars_act, MatrixXd& Q, VectorXd& f) 
+{
+    // initialize Q and f matrices
+    Q = MatrixXd::Zero(12, 12);
+    f = VectorXd::Zero(12);
+
+    // update and Q and f matrices
+    for (int col_idx = 0; col_idx < num_opt_vars_act; col_idx++) {
+        // update f vector
+        f(idx(col_idx)) = -2.0 * C * coeff(col_idx);
+        for (int row_idx = 0; row_idx < num_opt_vars_act; row_idx++) {
+            // update Q matrix
+            Q(idx(row_idx), idx(col_idx)) = coeff(row_idx) * coeff(col_idx);
+        }
+    }
+}
+
+void dash_ctrl::SRB_force_distribution_QP_constraints(MatrixXd &A, VectorXd &b, MatrixXd &Aeq, VectorXd &beq, MatrixXd &LB, MatrixXd &UB, const SRB_Params &srb_params, const int FSM, const VectorXd &x, const MatrixXd &qd, const MatrixXd* Jv_mat) {
+    // Compute linear constraints for force distribution QP
+    // Constraints based on kinematic and actuation limits
+    // Also need to satisfy friction cone
+
+    // number of optimization variables = 12
+
+    // inequality constraints: A*x <= b
+    
+    // friction cone constraints
+    MatrixXd A_GRF_fric_nopull;
+    VectorXd ubA_GRF_fric_nopull;
+    int num_const_fric;
+    friction_cone_constraints(srb_params, A_GRF_fric_nopull, ubA_GRF_fric_nopull, num_const_fric);
+    
+    // parallel actuation constraints
+    // currently joint torque based constraints (default) are more stable than motor torque based constraints!!!
+    MatrixXd A_GRF_torque_lim;
+    VectorXd ubA_GRF_torque_lim;
+    int num_const_parallel_act;
+    parallel_actuation_constraints(srb_params, x, qd, Jv_mat, A_GRF_torque_lim, ubA_GRF_torque_lim, num_const_parallel_act);
+    
+    // total number of constaints
+    int num_const_total = num_const_fric + num_const_parallel_act;
+
+    // Combine all inequality constraints
+    A.resize(num_const_total, 12);
+    b.resize(num_const_total);
+    A.topRows(num_const_fric) = A_GRF_fric_nopull;
+    b.head(num_const_fric) = ubA_GRF_fric_nopull;
+    A.bottomRows(num_const_parallel_act) = A_GRF_torque_lim;
+    b.tail(num_const_parallel_act) = ubA_GRF_torque_lim;
+    
+    // equality constraints: Aeq*x = beq
+    Aeq.resize(0,0);
+    beq.resize(0);
+    double grf_max = 1000;
+    // upper and lower bounds: LB <= x <= UB
+    LB = MatrixXd::Zero(12,1);
+    UB = MatrixXd::Zero(12,1);
+    if (FSM == 1) { // SSP_L
+        // contact points 3 & 4 are active
+        LB.block(6,0,6,1).setConstant(-grf_max);
+        UB.block(6,0,6,1).setConstant(grf_max);
+    } else if (FSM == -1) { // SSP_R
+        // contact points 1 & 2 are active
+        LB.block(0,0,6,1).setConstant(-grf_max);
+        UB.block(0,0,6,1).setConstant(grf_max);
+    } else { // FSM == 0 -- DSP
+        // all contact points are active
+        LB.setConstant(-grf_max);
+        UB.setConstant(grf_max);
+    }
+    
+}
+
+void dash_ctrl::parallel_actuation_constraints(SRB_Params srb_params,const VectorXd& x,const MatrixXd& qd,const MatrixXd* Jv_mat,
+                                    MatrixXd& A_GRF_torque_lim,VectorXd& ubA_GRF_torque_lim,int& num_const_total)
+{
+    int Act_const_type = srb_params.Act_const_type;
+    double tau_m_max = srb_params.tau_m_max;
+    double tau_m_stall = srb_params.tau_m_stall;
+    double alpha_m = srb_params.alpha_m;
+    double beta_trans = srb_params.beta_trans;
+    double gamma_trans = srb_params.gamma_trans;
+    int num_legs = 2;
+    int num_GRFs = 4;
+    int num_joints_per_leg = 5;
+    int num_motors_per_leg = 5;
+    
+    // number of optimization variables
+    int num_opt_variables = num_GRFs * 3;
+
+    // total number of motors
+    int num_motors = num_legs * num_motors_per_leg;
+
+    // get SRB states
+    Matrix3d Rbw = Eigen::Map<const Eigen::Matrix<double, 3, 3, Eigen::ColMajor>>(x.segment<9>(6).data()).transpose();
+    
+    // JvT for each end-effector
+    MatrixXd JvT_contact_lf1R = Jv_mat[0].transpose();
+    MatrixXd JvT_contact_lf2R = Jv_mat[1].transpose();
+    MatrixXd JvT_contact_lf1L = Jv_mat[2].transpose();
+    MatrixXd JvT_contact_lf2L = Jv_mat[3].transpose();
+
+    // Define topology Jacobian for transmission dynamics
+    MatrixXd J_topology(5, 5);
+    J_topology << 1.0, 0.0, 0.0, 0.0, 0.0,
+                   0.0, beta_trans, -beta_trans, 0.0,          0.0,
+                   0.0,        0.5,         0.5, 0.0,          0.0,
+                   0.0,        0.0,         0.0, 0.5,  gamma_trans,
+                   0.0,        0.0,         0.0, 0.5, -gamma_trans;
+    
+    // JvT_contact_Rbw calculation for each end-effector
+    MatrixXd JvT_contact_Rbw_lf1R = JvT_contact_lf1R * Rbw;
+    MatrixXd JvT_contact_Rbw_lf2R = JvT_contact_lf2R * Rbw;
+    MatrixXd JvT_contact_Rbw_lf1L = JvT_contact_lf1L * Rbw;
+    MatrixXd JvT_contact_Rbw_lf2L = JvT_contact_lf2L * Rbw;
+
+    // matrix with JvT_contact_Rbw matrices (maps GRFs to joint torques)
+    MatrixXd JvT_contact_Rbw_mat = MatrixXd::Zero(num_legs*num_joints_per_leg, num_opt_variables);
+    JvT_contact_Rbw_mat.block(0, 0, 5, 3) = JvT_contact_Rbw_lf1R;
+    JvT_contact_Rbw_mat.block(0, 3, 5, 3) = JvT_contact_Rbw_lf2R;
+    JvT_contact_Rbw_mat.block(5, 6, 5, 3) = JvT_contact_Rbw_lf1L;
+    JvT_contact_Rbw_mat.block(5, 9, 5, 3) = JvT_contact_Rbw_lf2L;
+    
+    MatrixXd tau_j_comp = -1.0 * JvT_contact_Rbw_mat;
+
+    MatrixXd JT_topology = J_topology.transpose();
+    MatrixXd Jinv_topology = J_topology.inverse();
+    
+    MatrixXd JT_topology_JvT_contact_Rbw_mat = MatrixXd::Zero(num_legs*num_joints_per_leg, num_opt_variables);
+    JT_topology_JvT_contact_Rbw_mat.block(0, 0, 5, 3) = JT_topology * JvT_contact_Rbw_lf1R;
+    JT_topology_JvT_contact_Rbw_mat.block(0, 3, 5, 3) = JT_topology * JvT_contact_Rbw_lf2R;
+    JT_topology_JvT_contact_Rbw_mat.block(5, 6, 5, 3) = JT_topology * JvT_contact_Rbw_lf1L;
+    JT_topology_JvT_contact_Rbw_mat.block(5, 9, 5, 3) = JT_topology * JvT_contact_Rbw_lf2L;
+    
+    MatrixXd omega_m_temp = MatrixXd::Zero(10, 10);
+    omega_m_temp.block(0,0,5,5) = Jinv_topology;
+    omega_m_temp.block(0,5,5,5) = MatrixXd::Zero(5, 5);
+    omega_m_temp.block(5,0,5,5) = MatrixXd::Zero(5, 5);
+    omega_m_temp.block(5,5,5,5) = Jinv_topology;
+    VectorXd qdVec(10);
+    qdVec << qd.row(0).transpose(), qd.row(1).transpose();
+    VectorXd omega_m = omega_m_temp * qdVec;
+    
+    MatrixXd tau_m_comp = -1.0 * JT_topology_JvT_contact_Rbw_mat;
+
+    if (Act_const_type == 0) {
+
+        // parallel actuation torque based limits
+        // |tau1| <= tau_m_max, |tau2 + tau3| <= 2*tau_m_max, |tau4 + tau5| <= 2*tau_m_max
+
+        // initialize constraints
+        int num_const_per_leg = 10;
+        num_const_total = num_const_per_leg*num_legs;
+        A_GRF_torque_lim = MatrixXd::Zero(num_const_total, num_opt_variables);
+
+        ubA_GRF_torque_lim = VectorXd::Zero(num_const_total);
+
+        // Right Leg
+
+        // hip yaw motor torque constraint (right leg) -- |tau1| <= tau_m_max
+        A_GRF_torque_lim.row(0) = tau_j_comp.row(0);
+        A_GRF_torque_lim.row(1) = -1.0*tau_j_comp.row(0);
+        ubA_GRF_torque_lim.segment(0,2) = tau_m_max*Eigen::VectorXd::Ones(2);
+        // hip roll and hip pitch motor torques constraint (right leg) -- |tau2 + tau3| <= 2*tau_m_max
+        A_GRF_torque_lim.row(2) = tau_j_comp.row(1) + tau_j_comp.row(2);
+        A_GRF_torque_lim.row(3) = tau_j_comp.row(1) - tau_j_comp.row(2);
+        A_GRF_torque_lim.row(4) = -1.0*tau_j_comp.row(1) + tau_j_comp.row(2);
+        A_GRF_torque_lim.row(5) = -1.0*tau_j_comp.row(1) - tau_j_comp.row(2);
+        ubA_GRF_torque_lim.segment(2,4) = 2.0*tau_m_max*Eigen::VectorXd::Ones(4);
+        // knee pitch and ankle pitch motor torques constraint (right leg) -- |tau4 + tau5| <= 2*tau_m_max
+        A_GRF_torque_lim.row(6) = tau_j_comp.row(3) + tau_j_comp.row(4);
+        A_GRF_torque_lim.row(7) = tau_j_comp.row(3) - tau_j_comp.row(4);
+        A_GRF_torque_lim.row(8) = -1.0*tau_j_comp.row(3) + tau_j_comp.row(4);
+        A_GRF_torque_lim.row(9) = -1.0*tau_j_comp.row(3) - tau_j_comp.row(4);
+        ubA_GRF_torque_lim.segment(6,4) = 2*tau_m_max*Eigen::VectorXd::Ones(4);
+
+        // Left Leg
+        // hip yaw motor torque constraint (left leg) -- |tau1| <= tau_m_max
+        A_GRF_torque_lim.row(10) = tau_j_comp.row(5);
+        A_GRF_torque_lim.row(11) = -1.0*tau_j_comp.row(5);
+        ubA_GRF_torque_lim.segment(10,2) = tau_m_max*Eigen::VectorXd::Ones(2);
+        // hip roll and hip pitch motor torques constraint (left leg) -- |tau2 + tau3| <= 2*tau_m_max
+        A_GRF_torque_lim.row(12) = tau_j_comp.row(6) + tau_j_comp.row(7);
+        A_GRF_torque_lim.row(13) = tau_j_comp.row(6) - tau_j_comp.row(7);
+        A_GRF_torque_lim.row(14) = -1.0*tau_j_comp.row(6) + tau_j_comp.row(7);
+        A_GRF_torque_lim.row(15) = -1.0*tau_j_comp.row(6) - tau_j_comp.row(7);
+        ubA_GRF_torque_lim.segment(12,4) = 2.0*tau_m_max*VectorXd::Ones(4);
+
+        // knee pitch and ankle pitch motor torques constraint (left leg) -- |tau4 + tau5| <= 2*tau_m_max
+        A_GRF_torque_lim.row(16) = tau_j_comp.row(8) + tau_j_comp.row(9);
+        A_GRF_torque_lim.row(17) = tau_j_comp.row(8) - tau_j_comp.row(9);
+        A_GRF_torque_lim.row(18) = -1.0*tau_j_comp.row(8) + tau_j_comp.row(9);
+        A_GRF_torque_lim.row(19) = -1.0*tau_j_comp.row(8) - tau_j_comp.row(9);
+        ubA_GRF_torque_lim.segment(16,4) = 2.0*tau_m_max*VectorXd::Ones(4);
+    }
+    else if (Act_const_type == 1) {
+
+        // parallel actuation torque based limits
+        // tau_mi + alpha*omege_mi - tau_m_stall <= 0
+        // tau_mi - tau_m_max <= 0
+        // -tau_mi - alpha*omege_mi - tau_m_stall <= 0
+        // -tau_mi - tau_m_max <= 0    
+
+        // initialize constraints
+        int num_const_per_motor = 4;
+        num_const_total = num_const_per_motor*num_motors;
+        A_GRF_torque_lim = MatrixXd::Zero(num_const_total, num_opt_variables);
+
+        ubA_GRF_torque_lim = VectorXd::Zero(num_const_total);
+
+        // loop through each motor and implement constraints (covers both legs)
+        for (int mot_idx = 0; mot_idx < num_motors; mot_idx++) {
+            // implement motor constraints
+            A_GRF_torque_lim.block(4*mot_idx, 0, 1, num_opt_variables) = tau_m_comp.row(mot_idx);
+
+            ubA_GRF_torque_lim(4*mot_idx) = tau_m_stall - alpha_m*omega_m(mot_idx);
+
+            A_GRF_torque_lim.block(4*mot_idx+1, 0, 1, num_opt_variables) = tau_m_comp.row(mot_idx);
+
+            ubA_GRF_torque_lim(4*mot_idx+1) = tau_m_max;
+
+            A_GRF_torque_lim.block(4*mot_idx+2, 0, 1, num_opt_variables) = -1.0*tau_m_comp.row(mot_idx);
+
+            ubA_GRF_torque_lim(4*mot_idx+2) = tau_m_stall + alpha_m*omega_m(mot_idx);
+
+            A_GRF_torque_lim.block(4*mot_idx+3, 0, 1, num_opt_variables) = -1.0*tau_m_comp.row(mot_idx);
+
+            ubA_GRF_torque_lim(4*mot_idx+3) = tau_m_max;
+        }
+    }
+
+}
+
+
+void dash_ctrl::friction_cone_constraints(SRB_Params srb_params, MatrixXd& A_GRF_fric_nopull, VectorXd& ubA_GRF_fric_nopull, int& num_const_total)
+{
+    // Parameters
+    double mu = srb_params.mu;
+    double Fz_min_QP = srb_params.Fz_min_QP;
+    int num_GRFs = 4;
+    int num_const_per_GRF = 5;
+    int num_opt_variables = num_GRFs*3;
+    // total number of constraints added
+    num_const_total = num_GRFs * num_const_per_GRF;
+
+    // inequality constraint A matrix and b vector for one GRF
+    // 5 total constraints to enfore friction pyramid and no pulling on the
+    // ground per GRF
+    A_GRF_fric_nopull.resize(num_const_total, num_opt_variables);
+    A_GRF_fric_nopull.setZero();
+    ubA_GRF_fric_nopull.resize(num_const_total);
+    ubA_GRF_fric_nopull.setZero();
+    Eigen::Matrix<double, 5, 3> A_GRF_fric_nopull_comp;
+    A_GRF_fric_nopull_comp << -1, 0, -mu,
+                               1, 0, -mu,
+                               0, -1, -mu,
+                               0, 1, -mu,
+                               0, 0, -1;
+    VectorXd ubA_GRF_fric_nopull_comp(5);
+    ubA_GRF_fric_nopull_comp << 0, 0, 0, 0, -Fz_min_QP;
+    for (int GRF_idx = 0; GRF_idx < num_GRFs; GRF_idx++) {
+        int row_idx = GRF_idx * num_const_per_GRF;
+        int col_idx = GRF_idx * 3;
+        A_GRF_fric_nopull.block(row_idx, col_idx, num_const_per_GRF, 3) = A_GRF_fric_nopull_comp;
+        ubA_GRF_fric_nopull.segment(row_idx, num_const_per_GRF) = ubA_GRF_fric_nopull_comp;
+    }
+}
+
+
+VectorXd dash_ctrl::SRB_PD_Wrench_Controller(SRB_Params srb_params, VectorXd x, MatrixXd SRB_state_ref, MatrixXd SRB_wrench_FF)
+{
+    // PD control of each SRB state based on given reference
+
+    // Parameters
+    double Kp_xR = srb_params.Kp_xR; // P gain for x-direction tracking
+    double Kd_xR = srb_params.Kd_xR; // D gain for x-direction tracking
+    double Kp_yR = srb_params.Kp_yR; // P gain for y-direction tracking
+    double Kd_yR = srb_params.Kd_yR; // D gain for y-direction tracking
+    double Kp_zR = srb_params.Kp_zR; // P gain for z-direction tracking
+    double Kd_zR = srb_params.Kd_zR; // D gain for z-direction tracking
+    double Kp_phiR = srb_params.Kp_phiR; // P gain for roll tracking
+    double Kd_phiR = srb_params.Kd_phiR; // D gain for roll tracking
+    double Kp_thetaR = srb_params.Kp_thetaR; // P gain for pitch tracking
+    double Kd_thetaR = srb_params.Kd_thetaR; // D gain for pitch tracking
+    double Kp_psiR = srb_params.Kp_psiR; // P gain for yaw tracking
+    double Kd_psiR = srb_params.Kd_psiR; // D gain for yaw tracking
+
+    // create PD gain matrices
+    Eigen::Matrix<double, 6, 6> Kp;
+    Kp <<   Kp_xR, 0, 0, 0, 0, 0,
+                0, Kp_yR, 0, 0, 0, 0,
+                0, 0, Kp_zR, 0, 0, 0,
+                0, 0, 0, Kp_phiR, 0, 0,
+                0, 0, 0, 0, Kp_thetaR, 0,
+                0, 0, 0, 0, 0, Kp_psiR;
+
+    Eigen::Matrix<double, 6, 6> Kd;
+    Kd << Kd_xR, 0, 0, 0, 0, 0,
+            0, Kd_yR, 0, 0, 0, 0,
+            0, 0, Kd_zR, 0, 0, 0,
+            0, 0, 0, Kd_phiR, 0, 0,
+            0, 0, 0, 0, Kd_thetaR, 0,
+            0, 0, 0, 0, 0, Kd_psiR;
+
+    // get SRB states and create SRB state vectors
+    Eigen::Vector3d pc = x.segment<3>(0);
+    Eigen::Vector3d dpc = x.segment<3>(3);
+    Matrix3d R = Eigen::Map<Matrix3d>(x.segment(6,9).data());
+    Eigen::Vector3d wb = x.segment<3>(15);
+    Eigen::Vector3d EA = x.segment<3>(18);
+    Eigen::Vector3d dEA = dash_utils::calc_dEA(R, wb);
+    Eigen::VectorXd SRB_pos(6);
+    SRB_pos << pc, EA;
+    Eigen::VectorXd SRB_vel(6);
+    SRB_vel << dpc, dEA;
+
+    // get SRB state references
+    Eigen::VectorXd SRB_pos_ref = SRB_state_ref.col(0);
+    Eigen::VectorXd SRB_vel_ref = SRB_state_ref.col(1);
+
+    // PD control + feedforward term
+    Eigen::VectorXd SRB_wrench_PD = Kp * (SRB_pos_ref - SRB_pos) + Kd * (SRB_vel_ref - SRB_vel) + SRB_wrench_FF;
+    return SRB_wrench_PD;
+
+}
+

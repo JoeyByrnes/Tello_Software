@@ -30,8 +30,9 @@
 #include "kinematics.h"
 #include "vn/sensors.h"
 #include "dynamic_robot.h"
-#include "srbm_kinematics.h"
+#include "SRBM-Ctrl/kinematics.h"
 #include "compile_time_tracker.h"
+#include "mujoco_comms.h"
 
 #include <pcanfd.h>
 
@@ -123,6 +124,8 @@ std::ifstream *motion_log_in;
 extern bool enableScheduled;
 extern bool disableScheduled;
 extern bool zeroScheduled;
+
+int simulation_mode = 0;
 
 void signal_callback_handler(int signum);
 
@@ -381,7 +384,7 @@ void run_tello_pd()
 
 	}
 	if(tello->_GRFs.right_front > 0.3){
-		//printf("LEFT CONTACT\n");
+		//printf("RIGHT CONTACT\n");
 		task_pd_config.task_kp.bottomRows(6).setZero();
 		task_pd_config.task_kd.bottomRows(6).setZero();
 		task_pd_config.joint_kp.bottomRows(6).setZero();
@@ -524,7 +527,7 @@ static void* update_1kHz( void * arg )
 	return NULL;
 }
 
-// This callback handles CTRL+C and Segaults
+// This callback handles CTRL+C and Segfaults
 void signal_callback_handler(int signum){
 	fsm_state = 0;
 	if (signum == SIGINT) {
@@ -533,11 +536,13 @@ void signal_callback_handler(int signum){
     else if (signum == SIGSEGV) {
         printf('r',"Program crashed due to Seg Fault");
     }
-	for(int i=0;i<10;i++){
+	if(!simulation_mode)
+	{
+		for(int i=0;i<10;i++){
 		tello->motors[i]->disableMotor(); 
+		}
+		printf('o',"Disable command set to all motors.\n");
 	}
-	printf('o',"Disable command set to all motors.\n");
-
 	// motion_log->close();
 	// motion_log_in->close();
 	
@@ -555,7 +560,24 @@ void signal_callback_handler(int signum){
 }
 	
 
-int main() {
+int main(int argc, char *argv[]) {
+
+	
+    if (argc == 1) {
+        simulation_mode = 0;
+    } else if (argc == 2) {
+        std::string arg1 = argv[1];
+        if (arg1 == "--simulation" || arg1 == "-s") {
+            simulation_mode = 1;
+        } else {
+            std::cerr << "Invalid input: " << arg1 << std::endl;
+            return 1;
+        }
+    } else {
+        std::cerr << "Too many arguments." << std::endl;
+        return 1;
+    }
+
 	setvbuf(stdout, NULL, _IONBF, 0); // no buffering on printf, change to _IOLBF for buffering until \n character
 	std::cout << std::setprecision(2);
 	printf('b',"\n==================== Running Tello Software ====================\n\n");
@@ -571,7 +593,7 @@ int main() {
 		printf('g',"It has been %d minutes since this program was last compiled. \n\n", minutes_since_compile);
 	}
 	assignToCore(ISOLATED_CORE_1_THREAD_1);
-	setpriority(PRIO_PROCESS, 0, 19); // Set NICE Priority in case user doesn't have RT Permission
+	setpriority(PRIO_PROCESS, 0, -20); // Set NICE Priority in case user doesn't have RT Permission
 
 	if(set_cpu_governor(GOV_PERFORMANCE)){
 		printf('g',"CPU Governor set to Performance\n");
@@ -589,7 +611,7 @@ int main() {
     int policy = sched_getscheduler(0);
     if (chrt_err == -1) {
         printf('r',"Your user does not have RealTime Scheduler Permissions.\n");
-		setpriority(PRIO_PROCESS, 0, 19); // Set NICE Priority in case user doesn't have RT Permission
+		setpriority(PRIO_PROCESS, 0, -20); // Set NICE Priority in case user doesn't have RT Permission
     }
 	else{
 		switch(policy) {
@@ -608,20 +630,20 @@ int main() {
 		printf('g',"with RT Priority: %d\n\n",sp.sched_priority);
 	}
 	else{
-		printf('r',"with NICE Priority: %d\n\n",prio);
+		printf('o',"with NICE Priority: %d\n\n",prio);
 	}
 
 	RoboDesignLab::BipedActuatorTree actuators;
-	actuators.leftLeg.push_back(new CheetahMotor(0x01,PCAN_PCIBUS1));
-	actuators.leftLeg.push_back(new CheetahMotor(0x02,PCAN_PCIBUS1));
-	actuators.leftLeg.push_back(new CheetahMotor(0x03,PCAN_PCIBUS2));
-	actuators.leftLeg.push_back(new CheetahMotor(0x04,PCAN_PCIBUS1));
-	actuators.leftLeg.push_back(new CheetahMotor(0x05,PCAN_PCIBUS2));
-	actuators.rightLeg.push_back(new CheetahMotor(0x06,PCAN_PCIBUS3));
-	actuators.rightLeg.push_back(new CheetahMotor(0x07,PCAN_PCIBUS4));
-	actuators.rightLeg.push_back(new CheetahMotor(0x08,PCAN_PCIBUS3));
-	actuators.rightLeg.push_back(new CheetahMotor(0x09,PCAN_PCIBUS4));
-	actuators.rightLeg.push_back(new CheetahMotor(0x0A,PCAN_PCIBUS3));
+	// actuators.leftLeg.push_back(new CheetahMotor(0x01,PCAN_PCIBUS1));
+	// actuators.leftLeg.push_back(new CheetahMotor(0x02,PCAN_PCIBUS1));
+	// actuators.leftLeg.push_back(new CheetahMotor(0x03,PCAN_PCIBUS2));
+	// actuators.leftLeg.push_back(new CheetahMotor(0x04,PCAN_PCIBUS1));
+	// actuators.leftLeg.push_back(new CheetahMotor(0x05,PCAN_PCIBUS2));
+	// actuators.rightLeg.push_back(new CheetahMotor(0x06,PCAN_PCIBUS3));
+	// actuators.rightLeg.push_back(new CheetahMotor(0x07,PCAN_PCIBUS4));
+	// actuators.rightLeg.push_back(new CheetahMotor(0x08,PCAN_PCIBUS3));
+	// actuators.rightLeg.push_back(new CheetahMotor(0x09,PCAN_PCIBUS4));
+	// actuators.rightLeg.push_back(new CheetahMotor(0x0A,PCAN_PCIBUS3));
 
 	tello = new RoboDesignLab::DynamicRobot(actuators);
 	for(int i = 0; i<10; i++){ // not in the constructor becuase I want to change how this works
@@ -645,6 +667,26 @@ int main() {
 	tello->assign_fk_motors_to_joints(fk_motors_to_joints);
 	tello->assign_fk_joints_to_task(fk_joints_to_task);
 
+	
+	if(simulation_mode)
+	{
+		// SIMULATION MODE (Interfaces with Mujoco instead of real sensors)
+		printf('o',"Software running in Simulation Mode.\n\n");
+		//printf('o',"Software running in Simulation Mode.\n\
+		\r\033[1;38;5;208mIf this is a mistake, run without the \033[1;33m-s 1;38;5;208mflag or comment the following line in platformio.ini:\n\
+		\r\033[34mupload_command \033[39m= pio run -t exec -a \"-s\"\n\n");
+
+		SIM_START:
+		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 1000);
+
+		while(1){ usleep(1000); }
+		return 0;
+	}
+	else
+	{
+		// HARDWARE MODE (Running on actual robot)
+	}
+
 	// Initialize Peak Systems CAN adapters
 	TPCANStatus s1,s2,s3,s4;
     s1 = CAN_Initialize(pcd1, PCAN_BAUD_1M, 0, 0, 0);
@@ -656,6 +698,23 @@ int main() {
 	if(!s2)channels+="2, ";
 	if(!s3)channels+="3, ";
 	if(!s4)channels+="4";
+
+	if(channels.empty()){
+		printf('r',"No CAN channels could be opened, did you mean to run in simulation mode? \033[0;38;5;208m(y/n)\n");
+		char sim_choice;
+		std::cin >> sim_choice;
+		if(sim_choice == 'y')
+		{
+			simulation_mode = 1;
+			printf('o',"\n\033[0;38;5;208mTo run simulation mode directly, use the argument \033[1;33m--simulation \033[0;38;5;208mor \033[1;33m-s\n\n");
+			//printf('o',"\033[38;5;208mIf running in VS Code, uncomment the following line in platformio.ini:\n\033[32m; upload_command = pio run -t exec -a \"-s\"\n\n");
+			goto SIM_START;
+		}
+		else{
+			printf('r',"Check CAN connection and driver and resolve issue before running again.\n");
+			return 0;
+		}
+	}
 	
 	printf("CAN Channels opened: %s \n",(channels).c_str());
 
@@ -665,8 +724,8 @@ int main() {
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd4),"rx_bus4",TASK_CONSTANT_DELAY, 50);
 	tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 	tello->addPeriodicTask(&IMU_Comms, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL, "imu_task", TASK_CONSTANT_DELAY, 1000);
-	tello->addPeriodicTask(&BNO055_Comms, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL, "bno_imu_task", TASK_CONSTANT_DELAY, 1000);
 	tello->addPeriodicTask(&update_1kHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, NULL, "update_task",TASK_CONSTANT_PERIOD, 1000);
+	// tello->addPeriodicTask(&BNO055_Comms, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL, "bno_imu_task", TASK_CONSTANT_DELAY, 1000);
 	
 	usleep(1000);
 	

@@ -1,0 +1,117 @@
+<mujoco model = "TELLO_Simple">
+
+	<compiler angle = "radian" inertiafromgeom = "false"/>
+	<size njmax = "500" nconmax = "100" />
+
+    <default>
+		<site type = "sphere" size = "0.0127"/>
+	</default>
+
+    <contact>
+        <exclude body1 = "thigh_right" body2 = "torso"/>
+        <exclude body1 = "thigh_left" body2 = "torso"/>
+        <exclude body1 = "calf_right" body2 = "torso"/>
+        <exclude body1 = "calf_left" body2 = "torso"/>	
+        <exclude body1 = "foot_right" body2 = "torso"/>
+        <exclude body1 = "foot_left" body2 = "torso"/>				
+        <exclude body1 = "calf_right" body2 = "thigh_right"/>
+        <exclude body1 = "calf_left" body2 = "thigh_left"/>	
+        <exclude body1 = "foot_right" body2 = "calf_right"/>
+        <exclude body1 = "foot_left" body2 = "calf_left"/>				
+    </contact>	
+
+	<worldbody>
+	
+        <light directional = "true" cutoff = "4" exponent = "20" diffuse = "1 1 1" specular = "0 0 0" pos = ".9 .3 2.5" dir = "-.9 -.3 -2.5 "/>
+		<geom name = "ground" friction = "1 0.005 0.0001" type = "plane" pos = "0 0 -0.4563" size = "1 1 2" rgba = "0.25 0.26 0.25 1"/> 
+
+		<body name = 'torso' pos = '0 0 0'> 
+
+			<inertial mass = "11.84" pos = "0 0 0" fullinertia = "0.0443 0.0535 0.0214 0 0 0" />
+			<joint axis = "1 0 0" pos = "0 0 0" name = "move_x" type = "slide" limited = "false"/>
+			<joint axis = "0 1 0" pos = "0 0 0" name = "move_y" type = "slide" limited = "false"/>
+			<joint axis = "0 0 1" pos = "0 0 0" name = "move_z" type = "slide" limited = "false"/>
+			<joint axis = "1 0 0" pos = "0 0 0" name = "rotate_roll" type = "hinge" limited = "false"/>
+			<joint axis = "0 1 0" pos = "0 0 0" name = "rotate_pitch" type = "hinge" limited = "false"/>
+			<joint axis = "0 0 1" pos = "0 0 0" name = "rotate_yaw" type = "hinge" limited = "false"/>
+			<geom type = "box" size = "0.0570 0.0970 0.1235" pos  = "0 0 0" quat = "1 0 0 0" rgba = "0 0 0.9 1"/>
+
+			<site type = "sphere" size = "0.005" pos  = "0 0 0"  rgba = ".9 0 0 1"/>
+			<site type = "capsule" size ="0.0025 0.005" pos = "0.005 0 0" quat = "0.7071 0 0.7071 0" rgba = "0 .9 0 1"/>
+			<site type = "capsule" size = "0.0025 0.005" pos = "0 0.005 0" quat = "0.7071 0.7071 0 0" rgba = "0.8 0.6 .4 1"/>
+			<site type = "capsule" size = "0.0025 0.005" pos = "0 0 0.005" quat = "1 0 0 0" rgba = "0 0 0.9 1"/>
+
+			<body name = 'thigh_right' pos = '0 -0.0970 -0.2172' quat = '1 0 0 0'>
+
+				<inertial mass = "0.218" pos = "0 0 0" fullinertia = "0.0013 0.0013 0.0013 0 0 0" />
+				<joint axis = "0 0 1" pos = "0 0 0.0937" name = "hip_yaw_right" type = "hinge" limited = "true" range = "-0.78539 0.78539"/>
+				<joint axis = "1 0 0" pos = "0 0 0.0937" name = "hip_roll_right" type = "hinge" limited = "true" range = "-0.78539 0.78539"/>
+				<joint axis = "0 1 0" pos = "0 0 0.0937" name = "hip_pitch_right" type = "hinge" limited = "true" range = "-1.0472 1.0472"/>
+				<geom type = "capsule" size = "0.0127 0.0937" pos  = "0 0 0" quat = "1 0 0 0" rgba = "0 .9 0 1"/>
+
+				<body name = 'calf_right' pos = '0 0 -0.2' quat = '1 0 0 0'>
+
+					<inertial mass = "0.134" pos = "0 0 0" fullinertia = "0.0008 0.0008 0.0008 0 0 0" />
+					<joint axis = "0 1 0" pos = "0 0 0.0937" name = "knee_right" type = "hinge" limited = "true" range = "0 1.5708"/>
+					<geom type = "capsule" size = "0.0127 0.0937" pos  = "0 0 0" quat = "1 0 0 0" rgba = "0 .9 0 1"/>
+
+					<body name = 'foot_right' pos = '0 0 -0.1282' quat = '1 0 0 0'>
+
+						<inertial mass = "0.067" pos = "0 0 0" fullinertia = "0.0002 0.0002 0.0002 0 0 0" />
+						<joint axis = "0 1 0" pos = "0 0 0.0218" name = "ankle_right" type = "hinge" limited = "true" range = "-0.78539 0.78539"/>
+						<geom type = "capsule" size = "0.0032 0.0218" pos  = "0 0 0" quat = "1 0 0 0" rgba = ".9 0 0 1"/>
+						<geom type = "capsule" size = "0.0032 0.045" pos  = "0 0 -0.0250" quat = "0.7071 0 0.7071 0" rgba = ".9 0 0 1"/>
+
+					</body>
+
+				</body>
+
+			</body>
+
+			<body name = 'thigh_left' pos = '0 0.0970 -0.2172' quat = '1 0 0 0'>
+
+				<inertial mass = "0.218" pos = "0 0 0" fullinertia = "0.0013 0.0013 0.0013 0 0 0" />
+				<joint axis = "0 0 1" pos = "0 0 0.0937" name = "hip_yaw_left" type = "hinge" limited = "true" range = "-0.78539 0.78539"/>
+				<joint axis = "1 0 0" pos = "0 0 0.0937" name = "hip_roll_left" type = "hinge" limited = "true" range = "-0.78539 0.78539"/>
+				<joint axis = "0 1 0" pos = "0 0 0.0937" name = "hip_pitch_left" type = "hinge" limited = "true" range = "-1.0472 1.0472"/>
+				<geom type = "capsule" size = "0.0127 0.0937" pos  = "0 0 0" quat = "1 0 0 0" rgba = "0 .9 0 1"/>		
+
+				<body name = 'calf_left' pos = '0 0 -0.2' quat = '1 0 0 0'>
+
+					<inertial mass = "0.134" pos = "0 0 0" fullinertia = "0.0008 0.0008 0.0008 0 0 0" />
+					<joint axis = "0 1 0" pos = "0 0 0.0937" name = "knee_left" type = "hinge" limited = "true" range = "0 1.5708"/>
+					<geom type = "capsule" size = "0.0127 0.0937" pos  = "0 0 0" quat = "1 0 0 0" rgba = "0 .9 0 1"/>	
+
+					<body name = 'foot_left' pos = '0 0 -0.1282' quat = '1 0 0 0'>
+
+						<inertial mass = "0.067" pos = "0 0 0" fullinertia = "0.0002 0.0002 0.0002 0 0 0" />
+						<joint axis = "0 1 0" pos = "0 0 0.0218" name = "ankle_left" type = "hinge" limited = "true" range = "-0.78539 0.78539"/>
+						<geom type = "capsule" size = "0.0032 0.0218" pos  = "0 0 0" quat = "1 0 0 0" rgba = ".9 0 0 1"/>
+						<geom type = "capsule" size = "0.0032 0.045" pos  = "0 0 -0.0250" quat = "0.7071 0 0.7071 0" rgba = ".9 0 0 1"/>
+
+					</body>							
+
+				</body>					
+
+			</body>			
+
+		</body>
+  
+	</worldbody>  
+
+	<actuator>
+
+		<motor name = 'right_hip_motor1' joint = 'hip_yaw_right' gear = '1' ctrllimited = 'false'/>
+		<motor name = 'left_hip_motor1' joint = 'hip_yaw_left' gear = '1' ctrllimited = 'false'/>
+		<motor name = 'right_hip_motor2' joint = 'hip_roll_right' gear = '1' ctrllimited = 'false'/>
+		<motor name = 'left_hip_motor2' joint = 'hip_roll_left' gear = '1' ctrllimited = 'false'/>
+		<motor name = 'right_hip_motor3' joint = 'hip_pitch_right' gear = '1' ctrllimited = 'false'/>
+		<motor name = 'left_hip_motor3' joint = 'hip_pitch_left' gear = '1' ctrllimited = 'false'/>		
+		<motor name = 'right_knee_motor' joint = 'knee_right' gear = '1' ctrllimited = 'false'/>
+		<motor name = 'left_knee_motor' joint = 'knee_left' gear = '1' ctrllimited = 'false'/>	
+		<motor name = 'right_ankle_motor' joint = 'ankle_right' gear = '1' ctrllimited = 'false'/>
+		<motor name = 'left_ankle_motor' joint = 'ankle_left' gear = '1' ctrllimited = 'false'/>				
+
+	</actuator>
+
+</mujoco>

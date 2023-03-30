@@ -30,7 +30,7 @@
 // #include "comms.h"
 // #include "timer.h"
 // #include "user_config.h"
-// #include "utilities.h"
+#include "../../include/utilities.h"
 // #include "kinematics.h"
 #include "vn/sensors.h"
 #include "vn/compositedata.h"
@@ -137,6 +137,10 @@ namespace RoboDesignLab {
         VectorXd task_pos_to_joint_pos(VectorXd task_positions)  { return (*_ik_task2joint)(task_positions);   }
 
         void addPeriodicTask(void *(*start_routine)(void *), int sched_policy, int priority, int cpu_affinity, void *arg, std::string task_name,int task_type, int period);
+
+        double sigmoid(double x) { return 1 / (1 + exp(-x)); }
+        MotorPDConfig switchController(const MotorPDConfig& stanceCtrl, const MotorPDConfig& swingCtrl,
+                                       int durationMs, bool isSwingToStance, int currTimeStep);
 
         VectorXd getJointVelocities();
         VectorXd getJointPositions();

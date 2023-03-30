@@ -111,7 +111,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     // From DSP can switch to SSP_L or SSP_R based on front toe z-direction GRFs
     // From SSP_L can switch to DSP based on right foot z-position
     // From SSP_R can switch to DSP based on left foot z-position
-    printf("FSM: %d,\t s: %f,\t u1z: %f,\t u3z: %f,\t t: %f \n", FSM_prev, s, u1z, u3z, t);
+    
     int FSM_next;
     if (FSM_prev == 0) // currently in DSP
     {

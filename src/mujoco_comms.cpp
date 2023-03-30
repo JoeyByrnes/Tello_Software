@@ -166,6 +166,35 @@ void scroll(GLFWwindow* window, double xoffset, double yoffset)
     mjv_moveCamera(m, mjMOUSE_ZOOM, 0, -0.05 * yoffset, &scn, &cam);
 }
 
+VectorXd calc_wb(Vector3d dEA, VectorXd EA) {
+  // Extract Euler angles from input vector
+  double phi = EA(0);
+  double theta = EA(1);
+  double psi = EA(2);
+
+  // Calculate rotation matrix from Euler angles
+  Matrix3d Rmat;
+  Rmat = AngleAxisd(phi, Vector3d::UnitZ())
+      * AngleAxisd(theta, Vector3d::UnitY())
+      * AngleAxisd(psi, Vector3d::UnitZ());
+
+  // Calculate inverse of T_EA
+  double cos_theta = cos(theta);
+  Matrix3d inv_T_EA;
+  inv_T_EA << cos(psi)/cos_theta, -sin(psi), cos(psi)*tan(theta)/cos_theta,
+              sin(psi)/cos(theta), cos(psi), sin(psi)*tan(theta)/cos(theta),
+              0, 0, 1;
+
+  // Calculate w from dEA using the inverse of T_EA
+  Vector3d w = inv_T_EA * dEA;
+
+  // Calculate wb from w and R
+  VectorXd wb(3);
+  wb = Rmat.transpose() * w;
+
+  return wb;
+}
+
 void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 {
     // Net wrench based PD controller with optimization-based force distribution
@@ -197,6 +226,17 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     double q4r = d->qpos[knee_pitch_r_idx];   
     double q5r = d->qpos[ankle_pitch_r_idx];  
 
+    double qd1l = d->qvel[hip_yaw_l_idx];
+    double qd2l = d->qvel[hip_roll_l_idx];
+    double qd3l = d->qvel[hip_pitch_l_idx];             
+    double qd4l = d->qvel[knee_pitch_l_idx];   
+    double qd5l = d->qvel[ankle_pitch_l_idx];    
+    double qd1r = d->qvel[hip_yaw_r_idx];
+    double qd2r = d->qvel[hip_roll_r_idx];
+    double qd3r = d->qvel[hip_pitch_r_idx];             
+    double qd4r = d->qvel[knee_pitch_r_idx];   
+    double qd5r = d->qvel[ankle_pitch_r_idx];  
+
 	// Torso state vectors
     VectorXd SRB_q(6);
     VectorXd SRB_qd(6);
@@ -205,6 +245,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
     // CoM vector
     VectorXd pcom = SRB_q.head(3);
+    VectorXd dpc_curr = SRB_qd.head(3);
     MatrixXd pcom_row(1, 3);
     pcom_row = pcom.transpose();
     MatrixXd pcom_mat(4, 3);
@@ -215,32 +256,43 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     qLeg_l << q1l, q2l, q3l, q4l, q5l;
     VectorXd qLeg_r(5);
     qLeg_r << q1r, q2r, q3r, q4r, q5r;
-    VectorXd pLeg(4);
-    //pLeg << L1, L2, L3, L4;     
+
+    VectorXd qdLeg_l(5);
+    qdLeg_l << qd1l, qd2l, qd3l, qd4l, qd5l;
+    VectorXd qdLeg_r(5);
+    qdLeg_r << qd1r, qd2r, qd3r, qd4r, qd5r;
 
     // Compute rotation matrix from world to body frame
-    MatrixXd Rx = Eigen::AngleAxisd(phiR, Vector3d::UnitX()).toRotationMatrix(); 
-    MatrixXd Ry = Eigen::AngleAxisd(thetaR, Vector3d::UnitX()).toRotationMatrix(); 
-    MatrixXd Rz = Eigen::AngleAxisd(psiR, Vector3d::UnitX()).toRotationMatrix(); 
-    MatrixXd Rwb = Rx * Ry * Rz;   
+    Matrix3d Rwb;
+    Rwb = AngleAxisd(phiR, Vector3d::UnitZ())
+        * AngleAxisd(thetaR, Vector3d::UnitY())
+        * AngleAxisd(psiR, Vector3d::UnitZ());
 
 	// Fill SRBM-Ctrl variables with Mujoco Variables here:
 	q.row(0) = qLeg_r;
 	q.row(1) = qLeg_l;
+    qd.row(0) = qdLeg_r;
+	qd.row(1) = qdLeg_l;
 	Eigen::Map<Eigen::VectorXd> r_curr(Rwb.data(), Rwb.size());
-	VectorXd EA_curr = dash_utils::calc_EA(Rwb);
+	VectorXd EA_curr = Vector3d(phiR,thetaR,psiR);
+    VectorXd dEA_curr = Vector3d(phidR,thetadR,psidR);
+    VectorXd wb_curr = calc_wb(dEA_curr,EA_curr);
+
 
 	x.segment(0, 3) = pcom;
-	//x.segment(3, 3) = Vector3d::Zero();// need dpc_curr
+	x.segment(3, 3) = dpc_curr;
 	x.segment(6, 9) = r_curr;
-	//x.segment(15, 3) = Vector3d::Zero(); // need wb_curr
+	x.segment(15, 3) = wb_curr;
 	x.segment(18, 3) = EA_curr;
 
 	// call SRBM-Ctrl here ======================================================================================
-	
+
 	// SRB kinematics
 	dash_kin::SRB_Kin(q, qd, Jv_mat, srb_params, x, lfv, lfdv);
-
+    q.row(0) = qLeg_r;
+	q.row(1) = qLeg_l;
+    qd.row(0) = qdLeg_r;
+	qd.row(1) = qdLeg_l;
 	// SRB trajectory planner
 	MatrixXd lfv_comm;
 	MatrixXd lfdv_comm;
@@ -305,6 +357,21 @@ void* mujoco_Update_1KHz( void * arg )
 	lfdv = lfdv0;
 	u = u0;
 
+    std::string recording_file_name;
+    double sim_time;
+    printf("Choose the DoF to test:\n\n");
+    printf("x: lean\n");
+    printf("y: side2side\n");
+    printf("z: squat\n");
+    printf("r: roll\n");
+    printf("p: pitch\n");
+    printf("w: yaw\n");
+    printf("b: balance\n");
+    cin.get();
+    char DoF;
+    cin.get(DoF);
+    dash_planner::SRB_6DoF_Test(recording_file_name,sim_time,srb_params,lfv0,DoF,1);
+
 	// Initialize trajectory planner data
     dash_planner::SRB_Init_Traj_Planner_Data(traj_planner_dyn_data, srb_params, human_params, x0, lfv0);
 
@@ -315,7 +382,7 @@ void* mujoco_Update_1KHz( void * arg )
 	// activate software
     mj_activate("./lib/Mujoco/mjkey.txt");
 
-	m = mj_loadXML("../../../lib/Mujoco/model/tello/TELLO_Simple.xml", NULL, error, 1000);
+	m = mj_loadXML("../../../lib/Mujoco/model/tello/tello.xml", NULL, error, 1000);
 	if (!m)
     {
         printf('r',"%s\n", error);
@@ -335,7 +402,7 @@ void* mujoco_Update_1KHz( void * arg )
         mju_error("Could not initialize GLFW");
 
 		// create window, make OpenGL context current, request v-sync
-    GLFWwindow* window = glfwCreateWindow(1200, 900, "TELLO like robot", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1200, 900, "Tello Mujoco Sim", NULL, NULL);
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
 

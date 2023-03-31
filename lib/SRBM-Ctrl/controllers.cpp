@@ -692,15 +692,15 @@ VectorXd dash_ctrl::SRB_force_distribution_QP(SRB_Params srb_params,int FSM,Vect
     real_t xOpt[nVar];
 
     GRFs_distribution_QP.getPrimalSolution(xOpt);   
-    //printf("U: ");
+    printf("U: ");
     // convert solution
     VectorXd xOpt_VectorXd = VectorXd::Zero(nVar);
     int xOpt_comp_idx;
     for (xOpt_comp_idx = 0; xOpt_comp_idx < nVar; xOpt_comp_idx++) {
         xOpt_VectorXd(xOpt_comp_idx) = xOpt[xOpt_comp_idx];  
-       // printf("%f, ",xOpt_VectorXd(xOpt_comp_idx));
+       printf("%f, ",xOpt_VectorXd(xOpt_comp_idx));
     } 
-    //printf("\n");
+    printf("\n");
     // dash_utils::writeVectorToCsv(xOpt_VectorXd, "u.csv");
     // exit(0);
     return xOpt_VectorXd;

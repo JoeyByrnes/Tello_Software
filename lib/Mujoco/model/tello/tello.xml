@@ -52,11 +52,11 @@
   
   <worldbody>
   
- 	<geom name ='floor' friction = "1 0.005 0.0001" pos ='0 0 -0.8' size ='5 5 .125' type = 'plane' material ='MatPlane' condim = '3' conaffinity = '15'/>
+ 	<geom name ='floor' friction = "1 0.005 0.0001" pos ='0 0 0' size ='5 5 .125' type = 'plane' material ='MatPlane' condim = '3' conaffinity = '15'/>
 	<light mode ='trackcom' pos = '0 0 5' dir = '0 0 -1'/>
 	<light directional = 'true' pos = '0 0 3' dir = '0 0 -1' diffuse = '0.2 0.2 0.2' specular = '0 0 0'/>	  
   
-	<body name = 'torso' pos = '0 0 0'> 
+	<body name = 'torso' pos = '0 0 0.7325'> 
 	
         <inertial pos = '0.0 0.0 0.0' mass = '12.485' fullinertia = '0.46529816872 0.234895709 0.25322588608 -0.00001031974 -0.00066429218 0.00013049593'/>
 		<joint axis = "1 0 0" pos = "0 0 0" name = "move_x" type = "slide" limited = "false"/>

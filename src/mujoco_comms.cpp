@@ -286,6 +286,17 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 	x.segment(18, 3) = EA_curr;
 
 	// call SRBM-Ctrl here ======================================================================================
+    q.row(0) = qLeg_r;
+	q.row(1) = qLeg_l;
+    qd.row(0) = qdLeg_r;
+	qd.row(1) = qdLeg_l;
+
+    // SRB FK
+    MatrixXd torso_vertices(3,8);
+    MatrixXd right_leg(5,1);
+    MatrixXd left_leg(5,1);
+    dash_kin::SRB_FK(torso_vertices, right_leg, left_leg, lfv, srb_params, x, q);
+    
 
 	// SRB kinematics
 	dash_kin::SRB_Kin(q, qd, Jv_mat, srb_params, x, lfv, lfdv);
@@ -391,8 +402,16 @@ void* mujoco_Update_1KHz( void * arg )
 	// make data
     d = mj_makeData(m);
 
-	// set initial legs configuration
-    initial_legs_configuration(d);
+    d->qpos[hip_yaw_l_idx] = q0.row(1)(0);
+    d->qpos[hip_roll_l_idx] = q0.row(1)(1);
+    d->qpos[hip_pitch_l_idx] = q0.row(1)(2);
+    d->qpos[knee_pitch_l_idx] = q0.row(1)(3);
+    d->qpos[ankle_pitch_l_idx] = q0.row(1)(4);
+    d->qpos[hip_yaw_r_idx] = q0.row(0)(0);
+    d->qpos[hip_roll_r_idx] = q0.row(0)(1);
+    d->qpos[hip_pitch_r_idx] = q0.row(0)(2);
+    d->qpos[knee_pitch_r_idx] = q0.row(0)(3);
+    d->qpos[ankle_pitch_r_idx] = q0.row(0)(4);
 
     // install control callback
     mjcb_control = TELLO_locomotion_ctrl;
@@ -402,12 +421,18 @@ void* mujoco_Update_1KHz( void * arg )
         mju_error("Could not initialize GLFW");
 
 		// create window, make OpenGL context current, request v-sync
-    GLFWwindow* window = glfwCreateWindow(1200, 900, "Tello Mujoco Sim", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1080, 1080, "Tello Mujoco Sim", NULL, NULL);
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
 
     // initialize visualization data structures
     mjv_defaultCamera(&cam);
+    cam.elevation = 0.8;
+    cam.distance = 2.1;
+    cam.azimuth = 115;
+    cam.lookat[0] = 0;
+    cam.lookat[1] = 0;
+    cam.lookat[2] = 0.6;
     mjv_defaultOption(&opt);
     mjv_defaultScene(&scn);
     mjr_defaultContext(&con);
@@ -429,10 +454,10 @@ void* mujoco_Update_1KHz( void * arg )
         handle_start_of_periodic_task(next);
 		// BEGIN LOOP CODE FOR MUJOCO ===================================================================
 
-		mjtNum simstart = d->time;
-        while (d->time - simstart < 1.0 / 60.0){
+		//mjtNum simstart = d->time;
+        //while (d->time - simstart < 1.0 / 60.0){
             mj_step(m, d);
-        }   
+        //}   
         
 
         // get framebuffer viewport
@@ -448,7 +473,6 @@ void* mujoco_Update_1KHz( void * arg )
 
         // process pending GUI events, call GLFW callbacks
         glfwPollEvents();
-
 
 		// END LOOP CODE FOR MUJOCO =====================================================================
 		handle_end_of_periodic_task(next,period);

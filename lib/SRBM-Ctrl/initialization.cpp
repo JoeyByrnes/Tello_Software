@@ -120,6 +120,26 @@ void dash_init::SRB_Init(VectorXd& x0, MatrixXd& q0, MatrixXd& qd0, MatrixXd& lf
         MatrixXd q0 = dash_kin::SRB_IK(srb_params, pc_init, R_init_mat, lfv0);  
         
     }
+    else if(init_type == 2)
+    {
+        // specify task space initial configuration
+        Vector3d target(0, 0, -0.520);
+
+        double foot_len_half = 0.060;
+        Vector3d target_front_left(foot_len_half+target(0), target(1)+0.050, target(2));
+        Vector3d target_back_left(-foot_len_half+target(0), target(1)+0.050, target(2));
+        Vector3d target_front_right(foot_len_half+target(0), target(1)-0.050, target(2));
+        Vector3d target_back_right(-foot_len_half+target(0), target(1)-0.050, target(2));
+
+
+        lfv0.row(0) = target_front_right; 
+        lfv0.row(1) = target_back_right; 
+        lfv0.row(2) = target_front_left;
+        lfv0.row(3) = target_back_left;
+        
+        MatrixXd q0 = dash_kin::SRB_IK(srb_params, pc_init, R_init_mat, lfv0);  
+        
+    }
     else
     {
         
@@ -157,7 +177,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
 
     // SRB specific
     srb_params.m = 20.2; // robot mass in kg
-    srb_params.hLIP = 0.54; // nominal robot LIP height
+    srb_params.hLIP = 0.52; // nominal robot LIP height
     srb_params.Ib = Matrix3d::Identity();
     srb_params.Ib(0,0) = 0.4874;
     srb_params.Ib(1,1) = 0.3081;

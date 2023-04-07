@@ -235,17 +235,17 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
     srb_params.lmaxR = 0.5; // maximum step length in m
 
     // controller 
-    srb_params.Kp_xR = 180.8; // P gain for x-direction tracking
+    srb_params.Kp_xR = 1800.8; // P gain for x-direction tracking
     srb_params.Kd_xR = 121.0; // D gain for x-direction tracking
-    srb_params.Kp_yR = 180.8; // P gain for y-direction tracking
+    srb_params.Kp_yR = 1800.8; // P gain for y-direction tracking
     srb_params.Kd_yR = 121.0; // D gain for y-direction tracking
-    srb_params.Kp_zR = 180.8; // P gain for z-direction tracking
+    srb_params.Kp_zR = 1800.8; // P gain for z-direction tracking
     srb_params.Kd_zR = 121.0; // D gain for z-direction tracking
-    srb_params.Kp_phiR = 11.95; // P gain for roll tracking
+    srb_params.Kp_phiR = 110.95; // P gain for roll tracking
     srb_params.Kd_phiR = 4.93; // D gain for roll tracking
-    srb_params.Kp_thetaR = 11.23; // P gain for pitch tracking
+    srb_params.Kp_thetaR = 110.23; // P gain for pitch tracking
     srb_params.Kd_thetaR = 3.82; // D gain for pitch tracking
-    srb_params.Kp_psiR = 10.95; // P gain for yaw tracking
+    srb_params.Kp_psiR = 100.95; // P gain for yaw tracking
     srb_params.Kd_psiR = 3.34; // D gain for yaw tracking
     srb_params.QP_opt_sol_type = 2; // quadprog = 0, quadprog (active-set) = 1, qpOASES = 2 --> DEFAULT
     srb_params.W_wrench = 100.0; // cost function weight for satisfying desired net wrench

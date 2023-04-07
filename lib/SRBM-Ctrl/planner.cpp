@@ -10,8 +10,9 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
             // leaning motion
             // sinusoidal trajectory parameters
             recording_file_name = "lean";
+            printf("Running X (Lean) Test\n");
             amplitude = (0.9*abs(lfv(0,0)))/(sqrt(2));
-            omega = 1.0;
+            omega = 0.5;
             phase = 0.0;
             sim_time = num_tests*(2.0*M_PI/omega);
             srb_params.x_sinu_traj_params = Eigen::Vector3d(omega, amplitude, phase);
@@ -20,8 +21,9 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
             // side to side motion
             // sinusoidal trajectory parameters
             recording_file_name = "side2side";
+            printf("Running Y (Side2Side) Test\n");
             amplitude = (0.9*abs(lfv(0,1)))/(sqrt(2));
-            omega = 1.5;
+            omega = 0.75;
             phase = 0.0;
             sim_time = num_tests*(2.0*M_PI/omega);
             srb_params.y_sinu_traj_params = Eigen::Vector3d(omega, amplitude, phase);
@@ -30,8 +32,9 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
             // squat motion
             // sinusoidal trajectory parameters
             recording_file_name = "squat";
+            printf("Running Z (Squat) Test\n");
             amplitude = 0.1;
-            omega = 1.0;
+            omega = 0.5;
             phase = -M_PI;
             sim_time = num_tests*(M_PI/omega);
             srb_params.z_sinu_traj_params = Eigen::Vector3d(omega, amplitude, phase);
@@ -40,8 +43,9 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
             // roll motion
             // sinusoidal trajectory parameters
             recording_file_name = "roll";
+            printf("Running Roll Test\n");
             amplitude = 5.0*(M_PI/180.0);
-            omega = 1.5;
+            omega = 0.75;
             phase = 0.0;
             sim_time = num_tests*(2.0*M_PI/omega);
             srb_params.roll_sinu_traj_params = Eigen::Vector3d(omega, amplitude, phase);
@@ -50,8 +54,9 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
             // pitch motion
             // sinusoidal trajectory parameters
             recording_file_name = "pitch";
+            printf("Running Pitch Test\n");
             amplitude = 5.0*(M_PI/180.0);
-            omega = 1.5;
+            omega = 0.75;
             phase = 0.0;
             sim_time = num_tests*(2.0*M_PI/omega);
             srb_params.pitch_sinu_traj_params = Eigen::Vector3d(omega, amplitude, phase);
@@ -60,8 +65,9 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
             // yaw motion
             // sinusoidal trajectory parameters
             recording_file_name = "yaw";
+            printf("Running Yaw Test\n");
             amplitude = 15.0*(M_PI/180.0);
-            omega = 1.5;
+            omega = 0.75;
             phase = 0.0;
             sim_time = num_tests*(2.0*M_PI/omega);
             srb_params.yaw_sinu_traj_params = Eigen::Vector3d(omega, amplitude, phase);
@@ -70,6 +76,7 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
             // default motion (balance)
             // sinusoidal trajectory parameters
             recording_file_name = "balance";
+            printf("Running Balance Test\n");
             sim_time = 1.0*num_tests;
             break;
     }

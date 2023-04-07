@@ -47,6 +47,10 @@ bool button_right = false;
 double lastx = 0;
 double lasty = 0;
 
+double push_force_x = 0;
+double push_force_y = 0;
+double push_force_z = 0;
+
 // end SRBM-Ctrl Variables here ================================================================
 SRB_Params srb_params;
 Human_params human_params;
@@ -111,6 +115,22 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
         initial_legs_configuration(d);
         mj_forward(m, d);
     }
+    if (act == GLFW_PRESS && key == GLFW_KEY_X)
+    {
+        push_force_x = 10;
+    }
+    if (act == GLFW_PRESS && key == GLFW_KEY_Y)
+    {
+        push_force_y = 10;
+    }
+    if (act == GLFW_PRESS && key == GLFW_KEY_Z)
+    {
+        push_force_z = 10;
+    }
+    if (act == GLFW_PRESS && key == GLFW_KEY_C)
+    {
+        mju_zero(d->qfrc_applied, m->nv);
+    }
 }
 
 // mouse button callback
@@ -174,25 +194,38 @@ VectorXd calc_wb(Vector3d dEA, VectorXd EA) {
 
   // Calculate rotation matrix from Euler angles
   Matrix3d Rmat;
-  Rmat = AngleAxisd(phi, Vector3d::UnitZ())
-      * AngleAxisd(theta, Vector3d::UnitY())
-      * AngleAxisd(psi, Vector3d::UnitZ());
+  Rmat = AngleAxisd(phi, Vector3d::UnitX())
+        * AngleAxisd(theta, Vector3d::UnitY())
+        * AngleAxisd(psi, Vector3d::UnitZ());
 
   // Calculate inverse of T_EA
   double cos_theta = cos(theta);
-  Matrix3d inv_T_EA;
-  inv_T_EA << cos(psi)/cos_theta, -sin(psi), cos(psi)*tan(theta)/cos_theta,
-              sin(psi)/cos(theta), cos(psi), sin(psi)*tan(theta)/cos(theta),
-              0, 0, 1;
+  Matrix3d T_EA;
+//   inv_T_EA << cos(psi)/cos_theta, -sin(psi), cos(psi)*tan(theta)/cos_theta,
+//               sin(psi)/cos(theta), cos(psi), sin(psi)*tan(theta)/cos(theta),
+//               0, 0, 1;
+T_EA << cos(psi)/cos(theta), sin(psi)/cos(theta), 0,
+      -sin(psi), cos(psi), 0,
+      cos(psi)*tan(theta), sin(psi)*tan(theta), 1;
 
   // Calculate w from dEA using the inverse of T_EA
-  Vector3d w = inv_T_EA * dEA;
+  Vector3d w = T_EA.inverse() * dEA;
 
   // Calculate wb from w and R
   VectorXd wb(3);
   wb = Rmat.transpose() * w;
 
   return wb;
+}
+
+Eigen::VectorXd calc_pd(VectorXd position, VectorXd velocity, VectorXd desiredPosition, VectorXd desiredVelocity, MatrixXd Kp, MatrixXd Kd) 
+{
+  // Compute position error
+  Eigen::VectorXd positionError = desiredPosition - position;
+  // Compute velocity error
+  Eigen::VectorXd velocityError = desiredVelocity - velocity;
+  // Compute control output
+  return Kp*positionError + Kd*velocityError;
 }
 
 void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
@@ -244,10 +277,10 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     SRB_qd << xdR, ydR, zdR, phidR, thetadR, psidR;
 
     // CoM vector
-    VectorXd pcom = SRB_q.head(3);
+    VectorXd pc_curr = SRB_q.head(3);
     VectorXd dpc_curr = SRB_qd.head(3);
     MatrixXd pcom_row(1, 3);
-    pcom_row = pcom.transpose();
+    pcom_row = pc_curr.transpose();
     MatrixXd pcom_mat(4, 3);
     pcom_mat = pcom_row.replicate(4, 1);     
 
@@ -264,7 +297,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
     // Compute rotation matrix from world to body frame
     Matrix3d Rwb;
-    Rwb = AngleAxisd(phiR, Vector3d::UnitZ())
+    Rwb = AngleAxisd(phiR, Vector3d::UnitX())
         * AngleAxisd(thetaR, Vector3d::UnitY())
         * AngleAxisd(psiR, Vector3d::UnitZ());
 
@@ -273,23 +306,20 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 	q.row(1) = qLeg_l;
     qd.row(0) = qdLeg_r;
 	qd.row(1) = qdLeg_l;
-	Eigen::Map<Eigen::VectorXd> r_curr(Rwb.data(), Rwb.size());
+	Eigen::Map<Eigen::VectorXd> R_curr(Rwb.data(), Rwb.size());
 	VectorXd EA_curr = Vector3d(phiR,thetaR,psiR);
     VectorXd dEA_curr = Vector3d(phidR,thetadR,psidR);
     VectorXd wb_curr = calc_wb(dEA_curr,EA_curr);
 
-
-	x.segment(0, 3) = pcom;
+	x.segment(0, 3) = pc_curr;
 	x.segment(3, 3) = dpc_curr;
-	x.segment(6, 9) = r_curr;
+	x.segment(6, 9) = R_curr;
 	x.segment(15, 3) = wb_curr;
 	x.segment(18, 3) = EA_curr;
 
+    t = (double)d->time;
+
 	// call SRBM-Ctrl here ======================================================================================
-    q.row(0) = qLeg_r;
-	q.row(1) = qLeg_l;
-    qd.row(0) = qdLeg_r;
-	qd.row(1) = qdLeg_l;
 
     // SRB FK
     MatrixXd torso_vertices(3,8);
@@ -300,10 +330,11 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
 	// SRB kinematics
 	dash_kin::SRB_Kin(q, qd, Jv_mat, srb_params, x, lfv, lfdv);
-    q.row(0) = qLeg_r;
-	q.row(1) = qLeg_l;
-    qd.row(0) = qdLeg_r;
-	qd.row(1) = qdLeg_l;
+    
+    // q.row(0) = qLeg_r;
+	// q.row(1) = qLeg_l;
+    // qd.row(0) = qdLeg_r;
+	// qd.row(1) = qdLeg_l;
 	// SRB trajectory planner
 	MatrixXd lfv_comm;
 	MatrixXd lfdv_comm;
@@ -314,21 +345,66 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 	// SRB controller
 	dash_ctrl::SRB_Balance_Controller(u, tau, srb_params, FSM, x, lfv, qd, Jv_mat, u, SRB_wrench_ref);
 
-	// end SRBM-Ctrl call here ==================================================================================
+    // for(int i = 0; i< 10; i++){
+    //     printf("%f, ",tau(i));
+    // }
+    // printf("\n");
+    // printf("%f,\t ",(float)d->time);
+    // for(int i = 0; i< 12; i++){
+    //     printf("%f, ",u(i));
+    // }
+    // printf("\n");
 
+	// end SRBM-Ctrl call here ==================================================================================
+    
 	VectorXd tau_leg_r = tau.segment<5>(0); 
 	VectorXd tau_leg_l = tau.segment<5>(5);
 	// Set leg joint torques
-    d->ctrl[hip_motor1_l_idx] = tau_leg_l(0);
-    d->ctrl[hip_motor2_l_idx] = tau_leg_l(1);
-    d->ctrl[hip_motor3_l_idx] = tau_leg_l(2);
-    d->ctrl[knee_motor_l_idx] = tau_leg_l(3);
+
+    // joint-space control
+    VectorXd joint_positions(10);
+    joint_positions << q1l, q2l, q3l, q4l, q5l, q1r, q2r, q3r, q4r, q5r;
+
+    VectorXd joint_pos_desired(10);
+    joint_pos_desired << q0.row(0).transpose(), q0.row(1).transpose();
+
+    VectorXd joint_velocities(10);
+    joint_velocities <<  qd1l, qd2l, qd3l, qd4l, qd5l, qd1r, qd2r, qd3r, qd4r, qd5r;
+
+    int joint_kp = 0;
+	int joint_kd = 10;
+	VectorXd kp_vec_joint = VectorXd::Ones(10)*joint_kp;
+	VectorXd kd_vec_joint = VectorXd::Ones(10)*joint_kd;
+
+	MatrixXd kp_mat_joint = kp_vec_joint.asDiagonal();
+	MatrixXd kd_mat_joint = kd_vec_joint.asDiagonal();
+
+    VectorXd joint_vel_desired = VectorXd::Zero(10);
+
+    VectorXd joint_torques = calc_pd(joint_positions,joint_velocities,joint_pos_desired,
+                                     joint_vel_desired,kp_mat_joint,kd_mat_joint);
+    
+    d->ctrl[hip_motor1_l_idx]  = tau_leg_l(0);
+    d->ctrl[hip_motor2_l_idx]  = tau_leg_l(1);
+    d->ctrl[hip_motor3_l_idx]  = tau_leg_l(2);
+    d->ctrl[knee_motor_l_idx]  = tau_leg_l(3);
     d->ctrl[ankle_motor_l_idx] = tau_leg_l(4);
-    d->ctrl[hip_motor1_r_idx] = tau_leg_r(0);
-    d->ctrl[hip_motor2_r_idx] = tau_leg_r(1);
-    d->ctrl[hip_motor3_r_idx] = tau_leg_r(2);
-    d->ctrl[knee_motor_r_idx] = tau_leg_r(3);
-    d->ctrl[ankle_motor_r_idx] = tau_leg_r(4);  
+    d->ctrl[hip_motor1_r_idx]  = tau_leg_r(0);
+    d->ctrl[hip_motor2_r_idx]  = tau_leg_r(1);
+    d->ctrl[hip_motor3_r_idx]  = tau_leg_r(2);
+    d->ctrl[knee_motor_r_idx]  = tau_leg_r(3);
+    d->ctrl[ankle_motor_r_idx] = tau_leg_r(4);
+
+    // d->ctrl[hip_motor1_l_idx]  += joint_torques(0);
+    // d->ctrl[hip_motor2_l_idx]  += joint_torques(1);
+    // d->ctrl[hip_motor3_l_idx]  += joint_torques(2);
+    // d->ctrl[knee_motor_l_idx]  += joint_torques(3);
+    // d->ctrl[ankle_motor_l_idx] += joint_torques(4);
+    // d->ctrl[hip_motor1_r_idx]  += joint_torques(5);
+    // d->ctrl[hip_motor2_r_idx]  += joint_torques(6);
+    // d->ctrl[hip_motor3_r_idx]  += joint_torques(7);
+    // d->ctrl[knee_motor_r_idx]  += joint_torques(8);
+    // d->ctrl[ankle_motor_r_idx] += joint_torques(9);
 	
 }
 
@@ -370,18 +446,35 @@ void* mujoco_Update_1KHz( void * arg )
 
     std::string recording_file_name;
     double sim_time;
-    printf("Choose the DoF to test:\n\n");
-    printf("x: lean\n");
-    printf("y: side2side\n");
-    printf("z: squat\n");
-    printf("r: roll\n");
-    printf("p: pitch\n");
-    printf("w: yaw\n");
-    printf("b: balance\n");
-    cin.get();
-    char DoF;
-    cin.get(DoF);
-    dash_planner::SRB_6DoF_Test(recording_file_name,sim_time,srb_params,lfv0,DoF,1);
+    // printf("Choose the DoF to test:\n\n");
+    // printf("x: lean\n");
+    // printf("y: side2side\n");
+    // printf("z: squat\n");
+    // printf("r: roll\n");
+    // printf("p: pitch\n");
+    // printf("w: yaw\n");
+    // printf("b: balance\n");
+    // //cin.get();
+    // char DoF;
+    // cin.get(DoF);
+    // dash_planner::SRB_6DoF_Test(recording_file_name,sim_time,srb_params,lfv0,DoF,1);
+    printf("Walking Selected\n\n");
+    // Option 2: Walking using LIP angular momentum regulation about contact point
+    // user input (walking speed and step frequency)
+    double des_walking_speed = 0.7;
+    double des_walking_step_period = 0.25;
+    // end user input
+    recording_file_name = "walking";
+    srb_params.planner_type = 1; 
+    srb_params.T = des_walking_step_period;
+    VectorXd t_traj, v_traj;
+    double t_beg_stepping_time, t_end_stepping_time;
+    dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
+    srb_params.vx_des_t = t_traj;
+    srb_params.vx_des_vx = v_traj;
+    srb_params.t_beg_stepping = t_beg_stepping_time;
+    srb_params.t_end_stepping = t_end_stepping_time;
+    sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
 
 	// Initialize trajectory planner data
     dash_planner::SRB_Init_Traj_Planner_Data(traj_planner_dyn_data, srb_params, human_params, x0, lfv0);
@@ -427,12 +520,12 @@ void* mujoco_Update_1KHz( void * arg )
 
     // initialize visualization data structures
     mjv_defaultCamera(&cam);
-    cam.elevation = 0.8;
-    cam.distance = 2.1;
-    cam.azimuth = 115;
+    cam.elevation = -15;
+    cam.distance = 1.5;
+    cam.azimuth = 135;
     cam.lookat[0] = 0;
     cam.lookat[1] = 0;
-    cam.lookat[2] = 0.6;
+    cam.lookat[2] = -0.3;
     mjv_defaultOption(&opt);
     mjv_defaultScene(&scn);
     mjr_defaultContext(&con);
@@ -448,16 +541,38 @@ void* mujoco_Update_1KHz( void * arg )
     glfwSetScrollCallback(window, scroll);
 
 	// END SETUP CODE FOR MUJOCO ========================================================================
-
+    // mj_step(m, d);
 	while(!glfwWindowShouldClose(window))
     {
         handle_start_of_periodic_task(next);
 		// BEGIN LOOP CODE FOR MUJOCO ===================================================================
 
-		//mjtNum simstart = d->time;
-        //while (d->time - simstart < 1.0 / 60.0){
-            mj_step(m, d);
-        //}   
+        // Get body ID
+        int body_id = mj_name2id(m, mjOBJ_BODY, "torso");
+
+        // Apply force-torque to body
+        mjtNum force[3] = {push_force_x, push_force_y, -push_force_z}; // x, y, z components of the force
+        mjtNum torque[3] = {0.0, 0.0, 0.0}; // x, y, z components of the torque
+        mjtNum point[3] = {0.0, 0.0, 0.0}; // x, y, z components of the torque
+        mj_applyFT(m, d, force, torque, point, body_id, d->qfrc_applied);
+
+        if(push_force_x > 0){
+            printf("Pushed in X\n");
+            push_force_x = 0;
+        }
+        if(push_force_y > 0){
+            printf("Pushed in Y\n");
+            push_force_y = 0;
+        }
+        if(push_force_z > 0){
+            printf("Pushed in Z\n");
+            push_force_z = 0;
+        }
+
+		mjtNum simstart = d->time;
+        while (d->time - simstart < 1.0 / 60.0){
+           mj_step(m, d);
+        }   
         
 
         // get framebuffer viewport

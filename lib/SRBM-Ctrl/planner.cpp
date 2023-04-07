@@ -12,7 +12,7 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
             recording_file_name = "lean";
             printf("Running X (Lean) Test\n");
             amplitude = (0.9*abs(lfv(0,0)))/(sqrt(2));
-            omega = 0.5;
+            omega = 1.0;
             phase = 0.0;
             sim_time = num_tests*(2.0*M_PI/omega);
             srb_params.x_sinu_traj_params = Eigen::Vector3d(omega, amplitude, phase);
@@ -23,7 +23,7 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
             recording_file_name = "side2side";
             printf("Running Y (Side2Side) Test\n");
             amplitude = (0.9*abs(lfv(0,1)))/(sqrt(2));
-            omega = 0.75;
+            omega = 1.5;
             phase = 0.0;
             sim_time = num_tests*(2.0*M_PI/omega);
             srb_params.y_sinu_traj_params = Eigen::Vector3d(omega, amplitude, phase);
@@ -34,7 +34,7 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
             recording_file_name = "squat";
             printf("Running Z (Squat) Test\n");
             amplitude = 0.1;
-            omega = 0.5;
+            omega = 1.0;
             phase = -M_PI;
             sim_time = num_tests*(M_PI/omega);
             srb_params.z_sinu_traj_params = Eigen::Vector3d(omega, amplitude, phase);
@@ -45,7 +45,7 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
             recording_file_name = "roll";
             printf("Running Roll Test\n");
             amplitude = 5.0*(M_PI/180.0);
-            omega = 0.75;
+            omega = 1.5;
             phase = 0.0;
             sim_time = num_tests*(2.0*M_PI/omega);
             srb_params.roll_sinu_traj_params = Eigen::Vector3d(omega, amplitude, phase);
@@ -56,7 +56,7 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
             recording_file_name = "pitch";
             printf("Running Pitch Test\n");
             amplitude = 5.0*(M_PI/180.0);
-            omega = 0.75;
+            omega = 1.5;
             phase = 0.0;
             sim_time = num_tests*(2.0*M_PI/omega);
             srb_params.pitch_sinu_traj_params = Eigen::Vector3d(omega, amplitude, phase);
@@ -67,7 +67,7 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
             recording_file_name = "yaw";
             printf("Running Yaw Test\n");
             amplitude = 15.0*(M_PI/180.0);
-            omega = 0.75;
+            omega = 1.5;
             phase = 0.0;
             sim_time = num_tests*(2.0*M_PI/omega);
             srb_params.yaw_sinu_traj_params = Eigen::Vector3d(omega, amplitude, phase);
@@ -120,6 +120,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     // From SSP_R can switch to DSP based on left foot z-position
     
     int FSM_next;
+    cout << FSM_prev << "\t " << u1z <<  "\t " << u3z << "\t " << s << "\t " << t <<endl;
     if (FSM_prev == 0) // currently in DSP
     {
         if (u1z < Fz_min && t > 0) // enter SSP_L

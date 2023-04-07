@@ -28,7 +28,7 @@
 	<default>
     <joint limited='true'/>
     <motor ctrllimited='true'/>
-    <geom contype='0' conaffinity='0' condim='1' group="1" solimp="0 1"/>
+    <geom contype='0' conaffinity='0' condim='1' group="1" friction="1"/>
     <equality solref='0.005 1'/>
     <default class='TELLO'>
     </default>
@@ -36,10 +36,10 @@
       <!-- User parameter for geoms is used to identify collision types -->
       <geom contype='1' user='2' solimp="0 1"/>
       <default class='collision-left'>
-        <geom contype='2' conaffinity='4'/>
+        <geom contype='2' conaffinity='4' friction="1"/>
       </default>
       <default class='collision-right'>
-        <geom contype='4' conaffinity='2'/>
+        <geom contype='4' conaffinity='2' friction="1"/>
       </default>
     </default>
     <default class='obstacle'>

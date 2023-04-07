@@ -226,6 +226,10 @@ double DynamicRobot::motor_pos_real_to_model(int id, int motor_position_enc_coun
 
 Eigen::VectorXd DynamicRobot::getJointPositions()
 {
+    if(this->isSimulation)
+    {
+        return sim_joint_pos;
+    }
     Eigen::Matrix<double,10,1> joint_config;
     Eigen::Matrix<double,5,1> motor_positions_left; 
     Eigen::Matrix<double,5,1> motor_positions_right;
@@ -240,6 +244,10 @@ Eigen::VectorXd DynamicRobot::getJointPositions()
 }
 Eigen::VectorXd DynamicRobot::getJointVelocities()
 {
+    if(this->isSimulation)
+    {
+        return sim_joint_pos;
+    }
     VectorXd motor_velocities(10);
 	for(int i=0; i<10; i++)
     {
@@ -337,7 +345,12 @@ void DynamicRobot::jointPD(JointPDConfig joint_conf)
     motor_conf.motor_pos_desired = motor_pos_desired_real;
     motor_conf.motor_vel_desired = motor_vel_desired;
 
-    this->motorPD(motor_conf);
+    if(this->isSimulation){
+        this->sim_joint_torques << joint_torques;
+    }
+    else{
+        this->motorPD(motor_conf);
+    }
 }
 
 // pos/vel is 12x1 vector: (3x1) left front, (3x1) left back, (3x1) right front, (3x1) right back
@@ -374,6 +387,7 @@ void DynamicRobot::taskPD(TaskPDConfig task_conf)
     jointPD(joint_conf);
 
 }
+
 
 void DynamicRobot::addGravityCompensation()
 {

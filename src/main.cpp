@@ -644,8 +644,9 @@ int main(int argc, char *argv[]) {
 	// actuators.rightLeg.push_back(new CheetahMotor(0x08,PCAN_PCIBUS3));
 	// actuators.rightLeg.push_back(new CheetahMotor(0x09,PCAN_PCIBUS4));
 	// actuators.rightLeg.push_back(new CheetahMotor(0x0A,PCAN_PCIBUS3));
-
+	SIM_START:
 	tello = new RoboDesignLab::DynamicRobot(actuators);
+	if(simulation_mode) tello->isSimulation = true;
 	for(int i = 0; i<10; i++){ // not in the constructor becuase I want to change how this works
 		tello->motor_zeros[i] = motor_zeros[i];
 		tello->motor_directions[i] = motor_directions[i];
@@ -676,7 +677,6 @@ int main(int argc, char *argv[]) {
 		\r\033[1;38;5;208mIf this is a mistake, run without the \033[1;33m-s 1;38;5;208mflag or comment the following line in platformio.ini:\n\
 		\r\033[34mupload_command \033[39m= pio run -t exec -a \"-s\"\n\n");
 
-		SIM_START:
 		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 1000);
 
 		while(1){ usleep(1000); }

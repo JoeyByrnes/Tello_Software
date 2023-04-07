@@ -184,6 +184,12 @@ namespace RoboDesignLab {
         GRFs _GRF_biases;
         bool _right_loadcells_calibrated = false;
         bool _left_loadcells_calibrated = false;
+
+        bool isSimulation = false;
+        VectorXd sim_joint_torques = VectorXd::Zero(10);
+        VectorXd sim_joint_pos = VectorXd::Zero(10);
+        VectorXd sim_joint_vel = VectorXd::Zero(10);
+
     private:
         // Kinematics Functions
         MatrixXd_function _jaco_motor2joint;

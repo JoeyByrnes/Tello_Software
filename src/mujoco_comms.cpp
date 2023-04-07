@@ -1,5 +1,7 @@
 #include "mujoco_comms.h"
 
+extern RoboDesignLab::DynamicRobot* tello;
+
 char error[1000];
 
 // robot states indices
@@ -331,16 +333,140 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 	// SRB kinematics
 	dash_kin::SRB_Kin(q, qd, Jv_mat, srb_params, x, lfv, lfdv);
     
-    // q.row(0) = qLeg_r;
-	// q.row(1) = qLeg_l;
-    // qd.row(0) = qdLeg_r;
-	// qd.row(1) = qdLeg_l;
 	// SRB trajectory planner
-	MatrixXd lfv_comm;
-	MatrixXd lfdv_comm;
+	MatrixXd lfv_comm(4,3);
+	MatrixXd lfdv_comm(4,3);
 	dash_planner::SRB_Traj_Planner(srb_params, human_dyn_data, traj_planner_dyn_data,
 								   human_params, FSM, FSM_prev, t, x, lfv, lfdv, u, 
 								   tau_ext, SRB_state_ref, SRB_wrench_ref, lfv_comm, lfdv_comm);
+
+    // Transform lfv an lfdv to hip frames here:
+    double W = srb_params.W;
+    double CoM2H_z_dist = srb_params.CoM2H_z_dist;
+    MatrixXd lfv_comm_4x4(4,4);
+	MatrixXd lfdv_comm_4x4(4,4);
+    MatrixXd lfv_comm_body_4x4(4,4);
+	MatrixXd lfdv_comm_body_4x4(4,4);
+    MatrixXd lfv_comm_hip_4x4(4,4);
+	MatrixXd lfdv_comm_hip_4x4(4,4);
+
+    MatrixXd lfv_comm_body(4,3);
+	MatrixXd lfdv_comm_body(4,3);
+    MatrixXd lfv_comm_hip(4,3);
+	MatrixXd lfdv_comm_hip(4,3);
+
+    lfv_comm_4x4.setConstant(1);
+    lfv_comm_4x4.block(0,0,4,3) = lfv_comm;
+    lfdv_comm_4x4.setConstant(1);
+    lfdv_comm_4x4.block(0,0,4,3) = lfdv_comm;
+
+    // // Transform from mujoco world to body:
+    Matrix3d R = Rwb;
+    VectorXd pcom = pc_curr;
+
+    Eigen::Matrix<double,4,4> HTMwd2com;
+    //HTMwd2com << R, pcom, 0, 0, 0, 1;
+    HTMwd2com.block(0,0,3,3) = R;
+    HTMwd2com.block(0,3,3,1) = pcom;
+    HTMwd2com.block(3,0,1,4) = Vector4d(0,0,0,1).transpose();
+    
+    // right hip to world
+    Eigen::Matrix4d HTMcom2hr;
+    // HTMcom2hr.setIdentity();
+    // HTMcom2hr(1,3) = -W/2.0;
+    // HTMcom2hr(2,3) = -CoM2H_z_dist;
+    HTMcom2hr.block(0,0,3,3) = Eigen::Matrix3d::Identity();
+    HTMcom2hr.block(0,3,3,1) = Eigen::Vector3d(0, -W/2.0, -CoM2H_z_dist);
+    HTMcom2hr.block(3,0,1,4) = Vector4d(0,0,0,1).transpose();
+
+    Eigen::Matrix4d HTMwd2hr = HTMwd2com * HTMcom2hr;
+    
+    // left hip to world
+    Eigen::Matrix4d HTMcom2hl;
+    // HTMcom2hl.setIdentity();
+    // HTMcom2hl(1,3) = W/2.0;
+    // HTMcom2hl(2,3) = -CoM2H_z_dist;
+    HTMcom2hl.block(0,0,3,3) = Eigen::Matrix3d::Identity();
+    HTMcom2hl.block(0,3,3,1) = Eigen::Vector3d(0, W/2.0, -CoM2H_z_dist);
+    HTMcom2hl.block(3,0,1,4) = Vector4d(0,0,0,1).transpose();
+
+    Eigen::Matrix4d HTMwd2hl = HTMwd2com * HTMcom2hl;
+
+    lfv_comm_hip.row(0) = (HTMwd2hr.inverse() * lfv_comm_4x4.row(0).transpose()).head(3);
+    lfv_comm_hip.row(1) = (HTMwd2hr.inverse() * lfv_comm_4x4.row(1).transpose()).head(3);
+
+    lfv_comm_hip.row(2) = (HTMwd2hl.inverse() * lfv_comm_4x4.row(2).transpose()).head(3);
+    lfv_comm_hip.row(3) = (HTMwd2hl.inverse() * lfv_comm_4x4.row(3).transpose()).head(3);
+
+    Vector3d right_front = lfv_comm_hip.row(0);
+    Vector3d right_back = lfv_comm_hip.row(1);
+    Vector3d left_front = lfv_comm_hip.row(2);
+    Vector3d left_back = lfv_comm_hip.row(3);
+
+    // BEGIN TASK PD CODE ======================================+++++++++++++++++
+
+    int joint_kp = 1000;
+	int joint_kd = 0;
+	VectorXd kp_vec_joint = VectorXd::Ones(10)*(joint_kp);
+	VectorXd kd_vec_joint = VectorXd::Ones(10)*joint_kd;
+
+	MatrixXd kp_mat_joint = kp_vec_joint.asDiagonal();
+	MatrixXd kd_mat_joint = kd_vec_joint.asDiagonal();
+
+	int motor_kp = 0;
+	int motor_kd = 1000;
+	VectorXd kp_vec_motor = VectorXd::Ones(10)*motor_kp;
+	VectorXd kd_vec_motor = VectorXd::Ones(10)*motor_kd;
+
+	VectorXd vel_desired = VectorXd::Zero(12);
+
+	
+	Vector3d target_front_left = left_front;
+	Vector3d target_back_left = left_back;
+	Vector3d target_front_right = right_front;
+	Vector3d target_back_right = right_back;
+
+	VectorXd pos_desired(12);
+	pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
+
+	int task_kp = 0;
+	int task_kd = 0;
+	VectorXd kp_vec_task = VectorXd::Ones(12)*task_kp;
+	VectorXd kd_vec_task = VectorXd::Ones(12)*task_kd;
+	MatrixXd kp_mat_task = kp_vec_task.asDiagonal();
+	MatrixXd kd_mat_task = kd_vec_task.asDiagonal();
+
+	// Set up configuration struct for Task Space Controller
+    RoboDesignLab::TaskPDConfig task_pd_config;
+	task_pd_config.task_ff_force = VectorXd::Zero(12);
+	task_pd_config.task_pos_desired = pos_desired;
+	task_pd_config.task_vel_desired = vel_desired;
+	task_pd_config.task_kp = kp_mat_task;
+	task_pd_config.task_kd = kd_mat_task;
+	task_pd_config.joint_kp = kp_mat_joint;
+	task_pd_config.joint_kd = kd_mat_joint;
+	task_pd_config.motor_kp = kp_vec_motor;
+	task_pd_config.motor_kd = kd_vec_motor;
+
+    VectorXd qVec(10), qdVec(10);
+    qVec << q.row(1).transpose(), q.row(0).transpose();
+    qdVec << qd.row(1).transpose(), qd.row(0).transpose();
+
+    tello->sim_joint_pos << qVec;
+    tello->sim_joint_vel << qdVec;
+	
+	tello->taskPD(task_pd_config);
+
+    // END TASK PD CODE ======================================+++++++++++++++++
+    
+    // cout << "lfv_comm: " << endl;
+    // cout << lfv_comm << endl;
+
+    // cout << "lfv_comm_hip: " << endl;
+    // cout << lfv_comm_hip << endl;
+
+    // cout << "==================================" << endl;
+    // cout.flush();
 
 	// SRB controller
 	dash_ctrl::SRB_Balance_Controller(u, tau, srb_params, FSM, x, lfv, qd, Jv_mat, u, SRB_wrench_ref);
@@ -360,29 +486,6 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 	VectorXd tau_leg_r = tau.segment<5>(0); 
 	VectorXd tau_leg_l = tau.segment<5>(5);
 	// Set leg joint torques
-
-    // joint-space control
-    VectorXd joint_positions(10);
-    joint_positions << q1l, q2l, q3l, q4l, q5l, q1r, q2r, q3r, q4r, q5r;
-
-    VectorXd joint_pos_desired(10);
-    joint_pos_desired << q0.row(0).transpose(), q0.row(1).transpose();
-
-    VectorXd joint_velocities(10);
-    joint_velocities <<  qd1l, qd2l, qd3l, qd4l, qd5l, qd1r, qd2r, qd3r, qd4r, qd5r;
-
-    int joint_kp = 0;
-	int joint_kd = 10;
-	VectorXd kp_vec_joint = VectorXd::Ones(10)*joint_kp;
-	VectorXd kd_vec_joint = VectorXd::Ones(10)*joint_kd;
-
-	MatrixXd kp_mat_joint = kp_vec_joint.asDiagonal();
-	MatrixXd kd_mat_joint = kd_vec_joint.asDiagonal();
-
-    VectorXd joint_vel_desired = VectorXd::Zero(10);
-
-    VectorXd joint_torques = calc_pd(joint_positions,joint_velocities,joint_pos_desired,
-                                     joint_vel_desired,kp_mat_joint,kd_mat_joint);
     
     d->ctrl[hip_motor1_l_idx]  = tau_leg_l(0);
     d->ctrl[hip_motor2_l_idx]  = tau_leg_l(1);
@@ -395,17 +498,19 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     d->ctrl[knee_motor_r_idx]  = tau_leg_r(3);
     d->ctrl[ankle_motor_r_idx] = tau_leg_r(4);
 
-    // d->ctrl[hip_motor1_l_idx]  += joint_torques(0);
-    // d->ctrl[hip_motor2_l_idx]  += joint_torques(1);
-    // d->ctrl[hip_motor3_l_idx]  += joint_torques(2);
-    // d->ctrl[knee_motor_l_idx]  += joint_torques(3);
-    // d->ctrl[ankle_motor_l_idx] += joint_torques(4);
-    // d->ctrl[hip_motor1_r_idx]  += joint_torques(5);
-    // d->ctrl[hip_motor2_r_idx]  += joint_torques(6);
-    // d->ctrl[hip_motor3_r_idx]  += joint_torques(7);
-    // d->ctrl[knee_motor_r_idx]  += joint_torques(8);
-    // d->ctrl[ankle_motor_r_idx] += joint_torques(9);
-	
+    d->ctrl[hip_motor1_l_idx]  += tello->sim_joint_torques(0);
+    d->ctrl[hip_motor2_l_idx]  += tello->sim_joint_torques(1);
+    d->ctrl[hip_motor3_l_idx]  += tello->sim_joint_torques(2);
+    d->ctrl[knee_motor_l_idx]  += tello->sim_joint_torques(3);
+    d->ctrl[ankle_motor_l_idx] += tello->sim_joint_torques(4);
+    d->ctrl[hip_motor1_r_idx]  += tello->sim_joint_torques(5);
+    d->ctrl[hip_motor2_r_idx]  += tello->sim_joint_torques(6);
+    d->ctrl[hip_motor3_r_idx]  += tello->sim_joint_torques(7);
+    d->ctrl[knee_motor_r_idx]  += tello->sim_joint_torques(8);
+    d->ctrl[ankle_motor_r_idx] += tello->sim_joint_torques(9);
+
+    FSM_prev = FSM;
+
 }
 
 void* mujoco_Update_1KHz( void * arg )
@@ -461,8 +566,8 @@ void* mujoco_Update_1KHz( void * arg )
     printf("Walking Selected\n\n");
     // Option 2: Walking using LIP angular momentum regulation about contact point
     // user input (walking speed and step frequency)
-    double des_walking_speed = 0.7;
-    double des_walking_step_period = 0.25;
+    double des_walking_speed = 0.0;
+    double des_walking_step_period = 0.2;
     // end user input
     recording_file_name = "walking";
     srb_params.planner_type = 1; 
@@ -590,7 +695,7 @@ void* mujoco_Update_1KHz( void * arg )
         glfwPollEvents();
 
 		// END LOOP CODE FOR MUJOCO =====================================================================
-		handle_end_of_periodic_task(next,period);
+		handle_end_of_periodic_task(next,period*1000);
 	}
 
 	//free visualization storage

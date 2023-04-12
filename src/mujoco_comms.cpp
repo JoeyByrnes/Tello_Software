@@ -480,17 +480,12 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     // BEGIN TASK PD CODE ======================================+++++++++++++++++
 
     double joint_kp = 50;
-	double joint_kd = 1;
+	double joint_kd = 0.5;
 	VectorXd kp_vec_joint = VectorXd::Ones(10)*(joint_kp);
 	VectorXd kd_vec_joint = VectorXd::Ones(10)*joint_kd;
 
 	MatrixXd kp_mat_joint = kp_vec_joint.asDiagonal();
 	MatrixXd kd_mat_joint = kd_vec_joint.asDiagonal();
-
-	int motor_kp = 0;
-	int motor_kd = 0;
-	VectorXd kp_vec_motor = VectorXd::Ones(10)*motor_kp;
-	VectorXd kd_vec_motor = VectorXd::Ones(10)*motor_kd;
 
 	Vector3d target_front_left = left_front;
 	Vector3d target_back_left = left_back;
@@ -507,17 +502,6 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
 	VectorXd pos_desired(12);
 	pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
-    // Vector3d target(0, 0, -0.4450);
-
-	// double foot_len_half = 0.060;
-	// Vector3d target_front_left(foot_len_half+target(0), target(1)+0.050, target(2));
-	// Vector3d target_back_left(-foot_len_half+target(0), target(1)+0.050, target(2));
-	// Vector3d target_front_right(foot_len_half+target(0), target(1)-0.050, target(2));
-	// Vector3d target_back_right(-foot_len_half+target(0), target(1)-0.050, target(2));
-    // VectorXd vel_desired = VectorXd::Zero(12);
-
-	// VectorXd pos_desired(12);
-	// pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
 
 	int task_kp = 0;
 	int task_kd = 0;
@@ -535,10 +519,25 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 	task_pd_config.task_kd = kd_mat_task;
 	task_pd_config.joint_kp = kp_mat_joint;
 	task_pd_config.joint_kd = kd_mat_joint;
-	task_pd_config.motor_kp = kp_vec_motor;
-	task_pd_config.motor_kd = kd_vec_motor;
+	task_pd_config.motor_kp = VectorXd::Zero(10);
+	task_pd_config.motor_kd = VectorXd::Zero(10);
 	
-	tello->taskPD(task_pd_config);
+	VectorXd swing_leg_torques = tello->taskPD2(task_pd_config);
+
+    joint_kp = 200;
+	joint_kd = 2;
+	kp_vec_joint = VectorXd::Ones(10)*(joint_kp);
+	kd_vec_joint = VectorXd::Ones(10)*joint_kd;
+    kp_vec_joint(0) = 300;
+    kd_vec_joint(0) = 10;
+    kp_vec_joint(5) = 300;
+    kd_vec_joint(5) = 10;
+    kp_mat_joint = kp_vec_joint.asDiagonal();
+	kd_mat_joint = kd_vec_joint.asDiagonal();
+    task_pd_config.joint_kp = kp_mat_joint;
+	task_pd_config.joint_kd = kd_mat_joint;
+
+    VectorXd posture_ctrl_torques = tello->taskPD2(task_pd_config);
 
     // END TASK PD CODE ======================================+++++++++++++++++
 
@@ -589,30 +588,18 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
         isSwingToStanceLeft = true;
         transitionStartLeft = d->time;
     }
-    VectorXd joint_pd_left(5);
-    joint_pd_left <<    tello->sim_joint_torques(0),
-                        tello->sim_joint_torques(1),
-                        tello->sim_joint_torques(2),
-                        tello->sim_joint_torques(3),
-                        tello->sim_joint_torques(4);
 
-    VectorXd joint_pd_right(5);
-    joint_pd_right <<   tello->sim_joint_torques(5),
-                        tello->sim_joint_torques(6),
-                        tello->sim_joint_torques(7),
-                        tello->sim_joint_torques(8),
-                        tello->sim_joint_torques(9);
 
-    VectorXd torques_left  = tello->switchControllerJoint(tau_leg_l, joint_pd_left,
+    VectorXd torques_left  = tello->switchControllerJoint(tau_leg_l, swing_leg_torques.head(5),
                                                           0.01,isSwingToStanceRight, d->time-transitionStartRight, 0);
-    VectorXd torques_right = tello->switchControllerJoint(tau_leg_r, joint_pd_right,
+    VectorXd torques_right = tello->switchControllerJoint(tau_leg_r, swing_leg_torques.tail(5),
                                                           0.01,isSwingToStanceLeft,d->time-transitionStartLeft, 1);
 
     if(d->time > srb_params.t_end_stepping+0.15 && stepping_in_progress)
     {
         // stepping has finished, switch to balancing
         stepping_in_progress = false;
-        //pause_sim = true;
+        pause_sim = true;
     }
 
     d->ctrl[hip_motor1_l_idx]  = torques_left(0);
@@ -628,26 +615,20 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
     if(FSM == -1 || FSM ==0 || srb_params.planner_type == 0) 
     {
-        d->ctrl[hip_motor1_r_idx]  += joint_pd_right(0);
-        d->ctrl[hip_motor2_r_idx]  += joint_pd_right(1);
-        d->ctrl[hip_motor3_r_idx]  += joint_pd_right(2);
-        d->ctrl[knee_motor_r_idx]  += joint_pd_right(3);
-        d->ctrl[ankle_motor_r_idx] += joint_pd_right(4);
+        d->ctrl[hip_motor1_r_idx]  += posture_ctrl_torques(5);
+        d->ctrl[hip_motor2_r_idx]  += posture_ctrl_torques(6);
+        d->ctrl[hip_motor3_r_idx]  += posture_ctrl_torques(7);
+        d->ctrl[knee_motor_r_idx]  += posture_ctrl_torques(8);
+        d->ctrl[ankle_motor_r_idx] += posture_ctrl_torques(9);
     }
     if(FSM == 1 || FSM == 0 || srb_params.planner_type == 0)
     {
-        d->ctrl[hip_motor1_l_idx]  += joint_pd_left(0);
-        d->ctrl[hip_motor2_l_idx]  += joint_pd_left(1);
-        d->ctrl[hip_motor3_l_idx]  += joint_pd_left(2);
-        d->ctrl[knee_motor_l_idx]  += joint_pd_left(3);
-        d->ctrl[ankle_motor_l_idx] += joint_pd_left(4);
+        d->ctrl[hip_motor1_l_idx]  += posture_ctrl_torques(0);
+        d->ctrl[hip_motor2_l_idx]  += posture_ctrl_torques(1);
+        d->ctrl[hip_motor3_l_idx]  += posture_ctrl_torques(2);
+        d->ctrl[knee_motor_l_idx]  += posture_ctrl_torques(3);
+        d->ctrl[ankle_motor_l_idx] += posture_ctrl_torques(4);
     } 
-
-    cout << "lfdv_comm: " << endl;
-    cout << lfdv_comm << endl;
-    cout << "lfv_comm: " << endl;
-    cout << lfv_comm << endl;
-    cout << "=========================================" << endl;
 
     FSM_prev = FSM;
 
@@ -711,8 +692,8 @@ void* mujoco_Update_1KHz( void * arg )
         printf("Walking Selected\n\n");
         // Option 2: Walking using LIP angular momentum regulation about contact point
         // user input (walking speed and step frequency)
-        double des_walking_speed = 0.0;
-        double des_walking_step_period = 0.2;
+        double des_walking_speed = 0.1;
+        double des_walking_step_period = 0.125;
         // end user input
         recording_file_name = "walking";
         srb_params.planner_type = 1; 
@@ -728,20 +709,21 @@ void* mujoco_Update_1KHz( void * arg )
     }
 
 
-    srb_params.Kp_xR = 1000; // P gain for x-direction tracking |
+    srb_params.Kp_xR = 80000; // P gain for x-direction tracking |
     srb_params.Kd_xR = 100; // D gain for x-direction tracking  |
-    srb_params.Kp_yR = 1000; // P gain for y-direction tracking |
-    srb_params.Kd_yR = 500; // D gain for y-direction tracking   |
-    srb_params.Kp_zR = 10000; // P gain for z-direction tracking|
-    srb_params.Kd_zR = 6000; // D gain for z-direction tracking  | 
-    srb_params.Kp_phiR = 10000; // P gain for roll tracking     |
-    srb_params.Kd_phiR = 500; // D gain for roll tracking       |
-    srb_params.Kp_thetaR = 200000; // P gain for pitch tracking  | 
-    srb_params.Kd_thetaR = 1000; // D gain for pitch tracking     |
-    srb_params.Kp_psiR = 1000; // P gain for yaw tracking        |
-    srb_params.Kd_psiR = 500; // D gain for yaw tracking         |
+    srb_params.Kp_yR = 50000; // P gain for y-direction tracking |
+    srb_params.Kd_yR = 100; // D gain for y-direction tracking   |
+    srb_params.Kp_zR = 50000; // P gain for z-direction tracking|
+    srb_params.Kd_zR = 2000; // D gain for z-direction tracking  | 
+    srb_params.Kp_phiR = 30000; // P gain for roll tracking     |
+    srb_params.Kd_phiR = 3000; // D gain for roll tracking       |
+    srb_params.Kp_thetaR = 100000; // P gain for pitch tracking  | 
+    srb_params.Kd_thetaR = 500; // D gain for pitch tracking     |
+    srb_params.Kp_psiR = 10000; // P gain for yaw tracking        |
+    srb_params.Kd_psiR = 1000; // D gain for yaw tracking         |
 
-    srb_params.m = 22.2;
+    srb_params.m = 20;
+    srb_params.zcl = 0.02; // swing-leg max height in m
 
 
 	// Initialize trajectory planner data
@@ -754,7 +736,7 @@ void* mujoco_Update_1KHz( void * arg )
 	// activate software
     mj_activate("./lib/Mujoco/mjkey.txt");
 
-	m = mj_loadXML("../../../lib/Mujoco/model/tello/tello.xml", NULL, error, 1000);
+	m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-color.xml", NULL, error, 1000);
 	if (!m)
     {
         printf('r',"%s\n", error);

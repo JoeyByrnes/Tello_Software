@@ -152,6 +152,10 @@ namespace RoboDesignLab {
         void taskPD(TaskPDConfig task_conf);
         VectorXd calc_pd(VectorXd position, VectorXd velocity, VectorXd desiredPosition, VectorXd desiredVelocity, MatrixXd Kp, MatrixXd Kd);
 
+        // Simulation:
+        VectorXd jointPD2(JointPDConfig joint_conf);
+        VectorXd taskPD2(TaskPDConfig task_conf);
+
         void addGravityCompensation();
         Vector3d transformForceToWorldFrame(const Eigen::VectorXd& force, VectorXd ypr);
         

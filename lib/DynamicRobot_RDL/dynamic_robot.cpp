@@ -246,7 +246,7 @@ Eigen::VectorXd DynamicRobot::getJointVelocities()
 {
     if(this->isSimulation)
     {
-        return sim_joint_pos;
+        return sim_joint_vel;
     }
     VectorXd motor_velocities(10);
 	for(int i=0; i<10; i++)
@@ -300,6 +300,51 @@ MotorPDConfig DynamicRobot::switchController(const MotorPDConfig& stanceCtrl, co
     return output;
 }
 
+VectorXd DynamicRobot::switchControllerJoint(VectorXd stanceTorques, VectorXd swingTorques, double duration_sec, bool isSwingToStance, double currTimeStep, int side) {
+
+    if(currTimeStep >= duration_sec) currTimeStep = duration_sec;
+
+    VectorXd smoothedTorques(10);
+
+    // compute the sigmoid function input for each element in the vector
+    double switchFactor;
+    if(duration_sec == 0) switchFactor = 1;
+    else switchFactor = currTimeStep / duration_sec;  // Calculate the switch factor based on the current time step and direction flag
+
+    if(switchFactor > 1) switchFactor = 1;
+    if (isSwingToStance) {
+        switchFactor = 1 - switchFactor;  // If transitioning from stance to swing, invert the switch factor
+    }
+    double smoothVal = sigmoid((switchFactor - 0.5) * 12);  // Scale the switch factor to be between -5 and 5, and apply sigmoid function
+    if(smoothVal < 0.05) smoothVal = 0;
+    if(smoothVal > 0.95) smoothVal = 1;
+    // if(side) std::cout << "                                                              ";
+    // if(smoothVal > 0.95) std::cout << "SWING ---------------------------------------------------" << std::endl;
+    // else if(smoothVal < 0.05) std::cout << "-------------------------------------------------- STANCE" << std::endl;
+    // else
+    // {
+    //     int dashes_printed = 0;
+    //     for(int i=0; i<48;i++){
+    //         std::cout << "-";
+    //         if((1-smoothVal)*50 < i+2)
+    //         {
+    //             std::cout << " SMOOTH ";
+    //             dashes_printed = i;
+    //             break;
+    //         }
+    //     }
+    //     for(int i = dashes_printed; i < 48; i++){
+    //         std::cout << "-";
+    //     }
+    //     std::cout << std::endl;
+    // }
+    // compute the smoothed torques for each element in the vector
+
+    smoothedTorques = ((1-smoothVal) * stanceTorques) + (smoothVal * swingTorques);
+
+    return smoothedTorques;
+}
+
 void DynamicRobot::motorPD(MotorPDConfig motor_conf)
 {
     for(int i=0; i<this->_num_actuators; i++)
@@ -346,7 +391,7 @@ void DynamicRobot::jointPD(JointPDConfig joint_conf)
     motor_conf.motor_vel_desired = motor_vel_desired;
 
     if(this->isSimulation){
-        this->sim_joint_torques << joint_torques;
+        this->sim_joint_torques << joint_torques + joint_conf.joint_ff_torque;
     }
     else{
         this->motorPD(motor_conf);
@@ -373,7 +418,7 @@ void DynamicRobot::taskPD(TaskPDConfig task_conf)
 
     // Use inverse kinematics to calculate joint pd
     VectorXd joint_pos_desired = this->task_pos_to_joint_pos(task_conf.task_pos_desired);
-    VectorXd joint_vel_desired = VectorXd::Zero(10); //this->task_vel_to_joint_vel(vel_desired);
+    VectorXd joint_vel_desired = this->task_vel_to_joint_vel(task_conf.task_vel_desired); //VectorXd::Zero(10);
 
     JointPDConfig joint_conf;
     joint_conf.joint_ff_torque = joint_torques;

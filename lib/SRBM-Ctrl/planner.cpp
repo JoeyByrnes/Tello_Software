@@ -1,5 +1,7 @@
 #include "planner.h"
 
+extern MatrixXd lfv0, lfdv0;
+
 void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_time, SRB_Params& srb_params, MatrixXd lfv, char DoF, int num_tests)
 {
     double amplitude;
@@ -100,6 +102,13 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     else 
         t_sw_start = 0.0;
 
+    double t_dsp_start;
+    if (t != 0)
+        t_dsp_start = traj_planner_dyn_data.t_dsp_start;
+    else 
+        t_dsp_start = 0.0;
+
+
     // get swing-foot z-position (front line foot pt) relative to ground --
     // assume constant height for now
     double lf1z = lfv(0,2) + CoMz_init;
@@ -114,20 +123,22 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     // compute phase variable
     double s = (t - t_sw_start) / T;
 
+    double s_dsp = (t - t_dsp_start);
+
     // Finite-State Machine (FSM)    
     // From DSP can switch to SSP_L or SSP_R based on front toe z-direction GRFs
     // From SSP_L can switch to DSP based on right foot z-position
     // From SSP_R can switch to DSP based on left foot z-position
     
     int FSM_next;
-    cout << FSM_prev << "\t " << u1z <<  "\t " << u3z << "\t " << s << "\t " << t <<endl;
+    //cout << FSM_prev << "\t " << lf1z <<  "\t " << lf3z <<  "\t " << s <<endl;
     if (FSM_prev == 0) // currently in DSP
     {
-        if (u1z < Fz_min && t > 0) // enter SSP_L
+        if (u1z < Fz_min && t > 0 && s_dsp > 0.03) // enter SSP_L
         {
             FSM_next = 1;
         }
-        else if (u3z < Fz_min && t > 0) // enter SSP_R 
+        else if (u3z < Fz_min && t > 0 && s_dsp > 0.03) // enter SSP_R 
         {
             FSM_next = -1;       
         }
@@ -138,7 +149,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     }
     else if (FSM_prev == 1) // currently in SSP_L
     {
-        if (lf1z <= 0.0 && s > 0.1) // enter DSP
+        if (lf1z <= 0.0 && s > 0.5) // enter DSP
         {
             FSM_next = 0;
         }
@@ -149,7 +160,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     }
     else if (FSM_prev == -1) // currently in SSP_R
     {
-        if (lf3z <= 0.0 && s > 0.1) // enter DSP
+        if (lf3z <= 0.0 && s > 0.5) // enter DSP
         {
             FSM_next = 0;
         }
@@ -190,6 +201,7 @@ void dash_planner::SRB_Init_Traj_Planner_Data(Traj_planner_dyn_data& traj_planne
     traj_planner_dyn_data.stepping_flg = false; // flag to indicate stepping is enabled
     traj_planner_dyn_data.T_step = T_step_init; // step time (fixed most of the time)
     traj_planner_dyn_data.t_sw_start = 0.0; // SSP time (0 to T)
+    traj_planner_dyn_data.t_dsp_start = 0.0; // DSP time (0 to T)
     
     // Only planner_type = LIP_ang_mom_reg
     traj_planner_dyn_data.next_SSP = 0; // next SSP (SSP_L = 1 or SSP_R = -1)
@@ -267,8 +279,8 @@ void dash_planner::SRB_Traj_Planner(
 
         // Swing-leg control (step-placement strategy) - assume no step and stay
         // in DSP
-        lfv_comm = lfv;
-        lfdv_comm = lfdv;
+        lfv_comm = lfv0;
+        lfdv_comm = lfdv0;
     }
     else
     {
@@ -410,6 +422,8 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
 
         } else if ((FSM_prev == 1 || FSM_prev == -1) && FSM == 0) { // SSP to DSP transition
             // update step time with previous step duration
+            traj_planner_dyn_data.t_dsp_start = t;
+
             if (planner_type == 2) {
                 traj_planner_dyn_data.T_step = t - traj_planner_dyn_data.t_sw_start;
             }
@@ -457,7 +471,7 @@ void dash_planner::SRB_LIP_vel_traj(double des_walking_speed, VectorXd& t_traj, 
 {
     // Tunable waypoints (time in s)
     VectorXd t_waypts_0p1to3ms(6), t_waypts_0p4ms(6), t_waypts_0p5to6ms(6), t_waypts_0p7ms(6), t_waypts_0p8ms(6);
-    t_waypts_0p1to3ms << 0.0, 1.0, 1.5, 3.5, 4.0, 5.0;
+    t_waypts_0p1to3ms << 0.0, 1.0, 1.5, 30.5, 31, 32;
     t_waypts_0p4ms << 0.0, 1.0, 2.0, 4.0, 6.0, 7.0;
     t_waypts_0p5to6ms << 0.0, 1.0, 2.0, 4.0, 6.0, 7.5;
     t_waypts_0p7ms << 0.0, 1.0, 4.0, 6.0, 9.0, 13.0;

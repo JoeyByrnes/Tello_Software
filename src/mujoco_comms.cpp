@@ -4,6 +4,19 @@ extern RoboDesignLab::DynamicRobot* tello;
 
 char error[1000];
 
+bool pause_sim = true;
+bool isSwingToStanceLeft = true;
+bool isSwingToStanceRight = true;
+int transitionTimeStepLeft = 0;
+int transitionTimeStepRight = 0;
+double stepping_in_progress = true;
+
+double transitionStartLeft = -10;
+double transitionStartRight = -10;
+
+MatrixXd right_leg_last(3,5);
+MatrixXd left_leg_last(3,5);
+
 // robot states indices
 int torso_x_idx = 0;
 int torso_y_idx = 1;
@@ -133,6 +146,15 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
     {
         mju_zero(d->qfrc_applied, m->nv);
     }
+    if (act == GLFW_PRESS && key == GLFW_KEY_ENTER)
+    {
+        pause_sim = !pause_sim;
+    }
+}
+
+void window_close_callback(GLFWwindow* window)
+{
+    glfwSetWindowShouldClose(window, GLFW_TRUE);
 }
 
 // mouse button callback
@@ -218,6 +240,60 @@ T_EA << cos(psi)/cos(theta), sin(psi)/cos(theta), 0,
   wb = Rmat.transpose() * w;
 
   return wb;
+}
+
+// Function to convert foot position in world frame to hip frame
+Vector3d worldToHip(Vector3d foot_pos_world, Vector3d hip_pos_world, Vector3d hip_orient_world)
+{
+    // Calculate transformation matrix from world frame to torso frame
+    double tx = hip_pos_world(0);
+    double ty = hip_pos_world(1);
+    double tz = hip_pos_world(2);
+    double rx = hip_orient_world(0);
+    double ry = hip_orient_world(1);
+    double rz = hip_orient_world(2);
+
+    Matrix4d T_world_to_hip;
+    T_world_to_hip << cos(ry)*cos(rz), -cos(rx)*sin(rz) + sin(rx)*sin(ry)*cos(rz), sin(rx)*sin(rz) + cos(rx)*sin(ry)*cos(rz), tx,
+                        cos(ry)*sin(rz), cos(rx)*cos(rz) + sin(rx)*sin(ry)*sin(rz), -sin(rx)*cos(rz) + cos(rx)*sin(ry)*sin(rz), ty,
+                        -sin(ry), sin(rx)*cos(ry), cos(rx)*cos(ry), tz,
+                        0, 0, 0, 1;
+
+    // Convert foot position to hip frame
+    Vector4d foot_pos_world_homogeneous;
+    foot_pos_world_homogeneous << foot_pos_world, 1.0;
+    Vector4d foot_pos_hip_homogeneous = T_world_to_hip.inverse() * foot_pos_world_homogeneous;
+    Vector3d foot_pos_hip = foot_pos_hip_homogeneous.head(3);
+
+    return foot_pos_hip;
+}
+
+Vector3d hipToWorld(Vector3d vector_hip, Vector3d hip_pos_world, Vector3d hip_orient_world)
+{
+    // Calculate transformation matrix from world frame to hip frame
+    double tx = hip_pos_world(0);
+    double ty = hip_pos_world(1);
+    double tz = hip_pos_world(2);
+    double rx = hip_orient_world(0);
+    double ry = hip_orient_world(1);
+    double rz = hip_orient_world(2);
+
+    Matrix4d T_world_to_hip;
+    T_world_to_hip << cos(ry)*cos(rz), -cos(rx)*sin(rz) + sin(rx)*sin(ry)*cos(rz), sin(rx)*sin(rz) + cos(rx)*sin(ry)*cos(rz), tx,
+                     cos(ry)*sin(rz), cos(rx)*cos(rz) + sin(rx)*sin(ry)*sin(rz), -sin(rx)*cos(rz) + cos(rx)*sin(ry)*sin(rz), ty,
+                     -sin(ry), sin(rx)*cos(ry), cos(rx)*cos(ry), tz,
+                     0, 0, 0, 1;
+
+    // Calculate transformation matrix from hip frame to world frame
+    Matrix4d T_hip_to_world = T_world_to_hip.inverse();
+
+    // Convert vector from hip frame to world frame
+    Vector4d vector_hip_homogeneous;
+    vector_hip_homogeneous << vector_hip, 1.0;
+    Vector4d vector_world_homogeneous = T_hip_to_world * vector_hip_homogeneous;
+    Vector3d vector_world = vector_world_homogeneous.head(3);
+
+    return vector_world;
 }
 
 Eigen::VectorXd calc_pd(VectorXd position, VectorXd velocity, VectorXd desiredPosition, VectorXd desiredVelocity, MatrixXd Kp, MatrixXd Kd) 
@@ -321,15 +397,44 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
     t = (double)d->time;
 
+    VectorXd qVec(10), qdVec(10);
+    qVec << q.row(1).transpose(), q.row(0).transpose();
+    qdVec << qd.row(1).transpose(), qd.row(0).transpose();
+
+    tello->sim_joint_pos << qVec;
+    tello->sim_joint_vel << qdVec;
+
+    VectorXd task_velocities = tello->joint_vel_to_task_vel(qdVec);
+
+    MatrixXd lfdv_hip(4,3);
+    lfdv_hip.row(2) = task_velocities.segment<3>(0);
+    lfdv_hip.row(3) = task_velocities.segment<3>(3);
+    lfdv_hip.row(0) = task_velocities.segment<3>(6);
+    lfdv_hip.row(1) = task_velocities.segment<3>(9);
+
+    Vector3d hip_right_pos_world = right_leg_last.col(0);
+    Vector3d hip_left_pos_world = left_leg_last.col(0);
+    Vector3d torso_orientation_world(phiR, thetaR, psiR);
+
+    Vector3d right_front_vel1 = hipToWorld(lfdv_hip.row(0), hip_right_pos_world, torso_orientation_world);
+    Vector3d right_back_vel1  = hipToWorld(lfdv_hip.row(1), hip_right_pos_world, torso_orientation_world);
+    Vector3d left_front_vel1  = hipToWorld(lfdv_hip.row(2), hip_left_pos_world, torso_orientation_world);
+    Vector3d left_back_vel1   = hipToWorld(lfdv_hip.row(3), hip_left_pos_world, torso_orientation_world);
+
+    lfdv.row(0) = right_front_vel1;
+    lfdv.row(1) = right_back_vel1;
+    lfdv.row(2) = left_front_vel1;
+    lfdv.row(3) = left_back_vel1;
+
 	// call SRBM-Ctrl here ======================================================================================
 
     // SRB FK
     MatrixXd torso_vertices(3,8);
-    MatrixXd right_leg(5,1);
-    MatrixXd left_leg(5,1);
-    dash_kin::SRB_FK(torso_vertices, right_leg, left_leg, lfv, srb_params, x, q);
-    
-
+    MatrixXd right_leg(3,5);
+    MatrixXd left_leg(3,5);
+    dash_kin::SRB_FK(torso_vertices, right_leg, left_leg, lfv, srb_params, x, q);    
+    right_leg_last = right_leg;
+    left_leg_last = left_leg;
 	// SRB kinematics
 	dash_kin::SRB_Kin(q, qd, Jv_mat, srb_params, x, lfv, lfdv);
     
@@ -340,73 +445,42 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 								   human_params, FSM, FSM_prev, t, x, lfv, lfdv, u, 
 								   tau_ext, SRB_state_ref, SRB_wrench_ref, lfv_comm, lfdv_comm);
 
+    
+
     // Transform lfv an lfdv to hip frames here:
-    double W = srb_params.W;
-    double CoM2H_z_dist = srb_params.CoM2H_z_dist;
-    MatrixXd lfv_comm_4x4(4,4);
-	MatrixXd lfdv_comm_4x4(4,4);
-    MatrixXd lfv_comm_body_4x4(4,4);
-	MatrixXd lfdv_comm_body_4x4(4,4);
-    MatrixXd lfv_comm_hip_4x4(4,4);
-	MatrixXd lfdv_comm_hip_4x4(4,4);
 
-    MatrixXd lfv_comm_body(4,3);
-	MatrixXd lfdv_comm_body(4,3);
-    MatrixXd lfv_comm_hip(4,3);
-	MatrixXd lfdv_comm_hip(4,3);
+    Vector3d right_front_world = lfv_comm.row(0).transpose();
+    Vector3d right_back_world  = lfv_comm.row(1).transpose();
+    Vector3d left_front_world  = lfv_comm.row(2).transpose();
+    Vector3d left_back_world   = lfv_comm.row(3).transpose();
+    Vector3d right_front_torso = worldToHip(right_front_world, hip_right_pos_world, torso_orientation_world);
+    Vector3d right_back_torso  = worldToHip(right_back_world, hip_right_pos_world, torso_orientation_world);
+    Vector3d left_front_torso  = worldToHip(left_front_world, hip_left_pos_world, torso_orientation_world);
+    Vector3d left_back_torso   = worldToHip(left_back_world, hip_left_pos_world, torso_orientation_world);
 
-    lfv_comm_4x4.setConstant(1);
-    lfv_comm_4x4.block(0,0,4,3) = lfv_comm;
-    lfdv_comm_4x4.setConstant(1);
-    lfdv_comm_4x4.block(0,0,4,3) = lfdv_comm;
-
-    // // Transform from mujoco world to body:
-    Matrix3d R = Rwb;
-    VectorXd pcom = pc_curr;
-
-    Eigen::Matrix<double,4,4> HTMwd2com;
-    //HTMwd2com << R, pcom, 0, 0, 0, 1;
-    HTMwd2com.block(0,0,3,3) = R;
-    HTMwd2com.block(0,3,3,1) = pcom;
-    HTMwd2com.block(3,0,1,4) = Vector4d(0,0,0,1).transpose();
+    Vector3d right_front_world_vel = lfdv_comm.row(0).transpose();
+    Vector3d right_back_world_vel  = lfdv_comm.row(1).transpose();
+    Vector3d left_front_world_vel  = lfdv_comm.row(2).transpose();
+    Vector3d left_back_world_vel   = lfdv_comm.row(3).transpose();
+    Vector3d right_front_torso_vel = worldToHip(right_front_world_vel, hip_right_pos_world, torso_orientation_world);
+    Vector3d right_back_torso_vel  = worldToHip(right_back_world_vel, hip_right_pos_world, torso_orientation_world);
+    Vector3d left_front_torso_vel  = worldToHip(left_front_world_vel, hip_left_pos_world, torso_orientation_world);
+    Vector3d left_back_torso_vel   = worldToHip(left_back_world_vel, hip_left_pos_world, torso_orientation_world);
     
-    // right hip to world
-    Eigen::Matrix4d HTMcom2hr;
-    // HTMcom2hr.setIdentity();
-    // HTMcom2hr(1,3) = -W/2.0;
-    // HTMcom2hr(2,3) = -CoM2H_z_dist;
-    HTMcom2hr.block(0,0,3,3) = Eigen::Matrix3d::Identity();
-    HTMcom2hr.block(0,3,3,1) = Eigen::Vector3d(0, -W/2.0, -CoM2H_z_dist);
-    HTMcom2hr.block(3,0,1,4) = Vector4d(0,0,0,1).transpose();
+    Vector3d right_front = right_front_torso;
+    Vector3d right_back = right_back_torso;
+    Vector3d left_front = left_front_torso;
+    Vector3d left_back = left_back_torso;
 
-    Eigen::Matrix4d HTMwd2hr = HTMwd2com * HTMcom2hr;
-    
-    // left hip to world
-    Eigen::Matrix4d HTMcom2hl;
-    // HTMcom2hl.setIdentity();
-    // HTMcom2hl(1,3) = W/2.0;
-    // HTMcom2hl(2,3) = -CoM2H_z_dist;
-    HTMcom2hl.block(0,0,3,3) = Eigen::Matrix3d::Identity();
-    HTMcom2hl.block(0,3,3,1) = Eigen::Vector3d(0, W/2.0, -CoM2H_z_dist);
-    HTMcom2hl.block(3,0,1,4) = Vector4d(0,0,0,1).transpose();
-
-    Eigen::Matrix4d HTMwd2hl = HTMwd2com * HTMcom2hl;
-
-    lfv_comm_hip.row(0) = (HTMwd2hr.inverse() * lfv_comm_4x4.row(0).transpose()).head(3);
-    lfv_comm_hip.row(1) = (HTMwd2hr.inverse() * lfv_comm_4x4.row(1).transpose()).head(3);
-
-    lfv_comm_hip.row(2) = (HTMwd2hl.inverse() * lfv_comm_4x4.row(2).transpose()).head(3);
-    lfv_comm_hip.row(3) = (HTMwd2hl.inverse() * lfv_comm_4x4.row(3).transpose()).head(3);
-
-    Vector3d right_front = lfv_comm_hip.row(0);
-    Vector3d right_back = lfv_comm_hip.row(1);
-    Vector3d left_front = lfv_comm_hip.row(2);
-    Vector3d left_back = lfv_comm_hip.row(3);
+    Vector3d right_front_vel = right_front_torso_vel;
+    Vector3d right_back_vel = right_back_torso_vel;
+    Vector3d left_front_vel = left_front_torso_vel;
+    Vector3d left_back_vel = left_back_torso_vel;
 
     // BEGIN TASK PD CODE ======================================+++++++++++++++++
 
-    int joint_kp = 1000;
-	int joint_kd = 0;
+    double joint_kp = 50;
+	double joint_kd = 1;
 	VectorXd kp_vec_joint = VectorXd::Ones(10)*(joint_kp);
 	VectorXd kd_vec_joint = VectorXd::Ones(10)*joint_kd;
 
@@ -414,20 +488,36 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 	MatrixXd kd_mat_joint = kd_vec_joint.asDiagonal();
 
 	int motor_kp = 0;
-	int motor_kd = 1000;
+	int motor_kd = 0;
 	VectorXd kp_vec_motor = VectorXd::Ones(10)*motor_kp;
 	VectorXd kd_vec_motor = VectorXd::Ones(10)*motor_kd;
 
-	VectorXd vel_desired = VectorXd::Zero(12);
-
-	
 	Vector3d target_front_left = left_front;
 	Vector3d target_back_left = left_back;
 	Vector3d target_front_right = right_front;
 	Vector3d target_back_right = right_back;
 
+    Vector3d target_front_left_vel = left_front_vel;
+	Vector3d target_back_left_vel = left_back_vel;
+	Vector3d target_front_right_vel = right_front_vel;
+	Vector3d target_back_right_vel = right_back_vel;
+
+    VectorXd vel_desired(12);
+    vel_desired  << target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel;
+
 	VectorXd pos_desired(12);
 	pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
+    // Vector3d target(0, 0, -0.4450);
+
+	// double foot_len_half = 0.060;
+	// Vector3d target_front_left(foot_len_half+target(0), target(1)+0.050, target(2));
+	// Vector3d target_back_left(-foot_len_half+target(0), target(1)+0.050, target(2));
+	// Vector3d target_front_right(foot_len_half+target(0), target(1)-0.050, target(2));
+	// Vector3d target_back_right(-foot_len_half+target(0), target(1)-0.050, target(2));
+    // VectorXd vel_desired = VectorXd::Zero(12);
+
+	// VectorXd pos_desired(12);
+	// pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
 
 	int task_kp = 0;
 	int task_kd = 0;
@@ -447,39 +537,13 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 	task_pd_config.joint_kd = kd_mat_joint;
 	task_pd_config.motor_kp = kp_vec_motor;
 	task_pd_config.motor_kd = kd_vec_motor;
-
-    VectorXd qVec(10), qdVec(10);
-    qVec << q.row(1).transpose(), q.row(0).transpose();
-    qdVec << qd.row(1).transpose(), qd.row(0).transpose();
-
-    tello->sim_joint_pos << qVec;
-    tello->sim_joint_vel << qdVec;
 	
 	tello->taskPD(task_pd_config);
 
     // END TASK PD CODE ======================================+++++++++++++++++
-    
-    // cout << "lfv_comm: " << endl;
-    // cout << lfv_comm << endl;
-
-    // cout << "lfv_comm_hip: " << endl;
-    // cout << lfv_comm_hip << endl;
-
-    // cout << "==================================" << endl;
-    // cout.flush();
 
 	// SRB controller
 	dash_ctrl::SRB_Balance_Controller(u, tau, srb_params, FSM, x, lfv, qd, Jv_mat, u, SRB_wrench_ref);
-
-    // for(int i = 0; i< 10; i++){
-    //     printf("%f, ",tau(i));
-    // }
-    // printf("\n");
-    // printf("%f,\t ",(float)d->time);
-    // for(int i = 0; i< 12; i++){
-    //     printf("%f, ",u(i));
-    // }
-    // printf("\n");
 
 	// end SRBM-Ctrl call here ==================================================================================
     
@@ -498,16 +562,92 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     d->ctrl[knee_motor_r_idx]  = tau_leg_r(3);
     d->ctrl[ankle_motor_r_idx] = tau_leg_r(4);
 
-    d->ctrl[hip_motor1_l_idx]  += tello->sim_joint_torques(0);
-    d->ctrl[hip_motor2_l_idx]  += tello->sim_joint_torques(1);
-    d->ctrl[hip_motor3_l_idx]  += tello->sim_joint_torques(2);
-    d->ctrl[knee_motor_l_idx]  += tello->sim_joint_torques(3);
-    d->ctrl[ankle_motor_l_idx] += tello->sim_joint_torques(4);
-    d->ctrl[hip_motor1_r_idx]  += tello->sim_joint_torques(5);
-    d->ctrl[hip_motor2_r_idx]  += tello->sim_joint_torques(6);
-    d->ctrl[hip_motor3_r_idx]  += tello->sim_joint_torques(7);
-    d->ctrl[knee_motor_r_idx]  += tello->sim_joint_torques(8);
-    d->ctrl[ankle_motor_r_idx] += tello->sim_joint_torques(9);
+    VectorXd srbm_ctrl_torques(10);
+    srbm_ctrl_torques << tau_leg_l, tau_leg_r;
+
+    if(FSM == 1 && FSM_prev == 0)
+    {
+        // From double to single support left
+        isSwingToStanceLeft = false;
+        transitionStartLeft = d->time;
+    }
+    if(FSM == -1 && FSM_prev == 0)
+    {
+        // From double to single support right
+        isSwingToStanceRight = false;
+        transitionStartRight = d->time;
+    }
+    if(FSM == 0 && FSM_prev == -1)
+    {
+        // From single support right to double
+        isSwingToStanceRight = true;
+        transitionStartRight = d->time;
+    }
+    if(FSM == 0 && FSM_prev == 1)
+    {
+        // From single support left to double
+        isSwingToStanceLeft = true;
+        transitionStartLeft = d->time;
+    }
+    VectorXd joint_pd_left(5);
+    joint_pd_left <<    tello->sim_joint_torques(0),
+                        tello->sim_joint_torques(1),
+                        tello->sim_joint_torques(2),
+                        tello->sim_joint_torques(3),
+                        tello->sim_joint_torques(4);
+
+    VectorXd joint_pd_right(5);
+    joint_pd_right <<   tello->sim_joint_torques(5),
+                        tello->sim_joint_torques(6),
+                        tello->sim_joint_torques(7),
+                        tello->sim_joint_torques(8),
+                        tello->sim_joint_torques(9);
+
+    VectorXd torques_left  = tello->switchControllerJoint(tau_leg_l, joint_pd_left,
+                                                          0.01,isSwingToStanceRight, d->time-transitionStartRight, 0);
+    VectorXd torques_right = tello->switchControllerJoint(tau_leg_r, joint_pd_right,
+                                                          0.01,isSwingToStanceLeft,d->time-transitionStartLeft, 1);
+
+    if(d->time > srb_params.t_end_stepping+0.15 && stepping_in_progress)
+    {
+        // stepping has finished, switch to balancing
+        stepping_in_progress = false;
+        //pause_sim = true;
+    }
+
+    d->ctrl[hip_motor1_l_idx]  = torques_left(0);
+    d->ctrl[hip_motor2_l_idx]  = torques_left(1);
+    d->ctrl[hip_motor3_l_idx]  = torques_left(2);
+    d->ctrl[knee_motor_l_idx]  = torques_left(3);
+    d->ctrl[ankle_motor_l_idx] = torques_left(4);
+    d->ctrl[hip_motor1_r_idx]  = torques_right(0);
+    d->ctrl[hip_motor2_r_idx]  = torques_right(1);
+    d->ctrl[hip_motor3_r_idx]  = torques_right(2);
+    d->ctrl[knee_motor_r_idx]  = torques_right(3);
+    d->ctrl[ankle_motor_r_idx] = torques_right(4);
+
+    if(FSM == -1 || FSM ==0 || srb_params.planner_type == 0) 
+    {
+        d->ctrl[hip_motor1_r_idx]  += joint_pd_right(0);
+        d->ctrl[hip_motor2_r_idx]  += joint_pd_right(1);
+        d->ctrl[hip_motor3_r_idx]  += joint_pd_right(2);
+        d->ctrl[knee_motor_r_idx]  += joint_pd_right(3);
+        d->ctrl[ankle_motor_r_idx] += joint_pd_right(4);
+    }
+    if(FSM == 1 || FSM == 0 || srb_params.planner_type == 0)
+    {
+        d->ctrl[hip_motor1_l_idx]  += joint_pd_left(0);
+        d->ctrl[hip_motor2_l_idx]  += joint_pd_left(1);
+        d->ctrl[hip_motor3_l_idx]  += joint_pd_left(2);
+        d->ctrl[knee_motor_l_idx]  += joint_pd_left(3);
+        d->ctrl[ankle_motor_l_idx] += joint_pd_left(4);
+    } 
+
+    cout << "lfdv_comm: " << endl;
+    cout << lfdv_comm << endl;
+    cout << "lfv_comm: " << endl;
+    cout << lfv_comm << endl;
+    cout << "=========================================" << endl;
 
     FSM_prev = FSM;
 
@@ -551,35 +691,58 @@ void* mujoco_Update_1KHz( void * arg )
 
     std::string recording_file_name;
     double sim_time;
-    // printf("Choose the DoF to test:\n\n");
-    // printf("x: lean\n");
-    // printf("y: side2side\n");
-    // printf("z: squat\n");
-    // printf("r: roll\n");
-    // printf("p: pitch\n");
-    // printf("w: yaw\n");
-    // printf("b: balance\n");
-    // //cin.get();
-    // char DoF;
-    // cin.get(DoF);
-    // dash_planner::SRB_6DoF_Test(recording_file_name,sim_time,srb_params,lfv0,DoF,1);
-    printf("Walking Selected\n\n");
-    // Option 2: Walking using LIP angular momentum regulation about contact point
-    // user input (walking speed and step frequency)
-    double des_walking_speed = 0.0;
-    double des_walking_step_period = 0.2;
-    // end user input
-    recording_file_name = "walking";
-    srb_params.planner_type = 1; 
-    srb_params.T = des_walking_step_period;
-    VectorXd t_traj, v_traj;
-    double t_beg_stepping_time, t_end_stepping_time;
-    dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
-    srb_params.vx_des_t = t_traj;
-    srb_params.vx_des_vx = v_traj;
-    srb_params.t_beg_stepping = t_beg_stepping_time;
-    srb_params.t_end_stepping = t_end_stepping_time;
-    sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
+    printf("Choose a Test:\n\n");
+    printf("x: lean\n");
+    printf("y: side2side\n");
+    printf("z: squat\n");
+    printf("r: roll\n");
+    printf("p: pitch\n");
+    printf("w: yaw\n");
+    printf("b: balance\n");
+    printf("s: stepping/walking\n");
+    //cin.get();
+    char DoF;
+    cin.get(DoF);
+    if(DoF != 's')
+    {
+        dash_planner::SRB_6DoF_Test(recording_file_name,sim_time,srb_params,lfv0,DoF,1);
+    }
+    else{
+        printf("Walking Selected\n\n");
+        // Option 2: Walking using LIP angular momentum regulation about contact point
+        // user input (walking speed and step frequency)
+        double des_walking_speed = 0.0;
+        double des_walking_step_period = 0.2;
+        // end user input
+        recording_file_name = "walking";
+        srb_params.planner_type = 1; 
+        srb_params.T = des_walking_step_period;
+        VectorXd t_traj, v_traj;
+        double t_beg_stepping_time, t_end_stepping_time;
+        dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
+        srb_params.vx_des_t = t_traj;
+        srb_params.vx_des_vx = v_traj;
+        srb_params.t_beg_stepping = t_beg_stepping_time;
+        srb_params.t_end_stepping = t_end_stepping_time;
+        sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
+    }
+
+
+    srb_params.Kp_xR = 1000; // P gain for x-direction tracking |
+    srb_params.Kd_xR = 100; // D gain for x-direction tracking  |
+    srb_params.Kp_yR = 1000; // P gain for y-direction tracking |
+    srb_params.Kd_yR = 500; // D gain for y-direction tracking   |
+    srb_params.Kp_zR = 10000; // P gain for z-direction tracking|
+    srb_params.Kd_zR = 6000; // D gain for z-direction tracking  | 
+    srb_params.Kp_phiR = 10000; // P gain for roll tracking     |
+    srb_params.Kd_phiR = 500; // D gain for roll tracking       |
+    srb_params.Kp_thetaR = 200000; // P gain for pitch tracking  | 
+    srb_params.Kd_thetaR = 1000; // D gain for pitch tracking     |
+    srb_params.Kp_psiR = 1000; // P gain for yaw tracking        |
+    srb_params.Kd_psiR = 500; // D gain for yaw tracking         |
+
+    srb_params.m = 22.2;
+
 
 	// Initialize trajectory planner data
     dash_planner::SRB_Init_Traj_Planner_Data(traj_planner_dyn_data, srb_params, human_params, x0, lfv0);
@@ -619,14 +782,14 @@ void* mujoco_Update_1KHz( void * arg )
         mju_error("Could not initialize GLFW");
 
 		// create window, make OpenGL context current, request v-sync
-    GLFWwindow* window = glfwCreateWindow(1080, 1080, "Tello Mujoco Sim", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1920, 1080, "Tello Mujoco Sim", NULL, NULL);
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
 
     // initialize visualization data structures
     mjv_defaultCamera(&cam);
-    cam.elevation = -15;
-    cam.distance = 1.5;
+    cam.elevation = -20;
+    cam.distance = 2.0;
     cam.azimuth = 135;
     cam.lookat[0] = 0;
     cam.lookat[1] = 0;
@@ -645,8 +808,10 @@ void* mujoco_Update_1KHz( void * arg )
     glfwSetMouseButtonCallback(window, mouse_button);
     glfwSetScrollCallback(window, scroll);
 
+    m->opt.timestep = 0.001;
+
 	// END SETUP CODE FOR MUJOCO ========================================================================
-    // mj_step(m, d);
+    mj_step(m, d);
 	while(!glfwWindowShouldClose(window))
     {
         handle_start_of_periodic_task(next);
@@ -674,15 +839,18 @@ void* mujoco_Update_1KHz( void * arg )
             push_force_z = 0;
         }
 
-		mjtNum simstart = d->time;
-        while (d->time - simstart < 1.0 / 60.0){
-           mj_step(m, d);
-        }   
+        if(!pause_sim){
+            mjtNum simstart = d->time;
+            while (d->time - simstart < 1.0 / 60.0){
+                mj_step(m, d);
+            }  
+        } 
         
 
         // get framebuffer viewport
         mjrRect viewport = { 0, 0, 0, 0 };
         glfwGetFramebufferSize(window, &viewport.width, &viewport.height);
+        // set the background color to white
 
         // update scene and render
         mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
@@ -695,7 +863,7 @@ void* mujoco_Update_1KHz( void * arg )
         glfwPollEvents();
 
 		// END LOOP CODE FOR MUJOCO =====================================================================
-		handle_end_of_periodic_task(next,period*1000);
+		handle_end_of_periodic_task(next,period);
 	}
 
 	//free visualization storage
@@ -707,6 +875,6 @@ void* mujoco_Update_1KHz( void * arg )
     mj_deleteModel(m);
     mj_deactivate();
 
-
+    exit(0);
     return NULL;
 }

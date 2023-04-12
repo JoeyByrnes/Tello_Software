@@ -76,6 +76,10 @@
         "forward_list": "cpp",
         "rt_nonfinite.h": "c",
         "future": "cpp",
-        "image": "cpp"
+        "image": "cpp",
+        "executor": "cpp",
+        "io_context": "cpp",
+        "netfwd": "cpp",
+        "timer": "cpp"
     }
 }

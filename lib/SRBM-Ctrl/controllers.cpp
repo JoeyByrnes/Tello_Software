@@ -369,6 +369,7 @@ void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, 
     {
         // compute angular momentum about contact point
         double Lx = m*H*dx;
+        // cout << "dx: " << dx << endl;
         double Ly = m*H*dy;
 
         // compute angular momentum about contact point at the end of current step
@@ -398,6 +399,7 @@ void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, 
         // Eq. 15 from Angular Momentum about the Contact Point for Control of
         // Bipedal Locomotion: Validation in a LIP-based Controller
         sw2CoM_end_step_x = (Lxdes_end_next_step - cosh(omega*T)*Lxest_end_step)/(m*H*omega*sinh(omega*T));
+        //cout << "end_step_x: " << sw2CoM_end_step_x << endl;
         sw2CoM_end_step_y = (Lydes_end_next_step - cosh(omega*T)*Lyest_end_step)/(m*H*omega*sinh(omega*T));
     }
     else // DSP
@@ -454,7 +456,7 @@ void dash_ctrl::sw2CoM_end_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm
 
     // Initialize commanded end-effector positions (DSP)
     lfv_comm = lfv;
-    lfdv_comm = lfdv;
+    lfdv_comm.setZero();// = lfdv;
 
     // Swing-leg trajectories
     if (abs(FSM) == 1) // SSP

@@ -579,7 +579,7 @@ int main(int argc, char *argv[]) {
     }
 
 	setvbuf(stdout, NULL, _IONBF, 0); // no buffering on printf, change to _IOLBF for buffering until \n character
-	std::cout << std::setprecision(2);
+	std::cout << std::setprecision(4);
 	printf('b',"\n==================== Running Tello Software ====================\n\n");
 	printf("Software last compiled on: %s \n",getCompileTime().c_str());
 	int minutes_since_compile = (int)(std::chrono::duration_cast<std::chrono::minutes>(minutesSinceLastCompile()).count());

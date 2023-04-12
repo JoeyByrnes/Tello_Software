@@ -177,7 +177,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
 
     // SRB specific
     srb_params.m = 20.2; // robot mass in kg
-    srb_params.hLIP = 0.52; // nominal robot LIP height
+    srb_params.hLIP = 0.45; // nominal robot LIP height
     srb_params.Ib = Matrix3d::Identity();
     srb_params.Ib(0,0) = 0.4874;
     srb_params.Ib(1,1) = 0.3081;
@@ -235,20 +235,20 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
     srb_params.lmaxR = 0.5; // maximum step length in m
 
     // controller 
-    srb_params.Kp_xR = 1800.8; // P gain for x-direction tracking
+    srb_params.Kp_xR = 180.8; // P gain for x-direction tracking
     srb_params.Kd_xR = 121.0; // D gain for x-direction tracking
-    srb_params.Kp_yR = 1800.8; // P gain for y-direction tracking
+    srb_params.Kp_yR = 180.8; // P gain for y-direction tracking
     srb_params.Kd_yR = 121.0; // D gain for y-direction tracking
-    srb_params.Kp_zR = 1800.8; // P gain for z-direction tracking
+    srb_params.Kp_zR = 180.8; // P gain for z-direction tracking
     srb_params.Kd_zR = 121.0; // D gain for z-direction tracking
-    srb_params.Kp_phiR = 110.95; // P gain for roll tracking
+    srb_params.Kp_phiR = 11.95; // P gain for roll tracking
     srb_params.Kd_phiR = 4.93; // D gain for roll tracking
-    srb_params.Kp_thetaR = 110.23; // P gain for pitch tracking
+    srb_params.Kp_thetaR = 11.23; // P gain for pitch tracking
     srb_params.Kd_thetaR = 3.82; // D gain for pitch tracking
-    srb_params.Kp_psiR = 100.95; // P gain for yaw tracking
+    srb_params.Kp_psiR = 10.95; // P gain for yaw tracking
     srb_params.Kd_psiR = 3.34; // D gain for yaw tracking
     srb_params.QP_opt_sol_type = 2; // quadprog = 0, quadprog (active-set) = 1, qpOASES = 2 --> DEFAULT
-    srb_params.W_wrench = 100.0; // cost function weight for satisfying desired net wrench
+    srb_params.W_wrench = 100.0/2.0; // cost function weight for satisfying desired net wrench
     srb_params.W_u_minus_u0_norm = 1.0; // cost function weight for penalizing large GRFs that differ too much from the previous (helps with large internal forces that cancel)
     srb_params.Act_const_type = 0; // joint torque based = 0 or motor torque based = 1
     srb_params.tau_m_max = 15.0; // maximum motor torque (15-20)
@@ -257,7 +257,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
     srb_params.beta_trans = 0.465; // transmission kinematics beta term
     srb_params.gamma_trans = 0.5; // transmission kinematics gamma term
     srb_params.Fz_min_QP = 0.0; // vertical force min to make sure no pulling on the ground (force distribution QP)
-    srb_params.Fz_min_FSM = 5.0; // vertical force min to detect when foot breaks contact (FSM) 
+    srb_params.Fz_min_FSM = 0.1; // vertical force min to detect when foot breaks contact (FSM) 
 
     // joint limits
     srb_params.q1_lim << -M_PI/9, M_PI/9;

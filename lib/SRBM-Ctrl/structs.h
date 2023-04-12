@@ -70,7 +70,6 @@ struct SRB_Params
     double Fz_min_FSM;
     Vector2d q1_lim;
     Vector2d q2_lim;
-
 };
 
 struct Human_params {
@@ -108,6 +107,7 @@ struct Traj_planner_dyn_data
     bool stepping_flg;
     double T_step;
     double t_sw_start;
+    double t_dsp_start;
     int next_SSP;
     double step_width;
     Vector3d st2CoM_beg_step;

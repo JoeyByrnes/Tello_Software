@@ -25,6 +25,7 @@
 #include "user_config.h"
 #include "timer.h"
 #include "utilities.h"
+#include "json.hpp"
 #include <mutex>
 #include "../lib/DynamicRobot_RDL/dynamic_robot.h"
 #include "mujoco/mujoco.h"

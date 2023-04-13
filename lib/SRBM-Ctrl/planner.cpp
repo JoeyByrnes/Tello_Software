@@ -11,7 +11,7 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
         case 'x':
             // leaning motion
             // sinusoidal trajectory parameters
-            recording_file_name = "lean";
+            recording_file_name = "X";
             printf("Running X (Lean) Test\n");
             amplitude = (0.9*abs(lfv(0,0)))/(sqrt(2));
             omega = 1.0;
@@ -22,7 +22,7 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
         case 'y':
             // side to side motion
             // sinusoidal trajectory parameters
-            recording_file_name = "side2side";
+            recording_file_name = "Y";
             printf("Running Y (Side2Side) Test\n");
             amplitude = (0.9*abs(lfv(0,1)))/(sqrt(2));
             omega = 1.5;
@@ -33,9 +33,9 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
         case 'z':
             // squat motion
             // sinusoidal trajectory parameters
-            recording_file_name = "squat";
+            recording_file_name = "Z";
             printf("Running Z (Squat) Test\n");
-            amplitude = 0.1;
+            amplitude = 0.06;
             omega = 1.0;
             phase = -M_PI;
             sim_time = num_tests*(M_PI/omega);
@@ -44,7 +44,7 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
         case 'r':
             // roll motion
             // sinusoidal trajectory parameters
-            recording_file_name = "roll";
+            recording_file_name = "Roll";
             printf("Running Roll Test\n");
             amplitude = 5.0*(M_PI/180.0);
             omega = 1.5;
@@ -55,7 +55,7 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
         case 'p':
             // pitch motion
             // sinusoidal trajectory parameters
-            recording_file_name = "pitch";
+            recording_file_name = "Pitch";
             printf("Running Pitch Test\n");
             amplitude = 5.0*(M_PI/180.0);
             omega = 1.5;
@@ -66,7 +66,7 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
         case 'w':
             // yaw motion
             // sinusoidal trajectory parameters
-            recording_file_name = "yaw";
+            recording_file_name = "Yaw";
             printf("Running Yaw Test\n");
             amplitude = 15.0*(M_PI/180.0);
             omega = 1.5;
@@ -77,7 +77,7 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
         default:
             // default motion (balance)
             // sinusoidal trajectory parameters
-            recording_file_name = "balance";
+            recording_file_name = "Balance";
             printf("Running Balance Test\n");
             sim_time = 1.0*num_tests;
             break;
@@ -117,8 +117,13 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     // get GRFs (front line foot pt)
     double u1z = u(2);
     double u3z = u(8);
+    double u2z = u(5);
+    double u4z = u(11);
     if(u1z < 0) u1z = 0;
     if(u3z < 0) u3z = 0;
+    
+    if(u2z < 0) u1z = 0;
+    if(u4z < 0) u3z = 0;
 
     // compute phase variable
     double s = (t - t_sw_start) / T;
@@ -131,16 +136,16 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     // From SSP_R can switch to DSP based on left foot z-position
     
     int FSM_next;
-    //cout << FSM_prev << "\t " << lf1z <<  "\t " << lf3z <<  "\t " << s <<endl;
+    //cout << FSM_prev << "\t " << u1z << "\t " << u3z <<endl;
     if (FSM_prev == 0) // currently in DSP
     {
-        if (u1z < Fz_min && t > 0 && s_dsp > 0.05) // enter SSP_L
+        if ( (u1z < Fz_min || u2z < Fz_min) && t > 0 && s_dsp > 0.06) // enter SSP_L
         {
             FSM_next = 1;
         }
-        else if (u3z < Fz_min && t > 0 && s_dsp > 0.05) // enter SSP_R 
+        else if ( (u3z < Fz_min || u4z < Fz_min) && t > 0 && s_dsp > 0.06) // enter SSP_R 
         {
-            FSM_next = -1;       
+            FSM_next = -1;     
         }
         else // stay in DSP 
         {
@@ -149,7 +154,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     }
     else if (FSM_prev == 1) // currently in SSP_L
     {
-        if (lf1z <= 0.0 && s > 0.3) // enter DSP
+        if (lf1z <= 0.0 && s > 0.6) // enter DSP
         {
             FSM_next = 0;
         }
@@ -160,7 +165,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     }
     else if (FSM_prev == -1) // currently in SSP_R
     {
-        if (lf3z <= 0.0 && s > 0.3) // enter DSP
+        if (lf3z <= 0.0 && s > 0.6) // enter DSP
         {
             FSM_next = 0;
         }

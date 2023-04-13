@@ -417,7 +417,7 @@ void dash_utils::setOutputFolder(const std::string& foldername)
 
 void dash_utils::writeVectorToCsv(const VectorXd& vec, const std::string& filename)
 {
-    std::ofstream file(_foldername + filename);
+    std::ofstream file(_foldername + filename, std::ios::app);
 
     if (!file.is_open()) {
         std::cerr << "Failed to open file for writing: " << filename << std::endl;
@@ -430,13 +430,14 @@ void dash_utils::writeVectorToCsv(const VectorXd& vec, const std::string& filena
         if (i < vec.size() - 1)
             file << ","; // Add comma delimiter for all but the last element
     }
+    file << "\n";
 
     file.close();
 }
 
 void dash_utils::writeMatrixToCsv(const MatrixXd& mat, const std::string& filename)
 {
-    std::ofstream file(_foldername + filename);
+    std::ofstream file(_foldername + filename, std::ios::app);
 
     if (!file.is_open()) {
         std::cerr << "Failed to open file for writing: " << filename << std::endl;

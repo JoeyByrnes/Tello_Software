@@ -117,6 +117,44 @@ void initial_legs_configuration(mjData* d)
 
 }
 
+// Define a function to parse the JSON file and write to an srb_params struct
+void parse_json_to_srb_params(const std::string& json_file_path, SRB_Params& params) {
+  // Open the JSON file
+  std::ifstream json_file(json_file_path);
+  if (!json_file.is_open()) {
+    std::cerr << "Error: could not open JSON file\n";
+    return;
+  }
+
+  // Parse the JSON file
+  nlohmann::json json_data;
+  try {
+    json_file >> json_data;
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    return;
+  }
+
+  // Extract the values and write to the srb_params struct
+  try {
+    params.Kp_xR = json_data["srb_params"]["Kp_xR"].get<double>();
+    params.Kd_xR = json_data["srb_params"]["Kd_xR"].get<double>();
+    params.Kp_yR = json_data["srb_params"]["Kp_yR"].get<double>();
+    params.Kd_yR = json_data["srb_params"]["Kd_yR"].get<double>();
+    params.Kp_zR = json_data["srb_params"]["Kp_zR"].get<double>();
+    params.Kd_zR = json_data["srb_params"]["Kd_zR"].get<double>();
+    params.Kp_phiR = json_data["srb_params"]["Kp_phiR"].get<double>();
+    params.Kd_phiR = json_data["srb_params"]["Kd_phiR"].get<double>();
+    params.Kp_thetaR = json_data["srb_params"]["Kp_thetaR"].get<double>();
+    params.Kd_thetaR = json_data["srb_params"]["Kd_thetaR"].get<double>();
+    params.Kp_psiR = json_data["srb_params"]["Kp_psiR"].get<double>();
+    params.Kd_psiR = json_data["srb_params"]["Kd_psiR"].get<double>();
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    return;
+  }
+}
+
 
 // Callbacks
 
@@ -306,6 +344,52 @@ Eigen::VectorXd calc_pd(VectorXd position, VectorXd velocity, VectorXd desiredPo
   return Kp*positionError + Kd*velocityError;
 }
 
+void contactforce(const mjModel* m, mjData* d)
+{
+    mjMARKSTACK
+    mjtNum* f0_contact_pos = mj_stackAlloc(d, 3);//contact position in unkown frame. check
+    mjtNum* f0_contact_frame = mj_stackAlloc(d, 9);
+    mjtNum* f0_contact_force = mj_stackAlloc(d, 6);//contact force in contact frame
+    for (int i = 0; i < d->ncon; i++)
+    {
+        mjContact* cur_contact = &((d->contact)[i]);
+        std::string geom1 = mj_id2name(m, mjOBJ_GEOM, cur_contact->geom1);
+        std::string geom2 = mj_id2name(m, mjOBJ_GEOM, cur_contact->geom2);
+        //std::cout << "contact point # " << i + 1 << std::endl;
+        std::cout << mj_id2name(m, mjOBJ_GEOM, cur_contact->geom2) << "  :"; // normal
+        if (geom1.compare("floor") == 0 || geom2.compare("floor") == 0)
+        {
+            //get robot's geom id
+            int bodyid;
+            if(geom1.compare("floor") == 0){ //return 0 if same string
+                bodyid = cur_contact->geom1;
+            }else{
+                bodyid = cur_contact->geom2;
+            }
+            //std::cout << "Collision Point = " << mj_id2name(m, mjOBJ_GEOM, bodyid) << '\n';
+            // calculate position/force/normal of contact points.
+            mju_copy(f0_contact_pos, cur_contact->pos, 3);
+            mju_copy(f0_contact_frame, cur_contact->frame, 9); //contact frame in world frame
+            mj_contactForce(m, d, i, f0_contact_force); // torque in contact frame, stored in transposed form
+            //Print contact frame
+            // std::cout << "Contact Frame = " << '\n';
+            // mju_printMat(f0_contact_frame, 3, 3);
+            //Print contact force
+            mjtNum fw_contact_force[9];
+            // std::cout << "Contact Force in Contact Frame = " << '\n';
+            mju_transpose(fw_contact_force, f0_contact_force, 3, 3); //
+            // mju_printMat(fw_contact_force, 3, 3);
+            //std::cout << "Contact Force in World Frame = " << '\n';
+            mjtNum f_world[9];
+            mju_mulMatMat(f_world, f0_contact_frame, fw_contact_force, 3, 3, 3);
+            // mju_printMat(f_world, 3, 3);
+            std::cout << f_world[0] << ", " << f_world[3] << ", " << f_world[6] << endl;
+
+        } // if one geom is object
+    } // for i = 1:ncon
+    mjFREESTACK
+}
+
 void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 {
     // Net wrench based PD controller with optimization-based force distribution
@@ -347,6 +431,32 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     double qd3r = d->qvel[hip_pitch_r_idx];             
     double qd4r = d->qvel[knee_pitch_r_idx];   
     double qd5r = d->qvel[ankle_pitch_r_idx];  
+
+    mjtNum left_foot_toe[3];
+    mjtNum left_foot_heel[3];
+    mjtNum right_foot_toe[3];
+    mjtNum right_foot_heel[3];
+    const char* lft = "left_foot_toe";
+    const char* lfh = "left_foot_heel";
+    const char* rft = "right_foot_toe";
+    const char* rfh = "right_foot_heel";
+    int geom_id = mj_name2id(m, mjOBJ_GEOM, lft);
+    memcpy(left_foot_toe, &d->geom_xpos[3*geom_id], 3*sizeof(mjtNum));
+    geom_id = mj_name2id(m, mjOBJ_GEOM, lfh);
+    memcpy(left_foot_heel, &d->geom_xpos[3*geom_id], 3*sizeof(mjtNum));
+    geom_id = mj_name2id(m, mjOBJ_GEOM, rft);
+    memcpy(right_foot_toe, &d->geom_xpos[3*geom_id], 3*sizeof(mjtNum));
+    geom_id = mj_name2id(m, mjOBJ_GEOM, rfh);
+    memcpy(right_foot_heel, &d->geom_xpos[3*geom_id], 3*sizeof(mjtNum));
+
+    MatrixXd mujoco_lfv(4,3);
+    mujoco_lfv.row(0) = Vector3d(right_foot_toe[0],right_foot_toe[1],right_foot_toe[2]);
+    mujoco_lfv.row(1) = Vector3d(right_foot_heel[0],right_foot_heel[1],right_foot_heel[2]);
+    mujoco_lfv.row(2) = Vector3d(left_foot_toe[0],left_foot_toe[1],left_foot_toe[2]);
+    mujoco_lfv.row(3) = Vector3d(left_foot_heel[0],left_foot_heel[1],left_foot_heel[2]);   
+
+    // cout << "---------------------------------------------------------------------------------------" << endl;
+    // contactforce(m,d); 
 
 	// Torso state vectors
     VectorXd SRB_q(6);
@@ -435,6 +545,13 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     dash_kin::SRB_FK(torso_vertices, right_leg, left_leg, lfv, srb_params, x, q);    
     right_leg_last = right_leg;
     left_leg_last = left_leg;
+
+    // cout << "lfv:" << endl;
+    // cout << lfv << endl;
+    // cout << "mujoco lfv:" << endl;
+    // cout << mujoco_lfv << endl;
+    // cout << "=========================" << endl;
+
 	// SRB kinematics
 	dash_kin::SRB_Kin(q, qd, Jv_mat, srb_params, x, lfv, lfdv);
     
@@ -445,7 +562,24 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 								   human_params, FSM, FSM_prev, t, x, lfv, lfdv, u, 
 								   tau_ext, SRB_state_ref, SRB_wrench_ref, lfv_comm, lfdv_comm);
 
-    
+    // cout << "SRB_State_Ref:" << endl;
+    // cout << SRB_state_ref.col(0).transpose() << endl;
+    // cout << "State:" << endl;
+    // cout << x.segment<3>(0).transpose() << x.segment<3>(18).transpose() << endl;
+    // cout << "===============================" << endl;
+
+    VectorXd state(6);
+    state << x.segment<3>(0), x.segment<3>(18);
+
+    VectorXd state_vel(6);
+    state_vel << x.segment<3>(3), dEA_curr;
+
+    dash_utils::setOutputFolder("/home/joey/Desktop/tello_outputs/");
+    dash_utils::writeVectorToCsv(SRB_state_ref.col(0),"SRB_state_Ref.csv");
+    dash_utils::writeVectorToCsv(state,"state.csv");
+
+    dash_utils::writeVectorToCsv(SRB_state_ref.col(1),"SRB_state_Ref_vel.csv");
+    dash_utils::writeVectorToCsv(state_vel,"state_vel.csv");
 
     // Transform lfv an lfdv to hip frames here:
 
@@ -524,14 +658,22 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 	
 	VectorXd swing_leg_torques = tello->taskPD2(task_pd_config);
 
-    joint_kp = 200;
-	joint_kd = 2;
+    joint_kp = 0;
+	joint_kd = 0;
 	kp_vec_joint = VectorXd::Ones(10)*(joint_kp);
 	kd_vec_joint = VectorXd::Ones(10)*joint_kd;
+    task_pd_config.task_vel_desired.setZero();
     kp_vec_joint(0) = 300;
-    kd_vec_joint(0) = 10;
+    kd_vec_joint(0) = 200;
     kp_vec_joint(5) = 300;
-    kd_vec_joint(5) = 10;
+    kd_vec_joint(5) = 200;
+
+    kp_vec_joint(1) = 10;
+    kd_vec_joint(1) = 0;
+
+    kp_vec_joint(6) = 10;
+    kd_vec_joint(6) = 0;
+
     kp_mat_joint = kp_vec_joint.asDiagonal();
 	kd_mat_joint = kd_vec_joint.asDiagonal();
     task_pd_config.joint_kp = kp_mat_joint;
@@ -544,6 +686,11 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 	// SRB controller
 	dash_ctrl::SRB_Balance_Controller(u, tau, srb_params, FSM, x, lfv, qd, Jv_mat, u, SRB_wrench_ref);
 
+    // cout << endl << "QP right_foot_toe   :  " << u.segment<3>(0).transpose() << endl;
+    // cout <<         "QP right_foot_heel  :  " << u.segment<3>(3).transpose() << endl;
+    // cout <<         "QP left_foot_toe    :  " << u.segment<3>(6).transpose() << endl;
+    // cout <<         "QP left_foot_heel   :  " << u.segment<3>(9).transpose() << endl;
+    // cout <<         "---------------------------------------------------------------------------------------" << endl;
 	// end SRBM-Ctrl call here ==================================================================================
     
 	VectorXd tau_leg_r = tau.segment<5>(0); 
@@ -595,7 +742,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     VectorXd torques_right = tello->switchControllerJoint(tau_leg_r, swing_leg_torques.tail(5),
                                                           0.01,isSwingToStanceLeft,d->time-transitionStartLeft, 1);
 
-    if(d->time > srb_params.t_end_stepping+0.15 && stepping_in_progress)
+    if(d->time > srb_params.t_end_stepping+0.01 && stepping_in_progress)
     {
         // stepping has finished, switch to balancing
         stepping_in_progress = false;
@@ -692,10 +839,10 @@ void* mujoco_Update_1KHz( void * arg )
         printf("Walking Selected\n\n");
         // Option 2: Walking using LIP angular momentum regulation about contact point
         // user input (walking speed and step frequency)
-        double des_walking_speed = 0.1;
-        double des_walking_step_period = 0.125;
+        double des_walking_speed = 0.0;
+        double des_walking_step_period = 0.1;
         // end user input
-        recording_file_name = "walking";
+        recording_file_name = "Walking";
         srb_params.planner_type = 1; 
         srb_params.T = des_walking_step_period;
         VectorXd t_traj, v_traj;
@@ -708,22 +855,10 @@ void* mujoco_Update_1KHz( void * arg )
         sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
     }
 
+    parse_json_to_srb_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",srb_params);
 
-    srb_params.Kp_xR = 80000; // P gain for x-direction tracking |
-    srb_params.Kd_xR = 100; // D gain for x-direction tracking  |
-    srb_params.Kp_yR = 50000; // P gain for y-direction tracking |
-    srb_params.Kd_yR = 100; // D gain for y-direction tracking   |
-    srb_params.Kp_zR = 50000; // P gain for z-direction tracking|
-    srb_params.Kd_zR = 2000; // D gain for z-direction tracking  | 
-    srb_params.Kp_phiR = 30000; // P gain for roll tracking     |
-    srb_params.Kd_phiR = 3000; // D gain for roll tracking       |
-    srb_params.Kp_thetaR = 100000; // P gain for pitch tracking  | 
-    srb_params.Kd_thetaR = 500; // D gain for pitch tracking     |
-    srb_params.Kp_psiR = 10000; // P gain for yaw tracking        |
-    srb_params.Kd_psiR = 1000; // D gain for yaw tracking         |
-
-    srb_params.m = 20;
-    srb_params.zcl = 0.02; // swing-leg max height in m
+    srb_params.m = 22;
+    srb_params.zcl = 0.01; // swing-leg max height in m
 
 
 	// Initialize trajectory planner data
@@ -771,11 +906,11 @@ void* mujoco_Update_1KHz( void * arg )
     // initialize visualization data structures
     mjv_defaultCamera(&cam);
     cam.elevation = -20;
-    cam.distance = 2.0;
+    cam.distance = 1.5;
     cam.azimuth = 135;
     cam.lookat[0] = 0;
     cam.lookat[1] = 0;
-    cam.lookat[2] = -0.3;
+    cam.lookat[2] = -0.2;
     mjv_defaultOption(&opt);
     mjv_defaultScene(&scn);
     mjr_defaultContext(&con);
@@ -827,7 +962,8 @@ void* mujoco_Update_1KHz( void * arg )
                 mj_step(m, d);
             }  
         } 
-        
+        std::string text = "\tTello Mujoco Simulation    |    Test: " + recording_file_name + "    |    Time: " + std::to_string(d->time)+ "\t";
+        glfwSetWindowTitle(window, text.c_str());
 
         // get framebuffer viewport
         mjrRect viewport = { 0, 0, 0, 0 };

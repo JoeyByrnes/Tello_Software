@@ -574,7 +574,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     VectorXd state_vel(6);
     state_vel << x.segment<3>(3), dEA_curr;
 
-    dash_utils::setOutputFolder("/home/joey/Desktop/tello_outputs/");
+    dash_utils::setOutputFolder("/home/joey/Desktop/tello_outputs/latest/");
     dash_utils::writeVectorToCsv(SRB_state_ref.col(0),"SRB_state_Ref.csv");
     dash_utils::writeVectorToCsv(state,"state.csv");
 
@@ -617,6 +617,11 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 	double joint_kd = 0.5;
 	VectorXd kp_vec_joint = VectorXd::Ones(10)*(joint_kp);
 	VectorXd kd_vec_joint = VectorXd::Ones(10)*joint_kd;
+
+    kp_vec_joint(4) = 200;
+    kp_vec_joint(9) = 200;
+    kd_vec_joint(4) = 5;
+    kd_vec_joint(9) = 5;
 
 	MatrixXd kp_mat_joint = kp_vec_joint.asDiagonal();
 	MatrixXd kd_mat_joint = kd_vec_joint.asDiagonal();
@@ -678,6 +683,18 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 	kd_mat_joint = kd_vec_joint.asDiagonal();
     task_pd_config.joint_kp = kp_mat_joint;
 	task_pd_config.joint_kd = kd_mat_joint;
+
+	// kp_vec_task = VectorXd::Ones(12)*task_kp;
+	// kd_vec_task = VectorXd::Ones(12)*task_kd;
+    // kd_vec_task(2) = 50;
+    // kd_vec_task(5) = 50;
+    // kd_vec_task(8) = 50;
+    // kd_vec_task(11) = 50;
+	// kp_mat_task = kp_vec_task.asDiagonal();
+	// kd_mat_task = kd_vec_task.asDiagonal();
+
+    // task_pd_config.task_kp = kp_mat_task;
+	// task_pd_config.task_kd = kd_mat_task;
 
     VectorXd posture_ctrl_torques = tello->taskPD2(task_pd_config);
 
@@ -839,7 +856,7 @@ void* mujoco_Update_1KHz( void * arg )
         printf("Walking Selected\n\n");
         // Option 2: Walking using LIP angular momentum regulation about contact point
         // user input (walking speed and step frequency)
-        double des_walking_speed = 0.0;
+        double des_walking_speed = 0.1;
         double des_walking_step_period = 0.1;
         // end user input
         recording_file_name = "Walking";

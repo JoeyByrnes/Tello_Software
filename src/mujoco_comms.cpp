@@ -672,10 +672,10 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     kp_vec_joint(5) = 300;
     kd_vec_joint(5) = 200;
 
-    kp_vec_joint(1) = 500;
+    kp_vec_joint(1) = 0;
     kd_vec_joint(1) = 0;
 
-    kp_vec_joint(6) = 500;
+    kp_vec_joint(6) = 0;
     kd_vec_joint(6) = 0;
 
     kp_mat_joint = kp_vec_joint.asDiagonal();
@@ -855,7 +855,7 @@ void* mujoco_Update_1KHz( void * arg )
         printf("Walking Selected\n\n");
         // Option 2: Walking using LIP angular momentum regulation about contact point
         // user input (walking speed and step frequency)
-        double des_walking_speed = 0.1;
+        double des_walking_speed = 0.05;
         double des_walking_step_period = 0.2;
         // end user input
         recording_file_name = "Walking";

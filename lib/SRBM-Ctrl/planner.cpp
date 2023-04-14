@@ -142,11 +142,11 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     //cout << FSM_prev << "\t " << u1z << "\t " << u3z <<endl;
     if (FSM_prev == 0) // currently in DSP
     {
-        if ( (u1z < Fz_min || u2z < Fz_min) && t > 0 && s_dsp > 0.06) // enter SSP_L
+        if ( (u1z < Fz_min || u2z < Fz_min) && t > 0 && s_dsp > 0.05) // enter SSP_L
         {
             FSM_next = 1;
         }
-        else if ( (u3z < Fz_min || u4z < Fz_min) && t > 0 && s_dsp > 0.06) // enter SSP_R 
+        else if ( (u3z < Fz_min || u4z < Fz_min) && t > 0 && s_dsp > 0.05) // enter SSP_R 
         {
             FSM_next = -1;     
         }
@@ -551,7 +551,7 @@ void dash_planner::SRB_LIP_vel_traj(double des_walking_speed, VectorXd& t_traj, 
 {
     // Tunable waypoints (time in s)
     VectorXd t_waypts_0p1to3ms(6), t_waypts_0p4ms(6), t_waypts_0p5to6ms(6), t_waypts_0p7ms(6), t_waypts_0p8ms(6);
-    t_waypts_0p1to3ms << 0.0, 1.0, 2.5, 5.5, 7.0, 8.0;
+    t_waypts_0p1to3ms << 0.0, 2.0, 4.5, 7.5, 9.0, 10.0;
     t_waypts_0p4ms << 0.0, 1.0, 2.0, 4.0, 6.0, 7.0;
     t_waypts_0p5to6ms << 0.0, 1.0, 2.0, 4.0, 6.0, 7.5;
     t_waypts_0p7ms << 0.0, 1.0, 4.0, 6.0, 9.0, 13.0;
@@ -559,7 +559,7 @@ void dash_planner::SRB_LIP_vel_traj(double des_walking_speed, VectorXd& t_traj, 
 
      // select based on desired top speed
     VectorXd t_waypts(6), v_waypts(6);
-    if (des_walking_speed <= 0.3)
+    if (des_walking_speed <= 0.6)
     {
         t_waypts = t_waypts_0p1to3ms;
     }

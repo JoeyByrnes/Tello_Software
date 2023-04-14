@@ -3,7 +3,7 @@
   <size njmax = "500" nconmax = "100" />
 
   <compiler angle = 'radian' inertiafromgeom = "false" meshdir = "meshes/"/>
-
+  <option timestep='0.0005' iterations='100' solver='PGS' gravity='0 0 -9.81'/>
 	<default>
     <joint limited='true' damping="0.2"/>
     <motor ctrllimited='true'/>

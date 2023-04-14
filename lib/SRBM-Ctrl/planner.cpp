@@ -114,6 +114,9 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     double lf1z = lfv(0,2) + CoMz_init;
     double lf3z = lfv(2,2) + CoMz_init;
 
+    double lf2z = lfv(1,2) + CoMz_init;
+    double lf4z = lfv(3,2) + CoMz_init;
+
     // get GRFs (front line foot pt)
     double u1z = u(2);
     double u3z = u(8);
@@ -154,7 +157,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     }
     else if (FSM_prev == 1) // currently in SSP_L
     {
-        if (lf1z <= 0.0 && s > 0.6) // enter DSP
+        if ( (lf1z <= 0.0 || lf2z <= 0.0) && s > 0.6) // enter DSP
         {
             FSM_next = 0;
         }
@@ -165,7 +168,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     }
     else if (FSM_prev == -1) // currently in SSP_R
     {
-        if (lf3z <= 0.0 && s > 0.6) // enter DSP
+        if ( (lf3z <= 0.0 || lf3z <= 0.0) && s > 0.6) // enter DSP
         {
             FSM_next = 0;
         }
@@ -210,7 +213,8 @@ void dash_planner::SRB_Init_Traj_Planner_Data(Traj_planner_dyn_data& traj_planne
     
     // Only planner_type = LIP_ang_mom_reg
     traj_planner_dyn_data.next_SSP = 0; // next SSP (SSP_L = 1 or SSP_R = -1)
-    traj_planner_dyn_data.step_width = abs(lf2CoM0_mat(1, 0)) + abs(lf2CoM0_mat(1, 3)); // desired step width (updated at the start depending on initial feet width)
+    traj_planner_dyn_data.step_width = (abs(lf2CoM0_mat(1, 0)) + abs(lf2CoM0_mat(1, 3))); // desired step width (updated at the start depending on initial feet width)
+    cout << "step_width: " << traj_planner_dyn_data.step_width << endl;
     traj_planner_dyn_data.st2CoM_beg_step = VectorXd::Zero(position_vec_size); // stance-leg/foot position at the beginning-of-step relative to CoM
     traj_planner_dyn_data.sw2CoM_beg_step = VectorXd::Zero(position_vec_size); // swing-leg/foot position at the beginning-of-step relative to CoM
     traj_planner_dyn_data.xLIP_init = VectorXd::Zero(2); // initial conditions for sagittal plane LIP
@@ -472,11 +476,82 @@ void dash_planner::gen_vel_trapz_traj(const VectorXd& t_waypts, const VectorXd& 
     }
 }
 
+// void dash_planner::gen_smooth_traj(const VectorXd& t_waypts, const VectorXd& v_waypts, VectorXd& t_traj, VectorXd& v_traj)
+// {
+//     double dt = 0.001;
+//     int num_lines = t_waypts.size() - 1;
+
+//     // Time vector
+//     t_traj = VectorXd::LinSpaced(static_cast<int>((t_waypts[num_lines] - t_waypts[0])/dt) + 1, t_waypts[0], t_waypts[num_lines]);
+
+//     // Velocity vector
+//     v_traj = VectorXd::Zero(t_traj.size());
+//     int time_start_idx = 0;
+//     for (int line_idx = 0; line_idx < num_lines; line_idx++)
+//     {
+//         // Time vector for line segment
+//         VectorXd t_line = VectorXd::LinSpaced(static_cast<int>((t_waypts[line_idx + 1] - t_waypts[line_idx])/dt) + 1, t_waypts[line_idx], t_waypts[line_idx + 1]);
+
+//         // Velocity vector for line segment
+//         VectorXd v_line = (v_waypts[line_idx + 1] - v_waypts[line_idx]) / (1 + exp(-25 * (t_line.array() - (t_waypts[line_idx] + t_waypts[line_idx + 1])/2))) + v_waypts[line_idx];
+
+//         // Populate overall
+//         if (line_idx < num_lines - 1)
+//             v_traj.segment(time_start_idx, t_line.size() - 1) = v_line.segment(0, t_line.size() - 1);
+//         else
+//             v_traj.segment(time_start_idx, t_line.size()) = v_line.segment(0, t_line.size());
+
+//         // Update time start index
+//         time_start_idx += t_line.size() - 1;
+//     }
+// }
+void dash_planner::gen_smooth_traj(const VectorXd& t_waypts, const VectorXd& v_waypts, VectorXd& t_traj, VectorXd& v_traj)
+{
+    double dt = 0.001;
+    int num_lines = t_waypts.size() - 1;
+
+    // Time vector
+    t_traj = VectorXd::LinSpaced(static_cast<int>((t_waypts[num_lines] - t_waypts[0])/dt) + 1, t_waypts[0], t_waypts[num_lines]);
+
+    // Velocity vector
+    v_traj = VectorXd::Zero(t_traj.size());
+    int time_start_idx = 0;
+    for (int line_idx = 0; line_idx < num_lines; line_idx++)
+    {
+        // Time vector for line segment
+        VectorXd t_line = VectorXd::LinSpaced(static_cast<int>((t_waypts[line_idx + 1] - t_waypts[line_idx])/dt) + 1, t_waypts[line_idx], t_waypts[line_idx + 1]);
+
+        // Velocity vector for line segment
+        double vel_start = v_waypts[line_idx];
+        double vel_end = v_waypts[line_idx + 1];
+        double t_start = t_waypts[line_idx];
+        double t_end = t_waypts[line_idx + 1];
+        double vel_diff = vel_end - vel_start;
+        double t_diff = t_end - t_start;
+        VectorXd v_line(t_line.size());
+
+        for (int i = 0; i < t_line.size(); i++) {
+            double t = t_line[i];
+            double sigmoid_arg = 14.0*(t - t_start)/t_diff - 7.0;
+            v_line[i] = vel_start + vel_diff/(1.0 + exp(-sigmoid_arg));
+        }
+
+        // Populate overall
+        if (line_idx < num_lines - 1)
+            v_traj.segment(time_start_idx, t_line.size() - 1) = v_line.segment(0, t_line.size() - 1);
+        else
+            v_traj.segment(time_start_idx, t_line.size()) = v_line.segment(0, t_line.size());
+
+        // Update time start index
+        time_start_idx += t_line.size() - 1;
+    }
+}
+
 void dash_planner::SRB_LIP_vel_traj(double des_walking_speed, VectorXd& t_traj, VectorXd& v_traj, double& t_beg_stepping_time, double& t_end_stepping_time)
 {
     // Tunable waypoints (time in s)
     VectorXd t_waypts_0p1to3ms(6), t_waypts_0p4ms(6), t_waypts_0p5to6ms(6), t_waypts_0p7ms(6), t_waypts_0p8ms(6);
-    t_waypts_0p1to3ms << 0.0, 1.0, 1.5, 4.5, 5.0, 6.0;
+    t_waypts_0p1to3ms << 0.0, 1.0, 2.5, 5.5, 7.0, 8.0;
     t_waypts_0p4ms << 0.0, 1.0, 2.0, 4.0, 6.0, 7.0;
     t_waypts_0p5to6ms << 0.0, 1.0, 2.0, 4.0, 6.0, 7.5;
     t_waypts_0p7ms << 0.0, 1.0, 4.0, 6.0, 9.0, 13.0;
@@ -507,7 +582,10 @@ void dash_planner::SRB_LIP_vel_traj(double des_walking_speed, VectorXd& t_traj, 
     v_waypts << 0.0, 0.0, des_walking_speed, des_walking_speed, 0.0, 0.0;
 
     // generate trajectory
-    gen_vel_trapz_traj(t_waypts, v_waypts, t_traj, v_traj);
+    //gen_vel_trapz_traj(t_waypts, v_waypts, t_traj, v_traj);
+    gen_smooth_traj(t_waypts, v_waypts, t_traj, v_traj);
+    // cout << "V_TRAJ =============================" << endl;
+    // cout << v_traj << endl;
 
     // time to command begin stepping
     t_beg_stepping_time = (t_waypts(1) - t_waypts(0))/2.0;

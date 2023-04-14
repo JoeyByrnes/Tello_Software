@@ -613,13 +613,13 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
     // BEGIN TASK PD CODE ======================================+++++++++++++++++
 
-    double joint_kp = 50;
-	double joint_kd = 0.5;
+    double joint_kp = 1000;
+	double joint_kd = 20;
 	VectorXd kp_vec_joint = VectorXd::Ones(10)*(joint_kp);
 	VectorXd kd_vec_joint = VectorXd::Ones(10)*joint_kd;
 
-    kp_vec_joint(4) = 200;
-    kp_vec_joint(9) = 200;
+    kp_vec_joint(4) = 500;
+    kp_vec_joint(9) = 500;
     kd_vec_joint(4) = 5;
     kd_vec_joint(9) = 5;
 
@@ -667,16 +667,15 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 	joint_kd = 0;
 	kp_vec_joint = VectorXd::Ones(10)*(joint_kp);
 	kd_vec_joint = VectorXd::Ones(10)*joint_kd;
-    task_pd_config.task_vel_desired.setZero();
     kp_vec_joint(0) = 300;
     kd_vec_joint(0) = 200;
     kp_vec_joint(5) = 300;
     kd_vec_joint(5) = 200;
 
-    kp_vec_joint(1) = 10;
+    kp_vec_joint(1) = 500;
     kd_vec_joint(1) = 0;
 
-    kp_vec_joint(6) = 10;
+    kp_vec_joint(6) = 500;
     kd_vec_joint(6) = 0;
 
     kp_mat_joint = kp_vec_joint.asDiagonal();
@@ -857,7 +856,7 @@ void* mujoco_Update_1KHz( void * arg )
         // Option 2: Walking using LIP angular momentum regulation about contact point
         // user input (walking speed and step frequency)
         double des_walking_speed = 0.1;
-        double des_walking_step_period = 0.1;
+        double des_walking_step_period = 0.2;
         // end user input
         recording_file_name = "Walking";
         srb_params.planner_type = 1; 
@@ -875,7 +874,7 @@ void* mujoco_Update_1KHz( void * arg )
     parse_json_to_srb_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",srb_params);
 
     srb_params.m = 22;
-    srb_params.zcl = 0.01; // swing-leg max height in m
+    srb_params.zcl = 0.03; // swing-leg max height in m
 
 
 	// Initialize trajectory planner data
@@ -923,8 +922,8 @@ void* mujoco_Update_1KHz( void * arg )
     // initialize visualization data structures
     mjv_defaultCamera(&cam);
     cam.elevation = -20;
-    cam.distance = 1.5;
-    cam.azimuth = 135;
+    cam.distance = 1.8;
+    cam.azimuth = 155;
     cam.lookat[0] = 0;
     cam.lookat[1] = 0;
     cam.lookat[2] = -0.2;

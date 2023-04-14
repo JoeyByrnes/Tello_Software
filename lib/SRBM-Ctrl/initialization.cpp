@@ -80,7 +80,7 @@ void dash_init::SRB_Init(VectorXd& x0, MatrixXd& q0, MatrixXd& qd0, MatrixXd& lf
         // default initialization places feet underneath hips
         // assumes no hip roll or yaw
         double hip_angle_yaw_init = 0;
-        double hip_angle_roll_init = 0;
+        double hip_angle_roll_init = 0;//0.0872665;
         double HK_length = thigh_length;
         double KA_length = calf_length;
         double HA_length = hR - CoM2H_z_dist - heel_length;
@@ -99,6 +99,7 @@ void dash_init::SRB_Init(VectorXd& x0, MatrixXd& q0, MatrixXd& qd0, MatrixXd& lf
         VectorXd ql = qr;
         q0.row(0) = qr;
         q0.row(1) = ql;
+        q0(1,1) = -q0(1,1);
         
     }
     else if(init_type == 1)
@@ -120,26 +121,7 @@ void dash_init::SRB_Init(VectorXd& x0, MatrixXd& q0, MatrixXd& qd0, MatrixXd& lf
         MatrixXd q0 = dash_kin::SRB_IK(srb_params, pc_init, R_init_mat, lfv0);  
         
     }
-    else if(init_type == 2)
-    {
-        // specify task space initial configuration
-        Vector3d target(0, 0, -0.520);
 
-        double foot_len_half = 0.060;
-        Vector3d target_front_left(foot_len_half+target(0), target(1)+0.050, target(2));
-        Vector3d target_back_left(-foot_len_half+target(0), target(1)+0.050, target(2));
-        Vector3d target_front_right(foot_len_half+target(0), target(1)-0.050, target(2));
-        Vector3d target_back_right(-foot_len_half+target(0), target(1)-0.050, target(2));
-
-
-        lfv0.row(0) = target_front_right; 
-        lfv0.row(1) = target_back_right; 
-        lfv0.row(2) = target_front_left;
-        lfv0.row(3) = target_back_left;
-        
-        MatrixXd q0 = dash_kin::SRB_IK(srb_params, pc_init, R_init_mat, lfv0);  
-        
-    }
     else
     {
         
@@ -173,11 +155,11 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
 
     // physical constants
     srb_params.g = 9.81; // acceleration due to gravity in m/s^2
-    srb_params.mu = 1.0; // coefficient of friction value
+    srb_params.mu = 0.8; // coefficient of friction value
 
     // SRB specific
     srb_params.m = 20.2; // robot mass in kg
-    srb_params.hLIP = 0.6; // nominal robot LIP height
+    srb_params.hLIP = 0.62; // nominal robot LIP height
     srb_params.Ib = Matrix3d::Identity();
     srb_params.Ib(0,0) = 0.4874;
     srb_params.Ib(1,1) = 0.3081;

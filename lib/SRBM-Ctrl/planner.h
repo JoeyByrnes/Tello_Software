@@ -21,6 +21,7 @@ namespace  dash_planner
     void traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_params& human_params, Traj_planner_dyn_data& traj_planner_dyn_data, Human_dyn_data human_dyn_data,double t,int FSM_prev,int FSM, VectorXd x, MatrixXd lfv);
 
     void gen_vel_trapz_traj(const VectorXd& t_waypts, const VectorXd& v_waypts, VectorXd& t_traj, VectorXd& v_traj);
+    void gen_smooth_traj(const VectorXd& t_waypts, const VectorXd& v_waypts, VectorXd& t_traj, VectorXd& v_traj);
 
     void SRB_LIP_vel_traj(double des_walking_speed, VectorXd& t_traj, VectorXd& v_traj, double& t_beg_stepping_time, double& t_end_stepping_time);
 }

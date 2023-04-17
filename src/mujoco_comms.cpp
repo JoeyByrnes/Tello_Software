@@ -1,6 +1,7 @@
 #include "mujoco_comms.h"
 
 extern RoboDesignLab::DynamicRobot* tello;
+extern MatrixXd lfv_dsp_start;
 
 char error[1000];
 
@@ -65,6 +66,8 @@ double lasty = 0;
 double push_force_x = 0;
 double push_force_y = 0;
 double push_force_z = 0;
+
+bool sim_was_restarted = false;
 
 // end SRBM-Ctrl Variables here ================================================================
 SRB_Params srb_params;
@@ -153,6 +156,65 @@ void parse_json_to_srb_params(const std::string& json_file_path, SRB_Params& par
     std::cerr << "Error: " << e.what() << "\n";
     return;
   }
+  try {
+    params.T = json_data["srb_params"]["Step_Period"].get<double>();
+    params.zcl = json_data["srb_params"]["Step_Height"].get<double>();
+    params.des_walking_speed = json_data["srb_params"]["Walking_Speed"].get<double>();
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    return;
+  }
+}
+
+void parse_json_to_pd_params(const std::string& json_file_path, Joint_PD_config& swing, Joint_PD_config& posture) {
+  // Open the JSON file
+  std::ifstream json_file(json_file_path);
+  if (!json_file.is_open()) {
+    std::cerr << "Error: could not open JSON file\n";
+    return;
+  }
+
+  // Parse the JSON file
+  nlohmann::json json_data;
+  try {
+    json_file >> json_data;
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    return;
+  }
+
+  // Extract the values and write to the srb_params struct
+  try {
+    posture.hip_yaw_Kp = json_data["Posture_Control"]["Hip_Yaw_Kp"].get<double>();
+    posture.hip_yaw_Kd = json_data["Posture_Control"]["Hip_Yaw_Kd"].get<double>();
+    posture.hip_roll_Kp = json_data["Posture_Control"]["Hip_Roll_Kp"].get<double>();
+    posture.hip_roll_Kd = json_data["Posture_Control"]["Hip_Roll_Kd"].get<double>();
+    posture.hip_pitch_Kp = json_data["Posture_Control"]["Hip_Pitch_Kp"].get<double>();
+    posture.hip_pitch_Kd = json_data["Posture_Control"]["Hip_Pitch_Kd"].get<double>();
+    posture.knee_Kp = json_data["Posture_Control"]["Knee_Kp"].get<double>();
+    posture.knee_Kd = json_data["Posture_Control"]["Knee_Kd"].get<double>();
+    posture.ankle_Kp = json_data["Posture_Control"]["Ankle_Kp"].get<double>();
+    posture.ankle_Kd = json_data["Posture_Control"]["Ankle_Kd"].get<double>();
+    
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    return;
+  }
+  try {
+    swing.hip_yaw_Kp = json_data["Swing_Control"]["Hip_Yaw_Kp"].get<double>();
+    swing.hip_yaw_Kd = json_data["Swing_Control"]["Hip_Yaw_Kd"].get<double>();
+    swing.hip_roll_Kp = json_data["Swing_Control"]["Hip_Roll_Kp"].get<double>();
+    swing.hip_roll_Kd = json_data["Swing_Control"]["Hip_Roll_Kd"].get<double>();
+    swing.hip_pitch_Kp = json_data["Swing_Control"]["Hip_Pitch_Kp"].get<double>();
+    swing.hip_pitch_Kd = json_data["Swing_Control"]["Hip_Pitch_Kd"].get<double>();
+    swing.knee_Kp = json_data["Swing_Control"]["Knee_Kp"].get<double>();
+    swing.knee_Kd = json_data["Swing_Control"]["Knee_Kd"].get<double>();
+    swing.ankle_Kp = json_data["Swing_Control"]["Ankle_Kp"].get<double>();
+    swing.ankle_Kd = json_data["Swing_Control"]["Ankle_Kd"].get<double>();
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    return;
+  }
 }
 
 
@@ -164,9 +226,9 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
     // backspace: reset simulation
     if (act == GLFW_PRESS && key == GLFW_KEY_BACKSPACE)
     {
-        mj_resetData(m, d);
-        initial_legs_configuration(d);
-        mj_forward(m, d);
+        // mj_resetData(m, d);
+        // sim_was_restarted = true;
+        // mj_forward(m, d);
     }
     if (act == GLFW_PRESS && key == GLFW_KEY_X)
     {
@@ -350,15 +412,22 @@ void contactforce(const mjModel* m, mjData* d)
     mjtNum* f0_contact_pos = mj_stackAlloc(d, 3);//contact position in unkown frame. check
     mjtNum* f0_contact_frame = mj_stackAlloc(d, 9);
     mjtNum* f0_contact_force = mj_stackAlloc(d, 6);//contact force in contact frame
+
+    bool left_front_contact_detected = false;
+    bool left_back_contact_detected = false;
+    bool right_front_contact_detected = false;
+    bool right_back_contact_detected = false;
+
     for (int i = 0; i < d->ncon; i++)
     {
         mjContact* cur_contact = &((d->contact)[i]);
         std::string geom1 = mj_id2name(m, mjOBJ_GEOM, cur_contact->geom1);
         std::string geom2 = mj_id2name(m, mjOBJ_GEOM, cur_contact->geom2);
         //std::cout << "contact point # " << i + 1 << std::endl;
-        std::cout << mj_id2name(m, mjOBJ_GEOM, cur_contact->geom2) << "  :"; // normal
+        //std::cout << mj_id2name(m, mjOBJ_GEOM, cur_contact->geom2) << "  :"; // normal
         if (geom1.compare("floor") == 0 || geom2.compare("floor") == 0)
         {
+            
             //get robot's geom id
             int bodyid;
             if(geom1.compare("floor") == 0){ //return 0 if same string
@@ -383,10 +452,11 @@ void contactforce(const mjModel* m, mjData* d)
             mjtNum f_world[9];
             mju_mulMatMat(f_world, f0_contact_frame, fw_contact_force, 3, 3, 3);
             // mju_printMat(f_world, 3, 3);
-            std::cout << f_world[0] << ", " << f_world[3] << ", " << f_world[6] << endl;
+            //std::cout << f_world[0] << ", " << f_world[3] << ", " << f_world[6] << endl;
 
         } // if one geom is object
     } // for i = 1:ncon
+
     mjFREESTACK
 }
 
@@ -456,7 +526,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     mujoco_lfv.row(3) = Vector3d(left_foot_heel[0],left_foot_heel[1],left_foot_heel[2]);   
 
     // cout << "---------------------------------------------------------------------------------------" << endl;
-    // contactforce(m,d); 
+    contactforce(m,d); 
 
 	// Torso state vectors
     VectorXd SRB_q(6);
@@ -613,15 +683,17 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
     // BEGIN TASK PD CODE ======================================+++++++++++++++++
 
-    double joint_kp = 1000;
-	double joint_kd = 20;
-	VectorXd kp_vec_joint = VectorXd::Ones(10)*(joint_kp);
-	VectorXd kd_vec_joint = VectorXd::Ones(10)*joint_kd;
+    Joint_PD_config swing_conf, posture_conf;
+    parse_json_to_pd_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",swing_conf,posture_conf);
+    
+    VectorXd kp_vec_joint(10);
+	VectorXd kd_vec_joint(10);
 
-    kp_vec_joint(4) = 500;
-    kp_vec_joint(9) = 500;
-    kd_vec_joint(4) = 5;
-    kd_vec_joint(9) = 5;
+    kp_vec_joint << swing_conf.hip_yaw_Kp, swing_conf.hip_roll_Kp,swing_conf.hip_pitch_Kp, swing_conf.knee_Kp, swing_conf.ankle_Kp,
+                    swing_conf.hip_yaw_Kp, swing_conf.hip_roll_Kp,swing_conf.hip_pitch_Kp, swing_conf.knee_Kp, swing_conf.ankle_Kp;
+
+    kd_vec_joint << swing_conf.hip_yaw_Kd, swing_conf.hip_roll_Kd,swing_conf.hip_pitch_Kd, swing_conf.knee_Kd, swing_conf.ankle_Kd,
+                    swing_conf.hip_yaw_Kd, swing_conf.hip_roll_Kd,swing_conf.hip_pitch_Kd, swing_conf.knee_Kd, swing_conf.ankle_Kd;
 
 	MatrixXd kp_mat_joint = kp_vec_joint.asDiagonal();
 	MatrixXd kd_mat_joint = kd_vec_joint.asDiagonal();
@@ -663,37 +735,24 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 	
 	VectorXd swing_leg_torques = tello->taskPD2(task_pd_config);
 
-    joint_kp = 0;
-	joint_kd = 0;
-	kp_vec_joint = VectorXd::Ones(10)*(joint_kp);
-	kd_vec_joint = VectorXd::Ones(10)*joint_kd;
-    kp_vec_joint(0) = 300;
-    kd_vec_joint(0) = 200;
-    kp_vec_joint(5) = 300;
-    kd_vec_joint(5) = 200;
+    task_kp = 0;
+	task_kd = 0;
+	kp_vec_task = VectorXd::Ones(12)*task_kp;
+	kd_vec_task = VectorXd::Ones(12)*task_kd;
+	kp_mat_task = kp_vec_task.asDiagonal();
+	kd_mat_task = kd_vec_task.asDiagonal();
 
-    kp_vec_joint(1) = 0;
-    kd_vec_joint(1) = 0;
+    kp_vec_joint << posture_conf.hip_yaw_Kp, posture_conf.hip_roll_Kp,posture_conf.hip_pitch_Kp, posture_conf.knee_Kp, posture_conf.ankle_Kp,
+                    posture_conf.hip_yaw_Kp, posture_conf.hip_roll_Kp,posture_conf.hip_pitch_Kp, posture_conf.knee_Kp, posture_conf.ankle_Kp;
 
-    kp_vec_joint(6) = 0;
-    kd_vec_joint(6) = 0;
+    kd_vec_joint << posture_conf.hip_yaw_Kd, posture_conf.hip_roll_Kd,posture_conf.hip_pitch_Kd, posture_conf.knee_Kd, posture_conf.ankle_Kd,
+                    posture_conf.hip_yaw_Kd, posture_conf.hip_roll_Kd,posture_conf.hip_pitch_Kd, posture_conf.knee_Kd, posture_conf.ankle_Kd;
 
     kp_mat_joint = kp_vec_joint.asDiagonal();
 	kd_mat_joint = kd_vec_joint.asDiagonal();
     task_pd_config.joint_kp = kp_mat_joint;
 	task_pd_config.joint_kd = kd_mat_joint;
 
-	// kp_vec_task = VectorXd::Ones(12)*task_kp;
-	// kd_vec_task = VectorXd::Ones(12)*task_kd;
-    // kd_vec_task(2) = 50;
-    // kd_vec_task(5) = 50;
-    // kd_vec_task(8) = 50;
-    // kd_vec_task(11) = 50;
-	// kp_mat_task = kp_vec_task.asDiagonal();
-	// kd_mat_task = kd_vec_task.asDiagonal();
-
-    // task_pd_config.task_kp = kp_mat_task;
-	// task_pd_config.task_kd = kd_mat_task;
 
     VectorXd posture_ctrl_torques = tello->taskPD2(task_pd_config);
 
@@ -706,6 +765,10 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     // cout <<         "QP right_foot_heel  :  " << u.segment<3>(3).transpose() << endl;
     // cout <<         "QP left_foot_toe    :  " << u.segment<3>(6).transpose() << endl;
     // cout <<         "QP left_foot_heel   :  " << u.segment<3>(9).transpose() << endl;
+
+    // if(u.segment<3>(6)(2) < 8 || u.segment<3>(9)(2) < 8) cout << "                                                                                    LEFT FOOT OFF GROUND" << endl;
+
+    // if(u.segment<3>(0)(2) < 8 || u.segment<3>(3)(2) < 8) cout << "                                                                                                          RIGHT FOOT OFF GROUND" << endl;
     // cout <<         "---------------------------------------------------------------------------------------" << endl;
 	// end SRBM-Ctrl call here ==================================================================================
     
@@ -754,9 +817,9 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
 
     VectorXd torques_left  = tello->switchControllerJoint(tau_leg_l, swing_leg_torques.head(5),
-                                                          0.01,isSwingToStanceRight, d->time-transitionStartRight, 0);
+                                                          0.00,isSwingToStanceRight, d->time-transitionStartRight, 0);
     VectorXd torques_right = tello->switchControllerJoint(tau_leg_r, swing_leg_torques.tail(5),
-                                                          0.01,isSwingToStanceLeft,d->time-transitionStartLeft, 1);
+                                                          0.00,isSwingToStanceLeft,d->time-transitionStartLeft, 1);
 
     if(d->time > srb_params.t_end_stepping+0.01 && stepping_in_progress)
     {
@@ -832,6 +895,9 @@ void* mujoco_Update_1KHz( void * arg )
 	lfv = lfv0;
 	lfdv = lfdv0;
 	u = u0;
+    lfv_dsp_start = lfv0;
+
+    parse_json_to_srb_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",srb_params);
 
     std::string recording_file_name;
     double sim_time;
@@ -855,12 +921,12 @@ void* mujoco_Update_1KHz( void * arg )
         printf("Walking Selected\n\n");
         // Option 2: Walking using LIP angular momentum regulation about contact point
         // user input (walking speed and step frequency)
-        double des_walking_speed = 0.05;
-        double des_walking_step_period = 0.2;
+        double des_walking_speed = srb_params.des_walking_speed;
+        // double des_walking_step_period = 0.2;<---- CHANGE IN JSON, NOT HERE
         // end user input
         recording_file_name = "Walking";
         srb_params.planner_type = 1; 
-        srb_params.T = des_walking_step_period;
+        // srb_params.T = des_walking_step_period;<---- CHANGE IN JSON, NOT HERE
         VectorXd t_traj, v_traj;
         double t_beg_stepping_time, t_end_stepping_time;
         dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
@@ -870,11 +936,8 @@ void* mujoco_Update_1KHz( void * arg )
         srb_params.t_end_stepping = t_end_stepping_time;
         sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
     }
-
-    parse_json_to_srb_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",srb_params);
-
-    srb_params.m = 22;
-    srb_params.zcl = 0.03; // swing-leg max height in m
+    
+    //srb_params.zcl = 0.03; <---- CHANGE IN JSON, NOT HERE
 
 
 	// Initialize trajectory planner data
@@ -883,7 +946,7 @@ void* mujoco_Update_1KHz( void * arg )
 	for (int i = 0; i < 4; i++) {
 		Jv_mat[i] = MatrixXd::Zero(3, 5);
 	}
-
+    
 	// activate software
     mj_activate("./lib/Mujoco/mjkey.txt");
 
@@ -945,6 +1008,7 @@ void* mujoco_Update_1KHz( void * arg )
 
 	// END SETUP CODE FOR MUJOCO ========================================================================
     mj_step(m, d);
+    
 	while(!glfwWindowShouldClose(window))
     {
         handle_start_of_periodic_task(next);
@@ -984,6 +1048,11 @@ void* mujoco_Update_1KHz( void * arg )
         // get framebuffer viewport
         mjrRect viewport = { 0, 0, 0, 0 };
         glfwGetFramebufferSize(window, &viewport.width, &viewport.height);
+
+
+        cam.lookat[0] = d->qpos[torso_x_idx];
+        cam.lookat[1] = 0;
+        cam.lookat[2] = -0.2;
         // set the background color to white
 
         // update scene and render

@@ -70,6 +70,7 @@ struct SRB_Params
     double Fz_min_FSM;
     Vector2d q1_lim;
     Vector2d q2_lim;
+    double des_walking_speed;
 };
 
 struct Human_params {
@@ -116,6 +117,10 @@ struct Traj_planner_dyn_data
     Vector3d sw_beg_step;
     Vector3d human_leg_joystick_pos_beg_step;
     double sigma1H;
+    bool left_in_contact = true;
+    bool right_in_contact = true;
+    int left_off_gnd_cnt = 0;
+    int right_off_gnd_cnt = 0;
 };
 
 struct Teleop_Ref {
@@ -166,6 +171,20 @@ struct Teleop_2DLIP_Traj_Data {
     double phiR_curr;
     double dphiR_curr;
     double MxR_curr;
+};
+
+struct Joint_PD_config
+{
+    double hip_yaw_Kp;
+    double hip_yaw_Kd;
+    double hip_roll_Kp;
+    double hip_roll_Kd;
+    double hip_pitch_Kp;
+    double hip_pitch_Kd;
+    double knee_Kp;
+    double knee_Kd;
+    double ankle_Kp;
+    double ankle_Kd;
 };
 
 #endif

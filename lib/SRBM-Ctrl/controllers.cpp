@@ -1,5 +1,7 @@
 #include "controllers.h"
 
+extern MatrixXd lfv_dsp_start;
+
 void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm, Human_dyn_data& human_dyn_data, 
                                         SRB_Params srb_params, Human_params human_params, Traj_planner_dyn_data traj_planner_dyn_data, 
                                         int FSM, double t, VectorXd x, MatrixXd lfv, MatrixXd lfdv, VectorXd tau_ext)
@@ -455,7 +457,7 @@ void dash_ctrl::sw2CoM_end_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm
     const Vector3d pc = x.head<3>();
 
     // Initialize commanded end-effector positions (DSP)
-    lfv_comm = lfv;
+    lfv_comm = lfv_dsp_start;//lfv;
     lfdv_comm.setZero();// = lfdv;
 
     // Swing-leg trajectories

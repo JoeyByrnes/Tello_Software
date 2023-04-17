@@ -2,6 +2,8 @@
 
 extern MatrixXd lfv0, lfdv0;
 
+MatrixXd lfv_dsp_start(4,3);
+
 void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_time, SRB_Params& srb_params, MatrixXd lfv, char DoF, int num_tests)
 {
     double amplitude;
@@ -108,6 +110,8 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     else 
         t_dsp_start = 0.0;
 
+    int next_SSP = traj_planner_dyn_data.next_SSP;
+
 
     // get swing-foot z-position (front line foot pt) relative to ground --
     // assume constant height for now
@@ -142,11 +146,11 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     //cout << FSM_prev << "\t " << u1z << "\t " << u3z <<endl;
     if (FSM_prev == 0) // currently in DSP
     {
-        if ( (u1z < Fz_min || u2z < Fz_min) && t > 0 && s_dsp > 0.05) // enter SSP_L
+        if ( (u1z < Fz_min || u2z < Fz_min) && t > 0 && s_dsp > 0.01 && next_SSP == 1) // enter SSP_L
         {
             FSM_next = 1;
         }
-        else if ( (u3z < Fz_min || u4z < Fz_min) && t > 0 && s_dsp > 0.05) // enter SSP_R 
+        else if ( (u3z < Fz_min || u4z < Fz_min) && t > 0 && s_dsp > 0.01  && next_SSP == -1) // enter SSP_R 
         {
             FSM_next = -1;     
         }
@@ -157,7 +161,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     }
     else if (FSM_prev == 1) // currently in SSP_L
     {
-        if ( (lf1z <= 0.0 || lf2z <= 0.0) && s > 0.6) // enter DSP
+        if ( (lf1z <= 0.0 || lf2z <= 0.0) && s > 0.2) // enter DSP
         {
             FSM_next = 0;
         }
@@ -168,7 +172,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     }
     else if (FSM_prev == -1) // currently in SSP_R
     {
-        if ( (lf3z <= 0.0 || lf3z <= 0.0) && s > 0.6) // enter DSP
+        if ( (lf3z <= 0.0 || lf3z <= 0.0) && s > 0.2) // enter DSP
         {
             FSM_next = 0;
         }
@@ -432,6 +436,7 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
         } else if ((FSM_prev == 1 || FSM_prev == -1) && FSM == 0) { // SSP to DSP transition
             // update step time with previous step duration
             traj_planner_dyn_data.t_dsp_start = t;
+            lfv_dsp_start = lfv;
 
             if (planner_type == 2) {
                 traj_planner_dyn_data.T_step = t - traj_planner_dyn_data.t_sw_start;
@@ -551,7 +556,7 @@ void dash_planner::SRB_LIP_vel_traj(double des_walking_speed, VectorXd& t_traj, 
 {
     // Tunable waypoints (time in s)
     VectorXd t_waypts_0p1to3ms(6), t_waypts_0p4ms(6), t_waypts_0p5to6ms(6), t_waypts_0p7ms(6), t_waypts_0p8ms(6);
-    t_waypts_0p1to3ms << 0.0, 2.0, 4.5, 7.5, 9.0, 10.0;
+    t_waypts_0p1to3ms << 0.0, 2.0, 4.5, 10.5, 13.0, 14.0;
     t_waypts_0p4ms << 0.0, 1.0, 2.0, 4.0, 6.0, 7.0;
     t_waypts_0p5to6ms << 0.0, 1.0, 2.0, 4.0, 6.0, 7.5;
     t_waypts_0p7ms << 0.0, 1.0, 4.0, 6.0, 9.0, 13.0;
@@ -582,8 +587,8 @@ void dash_planner::SRB_LIP_vel_traj(double des_walking_speed, VectorXd& t_traj, 
     v_waypts << 0.0, 0.0, des_walking_speed, des_walking_speed, 0.0, 0.0;
 
     // generate trajectory
-    //gen_vel_trapz_traj(t_waypts, v_waypts, t_traj, v_traj);
-    gen_smooth_traj(t_waypts, v_waypts, t_traj, v_traj);
+    gen_vel_trapz_traj(t_waypts, v_waypts, t_traj, v_traj);
+    //gen_smooth_traj(t_waypts, v_waypts, t_traj, v_traj);
     // cout << "V_TRAJ =============================" << endl;
     // cout << v_traj << endl;
 

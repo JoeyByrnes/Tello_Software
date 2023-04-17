@@ -80,7 +80,7 @@ void dash_init::SRB_Init(VectorXd& x0, MatrixXd& q0, MatrixXd& qd0, MatrixXd& lf
         // default initialization places feet underneath hips
         // assumes no hip roll or yaw
         double hip_angle_yaw_init = 0;
-        double hip_angle_roll_init = 0;//0.0872665;
+        double hip_angle_roll_init = 0.0472665;
         double HK_length = thigh_length;
         double KA_length = calf_length;
         double HA_length = hR - CoM2H_z_dist - heel_length;
@@ -155,11 +155,11 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
 
     // physical constants
     srb_params.g = 9.81; // acceleration due to gravity in m/s^2
-    srb_params.mu = 0.8; // coefficient of friction value
+    srb_params.mu = 1; // coefficient of friction value
 
     // SRB specific
-    srb_params.m = 20.2; // robot mass in kg
-    srb_params.hLIP = 0.62; // nominal robot LIP height
+    srb_params.m = 20; // robot mass in kg
+    srb_params.hLIP = 0.68; // nominal robot LIP height
     srb_params.Ib = Matrix3d::Identity();
     srb_params.Ib(0,0) = 0.4874;
     srb_params.Ib(1,1) = 0.3081;

@@ -320,9 +320,9 @@ void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, 
             break;
         }
     }
-    if (vx_des <= 0.0) {
-        vx_des = 0.0;
-    }
+    // if (vx_des <= 0.0) {
+    //     vx_des = 0.0;
+    // }
 
     // LIP states
     

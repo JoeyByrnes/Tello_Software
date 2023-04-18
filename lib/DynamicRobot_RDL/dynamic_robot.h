@@ -156,6 +156,8 @@ namespace RoboDesignLab {
         VectorXd jointPD2(JointPDConfig joint_conf);
         VectorXd taskPD2(TaskPDConfig task_conf);
 
+        // Quaterniond getFootOrientation(const Vector3d& lf1, const Vector3d& lf2, const Vector3d& knee);
+
         void addGravityCompensation();
         Vector3d transformForceToWorldFrame(const Eigen::VectorXd& force, VectorXd ypr);
         

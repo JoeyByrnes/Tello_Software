@@ -3,26 +3,26 @@
   <size njmax = "500" nconmax = "100" />
 
   <compiler angle = 'radian' inertiafromgeom = "false" meshdir = "meshes/"/>
-  <option timestep='0.0001' iterations='100' solver='PGS' gravity='0 0 -9.81'/>
+  <!-- <option timestep='0.001' iterations='100' solver='PGS' gravity='0 0 -9.81'/> -->
 	<default>
-    <joint limited='true' damping="0.2"/>
+    <joint limited='true' damping="10"/>
     <motor ctrllimited='true'/>
-    <geom contype='0' conaffinity='0' condim='1'/>
-    <equality solimp="1 2 0.01"/>
+    <geom contype='0' conaffinity='0' condim='1' solref='0.005 0.95'/>
+    <!-- <equality solref='0.005 1'/> -->
     <default class='TELLO'>
     </default>
     <default class='collision'>
       <!-- User parameter for geoms is used to identify collision types -->
-      <geom contype='1' user='2' solimp="1 2 0.01"/>
+      <geom contype='1' user='2' />
       <default class='collision-left'>
-        <geom contype='2' conaffinity='4' solimp="1 2 0.01"/>
+        <geom contype='2' conaffinity='4' />
       </default>
       <default class='collision-right'>
-        <geom contype='4' conaffinity='2' solimp="1 2 0.01"/>
+        <geom contype='4' conaffinity='2' />
       </default>
     </default>
     <default class='obstacle'>
-      <geom material='obstacle' condim='3' contype='8' conaffinity='15' user='1' solimp="1 2 0.01"/>
+      <geom material='obstacle' condim='3' contype='8' conaffinity='15' user='1'/>
     </default>
   </default>
   
@@ -52,22 +52,23 @@
   
   <worldbody>
   
- 	<geom name ='floor' solimp="1 2 0.01" pos ='0 0 -0.68' size ='5 5 .125' type = 'plane' material ='MatPlane' condim = '3' conaffinity = '15'/>
+ 	<geom name ='floor' pos ='0 0 -0.68' size ='5 5 .125' type = 'plane' material ='MatPlane' condim = '3' conaffinity = '15'/>
 	<!-- <light mode ='trackcom' pos = '0 0 5' dir = '0 0 -1'/> -->
 	<light directional = 'true' pos = '0 0 3' dir = '0 0 -1' diffuse = '0.2 0.2 0.2' specular = '0 0 0'/>	 
     <light mode='trackcom' pos='5 0 5' dir='-1 0 -1'/>
   
 	<body name = 'torso' pos = '0 0 0.05'> 
 	
+		<site name='imu' size='0.01' pos='-0.06 0 0.015'/>
         <inertial pos = '0.0 0.0 -0.05' mass = '10.2' fullinertia = '0.4874 0.3081 0.2390 -0.00001031974 -0.00066429218 0.00013049593'/>
 		<geom type="sphere" size="0.01" pos="0 0 0" rgba="1 1 0 1"/>
 		<geom type="sphere" size="0.01" pos="0 0 -0.05" rgba="0 1 0 1"/>
-		<joint axis = "1 0 0" pos = "0 0 -0.05" name = "move_x" type = "slide" limited = "false"/>
-		<joint axis = "0 1 0" pos = "0 0 -0.05" name = "move_y" type = "slide" limited = "false"/>
-		<joint axis = "0 0 1" pos = "0 0 -0.05" name = "move_z" type = "slide" limited = "false"/>
-		<joint axis = "1 0 0" pos = "0 0 -0.05" name = "rotate_roll" type = "hinge" limited = "false"/>
-		<joint axis = "0 1 0" pos = "0 0 -0.05" name = "rotate_pitch" type = "hinge" limited = "false"/>
-		<joint axis = "0 0 1" pos = "0 0 -0.05" name = "rotate_yaw" type = "hinge" limited = "false"/>  
+		<joint axis = "1 0 0" pos = "0 0 -0.05" name = "move_x" type = "slide" limited = "false" damping="0"/>
+		<joint axis = "0 1 0" pos = "0 0 -0.05" name = "move_y" type = "slide" limited = "false" damping="0"/>
+		<joint axis = "0 0 1" pos = "0 0 -0.05" name = "move_z" type = "slide" limited = "false" damping="0"/>
+		<joint axis = "1 0 0" pos = "0 0 -0.05" name = "rotate_roll" type = "hinge" limited = "false" damping="0"/>
+		<joint axis = "0 1 0" pos = "0 0 -0.05" name = "rotate_pitch" type = "hinge" limited = "false" damping="0"/>
+		<joint axis = "0 0 1" pos = "0 0 -0.05" name = "rotate_yaw" type = "hinge" limited = "false" damping="0"/>  
 		<geom quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.7 0 0 1" mesh="torso_link" contype='0'/>
 		<!-- <geom quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="torso_link" class = "collision"/> -->
 		<geom name="torso_box" pos="0 0 0.01" size="0.07 0.15 0.15" type="box" rgba="0.1 0.4 0.1 0.0" class="collision"/>
@@ -103,8 +104,11 @@
 				  <inertial pos="0.0027627 0.12311 0.57017" quat="0.999973 0.00562277 0.00469994 -0.000348412" mass="0.15" diaginertia="0.00007 0.00014 0.00007"/>
 				  <joint name="right_ankle" pos="0 0 0" axis="0 -1 0" limited = "true" range = "-0.785398 0.785398" armature=" 0.006" damping="1"/>
 				  <geom type="mesh" rgba="0.7 0 0 1" mesh="right_foot" euler="0 0 3.14159265359" contype='0'/>
- 				  <geom name = "right_foot_heel" pos = "-0.06 0 0.0385"  size = "0.01" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
-				  <geom name = "right_foot_toe" pos = "0.06 0 0.0385"  size = "0.01" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
+ 				  <geom name = "right_foot_heel" pos = "-0.065 0 0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
+				  <geom name = "right_foot_toe" pos = "0.065 0 0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
+
+				  <geom name = "rfh" pos = "-0.06 0 0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+				  <geom name = "rft" pos = "0.06 0 0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
                   <!-- <geom type='capsule' size='0.01' fromto='-0.06 0 0.0385 0.06 0 0.0385' class='collision-right'/> -->
 				  
 				</body>
@@ -148,8 +152,11 @@
 				  <inertial pos="0.0027627 -0.12889 0.57017" quat="0.999973 0.00562277 0.00469994 -0.000348412" mass="0.15" diaginertia="0.00007 0.00014 0.00007"/>
 				  <joint name="left_ankle" pos="0 0 0" axis="0 -1 0" limited = "true" range = "-0.785398 0.785398" armature=" 0.006" damping="1"/>
 				  <geom type="mesh" rgba="0.7 0 0 1" mesh="left_foot" euler="0 0 3.14159265359" contype='0'/>
- 				  <geom name = "left_foot_heel" pos = "-0.06 0 0.0385"  size = "0.01" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>
-				  <geom name = "left_foot_toe" pos = "0.06 0 0.0385"  size = "0.01" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>	  
+ 				  <geom name = "left_foot_heel" pos = "-0.065 0 0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>
+				  <geom name = "left_foot_toe" pos = "0.065 0 0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>	
+
+				  <geom name = "lfh" pos = "-0.06 0 0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+				  <geom name = "lft" pos = "0.06 0 0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>	  
                   <!-- <geom type='capsule' size='0.01' fromto='-0.06 0 0.0385 0.06 0 0.0385' class='collision-left'/> -->
 				  
 				</body>
@@ -163,9 +170,9 @@
 		</body>
 		
 	</body>	
-	
-  </worldbody>
-  
+
+</worldbody>
+
 <actuator>
 
 	<motor name = 'right_hip_yaw_tq'  joint = 'right_hip_yaw'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
@@ -179,6 +186,11 @@
 	<motor name = 'right_ankle_tq'  joint = 'right_ankle'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
 	<motor name = 'left_ankle_tq'  joint = 'left_ankle'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
 
-</actuator>     
+</actuator>    
+
+<sensor>
+    <gyro name='toso-angular-velocity' site='imu' noise='5e-4' cutoff='34.9'/>
+    <accelerometer name='torso-linear-acceleration' site='imu' noise='1e-2' cutoff='157'/>
+</sensor>
   
 </mujoco>

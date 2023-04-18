@@ -5,6 +5,7 @@ extern MatrixXd lfv_dsp_start;
 
 char error[1000];
 
+double sim_time;
 bool pause_sim = true;
 bool isSwingToStanceLeft = true;
 bool isSwingToStanceRight = true;
@@ -396,6 +397,19 @@ Vector3d hipToWorld(Vector3d vector_hip, Vector3d hip_pos_world, Vector3d hip_or
     return vector_world;
 }
 
+Quaterniond getFootOrientation(const Vector3d& lf1, const Vector3d& lf2, const Vector3d& knee)
+{
+    Vector3d x = (lf1 - lf2).normalized(); // x axis points from b to a
+    Vector3d z = (knee - lf1).cross(lf2 - lf1); // z axis is perpendicular to the line created by a and b and parallel to the line that runs through c
+    z = z.normalized();
+    Vector3d y = z.cross(x).normalized(); // y axis is orthogonal to the plane created by the 3 points
+
+    Matrix3d rotation_matrix;
+    rotation_matrix << x, y, z;
+
+    return Quaterniond(rotation_matrix);
+}
+
 Eigen::VectorXd calc_pd(VectorXd position, VectorXd velocity, VectorXd desiredPosition, VectorXd desiredVelocity, MatrixXd Kp, MatrixXd Kd) 
 {
   // Compute position error
@@ -506,10 +520,10 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     mjtNum left_foot_heel[3];
     mjtNum right_foot_toe[3];
     mjtNum right_foot_heel[3];
-    const char* lft = "left_foot_toe";
-    const char* lfh = "left_foot_heel";
-    const char* rft = "right_foot_toe";
-    const char* rfh = "right_foot_heel";
+    const char* lft = "lft";
+    const char* lfh = "lfh";
+    const char* rft = "rft";
+    const char* rfh = "rfh";
     int geom_id = mj_name2id(m, mjOBJ_GEOM, lft);
     memcpy(left_foot_toe, &d->geom_xpos[3*geom_id], 3*sizeof(mjtNum));
     geom_id = mj_name2id(m, mjOBJ_GEOM, lfh);
@@ -525,8 +539,43 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     mujoco_lfv.row(2) = Vector3d(left_foot_toe[0],left_foot_toe[1],left_foot_toe[2]);
     mujoco_lfv.row(3) = Vector3d(left_foot_heel[0],left_foot_heel[1],left_foot_heel[2]);   
 
-    // cout << "---------------------------------------------------------------------------------------" << endl;
+    VectorXd mujoco_lfv_vector = dash_utils::flatten(mujoco_lfv);
+
+    Vector3d hip_right_pos_world1 = right_leg_last.col(0);
+    Vector3d hip_left_pos_world1 = left_leg_last.col(0);
+    Vector3d torso_orientation_world1(phiR, thetaR, psiR);
+
+    Vector3d task_right_front_world = mujoco_lfv.row(0).transpose();
+    Vector3d task_right_back_world  = mujoco_lfv.row(1).transpose();
+    Vector3d task_left_front_world  = mujoco_lfv.row(2).transpose();
+    Vector3d task_left_back_world   = mujoco_lfv.row(3).transpose();
+    Vector3d task_right_front_torso = worldToHip(task_right_front_world, hip_right_pos_world1, torso_orientation_world1);
+    Vector3d task_right_back_torso  = worldToHip(task_right_back_world, hip_right_pos_world1, torso_orientation_world1);
+    Vector3d task_left_front_torso  = worldToHip(task_left_front_world, hip_left_pos_world1, torso_orientation_world1);
+    Vector3d task_left_back_torso   = worldToHip(task_left_back_world, hip_left_pos_world1, torso_orientation_world1);
+
+    VectorXd task_pos_sim(12);
+    task_pos_sim << task_left_front_torso,task_left_back_torso,task_right_front_torso,task_right_back_torso;
+
+    dash_utils::setOutputFolder("/home/joey/Desktop/tello_outputs/");
+    dash_utils::writeVectorToCsv(mujoco_lfv_vector,"mujoco_lfv.csv");
+
     contactforce(m,d); 
+
+    // Access the acceleration and angular velocity data from the sensors
+    mjtNum acceleration[3];
+    mjtNum angular_velocity[3];
+
+    int accel_sensor_id = mj_name2id(m, mjOBJ_SENSOR, "torso-linear-acceleration");
+    int gyro_sensor_id = mj_name2id(m, mjOBJ_SENSOR, "toso-angular-velocity");
+
+    mju_copy3(acceleration, &d->sensordata[accel_sensor_id]);
+    mju_copy3(angular_velocity, &d->sensordata[gyro_sensor_id]);
+
+    // Print the acceleration and angular velocity data
+    // printf("Acceleration: (%f, %f, %f)\n", acceleration[0], acceleration[1], acceleration[2]);
+    // printf("Angular Velocity: (%f, %f, %f)\n", angular_velocity[0], angular_velocity[1], angular_velocity[2]);
+
 
 	// Torso state vectors
     VectorXd SRB_q(6);
@@ -616,6 +665,13 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     right_leg_last = right_leg;
     left_leg_last = left_leg;
 
+    Vector3d lf1 = right_leg.col(3);
+    Vector3d lf2 = right_leg.col(4);
+    Vector3d knee = right_leg.col(1);
+
+    Quaterniond quat = getFootOrientation(lf1,lf2,knee);
+    Eigen::Vector3d euler_angles = quat.toRotationMatrix().eulerAngles(0, 1, 2);
+
     // cout << "lfv:" << endl;
     // cout << lfv << endl;
     // cout << "mujoco lfv:" << endl;
@@ -632,6 +688,11 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 								   human_params, FSM, FSM_prev, t, x, lfv, lfdv, u, 
 								   tau_ext, SRB_state_ref, SRB_wrench_ref, lfv_comm, lfdv_comm);
 
+    VectorXd lfv_comm_vector = dash_utils::flatten(lfv_comm);
+
+    dash_utils::setOutputFolder("/home/joey/Desktop/tello_outputs/");
+    dash_utils::writeVectorToCsv(lfv_comm_vector,"lfv_comm.csv");
+
     // cout << "SRB_State_Ref:" << endl;
     // cout << SRB_state_ref.col(0).transpose() << endl;
     // cout << "State:" << endl;
@@ -644,12 +705,12 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     VectorXd state_vel(6);
     state_vel << x.segment<3>(3), dEA_curr;
 
-    dash_utils::setOutputFolder("/home/joey/Desktop/tello_outputs/latest/");
-    dash_utils::writeVectorToCsv(SRB_state_ref.col(0),"SRB_state_Ref.csv");
-    dash_utils::writeVectorToCsv(state,"state.csv");
+    // dash_utils::setOutputFolder("/home/joey/Desktop/tello_outputs/latest/");
+    // dash_utils::writeVectorToCsv(SRB_state_ref.col(0),"SRB_state_Ref.csv");
+    // dash_utils::writeVectorToCsv(state,"state.csv");
 
-    dash_utils::writeVectorToCsv(SRB_state_ref.col(1),"SRB_state_Ref_vel.csv");
-    dash_utils::writeVectorToCsv(state_vel,"state_vel.csv");
+    // dash_utils::writeVectorToCsv(SRB_state_ref.col(1),"SRB_state_Ref_vel.csv");
+    // dash_utils::writeVectorToCsv(state_vel,"state_vel.csv");
 
     // Transform lfv an lfdv to hip frames here:
 
@@ -718,6 +779,39 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 	int task_kd = 0;
 	VectorXd kp_vec_task = VectorXd::Ones(12)*task_kp;
 	VectorXd kd_vec_task = VectorXd::Ones(12)*task_kd;
+
+    kp_vec_task(0) = 0;
+    kp_vec_task(1) = 0;
+    kp_vec_task(2) = 0;
+
+    kp_vec_task(3) = kp_vec_task(0);
+    kp_vec_task(4) = kp_vec_task(1);
+    kp_vec_task(5) = kp_vec_task(2);
+
+    kp_vec_task(6) = kp_vec_task(0);
+    kp_vec_task(7) = kp_vec_task(1);
+    kp_vec_task(8) = kp_vec_task(2);
+
+    kp_vec_task(9) = kp_vec_task(0);
+    kp_vec_task(10) = kp_vec_task(1);
+    kp_vec_task(11) = kp_vec_task(2);
+
+    kd_vec_task(0) = 0;
+    kd_vec_task(1) = 0;
+    kd_vec_task(2) = 0;
+
+    kd_vec_task(3) = kd_vec_task(0);
+    kd_vec_task(4) = kd_vec_task(1);
+    kd_vec_task(5) = kd_vec_task(2);
+
+    kd_vec_task(6) = kd_vec_task(0);
+    kd_vec_task(7) = kd_vec_task(1);
+    kd_vec_task(8) = kd_vec_task(2);
+
+    kd_vec_task(9) = kd_vec_task(0);
+    kd_vec_task(10) = kd_vec_task(1);
+    kd_vec_task(11) = kd_vec_task(2);
+
 	MatrixXd kp_mat_task = kp_vec_task.asDiagonal();
 	MatrixXd kd_mat_task = kd_vec_task.asDiagonal();
 
@@ -817,11 +911,11 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
 
     VectorXd torques_left  = tello->switchControllerJoint(tau_leg_l, swing_leg_torques.head(5),
-                                                          0.00,isSwingToStanceRight, d->time-transitionStartRight, 0);
+                                                          0.005,isSwingToStanceRight, d->time-transitionStartRight, 0);
     VectorXd torques_right = tello->switchControllerJoint(tau_leg_r, swing_leg_torques.tail(5),
-                                                          0.00,isSwingToStanceLeft,d->time-transitionStartLeft, 1);
+                                                          0.005,isSwingToStanceLeft,d->time-transitionStartLeft, 1);
 
-    if(d->time > srb_params.t_end_stepping+0.01 && stepping_in_progress)
+    if(d->time > srb_params.t_end_stepping+2 && stepping_in_progress)
     {
         // stepping has finished, switch to balancing
         stepping_in_progress = false;
@@ -859,6 +953,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     FSM_prev = FSM;
 
 }
+
 
 void* mujoco_Update_1KHz( void * arg )
 {
@@ -900,7 +995,6 @@ void* mujoco_Update_1KHz( void * arg )
     parse_json_to_srb_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",srb_params);
 
     std::string recording_file_name;
-    double sim_time;
     printf("Choose a Test:\n\n");
     printf("x: lean\n");
     printf("y: side2side\n");
@@ -1006,6 +1100,7 @@ void* mujoco_Update_1KHz( void * arg )
 
     m->opt.timestep = 0.001;
 
+
 	// END SETUP CODE FOR MUJOCO ========================================================================
     mj_step(m, d);
     
@@ -1052,7 +1147,6 @@ void* mujoco_Update_1KHz( void * arg )
 
         cam.lookat[0] = d->qpos[torso_x_idx];
         cam.lookat[1] = 0;
-        cam.lookat[2] = -0.2;
         // set the background color to white
 
         // update scene and render

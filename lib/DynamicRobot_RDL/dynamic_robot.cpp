@@ -324,6 +324,7 @@ VectorXd DynamicRobot::switchControllerJoint(VectorXd stanceTorques, VectorXd sw
 
     if(switchFactor > 1) switchFactor = 1;
     if (isSwingToStance) {
+        // return stanceTorques;
         switchFactor = 1 - switchFactor;  // If transitioning from stance to swing, invert the switch factor
     }
     double smoothVal = sigmoid((switchFactor - 0.5) * 12);  // Scale the switch factor to be between -5 and 5, and apply sigmoid function
@@ -611,6 +612,8 @@ VectorXd DynamicRobot::jointPD2(JointPDConfig joint_conf)
 
     return (joint_torques + joint_conf.joint_ff_torque);
 }
+
+
 
 VectorXd DynamicRobot::taskPD2(TaskPDConfig task_conf)
 {

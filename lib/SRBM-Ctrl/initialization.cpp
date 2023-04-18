@@ -95,7 +95,7 @@ void dash_init::SRB_Init(VectorXd& x0, MatrixXd& q0, MatrixXd& qd0, MatrixXd& lf
         qr(1) =  hip_angle_roll_init;
         qr(2) = hip_angle_pitch_init;
         qr(3) = knee_angle_init;
-        qr(4) = ankle_angle_init;
+        qr(4) = ankle_angle_init+0.002;
         VectorXd ql = qr;
         q0.row(0) = qr;
         q0.row(1) = ql;
@@ -158,7 +158,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
     srb_params.mu = 1; // coefficient of friction value
 
     // SRB specific
-    srb_params.m = 20; // robot mass in kg
+    srb_params.m = 23; // robot mass in kg
     srb_params.hLIP = 0.68; // nominal robot LIP height
     srb_params.Ib = Matrix3d::Identity();
     srb_params.Ib(0,0) = 0.4874;
@@ -213,7 +213,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
     srb_params.KxDCMH = 1.0; // gain for human DCM
     srb_params.Kx_DCM_mult = 3.0; // multiplier of K_DCM for sagittal plane control
     srb_params.Ky_DCM_mult = 3.0; // multiplier of K_DCM for frontal plane control
-    srb_params.T_DSP = 0.075; // assumed duration of DSP in s
+    srb_params.T_DSP = 0.005; // assumed duration of DSP in s
     srb_params.lmaxR = 0.5; // maximum step length in m
 
     // controller 
@@ -239,7 +239,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
     srb_params.beta_trans = 0.465; // transmission kinematics beta term
     srb_params.gamma_trans = 0.5; // transmission kinematics gamma term
     srb_params.Fz_min_QP = 0.0; // vertical force min to make sure no pulling on the ground (force distribution QP)
-    srb_params.Fz_min_FSM = 8; // vertical force min to detect when foot breaks contact (FSM) 
+    srb_params.Fz_min_FSM = 5; // vertical force min to detect when foot breaks contact (FSM) 
 
     // joint limits
     srb_params.q1_lim << -M_PI/9, M_PI/9;

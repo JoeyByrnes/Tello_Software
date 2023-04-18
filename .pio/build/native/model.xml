@@ -1,0 +1,15 @@
+<mujoco>
+    <worldbody>
+        <geom type="capsule" fromto="0 0 0 0.1 0 0" rgba="1 0 0 1" size="0.003" name="x_axis"/>
+        <geom type="capsule" fromto="0 0 0 0 0.1 0" rgba="0 1 0 1" size="0.003" name="y_axis"/>
+        <geom type="capsule" fromto="0 0 0 0 0 0.1" rgba="0 0 1 1" size="0.003" name="z_axis"/>
+        <body name="frame" pos="0 0 0">
+            <joint type="free"/>
+            <geom type="sphere" size="0.005"/>
+        </body>
+    </worldbody>
+
+    <actuator>
+        <general/>
+    </actuator>
+</mujoco>

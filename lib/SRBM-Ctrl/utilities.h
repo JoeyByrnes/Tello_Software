@@ -8,6 +8,7 @@
 #include <vector>
 #include <algorithm>
 #include <fstream>
+#include "json.hpp"
 
 using namespace std;
 using namespace Eigen;
@@ -16,6 +17,8 @@ namespace  dash_utils
 {
     Vector3d calc_EA(Matrix3d R);
     Vector3d calc_dEA(Matrix3d R, Vector3d wb);
+    VectorXd calc_wb(Vector3d dEA, VectorXd EA);
+
     void gen_trapz_traj(double max_speed, Eigen::VectorXd &t, Eigen::VectorXd &x); 
     Matrix3d hatMap(VectorXd a);
 
@@ -37,5 +40,11 @@ namespace  dash_utils
     void setOutputFolder(const std::string& foldername);
 
     void writeSRBParamsToTxt(const SRB_Params& params, const std::string& filename);
+
+    Vector3d worldToHip(Vector3d foot_pos_world, Vector3d hip_pos_world, Vector3d hip_orient_world);
+    Vector3d hipToWorld(Vector3d vector_hip, Vector3d hip_pos_world, Vector3d hip_orient_world);
+
+    void parse_json_to_pd_params(const std::string& json_file_path, Joint_PD_config& swing, Joint_PD_config& posture);
+    void parse_json_to_srb_params(const std::string& json_file_path, SRB_Params& params); 
 
 }

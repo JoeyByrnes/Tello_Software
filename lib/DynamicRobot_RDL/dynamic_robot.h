@@ -141,7 +141,7 @@ namespace RoboDesignLab {
         double sigmoid(double x) { return 1 / (1 + exp(-x)); }
         MotorPDConfig switchController(const MotorPDConfig& stanceCtrl, const MotorPDConfig& swingCtrl,
                                        int durationMs, bool isSwingToStance, int currTimeStep);
-        VectorXd switchControllerJoint(VectorXd stanceTorques, VectorXd swingTorques,
+        VectorXd swing_stance_mux(VectorXd stanceTorques, VectorXd swingTorques,
                                double duration_sec, bool isSwingToStance, double currTimeStep, int side);
 
         VectorXd getJointVelocities();

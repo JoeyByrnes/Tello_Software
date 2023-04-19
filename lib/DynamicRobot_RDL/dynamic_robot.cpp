@@ -311,7 +311,7 @@ MotorPDConfig DynamicRobot::switchController(const MotorPDConfig& stanceCtrl, co
     return output;
 }
 
-VectorXd DynamicRobot::switchControllerJoint(VectorXd stanceTorques, VectorXd swingTorques, double duration_sec, bool isSwingToStance, double currTimeStep, int side) {
+VectorXd DynamicRobot::swing_stance_mux(VectorXd stanceTorques, VectorXd swingTorques, double duration_sec, bool isSwingToStance, double currTimeStep, int side) {
 
     if(currTimeStep >= duration_sec) currTimeStep = duration_sec;
 

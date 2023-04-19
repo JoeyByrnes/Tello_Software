@@ -66,6 +66,39 @@ Vector3d dash_utils::calc_dEA(Matrix3d R, Vector3d wb) {
   return dEA;
 }
 
+
+VectorXd dash_utils::calc_wb(Vector3d dEA, VectorXd EA) {
+  // Extract Euler angles from input vector
+  double phi = EA(0);
+  double theta = EA(1);
+  double psi = EA(2);
+
+  // Calculate rotation matrix from Euler angles
+  Matrix3d Rmat;
+  Rmat = AngleAxisd(phi, Vector3d::UnitX())
+        * AngleAxisd(theta, Vector3d::UnitY())
+        * AngleAxisd(psi, Vector3d::UnitZ());
+
+  // Calculate inverse of T_EA
+  double cos_theta = cos(theta);
+  Matrix3d T_EA;
+//   inv_T_EA << cos(psi)/cos_theta, -sin(psi), cos(psi)*tan(theta)/cos_theta,
+//               sin(psi)/cos(theta), cos(psi), sin(psi)*tan(theta)/cos(theta),
+//               0, 0, 1;
+T_EA << cos(psi)/cos(theta), sin(psi)/cos(theta), 0,
+      -sin(psi), cos(psi), 0,
+      cos(psi)*tan(theta), sin(psi)*tan(theta), 1;
+
+  // Calculate w from dEA using the inverse of T_EA
+  Vector3d w = T_EA.inverse() * dEA;
+
+  // Calculate wb from w and R
+  VectorXd wb(3);
+  wb = Rmat.transpose() * w;
+
+  return wb;
+}
+
 void dash_utils::gen_trapz_traj(double max_speed, Eigen::VectorXd &t, Eigen::VectorXd &x) 
 {
     int err = 0;
@@ -539,3 +572,154 @@ void dash_utils::writeSRBParamsToTxt(const SRB_Params& params, const std::string
     }
 }
 
+// Function to convert foot position in world frame to hip frame
+Vector3d dash_utils::worldToHip(Vector3d foot_pos_world, Vector3d hip_pos_world, Vector3d hip_orient_world)
+{
+    // Calculate transformation matrix from world frame to torso frame
+    double tx = hip_pos_world(0);
+    double ty = hip_pos_world(1);
+    double tz = hip_pos_world(2);
+    double rx = hip_orient_world(0);
+    double ry = hip_orient_world(1);
+    double rz = hip_orient_world(2);
+
+    Matrix4d T_world_to_hip;
+    T_world_to_hip << cos(ry)*cos(rz), -cos(rx)*sin(rz) + sin(rx)*sin(ry)*cos(rz), sin(rx)*sin(rz) + cos(rx)*sin(ry)*cos(rz), tx,
+                        cos(ry)*sin(rz), cos(rx)*cos(rz) + sin(rx)*sin(ry)*sin(rz), -sin(rx)*cos(rz) + cos(rx)*sin(ry)*sin(rz), ty,
+                        -sin(ry), sin(rx)*cos(ry), cos(rx)*cos(ry), tz,
+                        0, 0, 0, 1;
+
+    // Convert foot position to hip frame
+    Vector4d foot_pos_world_homogeneous;
+    foot_pos_world_homogeneous << foot_pos_world, 1.0;
+    Vector4d foot_pos_hip_homogeneous = T_world_to_hip.inverse() * foot_pos_world_homogeneous;
+    Vector3d foot_pos_hip = foot_pos_hip_homogeneous.head(3);
+
+    return foot_pos_hip;
+}
+
+Vector3d dash_utils::hipToWorld(Vector3d vector_hip, Vector3d hip_pos_world, Vector3d hip_orient_world)
+{
+    // Calculate transformation matrix from world frame to hip frame
+    double tx = hip_pos_world(0);
+    double ty = hip_pos_world(1);
+    double tz = hip_pos_world(2);
+    double rx = hip_orient_world(0);
+    double ry = hip_orient_world(1);
+    double rz = hip_orient_world(2);
+
+    Matrix4d T_world_to_hip;
+    T_world_to_hip << cos(ry)*cos(rz), -cos(rx)*sin(rz) + sin(rx)*sin(ry)*cos(rz), sin(rx)*sin(rz) + cos(rx)*sin(ry)*cos(rz), tx,
+                     cos(ry)*sin(rz), cos(rx)*cos(rz) + sin(rx)*sin(ry)*sin(rz), -sin(rx)*cos(rz) + cos(rx)*sin(ry)*sin(rz), ty,
+                     -sin(ry), sin(rx)*cos(ry), cos(rx)*cos(ry), tz,
+                     0, 0, 0, 1;
+
+    // Calculate transformation matrix from hip frame to world frame
+    Matrix4d T_hip_to_world = T_world_to_hip.inverse();
+
+    // Convert vector from hip frame to world frame
+    Vector4d vector_hip_homogeneous;
+    vector_hip_homogeneous << vector_hip, 1.0;
+    Vector4d vector_world_homogeneous = T_hip_to_world * vector_hip_homogeneous;
+    Vector3d vector_world = vector_world_homogeneous.head(3);
+
+    return vector_world;
+}
+
+
+// Define a function to parse the JSON file and write to an srb_params struct
+void dash_utils::parse_json_to_srb_params(const std::string& json_file_path, SRB_Params& params) {
+  // Open the JSON file
+  std::ifstream json_file(json_file_path);
+  if (!json_file.is_open()) {
+    std::cerr << "Error: could not open JSON file\n";
+    return;
+  }
+
+  // Parse the JSON file
+  nlohmann::json json_data;
+  try {
+    json_file >> json_data;
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    return;
+  }
+
+  // Extract the values and write to the srb_params struct
+  try {
+    params.Kp_xR = json_data["srb_params"]["Kp_xR"].get<double>();
+    params.Kd_xR = json_data["srb_params"]["Kd_xR"].get<double>();
+    params.Kp_yR = json_data["srb_params"]["Kp_yR"].get<double>();
+    params.Kd_yR = json_data["srb_params"]["Kd_yR"].get<double>();
+    params.Kp_zR = json_data["srb_params"]["Kp_zR"].get<double>();
+    params.Kd_zR = json_data["srb_params"]["Kd_zR"].get<double>();
+    params.Kp_phiR = json_data["srb_params"]["Kp_phiR"].get<double>();
+    params.Kd_phiR = json_data["srb_params"]["Kd_phiR"].get<double>();
+    params.Kp_thetaR = json_data["srb_params"]["Kp_thetaR"].get<double>();
+    params.Kd_thetaR = json_data["srb_params"]["Kd_thetaR"].get<double>();
+    params.Kp_psiR = json_data["srb_params"]["Kp_psiR"].get<double>();
+    params.Kd_psiR = json_data["srb_params"]["Kd_psiR"].get<double>();
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    return;
+  }
+  try {
+    params.T = json_data["srb_params"]["Step_Period"].get<double>();
+    params.zcl = json_data["srb_params"]["Step_Height"].get<double>();
+    params.des_walking_speed = json_data["srb_params"]["Walking_Speed"].get<double>();
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    return;
+  }
+}
+
+void dash_utils::parse_json_to_pd_params(const std::string& json_file_path, Joint_PD_config& swing, Joint_PD_config& posture) {
+  // Open the JSON file
+  std::ifstream json_file(json_file_path);
+  if (!json_file.is_open()) {
+    std::cerr << "Error: could not open JSON file\n";
+    return;
+  }
+
+  // Parse the JSON file
+  nlohmann::json json_data;
+  try {
+    json_file >> json_data;
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    return;
+  }
+
+  // Extract the values and write to the srb_params struct
+  try {
+    posture.hip_yaw_Kp = json_data["Posture_Control"]["Hip_Yaw_Kp"].get<double>();
+    posture.hip_yaw_Kd = json_data["Posture_Control"]["Hip_Yaw_Kd"].get<double>();
+    posture.hip_roll_Kp = json_data["Posture_Control"]["Hip_Roll_Kp"].get<double>();
+    posture.hip_roll_Kd = json_data["Posture_Control"]["Hip_Roll_Kd"].get<double>();
+    posture.hip_pitch_Kp = json_data["Posture_Control"]["Hip_Pitch_Kp"].get<double>();
+    posture.hip_pitch_Kd = json_data["Posture_Control"]["Hip_Pitch_Kd"].get<double>();
+    posture.knee_Kp = json_data["Posture_Control"]["Knee_Kp"].get<double>();
+    posture.knee_Kd = json_data["Posture_Control"]["Knee_Kd"].get<double>();
+    posture.ankle_Kp = json_data["Posture_Control"]["Ankle_Kp"].get<double>();
+    posture.ankle_Kd = json_data["Posture_Control"]["Ankle_Kd"].get<double>();
+    
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    return;
+  }
+  try {
+    swing.hip_yaw_Kp = json_data["Swing_Control"]["Hip_Yaw_Kp"].get<double>();
+    swing.hip_yaw_Kd = json_data["Swing_Control"]["Hip_Yaw_Kd"].get<double>();
+    swing.hip_roll_Kp = json_data["Swing_Control"]["Hip_Roll_Kp"].get<double>();
+    swing.hip_roll_Kd = json_data["Swing_Control"]["Hip_Roll_Kd"].get<double>();
+    swing.hip_pitch_Kp = json_data["Swing_Control"]["Hip_Pitch_Kp"].get<double>();
+    swing.hip_pitch_Kd = json_data["Swing_Control"]["Hip_Pitch_Kd"].get<double>();
+    swing.knee_Kp = json_data["Swing_Control"]["Knee_Kp"].get<double>();
+    swing.knee_Kd = json_data["Swing_Control"]["Knee_Kd"].get<double>();
+    swing.ankle_Kp = json_data["Swing_Control"]["Ankle_Kp"].get<double>();
+    swing.ankle_Kd = json_data["Swing_Control"]["Ankle_Kd"].get<double>();
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    return;
+  }
+}

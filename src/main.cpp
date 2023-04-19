@@ -32,7 +32,7 @@
 #include "dynamic_robot.h"
 #include "SRBM-Ctrl/kinematics.h"
 #include "compile_time_tracker.h"
-#include "mujoco_comms.h"
+#include "mujoco_main.h"
 
 #include <pcanfd.h>
 

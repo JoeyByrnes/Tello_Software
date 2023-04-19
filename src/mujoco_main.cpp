@@ -131,22 +131,6 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
     VectorXd mujoco_lfv_vector = dash_utils::flatten(mujoco_lfv);
 
-    Vector3d hip_right_pos_world1 = right_leg_last.col(0);
-    Vector3d hip_left_pos_world1 = left_leg_last.col(0);
-    Vector3d torso_orientation_world1(phiR, thetaR, psiR);
-
-    Vector3d task_right_front_world = mujoco_lfv.row(0).transpose();
-    Vector3d task_right_back_world  = mujoco_lfv.row(1).transpose();
-    Vector3d task_left_front_world  = mujoco_lfv.row(2).transpose();
-    Vector3d task_left_back_world   = mujoco_lfv.row(3).transpose();
-    Vector3d task_right_front_torso = dash_utils::worldToHip(task_right_front_world, hip_right_pos_world1, torso_orientation_world1);
-    Vector3d task_right_back_torso  = dash_utils::worldToHip(task_right_back_world, hip_right_pos_world1, torso_orientation_world1);
-    Vector3d task_left_front_torso  = dash_utils::worldToHip(task_left_front_world, hip_left_pos_world1, torso_orientation_world1);
-    Vector3d task_left_back_torso   = dash_utils::worldToHip(task_left_back_world, hip_left_pos_world1, torso_orientation_world1);
-
-    VectorXd task_pos_sim(12);
-    task_pos_sim << task_left_front_torso,task_left_back_torso,task_right_front_torso,task_right_back_torso;
-
     dash_utils::setOutputFolder("/home/joey/Desktop/tello_outputs/");
     dash_utils::writeVectorToCsv(mujoco_lfv_vector,"mujoco_lfv.csv");
 
@@ -224,61 +208,15 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     lfdv_hip.row(3) = task_velocities.segment<3>(3);
     lfdv_hip.row(0) = task_velocities.segment<3>(6);
     lfdv_hip.row(1) = task_velocities.segment<3>(9);
-
-    Vector3d hip_right_pos_world = right_leg_last.col(0);
-    Vector3d hip_left_pos_world = left_leg_last.col(0);
-    Vector3d torso_orientation_world(phiR, thetaR, psiR);
-
-    Vector3d right_front_vel1 = dash_utils::hipToWorld(lfdv_hip.row(0), hip_right_pos_world, torso_orientation_world);
-    Vector3d right_back_vel1  = dash_utils::hipToWorld(lfdv_hip.row(1), hip_right_pos_world, torso_orientation_world);
-    Vector3d left_front_vel1  = dash_utils::hipToWorld(lfdv_hip.row(2), hip_left_pos_world, torso_orientation_world);
-    Vector3d left_back_vel1   = dash_utils::hipToWorld(lfdv_hip.row(3), hip_left_pos_world, torso_orientation_world);
-
-    MatrixXd lfdv(4,3);
-    lfdv.row(0) = right_front_vel1;
-    lfdv.row(1) = right_back_vel1;
-    lfdv.row(2) = left_front_vel1;
-    lfdv.row(3) = left_back_vel1;
+    controller->set_lfdv_hip(lfdv_hip);
 
 	// call SRBM-Ctrl here ======================================================================================
-    controller->set_lfdv_world(lfdv);
+
     VectorXd tau = controller->update(pc_curr, dpc_curr, EA_curr, dEA_curr,q ,qd ,time);
     MatrixXd lfv_comm = controller->get_lfv_comm_world();
     MatrixXd lfdv_comm = controller->get_lfdv_comm_world();
     
-    SRB_Params srb_params = controller->get_SRB_params();  
-    right_leg_last = controller->get_right_leg_last();
-    left_leg_last = controller->get_left_leg_last();
-
-    // Transform lfv an lfdv to hip frames here:
-
-    Vector3d right_front_world = lfv_comm.row(0).transpose();
-    Vector3d right_back_world  = lfv_comm.row(1).transpose();
-    Vector3d left_front_world  = lfv_comm.row(2).transpose();
-    Vector3d left_back_world   = lfv_comm.row(3).transpose();
-    Vector3d right_front_torso = dash_utils::worldToHip(right_front_world, hip_right_pos_world, torso_orientation_world);
-    Vector3d right_back_torso  = dash_utils::worldToHip(right_back_world, hip_right_pos_world, torso_orientation_world);
-    Vector3d left_front_torso  = dash_utils::worldToHip(left_front_world, hip_left_pos_world, torso_orientation_world);
-    Vector3d left_back_torso   = dash_utils::worldToHip(left_back_world, hip_left_pos_world, torso_orientation_world);
-
-    Vector3d right_front_world_vel = lfdv_comm.row(0).transpose();
-    Vector3d right_back_world_vel  = lfdv_comm.row(1).transpose();
-    Vector3d left_front_world_vel  = lfdv_comm.row(2).transpose();
-    Vector3d left_back_world_vel   = lfdv_comm.row(3).transpose();
-    Vector3d right_front_torso_vel = dash_utils::worldToHip(right_front_world_vel, hip_right_pos_world, torso_orientation_world);
-    Vector3d right_back_torso_vel  = dash_utils::worldToHip(right_back_world_vel, hip_right_pos_world, torso_orientation_world);
-    Vector3d left_front_torso_vel  = dash_utils::worldToHip(left_front_world_vel, hip_left_pos_world, torso_orientation_world);
-    Vector3d left_back_torso_vel   = dash_utils::worldToHip(left_back_world_vel, hip_left_pos_world, torso_orientation_world);
-    
-    Vector3d right_front = right_front_torso;
-    Vector3d right_back = right_back_torso;
-    Vector3d left_front = left_front_torso;
-    Vector3d left_back = left_back_torso;
-
-    Vector3d right_front_vel = right_front_torso_vel;
-    Vector3d right_back_vel = right_back_torso_vel;
-    Vector3d left_front_vel = left_front_torso_vel;
-    Vector3d left_back_vel = left_back_torso_vel;
+    double t_end_stepping = controller->get_SRB_params().t_end_stepping;  
 
     // BEGIN TASK PD CODE ======================================+++++++++++++++++
 
@@ -297,15 +235,15 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 	MatrixXd kp_mat_joint = kp_vec_joint.asDiagonal();
 	MatrixXd kd_mat_joint = kd_vec_joint.asDiagonal();
 
-	Vector3d target_front_left = left_front;
-	Vector3d target_back_left = left_back;
-	Vector3d target_front_right = right_front;
-	Vector3d target_back_right = right_back;
+	Vector3d target_front_left = controller->get_lfv_comm_hip().row(2);
+	Vector3d target_back_left = controller->get_lfv_comm_hip().row(3);
+	Vector3d target_front_right = controller->get_lfv_comm_hip().row(0);
+	Vector3d target_back_right = controller->get_lfv_comm_hip().row(1);
 
-    Vector3d target_front_left_vel = left_front_vel;
-	Vector3d target_back_left_vel = left_back_vel;
-	Vector3d target_front_right_vel = right_front_vel;
-	Vector3d target_back_right_vel = right_back_vel;
+    Vector3d target_front_left_vel = controller->get_lfdv_comm_hip().row(2);
+	Vector3d target_back_left_vel = controller->get_lfdv_comm_hip().row(3);
+	Vector3d target_front_right_vel = controller->get_lfdv_comm_hip().row(0);
+	Vector3d target_back_right_vel = controller->get_lfdv_comm_hip().row(1);
 
     VectorXd vel_desired(12);
     vel_desired  << target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel;
@@ -388,48 +326,29 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     VectorXd posture_ctrl_torques = tello->taskPD2(task_pd_config);
 
     // END TASK PD CODE ======================================+++++++++++++++++
-    
-	VectorXd tau_leg_r = tau.segment<5>(0); 
-	VectorXd tau_leg_l = tau.segment<5>(5);
-	// Set leg joint torques
-    tau_leg_l(0) += posture_ctrl_torques(0);
-    tau_leg_l(1) += posture_ctrl_torques(1);
-    tau_leg_l(2) += posture_ctrl_torques(2);
-    tau_leg_l(3) += posture_ctrl_torques(3);
-    tau_leg_l(4) += posture_ctrl_torques(4);
-    tau_leg_r(0) += posture_ctrl_torques(5);
-    tau_leg_r(1) += posture_ctrl_torques(6);
-    tau_leg_r(2) += posture_ctrl_torques(7);
-    tau_leg_r(3) += posture_ctrl_torques(8);
-    tau_leg_r(4) += posture_ctrl_torques(9);
+    VectorXd tau_LR(10);
+    tau_LR << tau.tail(5), tau.head(5);
+    tau_LR = tau_LR + posture_ctrl_torques;
 
-    VectorXd torques_left  = tello->swing_stance_mux(tau_leg_l, swing_leg_torques.head(5),
+    VectorXd torques_left  = tello->swing_stance_mux(tau_LR.head(5), swing_leg_torques.head(5),
                                                           0.005,controller->get_isSwingToStanceRight(), 
                                                           d->time-controller->get_transitionStartRight(), 
                                                           0);
-    VectorXd torques_right = tello->swing_stance_mux(tau_leg_r, swing_leg_torques.tail(5),
+    VectorXd torques_right = tello->swing_stance_mux(tau_LR.tail(5), swing_leg_torques.tail(5),
                                                           0.005,controller->get_isSwingToStanceLeft(),
                                                           d->time-controller->get_transitionStartLeft(), 
                                                           1);
+    VectorXd tau_LR_muxed(10);
+    tau_LR_muxed << torques_left,torques_right;
 
-    if(d->time > srb_params.t_end_stepping+2 && stepping_in_progress)
+    applyJointTorquesMujoco(tau_LR_muxed);
+
+    if(d->time > t_end_stepping+2 && stepping_in_progress)
     {
         // stepping has finished, switch to balancing
         stepping_in_progress = false;
         pause_sim = true;
     }
-
-    d->ctrl[hip_motor1_l_idx]  = torques_left(0);
-    d->ctrl[hip_motor2_l_idx]  = torques_left(1);
-    d->ctrl[hip_motor3_l_idx]  = torques_left(2);
-    d->ctrl[knee_motor_l_idx]  = torques_left(3);
-    d->ctrl[ankle_motor_l_idx] = torques_left(4);
-    d->ctrl[hip_motor1_r_idx]  = torques_right(0);
-    d->ctrl[hip_motor2_r_idx]  = torques_right(1);
-    d->ctrl[hip_motor3_r_idx]  = torques_right(2);
-    d->ctrl[knee_motor_r_idx]  = torques_right(3);
-    d->ctrl[ankle_motor_r_idx] = torques_right(4);
-
 }
 
 

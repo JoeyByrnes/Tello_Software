@@ -178,12 +178,12 @@ class SRBMController {
 
     VectorXd tau_ext; 
     VectorXd tau;
-    MatrixXd SRB_state_ref  = MatrixXd(6,2); 
+    MatrixXd SRB_state_ref = MatrixXd(6,2); 
     VectorXd SRB_wrench_ref  = VectorXd(6);
     MatrixXd Jv_mat[4];
 
-    MatrixXd right_leg_last;
-    MatrixXd left_leg_last;
+    MatrixXd right_leg_last = MatrixXd(3,5);
+    MatrixXd left_leg_last = MatrixXd(3,5);
 
     bool isSwingToStanceLeft = true;
     bool isSwingToStanceRight = true;

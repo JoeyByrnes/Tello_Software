@@ -5,13 +5,13 @@
 // THIS FILE IS AUTO-GENERATED DURING COMPILER TIME.
 // EDITS WILL BE ERASED WHEN PROGRAM IS COMPILED.
 
-// Last compiled on Tuesday, Apr 18 2023, 11:08PM by joey
+// Last compiled on Tuesday, Apr 18 2023, 11:49PM by joey
 
-auto time_var = std::tm{23,8,23,18,3,123}; 
+auto time_var = std::tm{49,49,23,18,3,123}; 
 const auto last_compile_time = std::chrono::system_clock::from_time_t(std::mktime(&time_var));
 
 inline std::string getCompileTime() {
-    return "Tuesday, Apr 18 2023, 11:08PM by joey";
+    return "Tuesday, Apr 18 2023, 11:49PM by joey";
 }
 std::chrono::minutes minutesSinceLastCompile() {
     auto current_time = std::chrono::system_clock::now();

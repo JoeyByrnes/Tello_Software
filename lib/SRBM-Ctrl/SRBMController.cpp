@@ -112,7 +112,7 @@ MatrixXd SRBMController::get_lfv_hip()
 {
     Vector3d hip_right_pos_world = right_leg_last.col(0);
     Vector3d hip_left_pos_world = left_leg_last.col(0);
-    Vector3d hip_orientation_world(x(0),x(1),x(2));
+    Vector3d hip_orientation_world(x(18),x(19),x(20));
     MatrixXd lfv_hip(4,3);
 
     lfv_hip.row(0) = dash_utils::worldToHip(lfv.row(0).transpose(), hip_right_pos_world, hip_orientation_world);
@@ -127,7 +127,7 @@ MatrixXd SRBMController::get_lfdv_hip()
 {
     Vector3d hip_right_pos_world = right_leg_last.col(0);
     Vector3d hip_left_pos_world = left_leg_last.col(0);
-    Vector3d hip_orientation_world(x(0),x(1),x(2));
+    Vector3d hip_orientation_world(x(18),x(19),x(20));
     MatrixXd lfdv_hip(4,3);
 
     lfdv_hip.row(0) = dash_utils::worldToHip(lfdv.row(0).transpose(), hip_right_pos_world, hip_orientation_world);
@@ -142,7 +142,7 @@ MatrixXd SRBMController::get_lfv_comm_hip()
 {
     Vector3d hip_right_pos_world = right_leg_last.col(0);
     Vector3d hip_left_pos_world = left_leg_last.col(0);
-    Vector3d hip_orientation_world(x(0),x(1),x(2));
+    Vector3d hip_orientation_world(x(18),x(19),x(20));
     MatrixXd lfv_comm_hip(4,3);
 
     lfv_comm_hip.row(0) = dash_utils::worldToHip(lfv_comm.row(0).transpose(), hip_right_pos_world, hip_orientation_world);
@@ -157,7 +157,7 @@ MatrixXd SRBMController::get_lfdv_comm_hip()
 {
     Vector3d hip_right_pos_world = right_leg_last.col(0);
     Vector3d hip_left_pos_world = left_leg_last.col(0);
-    Vector3d hip_orientation_world(x(0),x(1),x(2));
+    Vector3d hip_orientation_world(x(18),x(19),x(20));
     MatrixXd lfdv_comm_hip(4,3);
 
     lfdv_comm_hip.row(0) = dash_utils::worldToHip(lfdv_comm.row(0).transpose(), hip_right_pos_world, hip_orientation_world);
@@ -172,7 +172,7 @@ void SRBMController::set_lfdv_hip(const MatrixXd& lfdv_hip)
 {
     Vector3d hip_right_pos_world = right_leg_last.col(0);
     Vector3d hip_left_pos_world = left_leg_last.col(0);
-    Vector3d hip_orientation_world(x(0),x(1),x(2));
+    Vector3d hip_orientation_world(x(18),x(19),x(20));
 
     lfdv.row(0) = dash_utils::hipToWorld(lfdv_hip.row(0), hip_right_pos_world, hip_orientation_world);
     lfdv.row(1) = dash_utils::hipToWorld(lfdv_hip.row(1), hip_right_pos_world, hip_orientation_world);

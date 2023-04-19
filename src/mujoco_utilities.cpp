@@ -20,6 +20,17 @@ bool button_right = false;
 double lastx = 0;
 double lasty = 0;
 
+extern int hip_motor1_r_idx ;
+extern int hip_motor1_l_idx ;
+extern int hip_motor2_r_idx ;
+extern int hip_motor2_l_idx ;
+extern int hip_motor3_r_idx ;
+extern int hip_motor3_l_idx ;
+extern int knee_motor_r_idx ;
+extern int knee_motor_l_idx ;
+extern int ankle_motor_r_idx;
+extern int ankle_motor_l_idx;
+
 // Callbacks
 
 // keyboard callback
@@ -164,4 +175,18 @@ void contactforce(const mjModel* m, mjData* d)
     } // for i = 1:ncon
 
     mjFREESTACK
+}
+
+void applyJointTorquesMujoco(VectorXd torques)
+{
+    d->ctrl[hip_motor1_l_idx]  = torques(0);
+    d->ctrl[hip_motor2_l_idx]  = torques(1);
+    d->ctrl[hip_motor3_l_idx]  = torques(2);
+    d->ctrl[knee_motor_l_idx]  = torques(3);
+    d->ctrl[ankle_motor_l_idx] = torques(4);
+    d->ctrl[hip_motor1_r_idx]  = torques(5);
+    d->ctrl[hip_motor2_r_idx]  = torques(6);
+    d->ctrl[hip_motor3_r_idx]  = torques(7);
+    d->ctrl[knee_motor_r_idx]  = torques(8);
+    d->ctrl[ankle_motor_r_idx] = torques(9);
 }

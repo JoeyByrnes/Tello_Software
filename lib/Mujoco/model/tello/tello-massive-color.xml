@@ -3,12 +3,12 @@
   <size njmax = "500" nconmax = "100" />
 
   <compiler angle = 'radian' inertiafromgeom = "false" meshdir = "meshes/"/>
-  <!-- <option timestep='0.001' iterations='100' solver='PGS' gravity='0 0 -9.81'/> -->
+  <option timestep='0.0005' iterations='50' solver='PGS' gravity='0 0 -9.81'/>
 	<default>
     <joint limited='true' damping="10"/>
     <motor ctrllimited='true'/>
     <geom contype='0' conaffinity='0' condim='1' solref='0.005 1'/>
-    <!-- <equality solref='0.005 1'/> -->
+    <equality solref='0.005 1'/>
     <default class='TELLO'>
     </default>
     <default class='collision'>

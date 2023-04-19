@@ -529,8 +529,8 @@ void dash_planner::SRB_LIP_vel_traj(double des_walking_speed, VectorXd& t_traj, 
 {
     // Tunable waypoints (time in s)
     VectorXd t_waypts_0p1to3ms(6), t_waypts_0p4ms(6), t_waypts_0p5to6ms(6), t_waypts_0p7ms(6), t_waypts_0p8ms(6);
-    double step_end = 9;
-    t_waypts_0p1to3ms << 0.0, 2.0, 4.5, step_end, step_end+2, step_end+4;
+    double step_end = 10;
+    t_waypts_0p1to3ms << 0.0, 2.0, 5.0, step_end, step_end+3, step_end+5;
     t_waypts_0p4ms << 0.0, 1.0, 2.0, 4.0, 6.0, 7.0;
     t_waypts_0p5to6ms << 0.0, 1.0, 2.0, 4.0, 6.0, 7.5;
     t_waypts_0p7ms << 0.0, 1.0, 4.0, 6.0, 9.0, 13.0;
@@ -538,7 +538,7 @@ void dash_planner::SRB_LIP_vel_traj(double des_walking_speed, VectorXd& t_traj, 
 
      // select based on desired top speed
     VectorXd t_waypts(6), v_waypts(6);
-    if (des_walking_speed <= 0.6)
+    if (des_walking_speed <= 5)
     {
         t_waypts = t_waypts_0p1to3ms;
     }
@@ -561,8 +561,8 @@ void dash_planner::SRB_LIP_vel_traj(double des_walking_speed, VectorXd& t_traj, 
     v_waypts << 0.0, 0.0, des_walking_speed, des_walking_speed, 0.0, 0.0;
 
     // generate trajectory
-    gen_vel_trapz_traj(t_waypts, v_waypts, t_traj, v_traj);
-    //gen_smooth_traj(t_waypts, v_waypts, t_traj, v_traj);
+    //gen_vel_trapz_traj(t_waypts, v_waypts, t_traj, v_traj);
+    gen_smooth_traj(t_waypts, v_waypts, t_traj, v_traj);
     // cout << "V_TRAJ =============================" << endl;
     // cout << v_traj << endl;
 

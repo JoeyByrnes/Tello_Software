@@ -130,9 +130,10 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     mujoco_lfv.row(3) = Vector3d(left_foot_heel[0],left_foot_heel[1],left_foot_heel[2]);   
 
     VectorXd mujoco_lfv_vector = dash_utils::flatten(mujoco_lfv);
-
+    VectorXd lfv_comm_vector = dash_utils::flatten(controller->get_lfv_comm_world());
     dash_utils::setOutputFolder("/home/joey/Desktop/tello_outputs/");
     dash_utils::writeVectorToCsv(mujoco_lfv_vector,"mujoco_lfv.csv");
+    dash_utils::writeVectorToCsv(lfv_comm_vector,"lfv_comm.csv");
 
     contactforce(m,d); 
 
@@ -331,11 +332,11 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     tau_LR = tau_LR + posture_ctrl_torques;
 
     VectorXd torques_left  = tello->swing_stance_mux(tau_LR.head(5), swing_leg_torques.head(5),
-                                                          0.005,controller->get_isSwingToStanceRight(), 
+                                                          0.00,controller->get_isSwingToStanceRight(), 
                                                           d->time-controller->get_transitionStartRight(), 
                                                           0);
     VectorXd torques_right = tello->swing_stance_mux(tau_LR.tail(5), swing_leg_torques.tail(5),
-                                                          0.005,controller->get_isSwingToStanceLeft(),
+                                                          0.00,controller->get_isSwingToStanceLeft(),
                                                           d->time-controller->get_transitionStartLeft(), 
                                                           1);
     VectorXd tau_LR_muxed(10);

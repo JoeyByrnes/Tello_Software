@@ -734,13 +734,6 @@ void DynamicRobot::update_filter_kinematic_data(MatrixXd lfv_hip)
     vectorKinematics measured_kinematics;
     Eigen::Matrix3d Rfoot = Eigen::Matrix3d::Identity(); // rotation matrix from foot to body frame 
     covariance.setZero(); // just using ideal covariance matrix for now
-
-    double phiR = _imu_data.ypr(2);
-    double thetaR = _imu_data.ypr(1);
-    double psiR = _imu_data.ypr(0);
-    Rfoot = AngleAxisd(phiR  , Vector3d::UnitX())
-        * AngleAxisd(thetaR, Vector3d::UnitY())
-        * AngleAxisd(psiR  , Vector3d::UnitZ());
     
     double W = 0.252;
     double CoM2H_z_dist = 0.18;

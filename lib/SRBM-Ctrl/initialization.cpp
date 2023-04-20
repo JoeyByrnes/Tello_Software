@@ -159,7 +159,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
 
     // SRB specific
     srb_params.m = 23; // robot mass in kg
-    srb_params.hLIP = 0.65; // nominal robot LIP height
+    srb_params.hLIP = 0.67; // nominal robot LIP height
     srb_params.Ib = Matrix3d::Identity();
     srb_params.Ib(0,0) = 0.4874;
     srb_params.Ib(1,1) = 0.3081;
@@ -205,7 +205,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         eigen_vx_des_vx[i] = vx_des_vx[i];
     }
     srb_params.vx_des_vx = eigen_vx_des_vx; // desired x-direction velocity (end-of-next-step) 
-    srb_params.t_beg_stepping = 0.1; // time to initiate stepping in s
+    srb_params.t_beg_stepping = 5; // time to initiate stepping in s
     srb_params.t_end_stepping = 4.5; // time to end stepping in s
     srb_params.zcl = 0.04; // swing-leg max height in m
     // planner_type = Human_Dyn_Telelocomotion 

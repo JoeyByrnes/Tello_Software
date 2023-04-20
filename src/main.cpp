@@ -633,19 +633,8 @@ int main(int argc, char *argv[]) {
 		printf('o',"with NICE Priority: %d\n\n",prio);
 	}
 
-	RoboDesignLab::BipedActuatorTree actuators;
-	// actuators.leftLeg.push_back(new CheetahMotor(0x01,PCAN_PCIBUS1));
-	// actuators.leftLeg.push_back(new CheetahMotor(0x02,PCAN_PCIBUS1));
-	// actuators.leftLeg.push_back(new CheetahMotor(0x03,PCAN_PCIBUS2));
-	// actuators.leftLeg.push_back(new CheetahMotor(0x04,PCAN_PCIBUS1));
-	// actuators.leftLeg.push_back(new CheetahMotor(0x05,PCAN_PCIBUS2));
-	// actuators.rightLeg.push_back(new CheetahMotor(0x06,PCAN_PCIBUS3));
-	// actuators.rightLeg.push_back(new CheetahMotor(0x07,PCAN_PCIBUS4));
-	// actuators.rightLeg.push_back(new CheetahMotor(0x08,PCAN_PCIBUS3));
-	// actuators.rightLeg.push_back(new CheetahMotor(0x09,PCAN_PCIBUS4));
-	// actuators.rightLeg.push_back(new CheetahMotor(0x0A,PCAN_PCIBUS3));
 	SIM_START:
-	tello = new RoboDesignLab::DynamicRobot(actuators);
+	tello = new RoboDesignLab::DynamicRobot();
 	if(simulation_mode) tello->isSimulation = true;
 	for(int i = 0; i<10; i++){ // not in the constructor becuase I want to change how this works
 		tello->motor_zeros[i] = motor_zeros[i];

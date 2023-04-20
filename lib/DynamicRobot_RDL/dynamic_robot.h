@@ -35,17 +35,21 @@
 #include "vn/sensors.h"
 #include "vn/compositedata.h"
 #include "vn/util.h"
+#include "InEKF.h"
 
 using namespace Eigen;
 using namespace vn::sensors;
 using namespace vn::protocol::uart;
 using namespace vn::xplat;
 using namespace vn::math;
+using namespace inekf;
 
 #define TASK_CONSTANT_PERIOD 0
 #define TASK_CONSTANT_DELAY 1
 #define ENCODER_TO_RADIANS ((double)(12.5/32768.0))
 #define VELOCITY_TO_RADIANS_PER_SEC ((double)(65.0/4096.0))
+#define DT_MIN 1e-6
+#define DT_MAX 0.0015
 
 typedef VectorXd (*VectorXd_function)(const VectorXd&);
 typedef MatrixXd (*MatrixXd_function)(const VectorXd&);
@@ -94,10 +98,17 @@ namespace RoboDesignLab {
         double right_back = 0;
     };
 
+    struct IMU_data{
+        Vector3d ypr = Vector3d(0,0,0);
+        Vector3d acc = Vector3d(0,0,0);
+        Vector3d gyro = Vector3d(0,0,0);
+        double timestamp = 0; //(seconds)
+    };
+
     class DynamicRobot {
     public:
         // Constructor and destructor
-        DynamicRobot(BipedActuatorTree actuators);
+        DynamicRobot();
         ~DynamicRobot();
 
         void assign_jacobian_motors_to_joints(MatrixXd_function fcn){ _jaco_motor2joint = fcn; }
@@ -155,6 +166,12 @@ namespace RoboDesignLab {
         // Simulation:
         VectorXd jointPD2(JointPDConfig joint_conf);
         VectorXd taskPD2(TaskPDConfig task_conf);
+
+        // InEKF Functions:
+        void update_filter_IMU_data(IMU_data imu_data);
+        void update_filter_contact_data(VectorXd ground_contacts);
+        void update_filter_kinematic_data(MatrixXd lfv_hip);
+        RobotState get_filtered_state();
 
         // Quaterniond getFootOrientation(const Vector3d& lf1, const Vector3d& lf2, const Vector3d& knee);
 
@@ -214,6 +231,15 @@ namespace RoboDesignLab {
         BipedActuatorTree _actuators;
         int _leg_DoF; // automatically set from actuator tree
         int _num_actuators;
+
+        // InEKF:
+        RobotState initial_state; 
+        NoiseParams noise_params;
+        InEKF filter;
+        IMU_data _imu_data;
+        IMU_data _imu_data_prev;
+        VectorXd _ground_contacts = VectorXd(4);
+
     };
 }
 

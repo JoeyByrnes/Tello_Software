@@ -123,6 +123,19 @@ MatrixXd SRBMController::get_lfv_hip()
     return lfv_hip;
 }
 
+MatrixXd SRBMController::get_ankles_hip()
+{
+    Vector3d hip_right_pos_world = right_leg_last.col(0);
+    Vector3d hip_left_pos_world = left_leg_last.col(0);
+    Vector3d hip_orientation_world(x(18),x(19),x(20));
+    MatrixXd ankles_hip(2,3);
+
+    ankles_hip.row(0) = dash_utils::worldToHip(right_leg_last.col(2), hip_right_pos_world, hip_orientation_world);
+    ankles_hip.row(1) = dash_utils::worldToHip(left_leg_last.col(2), hip_left_pos_world, hip_orientation_world);
+    
+    return ankles_hip;
+}
+
 MatrixXd SRBMController::get_lfdv_hip()
 {
     Vector3d hip_right_pos_world = right_leg_last.col(0);

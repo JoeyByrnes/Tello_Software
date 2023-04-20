@@ -13,6 +13,19 @@ extern double push_force_y;
 extern double push_force_z;
 extern bool pause_sim;
 
+int rf_cnt = 0;
+int rb_cnt = 0;
+int lf_cnt = 0;
+int lb_cnt = 0;
+
+bool rf_seen = false;
+bool rb_seen = false;
+bool lf_seen = false;
+bool lb_seen = false;
+
+
+extern VectorXd gnd_contacts;
+
 // mouse interaction
 bool button_left = false;
 bool button_middle = false;
@@ -134,7 +147,11 @@ void contactforce(const mjModel* m, mjData* d)
     bool left_back_contact_detected = false;
     bool right_front_contact_detected = false;
     bool right_back_contact_detected = false;
-
+    gnd_contacts.setZero();
+    rf_seen = false;
+    rb_seen = false;
+    lf_seen = false;
+    lb_seen = false;
     for (int i = 0; i < d->ncon; i++)
     {
         mjContact* cur_contact = &((d->contact)[i]);
@@ -144,7 +161,26 @@ void contactforce(const mjModel* m, mjData* d)
         //std::cout << mj_id2name(m, mjOBJ_GEOM, cur_contact->geom2) << "  :"; // normal
         if (geom1.compare("floor") == 0 || geom2.compare("floor") == 0)
         {
-            
+            if(geom1.compare("right_foot_toe") == 0 || geom2.compare("right_foot_toe") == 0)
+            {
+                gnd_contacts(0) = 1;
+                rf_seen = true;
+            }
+            if(geom1.compare("right_foot_heel") == 0 || geom2.compare("right_foot_heel") == 0)
+            {
+                gnd_contacts(1) = 1;
+                rb_seen = true;
+            }
+            if(geom1.compare("left_foot_toe") == 0 || geom2.compare("left_foot_toe") == 0)
+            {
+                gnd_contacts(2) = 1;
+                lf_seen = true;
+            }
+            if(geom1.compare("left_foot_heel") == 0 || geom2.compare("left_foot_heel") == 0)
+            {
+                gnd_contacts(3) = 1;
+                lb_seen = true;
+            }
             //get robot's geom id
             int bodyid;
             if(geom1.compare("floor") == 0){ //return 0 if same string
@@ -173,6 +209,16 @@ void contactforce(const mjModel* m, mjData* d)
 
         } // if one geom is object
     } // for i = 1:ncon
+
+    // if(!rf_seen) rf_cnt++; else rf_cnt = 0;
+    // if(!rb_seen) rb_cnt++; else rb_cnt = 0;
+    // if(!lf_seen) lf_cnt++; else lf_cnt = 0;
+    // if(!lb_seen) lb_cnt++; else lb_cnt = 0;
+
+    // if(rf_cnt < 5) gnd_contacts(0) = 1;
+    // if(rb_cnt < 5) gnd_contacts(1) = 1;
+    // if(lf_cnt < 5) gnd_contacts(2) = 1;
+    // if(lb_cnt < 5) gnd_contacts(3) = 1;
 
     mjFREESTACK
 }

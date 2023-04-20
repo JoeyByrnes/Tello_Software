@@ -2,6 +2,7 @@
 #include "mujoco_utilities.h"
 
 extern RoboDesignLab::DynamicRobot* tello;
+inekf::RobotState filter_state;
 extern MatrixXd lfv_dsp_start;
 
 char error[1000];
@@ -12,6 +13,7 @@ double stepping_in_progress = true;
 
 MatrixXd right_leg_last(3,5);
 MatrixXd left_leg_last(3,5);
+VectorXd gnd_contacts(4);
 
 // robot states indices
 int torso_x_idx = 0;
@@ -63,6 +65,28 @@ SRBMController* controller;
 MatrixXd lfv0(4,3), lfdv0(4,3); // global so planner can access them for now
 
 // end SRBM-Ctrl Variables here ============================================================
+
+Eigen::VectorXd subtractG(const Eigen::Vector3d& ypr, const Eigen::VectorXd& acc)
+{
+    // Construct rotation matrix from roll-pitch-yaw angles
+    AngleAxisd pitchRotation(ypr[1], Vector3d::UnitY());
+    AngleAxisd rollRotation(ypr[2], Vector3d::UnitX());
+
+    Matrix3d R = pitchRotation.matrix() * rollRotation.matrix();
+
+
+    // Calculate gravitational acceleration in body frame
+    Eigen::Vector3d g_body(0, 0, 9.81);
+    Eigen::Vector3d g_enu = R.transpose() * g_body;
+
+    // Subtract gravitational acceleration from measured acceleration
+    Eigen::VectorXd acc_out(3);
+    acc_out = acc - g_enu;
+
+	// printf("    %.5f, \t\t %.5f, \t\t %.5f                   \r", g_enu[0], g_enu[1], g_enu[2]);
+	// cout.flush();
+    return acc_out;
+}
 
 void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 {
@@ -147,6 +171,9 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     mju_copy3(acceleration, &d->sensordata[accel_sensor_id]);
     mju_copy3(angular_velocity, &d->sensordata[gyro_sensor_id]);
 
+    // Vector3d acc_no_g = subtractG(Vector3d(psiR,thetaR,phiR),Vector3d(acceleration[0],acceleration[1],acceleration[2]));
+    Vector3d imu_acc = Vector3d(acceleration[0],acceleration[1],acceleration[2]);
+
     // Print the acceleration and angular velocity data
     // printf("Acceleration: (%f, %f, %f)\n", acceleration[0], acceleration[1], acceleration[2]);
     // printf("Angular Velocity: (%f, %f, %f)\n", angular_velocity[0], angular_velocity[1], angular_velocity[2]);
@@ -213,11 +240,22 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
 	// call SRBM-Ctrl here ======================================================================================
 
+    // pc_curr.head(2) = filter_state.getPosition().head(2); 
     VectorXd tau = controller->update(pc_curr, dpc_curr, EA_curr, dEA_curr,q ,qd ,time);
     MatrixXd lfv_comm = controller->get_lfv_comm_world();
     MatrixXd lfdv_comm = controller->get_lfdv_comm_world();
     
     double t_end_stepping = controller->get_SRB_params().t_end_stepping;  
+
+    // filter debugging:
+    VectorXd pos_out(11),vel_out(11);
+    pos_out << pc_curr, 0, filter_state.getPosition(), 0, (pc_curr-filter_state.getPosition());
+    dash_utils::setOutputFolder("/home/joey/Desktop/tello_outputs/");
+    dash_utils::writeVectorToCsv(pos_out,"pos_real_vs_filter.csv");
+
+    vel_out << dpc_curr, 0, filter_state.getVelocity(), 0, (dpc_curr-filter_state.getVelocity());
+    dash_utils::setOutputFolder("/home/joey/Desktop/tello_outputs/");
+    dash_utils::writeVectorToCsv(vel_out,"vel_real_vs_filter.csv");
 
     // BEGIN TASK PD CODE ======================================+++++++++++++++++
 
@@ -344,7 +382,28 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
     applyJointTorquesMujoco(tau_LR_muxed);
 
-    if(d->time > t_end_stepping+2 && stepping_in_progress)
+    // begin update filter states: ------------------------------------------------------
+    RoboDesignLab::IMU_data imu_data;
+    imu_data.timestamp = time;
+    imu_data.acc = imu_acc;
+    imu_data.gyro = Vector3d(angular_velocity[0],angular_velocity[1],angular_velocity[2]);
+    if(time > 2)
+    {
+        tello->update_filter_IMU_data(imu_data);
+        tello->update_filter_contact_data(gnd_contacts);
+        tello->update_filter_kinematic_data(controller->get_lfv_hip());
+    }
+
+
+    // end update filter states: ------------------------------------------------------
+    filter_state = tello->get_filtered_state();
+
+    cout << "Position: " << filter_state.getPosition().transpose() << endl;
+    // cout << "contacts: " << gnd_contacts.transpose() << endl;
+    // cout << "imu_acc: " << imu_acc.transpose() << endl;
+
+
+    if(d->time > t_end_stepping+4 && stepping_in_progress)
     {
         // stepping has finished, switch to balancing
         stepping_in_progress = false;

@@ -2,16 +2,49 @@
 
 using namespace RoboDesignLab;
 using namespace Eigen;
+using namespace std;
 
 extern pthread_mutex_t mutex_CAN_recv;
 
 uint64_t debug_print_idx = 0;
 
-DynamicRobot::DynamicRobot(BipedActuatorTree actuators)
+DynamicRobot::DynamicRobot()
 { 
-    this->_actuators = actuators; 
     _leg_DoF = 5;
     _num_actuators = 10;
+
+    // Initialize state mean
+    Eigen::Matrix3d R0;
+    Eigen::Vector3d v0, p0, bg0, ba0;
+    R0 << 1, 0, 0, // initial orientation
+          0, 1, 0, // IMU frame is aligned with world frame
+          0, 0, 1;
+    v0 << 0,0,0; // initial velocity
+    p0 << 0,0,0; // initial position
+    bg0 << 0,0,0; // initial gyroscope bias
+    ba0 << 0,0,0; // initial accelerometer bias
+    initial_state.setRotation(R0);
+    initial_state.setVelocity(v0);
+    initial_state.setPosition(p0);
+    initial_state.setGyroscopeBias(bg0);
+    initial_state.setAccelerometerBias(ba0);
+
+    // Initialize state covariance
+    NoiseParams noise_params;
+    noise_params.setGyroscopeNoise(0.01);
+    noise_params.setAccelerometerNoise(0.1);
+    noise_params.setGyroscopeBiasNoise(0.00001);
+    noise_params.setAccelerometerBiasNoise(0.0001);
+    noise_params.setContactNoise(0.025);
+
+    // Initialize filter
+    InEKF filter(initial_state, noise_params);
+    std::cout << "Noise parameters are initialized to: \n";
+    std::cout << filter.getNoiseParams() << std::endl;
+    std::cout << "Robot's state is initialized to: \n";
+    std::cout << filter.getState() << std::endl;
+
+
 }
 
 Eigen::VectorXd DynamicRobot::motor_vel_to_joint_vel(Eigen::VectorXd motor_velocites)
@@ -648,4 +681,130 @@ VectorXd DynamicRobot::taskPD2(TaskPDConfig task_conf)
     return jointPD2(joint_conf);
 
 }
+
+// InEKF Functions:
+
+void DynamicRobot::update_filter_IMU_data(IMU_data imu_data)
+{
+    _imu_data = imu_data;
+    Eigen::Matrix<double,6,1> imu_measurement_prev = Eigen::Matrix<double,6,1>::Zero(); // head(3) = gyro, tail(3) = acc
+
+    imu_measurement_prev << _imu_data_prev.gyro, _imu_data_prev.acc;
+
+    double dt = _imu_data.timestamp - _imu_data_prev.timestamp;
+    if (dt > DT_MIN && dt < DT_MAX) {
+        filter.Propagate(imu_measurement_prev, dt);
+    }
+    _imu_data_prev = _imu_data;
+}
+
+void DynamicRobot::update_filter_contact_data(VectorXd ground_contacts)
+{
+    _ground_contacts = ground_contacts;
+
+    vector<pair<int,bool> > contacts;
+
+    for(int i=0;i<4;i++)
+    {
+        contacts.push_back(pair<int,bool> (i, (bool)_ground_contacts(i)));
+    }
+    // Set filter's contact state
+    filter.setContacts(contacts);
+
+}
+
+Matrix3d foot_orientation(const Vector3d& a, const Vector3d& b, const Vector3d& c) { // front, back, ankle
+    Vector3d x = b - a;
+    x.normalize();
+    Vector3d z = x.cross(c - a);
+    z.normalize();
+    Vector3d y = z.cross(x);
+    Matrix3d rot;
+    rot.col(0) = x;
+    rot.col(1) = y;
+    rot.col(2) = z;
+    return rot;
+}
+
+void DynamicRobot::update_filter_kinematic_data(MatrixXd lfv_hip)
+{
+    Eigen::Vector3d p; // position of contact relative to the body
+    Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
+    Eigen::Matrix<double,6,6> covariance;
+    vectorKinematics measured_kinematics;
+    Eigen::Matrix3d Rfoot = Eigen::Matrix3d::Identity(); // rotation matrix from foot to body frame 
+    covariance.setZero(); // just using ideal covariance matrix for now
+
+    double phiR = _imu_data.ypr(2);
+    double thetaR = _imu_data.ypr(1);
+    double psiR = _imu_data.ypr(0);
+    Rfoot = AngleAxisd(phiR  , Vector3d::UnitX())
+        * AngleAxisd(thetaR, Vector3d::UnitY())
+        * AngleAxisd(psiR  , Vector3d::UnitZ());
+    
+    double W = 0.252;
+    double CoM2H_z_dist = 0.18;
+    // right hip to world
+    Eigen::Matrix4d HTMcom2hr = Matrix4d::Identity();
+    HTMcom2hr(1,3) = -W/2.0;
+    HTMcom2hr(2,3) = -CoM2H_z_dist;
+    // left hip to world
+    Eigen::Matrix4d HTMcom2hl = Matrix4d::Identity();
+    HTMcom2hl(1,3) = W/2.0;
+    HTMcom2hl(2,3) = -CoM2H_z_dist;
+
+    Vector3d right_front_in_hip = lfv_hip.row(0);
+    Vector3d right_back_in_hip = lfv_hip.row(1);
+    Vector3d left_front_in_hip = lfv_hip.row(2);
+    Vector3d left_back_in_hip = lfv_hip.row(3);
+
+    Eigen::Vector4d right_front_in_hip_homogeneous;
+    right_front_in_hip_homogeneous << right_front_in_hip, 1.0;
+    Eigen::Vector3d right_front_in_CoM = (HTMcom2hr.inverse() * right_front_in_hip_homogeneous).head(3);
+
+    Eigen::Vector4d right_back_in_hip_homogeneous;
+    right_back_in_hip_homogeneous << right_back_in_hip, 1.0;
+    Eigen::Vector3d right_back_in_CoM = (HTMcom2hr.inverse() * right_back_in_hip_homogeneous).head(3);
+
+    Eigen::Vector4d left_front_in_hip_homogeneous;
+    left_front_in_hip_homogeneous << left_front_in_hip, 1.0;
+    Eigen::Vector3d left_front_in_CoM = (HTMcom2hl.inverse() * left_front_in_hip_homogeneous).head(3);
+
+    Eigen::Vector4d left_back_in_hip_homogeneous;
+    left_back_in_hip_homogeneous << left_back_in_hip, 1.0;
+    Eigen::Vector3d left_back_in_CoM = (HTMcom2hl.inverse() * left_back_in_hip_homogeneous).head(3);
+
+    Matrix4d pose_right_front = Matrix4d::Identity();
+    pose_right_front.block<3,1>(0,3) = right_front_in_CoM;
+    pose_right_front.block<3,3>(0,0) = Rfoot;
+
+    Matrix4d pose_right_back = Matrix4d::Identity();
+    pose_right_back.block<3,1>(0,3) = right_back_in_CoM;
+    pose_right_back.block<3,3>(0,0) = Rfoot;
+
+    Matrix4d pose_left_front = Matrix4d::Identity();
+    pose_left_front.block<3,1>(0,3) = left_front_in_CoM;
+    pose_left_front.block<3,3>(0,0) = Rfoot;
+
+    Matrix4d pose_left_back = Matrix4d::Identity();
+    pose_left_back.block<3,1>(0,3) = left_back_in_CoM;
+    pose_left_back.block<3,3>(0,0) = Rfoot;
+
+    inekf::Kinematics frame_rf(0, pose_right_front, covariance);
+    inekf::Kinematics frame_rb(1, pose_right_back, covariance);
+    inekf::Kinematics frame_lf(2, pose_left_front, covariance);
+    inekf::Kinematics frame_lb(3, pose_left_back, covariance);
+    measured_kinematics.push_back(frame_rf);
+    measured_kinematics.push_back(frame_rb);
+    measured_kinematics.push_back(frame_lf);
+    measured_kinematics.push_back(frame_lb);
+
+    filter.CorrectKinematics(measured_kinematics);
+}
+
+RobotState DynamicRobot::get_filtered_state()
+{
+    return filter.getState();
+}
+
 

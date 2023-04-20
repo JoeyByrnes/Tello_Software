@@ -424,9 +424,10 @@ void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, 
     }
 
     // frontal plane control
-    if (FSM == 0 && next_SSP == 0) // terminate walking 
+    if (FSM == 0 && next_SSP == 0 || t < srb_params.t_beg_stepping) // terminate walking 
     {
         FyR = -Kp_yR*yLIP - Kd_yR*dy;
+        FxR = -Kp_xR*xLIP - Kd_xR*dx;
     }
 
     else // apply feedforward LIP force

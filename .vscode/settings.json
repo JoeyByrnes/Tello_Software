@@ -107,6 +107,12 @@
         "vec3ub": "cpp",
         "vec3ui": "cpp",
         "vec3us": "cpp",
-        "viewport": "cpp"
+        "viewport": "cpp",
+        "mixinvector": "cpp",
+        "fast_back_stack": "cpp",
+        "renderinfo": "cpp",
+        "block": "cpp",
+        "glextensions": "cpp",
+        "texture": "cpp"
     }
 }

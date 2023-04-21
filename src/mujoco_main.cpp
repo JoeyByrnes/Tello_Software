@@ -10,6 +10,7 @@ char error[1000];
 double sim_time;
 bool pause_sim = true;
 double stepping_in_progress = true;
+double CoM_z_last = 0;
 
 MatrixXd right_leg_last(3,5);
 MatrixXd left_leg_last(3,5);
@@ -173,7 +174,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
     // Vector3d acc_no_g = subtractG(Vector3d(psiR,thetaR,phiR),Vector3d(acceleration[0],acceleration[1],acceleration[2]));
     Vector3d imu_acc = Vector3d(acceleration[0],acceleration[1],acceleration[2]);
-
+    Vector3d imu_gyro = Vector3d(angular_velocity[0],angular_velocity[1],angular_velocity[2]);
     // Print the acceleration and angular velocity data
     // printf("Acceleration: (%f, %f, %f)\n", acceleration[0], acceleration[1], acceleration[2]);
     // printf("Angular Velocity: (%f, %f, %f)\n", angular_velocity[0], angular_velocity[1], angular_velocity[2]);
@@ -239,8 +240,26 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     controller->set_lfdv_hip(lfdv_hip);
 
 	// call SRBM-Ctrl here ======================================================================================
+    double CoM_z = controller->get_CoM_z(controller->get_lfv_hip(),gnd_contacts,EA_curr); 
+    if(CoM_z == -1) CoM_z = CoM_z_last;
+    CoM_z_last = CoM_z;
 
-    // pc_curr.head(2) = filter_state.getPosition().head(2); 
+    // Populate Controller inputs with estimated data instead of mujoco given data:
+    Vector3d pc_curr_plot = pc_curr;
+    if(time > 2)
+    {
+        pc_curr(0)  = filter_state.getPosition()(0); 
+        pc_curr(1)  = filter_state.getPosition()(1); 
+        pc_curr(2)  = CoM_z;
+
+        dpc_curr(0) = filter_state.getVelocity()(0);
+        // dpc_curr(1) = filter_state.getVelocity()(1);
+        dpc_curr(2) = filter_state.getVelocity()(2);
+
+    }
+
+    dEA_curr = imu_gyro;
+
     VectorXd tau = controller->update(pc_curr, dpc_curr, EA_curr, dEA_curr,q ,qd ,time);
     MatrixXd lfv_comm = controller->get_lfv_comm_world();
     MatrixXd lfdv_comm = controller->get_lfdv_comm_world();
@@ -248,8 +267,8 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     double t_end_stepping = controller->get_SRB_params().t_end_stepping;  
 
     // filter debugging:
-    VectorXd pos_out(11),vel_out(11);
-    pos_out << pc_curr, 0, filter_state.getPosition(), 0, (pc_curr-filter_state.getPosition());
+    VectorXd pos_out(11),vel_out(11), EA_out(6);
+    pos_out << pc_curr_plot, 0, filter_state.getPosition(), CoM_z, (pc_curr_plot-filter_state.getPosition());
     dash_utils::setOutputFolder("/home/joey/Desktop/tello_outputs/");
     dash_utils::writeVectorToCsv(pos_out,"pos_real_vs_filter.csv");
 
@@ -386,19 +405,19 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     RoboDesignLab::IMU_data imu_data;
     imu_data.timestamp = time;
     imu_data.acc = imu_acc;
-    imu_data.gyro = Vector3d(angular_velocity[0],angular_velocity[1],angular_velocity[2]);
-    if(time > 2)
-    {
-        tello->update_filter_IMU_data(imu_data);
-        tello->update_filter_contact_data(gnd_contacts);
-        tello->update_filter_kinematic_data(controller->get_lfv_hip());
-    }
+    imu_data.gyro = imu_gyro;
 
+    Matrix3d R_foot_right = controller->get_foot_orientation_wrt_body(q.row(0));
+    Matrix3d R_foot_left = controller->get_foot_orientation_wrt_body(q.row(1));
+
+    tello->update_filter_IMU_data(imu_data);
+    tello->update_filter_contact_data(gnd_contacts);
+    tello->update_filter_kinematic_data(controller->get_lfv_hip(),R_foot_right,R_foot_left);
 
     // end update filter states: ------------------------------------------------------
-    filter_state = tello->get_filtered_state();
+    filter_state = tello->get_filter_state();
 
-    cout << "Position: " << filter_state.getPosition().transpose() << endl;
+    // cout << "Position Error: " << (pc_curr-filter_state.getPosition()).transpose() << endl;
     // cout << "contacts: " << gnd_contacts.transpose() << endl;
     // cout << "imu_acc: " << imu_acc.transpose() << endl;
 

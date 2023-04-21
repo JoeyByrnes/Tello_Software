@@ -194,3 +194,74 @@ void SRBMController::set_lfdv_hip(const MatrixXd& lfdv_hip)
 
 }
 
+MatrixXd SRBMController::get_foot_orientation_wrt_body(VectorXd q_leg)
+{
+    double thigh_length = srb_params.thigh_length; // thigh length in m (L1)
+    double calf_length = srb_params.calf_length; // calf length in m (L2)
+    double foot_length = srb_params.foot_length; // toe length in m (L3)
+    double heel_length = srb_params.heel_length; // heel length in m (L4)
+
+    // Construct leg parameter vector
+    Eigen::Vector4d p_leg(thigh_length, calf_length, foot_length, heel_length);
+
+    Matrix3d R_body_to_foot = dash_kin::fcn_HTM0lf1(q_leg, p_leg).block<3,3>(0,0);
+
+    return R_body_to_foot;
+}
+
+double SRBMController::get_CoM_z(MatrixXd lfv_hip,VectorXd gnd_contacts, Vector3d EA)
+{
+
+    double W = 0.252;
+    double CoM2H_z_dist = 0.18;
+    // right hip to world
+    Eigen::Matrix4d HTMcom2hr = Matrix4d::Identity();
+    HTMcom2hr(1,3) = W/2.0;
+    HTMcom2hr(2,3) = CoM2H_z_dist;
+    // left hip to world
+    Eigen::Matrix4d HTMcom2hl = Matrix4d::Identity();
+    HTMcom2hl(1,3) = -W/2.0;
+    HTMcom2hl(2,3) = CoM2H_z_dist;
+
+    Vector3d right_front_in_hip = lfv_hip.row(0);
+    Vector3d right_back_in_hip = lfv_hip.row(1);
+    Vector3d left_front_in_hip = lfv_hip.row(2);
+    Vector3d left_back_in_hip = lfv_hip.row(3);
+
+    Eigen::Vector4d right_front_in_hip_homogeneous;
+    right_front_in_hip_homogeneous << right_front_in_hip, 1.0;
+    Eigen::Vector3d right_front_in_CoM = (HTMcom2hr.inverse() * right_front_in_hip_homogeneous).head(3);
+
+    Eigen::Vector4d right_back_in_hip_homogeneous;
+    right_back_in_hip_homogeneous << right_back_in_hip, 1.0;
+    Eigen::Vector3d right_back_in_CoM = (HTMcom2hr.inverse() * right_back_in_hip_homogeneous).head(3);
+
+    Eigen::Vector4d left_front_in_hip_homogeneous;
+    left_front_in_hip_homogeneous << left_front_in_hip, 1.0;
+    Eigen::Vector3d left_front_in_CoM = (HTMcom2hl.inverse() * left_front_in_hip_homogeneous).head(3);
+
+    Eigen::Vector4d left_back_in_hip_homogeneous;
+    left_back_in_hip_homogeneous << left_back_in_hip, 1.0;
+    Eigen::Vector3d left_back_in_CoM = (HTMcom2hl.inverse() * left_back_in_hip_homogeneous).head(3);
+
+    double right_front_z = (dash_utils::hipToWorld(right_front_in_CoM, Vector3d(0,0,0), EA))(2);
+    double right_back_z  = (dash_utils::hipToWorld(right_back_in_CoM, Vector3d(0,0,0), EA))(2);
+    double left_front_z  = (dash_utils::hipToWorld(left_front_in_CoM, Vector3d(0,0,0), EA))(2);
+    double left_back_z   = (dash_utils::hipToWorld(left_back_in_CoM, Vector3d(0,0,0), EA))(2);
+    Vector4d z_heights(right_front_z,right_back_z,left_front_z,left_back_z);
+    double z_height = 0;
+    if(gnd_contacts.sum() == 0) return -1;
+    
+    for(int i=0;i<gnd_contacts.size();i++)
+    {
+        if(gnd_contacts(i) == 1)
+        {
+            z_height += z_heights(i);
+        }
+    }
+    z_height = z_height/gnd_contacts.sum();
+
+    z_height = -z_height-srb_params.hLIP;
+
+    return z_height;
+}

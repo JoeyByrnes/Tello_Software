@@ -2,6 +2,11 @@
 
 extern MatrixXd lfv0, lfdv0;
 
+extern double rfz;
+extern double rbz;
+extern double lfz;
+extern double lbz;
+
 MatrixXd lfv_dsp_start(4,3);
 
 void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_time, SRB_Params& srb_params, MatrixXd lfv, char DoF, int num_tests)
@@ -131,8 +136,13 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     if(u1z < 0) u1z = 0;
     if(u3z < 0) u3z = 0;
     
-    if(u2z < 0) u1z = 0;
-    if(u4z < 0) u3z = 0;
+    if(u2z < 0) u2z = 0;
+    if(u4z < 0) u4z = 0;
+
+    rfz = u1z;
+    rbz = u2z;
+    lfz = u3z;
+    lbz = u4z;
 
     // compute phase variable
     double s = (t - t_sw_start) / T;
@@ -148,11 +158,11 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     //cout << FSM_prev << "\t " << u1z << "\t " << u3z <<endl;
     if (FSM_prev == 0) // currently in DSP
     {
-        if ( (u1z < Fz_min || u2z < Fz_min) && t > 0 && s_dsp > 0 && next_SSP == 1) // enter SSP_L
+        if ( (u1z < Fz_min || u2z < Fz_min) && t > 0 && s_dsp > 0.000 && next_SSP == 1) // enter SSP_L
         {
             FSM_next = 1;
         }
-        else if ( (u3z < Fz_min || u4z < Fz_min) && t > 0 && s_dsp > 0 && next_SSP == -1) // enter SSP_R 
+        else if ( (u3z < Fz_min || u4z < Fz_min) && t > 0 && s_dsp > 0.000 && next_SSP == -1) // enter SSP_R 
         {
             FSM_next = -1;     
         }

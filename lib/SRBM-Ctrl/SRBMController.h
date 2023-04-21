@@ -148,6 +148,12 @@ class SRBMController {
     // Getter function for transitionStartRight
     double get_transitionStartRight() const { return transitionStartRight; }
 
+    // Getter function for rotation matrices from body to feet
+    MatrixXd get_foot_orientation_wrt_body(VectorXd q_leg);
+
+    // Getter function for Center of Mass Z from Ground (only works on flat ground)
+    double get_CoM_z(MatrixXd lfv_hip,VectorXd gnd_contacts, Vector3d EA);
+
   private:
 
     SRB_Params srb_params;

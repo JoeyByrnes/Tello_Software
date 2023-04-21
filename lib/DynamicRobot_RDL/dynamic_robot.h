@@ -170,8 +170,9 @@ namespace RoboDesignLab {
         // InEKF Functions:
         void update_filter_IMU_data(IMU_data imu_data);
         void update_filter_contact_data(VectorXd ground_contacts);
-        void update_filter_kinematic_data(MatrixXd lfv_hip);
-        RobotState get_filtered_state();
+        void update_filter_kinematic_data(MatrixXd lfv_hip, Matrix3d R_right, Matrix3d R_left);
+        RobotState get_filter_state();
+        void set_filter_state(RobotState state);
 
         // Quaterniond getFootOrientation(const Vector3d& lf1, const Vector3d& lf2, const Vector3d& knee);
 

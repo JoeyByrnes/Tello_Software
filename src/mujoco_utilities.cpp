@@ -13,6 +13,11 @@ extern double push_force_y;
 extern double push_force_z;
 extern bool pause_sim;
 
+double rfz;
+double rbz;
+double lfz;
+double lbz;
+
 int rf_cnt = 0;
 int rb_cnt = 0;
 int lf_cnt = 0;
@@ -152,6 +157,8 @@ void contactforce(const mjModel* m, mjData* d)
     rb_seen = false;
     lf_seen = false;
     lb_seen = false;
+    bool right_data_reliable;
+    bool left_data_reliable;
     for (int i = 0; i < d->ncon; i++)
     {
         mjContact* cur_contact = &((d->contact)[i]);
@@ -159,24 +166,28 @@ void contactforce(const mjModel* m, mjData* d)
         std::string geom2 = mj_id2name(m, mjOBJ_GEOM, cur_contact->geom2);
         //std::cout << "contact point # " << i + 1 << std::endl;
         //std::cout << mj_id2name(m, mjOBJ_GEOM, cur_contact->geom2) << "  :"; // normal
+        int ll = 0;
+        int ul = 1000;
+        right_data_reliable = (rfz >= ll && rbz >= ll) && (rfz <= ul && rbz <= ul);
+        left_data_reliable = (lfz >= ll && lbz >= ll) && (lfz <= ul && lbz <= ul);
         if (geom1.compare("floor") == 0 || geom2.compare("floor") == 0)
         {
-            if(geom1.compare("right_foot_toe") == 0 || geom2.compare("right_foot_toe") == 0)
+            if((geom1.compare("right_foot_toe") == 0 || geom2.compare("right_foot_toe") == 0) && right_data_reliable  )
             {
                 gnd_contacts(0) = 1;
                 rf_seen = true;
             }
-            if(geom1.compare("right_foot_heel") == 0 || geom2.compare("right_foot_heel") == 0)
+            if((geom1.compare("right_foot_heel") == 0 || geom2.compare("right_foot_heel") == 0) && right_data_reliable  )
             {
                 gnd_contacts(1) = 1;
                 rb_seen = true;
             }
-            if(geom1.compare("left_foot_toe") == 0 || geom2.compare("left_foot_toe") == 0)
+            if((geom1.compare("left_foot_toe") == 0 || geom2.compare("left_foot_toe") == 0) && left_data_reliable  )
             {
                 gnd_contacts(2) = 1;
                 lf_seen = true;
             }
-            if(geom1.compare("left_foot_heel") == 0 || geom2.compare("left_foot_heel") == 0)
+            if((geom1.compare("left_foot_heel") == 0 || geom2.compare("left_foot_heel") == 0) && left_data_reliable  )
             {
                 gnd_contacts(3) = 1;
                 lb_seen = true;
@@ -210,15 +221,18 @@ void contactforce(const mjModel* m, mjData* d)
         } // if one geom is object
     } // for i = 1:ncon
 
-    // if(!rf_seen) rf_cnt++; else rf_cnt = 0;
-    // if(!rb_seen) rb_cnt++; else rb_cnt = 0;
-    // if(!lf_seen) lf_cnt++; else lf_cnt = 0;
-    // if(!lb_seen) lb_cnt++; else lb_cnt = 0;
+    if(!rf_seen) gnd_contacts(1) = 0;
+    if(!rb_seen) gnd_contacts(0) = 0;
+    if(!lf_seen) gnd_contacts(3) = 0;
+    if(!lb_seen) gnd_contacts(2) = 0;
 
     // if(rf_cnt < 5) gnd_contacts(0) = 1;
     // if(rb_cnt < 5) gnd_contacts(1) = 1;
     // if(lf_cnt < 5) gnd_contacts(2) = 1;
     // if(lb_cnt < 5) gnd_contacts(3) = 1;
+    // cout << rfz << ", \t" << rbz << ", \t" << lfz << ", \t" << lbz << endl;
+    // cout << (int)right_data_reliable << ",\t" << (int)left_data_reliable << endl;
+
 
     mjFREESTACK
 }

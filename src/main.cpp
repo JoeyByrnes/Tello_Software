@@ -667,6 +667,7 @@ int main(int argc, char *argv[]) {
 		\r\033[34mupload_command \033[39m= pio run -t exec -a \"-s\"\n\n");
 
 		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 1000);
+		tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, NULL, "plotting",TASK_CONSTANT_PERIOD, 5000);
 
 		while(1){ usleep(1000); }
 		return 0;

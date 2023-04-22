@@ -29,6 +29,11 @@ VectorXd SRBMController::update(Vector3d body_position, Vector3d body_linear_vel
                                  Vector3d body_orientation, Vector3d body_angular_velocity,
                                  MatrixXd q, MatrixXd qd, double t) 
 {
+    _EA = body_orientation;
+    _dEA = body_angular_velocity;
+    _pc = body_position;
+    _dpc = body_linear_velocity;
+    
     double phiR   = body_orientation(0);
     double thetaR = body_orientation(1);
     double psiR   = body_orientation(2);

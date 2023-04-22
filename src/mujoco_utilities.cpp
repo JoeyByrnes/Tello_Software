@@ -141,7 +141,7 @@ void scroll(GLFWwindow* window, double xoffset, double yoffset)
     mjv_moveCamera(m, mjMOUSE_ZOOM, 0, -0.05 * yoffset, &scn, &cam);
 }
 
-void contactforce(const mjModel* m, mjData* d)
+void contactforce(const mjModel* m, mjData* d,int FSM)
 {
     mjMARKSTACK
     mjtNum* f0_contact_pos = mj_stackAlloc(d, 3);//contact position in unkown frame. check
@@ -226,6 +226,17 @@ void contactforce(const mjModel* m, mjData* d)
     if(!lf_seen) gnd_contacts(3) = 0;
     if(!lb_seen) gnd_contacts(2) = 0;
 
+    if(FSM == 1)
+    {
+        gnd_contacts(0) = 0;
+        gnd_contacts(1) = 0;
+    }
+    if(FSM == -1)
+    {
+        gnd_contacts(2) = 0;
+        gnd_contacts(3) = 0;
+    }
+
     // if(rf_cnt < 5) gnd_contacts(0) = 1;
     // if(rb_cnt < 5) gnd_contacts(1) = 1;
     // if(lf_cnt < 5) gnd_contacts(2) = 1;
@@ -249,4 +260,27 @@ void applyJointTorquesMujoco(VectorXd torques)
     d->ctrl[hip_motor3_r_idx]  = torques(7);
     d->ctrl[knee_motor_r_idx]  = torques(8);
     d->ctrl[ankle_motor_r_idx] = torques(9);
+}
+
+double sigmoid(double x) { return 1 / (1 + exp(-x)); }
+
+VectorXd mux_and_smooth(VectorXd initialOutput, VectorXd finalOutput, double start_time, double end_time, double time) 
+{
+
+    if( time < start_time ) return initialOutput;
+    if( time > end_time ) return finalOutput;
+    if(end_time - start_time <= 0) return finalOutput;
+
+    // compute the sigmoid function input for each element in the vector
+    double switchFactor = (time - start_time) / (end_time - start_time);  // Calculate the switch factor based on the current time step and direction flag
+
+    if(switchFactor > 1) switchFactor = 1;
+
+    double smoothVal = sigmoid((switchFactor - 0.5) * 14);  // Scale the switch factor to be between -5 and 5, and apply sigmoid function
+    if(smoothVal < 0.001) smoothVal = 0;
+    if(smoothVal > 0.999) smoothVal = 1;
+
+    VectorXd out = ((1-smoothVal) * initialOutput) + (smoothVal * finalOutput);
+
+    return out;
 }

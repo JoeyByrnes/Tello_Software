@@ -1,3 +1,6 @@
+#ifndef __SRBM_CONTROLLER_H__
+#define __SRBM_CONTROLLER_H__
+
 #include <Eigen/Dense>
 #include "structs.h"
 #include "utilities.h"
@@ -154,6 +157,18 @@ class SRBMController {
     // Getter function for Center of Mass Z from Ground (only works on flat ground)
     double get_CoM_z(MatrixXd lfv_hip,VectorXd gnd_contacts, Vector3d EA);
 
+    // Getter function for _EA
+    Eigen::Vector3d get_EA() const {return _EA;}
+
+    // Getter function for _dEA
+    Eigen::Vector3d get_dEA() const {return _dEA;}
+
+    // Getter function for _pc
+    Eigen::Vector3d get_pc() const {return _pc;}
+
+    // Getter function for _dpc
+    Eigen::Vector3d get_dpc() const {return _dpc;}
+
   private:
 
     SRB_Params srb_params;
@@ -163,6 +178,11 @@ class SRBMController {
     double t = 0;
     int FSM = 0;
     int FSM_prev = 0;
+
+    Vector3d _EA;
+    Vector3d _dEA;
+    Vector3d _pc;
+    Vector3d _dpc;
 
     VectorXd x = VectorXd(21);
     MatrixXd q = MatrixXd(2,5); 
@@ -199,3 +219,5 @@ class SRBMController {
 
 
 };
+
+#endif

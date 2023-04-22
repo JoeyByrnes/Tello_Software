@@ -31,11 +31,11 @@ DynamicRobot::DynamicRobot()
 
     // Initialize state covariance
     NoiseParams noise_params;
-    noise_params.setGyroscopeNoise(0.0005);
+    noise_params.setGyroscopeNoise(0.0001);
     noise_params.setAccelerometerNoise(0.01);
-    noise_params.setGyroscopeBiasNoise(0.0);
-    noise_params.setAccelerometerBiasNoise(0.0);
-    noise_params.setContactNoise(0.00);
+    noise_params.setGyroscopeBiasNoise(0.0001);
+    noise_params.setAccelerometerBiasNoise(0.0001);
+    noise_params.setContactNoise(0.01);
 
     // Initialize filter
     InEKF filter(initial_state, noise_params);
@@ -43,6 +43,8 @@ DynamicRobot::DynamicRobot()
     std::cout << filter.getNoiseParams() << std::endl;
     std::cout << "Robot's state is initialized to: \n";
     std::cout << filter.getState() << std::endl;
+
+    controller = new SRBMController();
 
 
 }
@@ -769,19 +771,19 @@ void DynamicRobot::update_filter_kinematic_data(MatrixXd lfv_hip, Matrix3d R_rig
 
     Matrix4d pose_right_front = Matrix4d::Identity();
     pose_right_front.block<3,1>(0,3) = right_front_in_CoM;
-    pose_right_front.block<3,3>(0,0) = R_right.transpose();
+    pose_right_front.block<3,3>(0,0) = Rfoot;
 
     Matrix4d pose_right_back = Matrix4d::Identity();
     pose_right_back.block<3,1>(0,3) = right_back_in_CoM;
-    pose_right_back.block<3,3>(0,0) = R_right.transpose();
+    pose_right_back.block<3,3>(0,0) = Rfoot;
 
     Matrix4d pose_left_front = Matrix4d::Identity();
     pose_left_front.block<3,1>(0,3) = left_front_in_CoM;
-    pose_left_front.block<3,3>(0,0) = R_left.transpose();
+    pose_left_front.block<3,3>(0,0) = Rfoot;
 
     Matrix4d pose_left_back = Matrix4d::Identity();
     pose_left_back.block<3,1>(0,3) = left_back_in_CoM;
-    pose_left_back.block<3,3>(0,0) = R_left.transpose();
+    pose_left_back.block<3,3>(0,0) = Rfoot;
 
     inekf::Kinematics frame_rf(0, pose_right_front, covariance);
     inekf::Kinematics frame_rb(1, pose_right_back, covariance);

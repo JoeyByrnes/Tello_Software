@@ -7,7 +7,7 @@
 	<default>
     <joint limited='true' damping="10"/>
     <motor ctrllimited='true'/>
-    <geom contype='0' conaffinity='0' condim='1' solref="0.002 1"/><!--solref='0.005 1'-->
+    <geom contype='0' conaffinity='0' condim='1' solref="0.005 1"/><!--solref='0.005 1'-->
     <default class='TELLO'>
     </default>
     <default class='collision'>

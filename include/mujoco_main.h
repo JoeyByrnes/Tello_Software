@@ -33,6 +33,7 @@
 #include "mujoco/mujoco.h"
 #include <GLFW/glfw3.h>
 #include "SRBM-Ctrl/structs.h"
+#include <matplotlibcpp.h>
 
 #include "SRBM-Ctrl/utilities.h"
 #include "SRBM-Ctrl/controllers.h"
@@ -43,5 +44,6 @@
 #include "SRBMController.h"
 
 void* mujoco_Update_1KHz( void * arg );
+void* plotting( void * arg );
 
 #endif

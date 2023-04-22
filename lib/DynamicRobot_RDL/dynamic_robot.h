@@ -36,6 +36,7 @@
 #include "vn/compositedata.h"
 #include "vn/util.h"
 #include "InEKF.h"
+#include "SRBMController.h"
 
 using namespace Eigen;
 using namespace vn::sensors;
@@ -49,7 +50,7 @@ using namespace inekf;
 #define ENCODER_TO_RADIANS ((double)(12.5/32768.0))
 #define VELOCITY_TO_RADIANS_PER_SEC ((double)(65.0/4096.0))
 #define DT_MIN 1e-6
-#define DT_MAX 0.0015
+#define DT_MAX 0.005
 
 typedef VectorXd (*VectorXd_function)(const VectorXd&);
 typedef MatrixXd (*MatrixXd_function)(const VectorXd&);
@@ -201,6 +202,7 @@ namespace RoboDesignLab {
         VnSensor imu;
         Vector3d _ypr;
         Vector3d _acc = VectorXd::Zero(3);
+        Vector3d _gyro = VectorXd::Zero(3);
         Vector3d _vel = VectorXd::Zero(3);
         Vector3d _pos = VectorXd::Zero(3);
         int _balance_adjust = 0;
@@ -215,6 +217,9 @@ namespace RoboDesignLab {
         VectorXd sim_joint_torques = VectorXd::Zero(10);
         VectorXd sim_joint_pos = VectorXd::Zero(10);
         VectorXd sim_joint_vel = VectorXd::Zero(10);
+
+        // Balance controller
+        SRBMController* controller;
 
     private:
         // Kinematics Functions

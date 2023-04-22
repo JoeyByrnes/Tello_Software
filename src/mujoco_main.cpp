@@ -1,5 +1,8 @@
+#define WITHOUT_NUMPY
 #include "mujoco_main.h"
 #include "mujoco_utilities.h"
+
+namespace plt = matplotlibcpp;
 
 extern RoboDesignLab::DynamicRobot* tello;
 inekf::RobotState filter_state;
@@ -95,7 +98,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
     // Simulation time
     double time = d->time;
-
+    controller->set_time(time);
     // Get robot states
     double xR = d->qpos[torso_x_idx];
     double xdR = d->qvel[torso_x_idx];    
@@ -160,7 +163,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     dash_utils::writeVectorToCsv(mujoco_lfv_vector,"mujoco_lfv.csv");
     dash_utils::writeVectorToCsv(lfv_comm_vector,"lfv_comm.csv");
 
-    contactforce(m,d); 
+    contactforce(m,d, controller->get_FSM()); 
 
     // Access the acceleration and angular velocity data from the sensors
     mjtNum acceleration[3];
@@ -175,6 +178,8 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     // Vector3d acc_no_g = subtractG(Vector3d(psiR,thetaR,phiR),Vector3d(acceleration[0],acceleration[1],acceleration[2]));
     Vector3d imu_acc = Vector3d(acceleration[0],acceleration[1],acceleration[2]);
     Vector3d imu_gyro = Vector3d(angular_velocity[0],angular_velocity[1],angular_velocity[2]);
+    tello->_acc = imu_acc;
+    tello->_gyro = imu_gyro;
     // Print the acceleration and angular velocity data
     // printf("Acceleration: (%f, %f, %f)\n", acceleration[0], acceleration[1], acceleration[2]);
     // printf("Angular Velocity: (%f, %f, %f)\n", angular_velocity[0], angular_velocity[1], angular_velocity[2]);
@@ -246,19 +251,28 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
     // Populate Controller inputs with estimated data instead of mujoco given data:
     Vector3d pc_curr_plot = pc_curr;
-    if(time > 2)
-    {
-        pc_curr(0)  = filter_state.getPosition()(0); 
-        pc_curr(1)  = filter_state.getPosition()(1); 
-        pc_curr(2)  = CoM_z;
 
-        dpc_curr(0) = filter_state.getVelocity()(0);
-        // dpc_curr(1) = filter_state.getVelocity()(1);
-        dpc_curr(2) = filter_state.getVelocity()(2);
+    Vector3d estimated_pc(filter_state.getPosition()(0),filter_state.getPosition()(1),CoM_z);
+    Vector3d estimated_dpc(filter_state.getVelocity()(0),dpc_curr(1),filter_state.getVelocity()(1));
 
-    }
+    Vector3d pc_ctrl = mux_and_smooth(pc_curr,estimated_pc,2.5,3.5,time);
+    Vector3d dpc_ctrl = mux_and_smooth(dpc_curr,estimated_dpc,2.5,3.5,time);
 
-    dEA_curr = imu_gyro;
+    cout << "pc_ctrl: " << pc_ctrl.transpose() << endl;
+
+    // if(time > 2)
+    // {
+    //     pc_curr(0)  = filter_state.getPosition()(0); 
+    //     pc_curr(1)  = filter_state.getPosition()(1); 
+    //     pc_curr(2)  = CoM_z;
+
+    //     dpc_curr(0) = filter_state.getVelocity()(0);
+    //     // dpc_curr(1) = filter_state.getVelocity()(1);
+    //     dpc_curr(2) = filter_state.getVelocity()(2);
+
+    // }
+
+    // dEA_curr = imu_gyro;
 
     VectorXd tau = controller->update(pc_curr, dpc_curr, EA_curr, dEA_curr,q ,qd ,time);
     MatrixXd lfv_comm = controller->get_lfv_comm_world();
@@ -267,7 +281,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     double t_end_stepping = controller->get_SRB_params().t_end_stepping;  
 
     // filter debugging:
-    VectorXd pos_out(11),vel_out(11), EA_out(6);
+    VectorXd pos_out(11),vel_out(11), EA_out(6), pc_out(9);
     pos_out << pc_curr_plot, 0, filter_state.getPosition(), CoM_z, (pc_curr_plot-filter_state.getPosition());
     dash_utils::setOutputFolder("/home/joey/Desktop/tello_outputs/");
     dash_utils::writeVectorToCsv(pos_out,"pos_real_vs_filter.csv");
@@ -275,6 +289,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     vel_out << dpc_curr, 0, filter_state.getVelocity(), 0, (dpc_curr-filter_state.getVelocity());
     dash_utils::setOutputFolder("/home/joey/Desktop/tello_outputs/");
     dash_utils::writeVectorToCsv(vel_out,"vel_real_vs_filter.csv");
+    
 
     // BEGIN TASK PD CODE ======================================+++++++++++++++++
 
@@ -452,7 +467,7 @@ void* mujoco_Update_1KHz( void * arg )
 
     // INITIALIZE SRBM CONTROLLER ========================================================
 
-    controller = new SRBMController();
+    controller = tello->controller;
     SRB_Params srb_params = controller->get_SRB_params();
     Traj_planner_dyn_data traj_planner_dyn_data = controller->get_traj_planner_dyn_data();
     Human_params human_params = controller->get_human_params();
@@ -568,6 +583,7 @@ void* mujoco_Update_1KHz( void * arg )
 
     m->opt.timestep = 0.001;
 
+    // Plotting:
 
 	// END SETUP CODE FOR MUJOCO ========================================================================
     mj_step(m, d);
@@ -642,4 +658,101 @@ void* mujoco_Update_1KHz( void * arg )
 
     exit(0);
     return NULL;
+}
+
+void* plotting( void * arg )
+{
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	void* dynamic_robot_ptr = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
+
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
+
+    struct timespec next;
+    clock_gettime(CLOCK_MONOTONIC, &next);
+
+    std::vector<double> x, y1,y2,y3,y4,y5,y6;
+    while(tello->controller->get_time() < 0.01){ usleep(1000); }
+
+    // Initialize the plot
+    plt::figure_size(1200, 780);
+    plt::rcparams({{"font.size", "20"}});
+    plt::rcparams({{"lines.linewidth", "2"}});
+    plt::ion();
+    plt::plot(x, y1);
+    // Enable legend.
+    plt::legend();
+    plt::show();
+
+    while(true)
+    {
+        handle_start_of_periodic_task(next);
+    	// PLOTTING CODE HERE
+        // Update the plot with new data
+
+        x.push_back(tello->controller->get_time());
+        y1.push_back(tello->controller->get_pc()(0));
+        y2.push_back(tello->controller->get_pc()(1));
+        y3.push_back(0);
+
+        y4.push_back(tello->get_filter_state().getPosition()(0));
+        y5.push_back(tello->get_filter_state().getPosition()(1));
+        y6.push_back(0);
+
+        plt::clf();
+        plt::subplot(2, 1, 1);
+        plt::title("CoM Tracking");
+        plt::named_plot("CoM X", x, y1, "r-");
+        plt::named_plot("EKF X", x, y4, "b");
+        plt::legend();
+        plt::subplot(2, 1, 2);
+        plt::named_plot("CoM Y", x, y2, "r-");
+        plt::named_plot("EKF Y", x, y5, "b");
+        plt::legend();
+        plt::pause(0.001);
+
+        // ACCELEROMETER DATA:
+        // x.push_back(tello->controller->get_time());
+        // y1.push_back(tello->_acc(0));
+        // y2.push_back(tello->_acc(1));
+        // y3.push_back(tello->_acc(2));
+
+        // // y4.push_back(tello->_acc(0));
+        // // y5.push_back(tello->_acc(1));
+        // // y6.push_back(tello->_acc(2));
+
+        // plt::clf();
+        // plt::named_plot("acc 0", x, y1, "r-");
+        // plt::named_plot("acc 1", x, y2, "b-");
+        // plt::named_plot("acc 2", x, y3, "g-");
+        // plt::title("IMU Data");
+        // plt::legend();
+        // plt::pause(0.001);
+
+        // GYRO DATA:
+        // x.push_back(tello->controller->get_time());
+        // y1.push_back(tello->_gyro(0));
+        // y2.push_back(tello->_gyro(1));
+        // y3.push_back(tello->_gyro(2));
+
+        // y4.push_back(tello->controller->get_dEA()(0));
+        // y5.push_back(tello->controller->get_dEA()(1));
+        // y6.push_back(tello->controller->get_dEA()(2));
+
+        // plt::clf();
+        // plt::named_plot("gyro 0", x, y1, "r-");
+        // plt::named_plot("gyro 1", x, y2, "b-");
+        // plt::named_plot("gyro 2", x, y3, "g-");
+        
+        // plt::named_plot("dEA 0", x, y4, "r--");
+        // plt::named_plot("dEA 1", x, y5, "b--");
+        // plt::named_plot("dEA 2", x, y6, "g--");
+
+        // plt::title("IMU Data");
+        // plt::legend();
+        // plt::pause(0.001);
+
+		handle_end_of_periodic_task(next,period);
+	}
+
 }

@@ -167,7 +167,7 @@ void contactforce(const mjModel* m, mjData* d,int FSM)
         //std::cout << "contact point # " << i + 1 << std::endl;
         //std::cout << mj_id2name(m, mjOBJ_GEOM, cur_contact->geom2) << "  :"; // normal
         int ll = 0;
-        int ul = 1000;
+        int ul = 10000;
         right_data_reliable = (rfz >= ll && rbz >= ll) && (rfz <= ul && rbz <= ul);
         left_data_reliable = (lfz >= ll && lbz >= ll) && (lfz <= ul && lbz <= ul);
         if (geom1.compare("floor") == 0 || geom2.compare("floor") == 0)

@@ -32,7 +32,7 @@ DynamicRobot::DynamicRobot()
     // Initialize state covariance
     NoiseParams noise_params;
     noise_params.setGyroscopeNoise(0.0001);
-    noise_params.setAccelerometerNoise(0.01);
+    noise_params.setAccelerometerNoise(0.001);
     noise_params.setGyroscopeBiasNoise(0.0001);
     noise_params.setAccelerometerBiasNoise(0.0001);
     noise_params.setContactNoise(0.01);
@@ -734,56 +734,44 @@ void DynamicRobot::update_filter_kinematic_data(MatrixXd lfv_hip, Matrix3d R_rig
     Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
     Eigen::Matrix<double,6,6> covariance;
     vectorKinematics measured_kinematics;
-    Eigen::Matrix3d Rfoot = Eigen::Matrix3d::Identity(); // rotation matrix from foot to body frame 
+    Eigen::Matrix3d Rfoot;
+    Rfoot <<    1, 0, 0, // foot to imu rotation
+                0, 1, 0,
+                0, 0, 1;
+
     covariance.setZero(); // just using ideal covariance matrix for now
     
     double W = 0.252;
     double CoM2H_z_dist = 0.18;
-    // right hip to world
-    Eigen::Matrix4d HTMcom2hr = Matrix4d::Identity();
-    HTMcom2hr(1,3) = W/2.0;
-    HTMcom2hr(2,3) = CoM2H_z_dist;
-    // left hip to world
-    Eigen::Matrix4d HTMcom2hl = Matrix4d::Identity();
-    HTMcom2hl(1,3) = -W/2.0;
-    HTMcom2hl(2,3) = CoM2H_z_dist;
+
+    Vector3d CoM2hr(0,-W/2.0,-CoM2H_z_dist);
+    Vector3d CoM2hl(0, W/2.0,-CoM2H_z_dist);
 
     Vector3d right_front_in_hip = lfv_hip.row(0);
     Vector3d right_back_in_hip = lfv_hip.row(1);
     Vector3d left_front_in_hip = lfv_hip.row(2);
     Vector3d left_back_in_hip = lfv_hip.row(3);
 
-    Eigen::Vector4d right_front_in_hip_homogeneous;
-    right_front_in_hip_homogeneous << right_front_in_hip, 1.0;
-    Eigen::Vector3d right_front_in_CoM = (HTMcom2hr.inverse() * right_front_in_hip_homogeneous).head(3);
-
-    Eigen::Vector4d right_back_in_hip_homogeneous;
-    right_back_in_hip_homogeneous << right_back_in_hip, 1.0;
-    Eigen::Vector3d right_back_in_CoM = (HTMcom2hr.inverse() * right_back_in_hip_homogeneous).head(3);
-
-    Eigen::Vector4d left_front_in_hip_homogeneous;
-    left_front_in_hip_homogeneous << left_front_in_hip, 1.0;
-    Eigen::Vector3d left_front_in_CoM = (HTMcom2hl.inverse() * left_front_in_hip_homogeneous).head(3);
-
-    Eigen::Vector4d left_back_in_hip_homogeneous;
-    left_back_in_hip_homogeneous << left_back_in_hip, 1.0;
-    Eigen::Vector3d left_back_in_CoM = (HTMcom2hl.inverse() * left_back_in_hip_homogeneous).head(3);
+    Eigen::Vector3d right_front_in_CoM = right_front_in_hip+CoM2hr;
+    Eigen::Vector3d right_back_in_CoM = right_back_in_hip+CoM2hr;
+    Eigen::Vector3d left_front_in_CoM = left_front_in_hip+CoM2hl;
+    Eigen::Vector3d left_back_in_CoM = left_back_in_hip+CoM2hl;
 
     Matrix4d pose_right_front = Matrix4d::Identity();
     pose_right_front.block<3,1>(0,3) = right_front_in_CoM;
-    pose_right_front.block<3,3>(0,0) = Rfoot;
+    pose_right_front.block<3,3>(0,0) = R_right;
 
     Matrix4d pose_right_back = Matrix4d::Identity();
     pose_right_back.block<3,1>(0,3) = right_back_in_CoM;
-    pose_right_back.block<3,3>(0,0) = Rfoot;
+    pose_right_back.block<3,3>(0,0) = R_right;
 
     Matrix4d pose_left_front = Matrix4d::Identity();
     pose_left_front.block<3,1>(0,3) = left_front_in_CoM;
-    pose_left_front.block<3,3>(0,0) = Rfoot;
+    pose_left_front.block<3,3>(0,0) = R_left;
 
     Matrix4d pose_left_back = Matrix4d::Identity();
     pose_left_back.block<3,1>(0,3) = left_back_in_CoM;
-    pose_left_back.block<3,3>(0,0) = Rfoot;
+    pose_left_back.block<3,3>(0,0) = R_left;
 
     inekf::Kinematics frame_rf(0, pose_right_front, covariance);
     inekf::Kinematics frame_rb(1, pose_right_back, covariance);
@@ -793,6 +781,8 @@ void DynamicRobot::update_filter_kinematic_data(MatrixXd lfv_hip, Matrix3d R_rig
     measured_kinematics.push_back(frame_rb);
     measured_kinematics.push_back(frame_lf);
     measured_kinematics.push_back(frame_lb);
+
+    plot_data << right_front_in_CoM,right_back_in_CoM,left_front_in_CoM,left_back_in_CoM,VectorXd::Zero(8);
 
     filter.CorrectKinematics(measured_kinematics);
 }

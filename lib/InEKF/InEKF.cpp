@@ -13,6 +13,8 @@
 
 #include "InEKF.h"
 
+extern Eigen::Matrix3d rotation_mat;
+
 namespace inekf {
 
 using namespace std;
@@ -37,19 +39,19 @@ ostream& operator<<(ostream& os, const Observation& o) {
     os << "-----------------------------------";
     return os;  
 } 
-
+#define gravity -9.81
 // ------------ InEKF -------------
 // Default constructor
-InEKF::InEKF() : g_((Eigen::VectorXd(3) << 0,0,-9.81).finished()){}
+InEKF::InEKF() : g_((Eigen::VectorXd(3) << 0,0,gravity).finished()){}
 
 // Constructor with noise params
-InEKF::InEKF(NoiseParams params) : g_((Eigen::VectorXd(3) << 0,0,-9.81).finished()), noise_params_(params) {}
+InEKF::InEKF(NoiseParams params) : g_((Eigen::VectorXd(3) << 0,0,gravity).finished()), noise_params_(params) {}
 
 // Constructor with initial state
-InEKF::InEKF(RobotState state) : g_((Eigen::VectorXd(3) << 0,0,-9.81).finished()), state_(state) {}
+InEKF::InEKF(RobotState state) : g_((Eigen::VectorXd(3) << 0,0,gravity).finished()), state_(state) {}
 
 // Constructor with initial state and noise params
-InEKF::InEKF(RobotState state, NoiseParams params) : g_((Eigen::VectorXd(3) << 0,0,-9.81).finished()), state_(state), noise_params_(params) {}
+InEKF::InEKF(RobotState state, NoiseParams params) : g_((Eigen::VectorXd(3) << 0,0,gravity).finished()), state_(state), noise_params_(params) {}
 
 // Return robot's current state
 RobotState InEKF::getState() { 
@@ -120,7 +122,6 @@ std::map<int,bool> InEKF::getContacts() {
 #endif
     return contacts_; 
 }
-
 
 // InEKF Propagation - Inertial Data
 void InEKF::Propagate(const Eigen::Matrix<double,6,1>& m, double dt) {
@@ -357,7 +358,7 @@ void InEKF::CorrectLandmarks(const vectorLandmarks& measured_landmarks) {
             X_aug.block(startIndex,0,1,startIndex) = Eigen::MatrixXd::Zero(1,startIndex);
             X_aug.block(0,startIndex,startIndex,1) = Eigen::MatrixXd::Zero(startIndex,1);
             X_aug(startIndex, startIndex) = 1;
-            X_aug.block(0,startIndex,3,1) = p + R*it->position;
+            X_aug.block(0,startIndex,3,1) = p + rotation_mat.transpose()*it->position;
 
             // Initialize new landmark covariance - TODO:speed up
             Eigen::MatrixXd F = Eigen::MatrixXd::Zero(state_.dimP()+3,state_.dimP()); 
@@ -526,6 +527,7 @@ void InEKF::CorrectKinematics(const vectorKinematics& measured_kinematics) {
             X_aug.block(0,startIndex,startIndex,1) = Eigen::MatrixXd::Zero(startIndex,1);
             X_aug(startIndex, startIndex) = 1;
             X_aug.block(0,startIndex,3,1) = p + R*it->pose.block<3,1>(0,3);
+            // X_aug.block(0,startIndex,3,1) = p + it->pose.block<3,1>(0,3);
 
             // Initialize new landmark covariance - TODO:speed up
             Eigen::MatrixXd F = Eigen::MatrixXd::Zero(state_.dimP()+3,state_.dimP()); 

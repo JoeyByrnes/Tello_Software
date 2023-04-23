@@ -3,10 +3,12 @@
 #include "mujoco_utilities.h"
 
 namespace plt = matplotlibcpp;
+GLFWwindow* window;
 
 extern RoboDesignLab::DynamicRobot* tello;
 inekf::RobotState filter_state;
 extern MatrixXd lfv_dsp_start;
+Matrix3d rotation_mat;
 
 char error[1000];
 
@@ -69,28 +71,6 @@ SRBMController* controller;
 MatrixXd lfv0(4,3), lfdv0(4,3); // global so planner can access them for now
 
 // end SRBM-Ctrl Variables here ============================================================
-
-Eigen::VectorXd subtractG(const Eigen::Vector3d& ypr, const Eigen::VectorXd& acc)
-{
-    // Construct rotation matrix from roll-pitch-yaw angles
-    AngleAxisd pitchRotation(ypr[1], Vector3d::UnitY());
-    AngleAxisd rollRotation(ypr[2], Vector3d::UnitX());
-
-    Matrix3d R = pitchRotation.matrix() * rollRotation.matrix();
-
-
-    // Calculate gravitational acceleration in body frame
-    Eigen::Vector3d g_body(0, 0, 9.81);
-    Eigen::Vector3d g_enu = R.transpose() * g_body;
-
-    // Subtract gravitational acceleration from measured acceleration
-    Eigen::VectorXd acc_out(3);
-    acc_out = acc - g_enu;
-
-	// printf("    %.5f, \t\t %.5f, \t\t %.5f                   \r", g_enu[0], g_enu[1], g_enu[2]);
-	// cout.flush();
-    return acc_out;
-}
 
 void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 {
@@ -178,8 +158,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     // Vector3d acc_no_g = subtractG(Vector3d(psiR,thetaR,phiR),Vector3d(acceleration[0],acceleration[1],acceleration[2]));
     Vector3d imu_acc = Vector3d(acceleration[0],acceleration[1],acceleration[2]);
     Vector3d imu_gyro = Vector3d(angular_velocity[0],angular_velocity[1],angular_velocity[2]);
-    tello->_acc = imu_acc;
-    tello->_gyro = imu_gyro;
+
     // Print the acceleration and angular velocity data
     // printf("Acceleration: (%f, %f, %f)\n", acceleration[0], acceleration[1], acceleration[2]);
     // printf("Angular Velocity: (%f, %f, %f)\n", angular_velocity[0], angular_velocity[1], angular_velocity[2]);
@@ -215,6 +194,15 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     Rwb = AngleAxisd(phiR, Vector3d::UnitX())
         * AngleAxisd(thetaR, Vector3d::UnitY())
         * AngleAxisd(psiR, Vector3d::UnitZ());
+    rotation_mat = Rwb;
+
+    VectorXd imu_acc_world = Rwb*imu_acc;
+    imu_acc_world +=Vector3d(0,0,9.81);
+
+    imu_acc = Rwb.transpose()*imu_acc_world;
+
+    tello->_acc = imu_acc;
+    tello->_gyro = imu_gyro;
 
 	// Fill SRBM-Ctrl variables with Mujoco Variables here:
     MatrixXd q(2,5);
@@ -254,25 +242,6 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
     Vector3d estimated_pc(filter_state.getPosition()(0),filter_state.getPosition()(1),CoM_z);
     Vector3d estimated_dpc(filter_state.getVelocity()(0),dpc_curr(1),filter_state.getVelocity()(1));
-
-    Vector3d pc_ctrl = mux_and_smooth(pc_curr,estimated_pc,2.5,3.5,time);
-    Vector3d dpc_ctrl = mux_and_smooth(dpc_curr,estimated_dpc,2.5,3.5,time);
-
-    cout << "pc_ctrl: " << pc_ctrl.transpose() << endl;
-
-    // if(time > 2)
-    // {
-    //     pc_curr(0)  = filter_state.getPosition()(0); 
-    //     pc_curr(1)  = filter_state.getPosition()(1); 
-    //     pc_curr(2)  = CoM_z;
-
-    //     dpc_curr(0) = filter_state.getVelocity()(0);
-    //     // dpc_curr(1) = filter_state.getVelocity()(1);
-    //     dpc_curr(2) = filter_state.getVelocity()(2);
-
-    // }
-
-    // dEA_curr = imu_gyro;
 
     VectorXd tau = controller->update(pc_curr, dpc_curr, EA_curr, dEA_curr,q ,qd ,time);
     MatrixXd lfv_comm = controller->get_lfv_comm_world();
@@ -428,6 +397,16 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     tello->update_filter_IMU_data(imu_data);
     tello->update_filter_contact_data(gnd_contacts);
     tello->update_filter_kinematic_data(controller->get_lfv_hip(),R_foot_right,R_foot_left);
+    
+    // filter_state = tello->get_filter_state();
+    // Vector3d euler_angles = filter_state.getRotation().eulerAngles(0, 1, 2); // ZYX order
+    // double roll = euler_angles(0);
+    // double pitch = euler_angles(1);
+    // Matrix3d new_rotation_matrix;
+    // new_rotation_matrix = AngleAxisd(roll, Vector3d::UnitX()) * AngleAxisd(pitch, Vector3d::UnitY()) * AngleAxisd(0, Vector3d::UnitZ());
+    // filter_state.setRotation(new_rotation_matrix);
+    // tello->set_filter_state(filter_state);
+
 
     // end update filter states: ------------------------------------------------------
     filter_state = tello->get_filter_state();
@@ -555,7 +534,7 @@ void* mujoco_Update_1KHz( void * arg )
         mju_error("Could not initialize GLFW");
 
 		// create window, make OpenGL context current, request v-sync
-    GLFWwindow* window = glfwCreateWindow(1920, 1080, "Tello Mujoco Sim", NULL, NULL);
+    window = glfwCreateWindow(1920, 1080, "Tello Mujoco Sim", NULL, NULL);
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
 
@@ -675,7 +654,8 @@ void* plotting( void * arg )
     while(tello->controller->get_time() < 0.01){ usleep(1000); }
 
     // Initialize the plot
-    plt::figure_size(1200, 780);
+    plt::backend("TkAgg");
+    plt::figure_size(1200, 800);
     plt::rcparams({{"font.size", "20"}});
     plt::rcparams({{"lines.linewidth", "2"}});
     plt::ion();
@@ -684,75 +664,162 @@ void* plotting( void * arg )
     plt::legend();
     plt::show();
 
-    while(true)
+    x.push_back(0);
+    y1.push_back(0);
+    y2.push_back(0);
+    y3.push_back(0);
+    y4.push_back(0);
+    y5.push_back(0);
+    y6.push_back(0);
+
+    while(!glfwWindowShouldClose(window))
     {
         handle_start_of_periodic_task(next);
     	// PLOTTING CODE HERE
         // Update the plot with new data
 
-        x.push_back(tello->controller->get_time());
-        y1.push_back(tello->controller->get_pc()(0));
-        y2.push_back(tello->controller->get_pc()(1));
-        y3.push_back(0);
+        if(tello->controller->get_time() > x[x.size()-1])
+        {
 
-        y4.push_back(tello->get_filter_state().getPosition()(0));
-        y5.push_back(tello->get_filter_state().getPosition()(1));
-        y6.push_back(0);
+            // POSITION DATA ==================================================================================
+            x.push_back(tello->controller->get_time());
+            y1.push_back(tello->controller->get_pc()(0));
+            y2.push_back(tello->controller->get_pc()(1));
+            y3.push_back(tello->controller->get_pc()(2));
 
-        plt::clf();
-        plt::subplot(2, 1, 1);
-        plt::title("CoM Tracking");
-        plt::named_plot("CoM X", x, y1, "r-");
-        plt::named_plot("EKF X", x, y4, "b");
-        plt::legend();
-        plt::subplot(2, 1, 2);
-        plt::named_plot("CoM Y", x, y2, "r-");
-        plt::named_plot("EKF Y", x, y5, "b");
-        plt::legend();
-        plt::pause(0.001);
+            y4.push_back(tello->get_filter_state().getPosition()(0));
+            y5.push_back(tello->get_filter_state().getPosition()(1));
+            y6.push_back(tello->get_filter_state().getPosition()(2));
 
-        // ACCELEROMETER DATA:
-        // x.push_back(tello->controller->get_time());
-        // y1.push_back(tello->_acc(0));
-        // y2.push_back(tello->_acc(1));
-        // y3.push_back(tello->_acc(2));
+            plt::clf();
+            plt::subplot(3, 1, 1);
+            plt::title("CoM Tracking");
+            plt::named_plot("CoM X", x, y1, "r-");
+            plt::named_plot("EKF X", x, y4, "b");
+            plt::legend();
+            plt::subplot(3, 1, 2);
+            plt::named_plot("CoM Y", x, y2, "r-");
+            plt::named_plot("EKF Y", x, y5, "b");
+            plt::legend();
+            plt::subplot(3, 1, 3);
+            plt::named_plot("CoM Z", x, y3, "r-");
+            plt::named_plot("EKF Z", x, y6, "b");
+            plt::legend();
+            plt::pause(0.001);
 
-        // // y4.push_back(tello->_acc(0));
-        // // y5.push_back(tello->_acc(1));
-        // // y6.push_back(tello->_acc(2));
+             // VELOCITY DATA ==================================================================================
+            // x.push_back(tello->controller->get_time());
+            // y1.push_back(tello->controller->get_dpc()(0));
+            // y2.push_back(tello->controller->get_dpc()(1));
+            // y3.push_back(tello->controller->get_dpc()(2));
 
-        // plt::clf();
-        // plt::named_plot("acc 0", x, y1, "r-");
-        // plt::named_plot("acc 1", x, y2, "b-");
-        // plt::named_plot("acc 2", x, y3, "g-");
-        // plt::title("IMU Data");
-        // plt::legend();
-        // plt::pause(0.001);
+            // y4.push_back(tello->get_filter_state().getVelocity()(0));
+            // y5.push_back(tello->get_filter_state().getVelocity()(1));
+            // y6.push_back(tello->get_filter_state().getVelocity()(2));
 
-        // GYRO DATA:
-        // x.push_back(tello->controller->get_time());
-        // y1.push_back(tello->_gyro(0));
-        // y2.push_back(tello->_gyro(1));
-        // y3.push_back(tello->_gyro(2));
+            // plt::clf();
+            // plt::subplot(3, 1, 1);
+            // plt::title("CoM Tracking");
+            // plt::named_plot("CoM X", x, y1, "r-");
+            // plt::named_plot("EKF X", x, y4, "b");
+            // plt::legend();
+            // plt::subplot(3, 1, 2);
+            // plt::named_plot("CoM Y", x, y2, "r-");
+            // plt::named_plot("EKF Y", x, y5, "b");
+            // plt::legend();
+            // plt::subplot(3, 1, 3);
+            // plt::named_plot("CoM Z", x, y3, "r-");
+            // plt::named_plot("EKF Z", x, y6, "b");
+            // plt::legend();
+            // plt::pause(0.001);
 
-        // y4.push_back(tello->controller->get_dEA()(0));
-        // y5.push_back(tello->controller->get_dEA()(1));
-        // y6.push_back(tello->controller->get_dEA()(2));
+            // ACCELEROMETER DATA: ==============================================================================
+            // x.push_back(tello->controller->get_time());
+            // y1.push_back(tello->_acc(0));
+            // y2.push_back(tello->_acc(1));
+            // y3.push_back(tello->_acc(2));
 
-        // plt::clf();
-        // plt::named_plot("gyro 0", x, y1, "r-");
-        // plt::named_plot("gyro 1", x, y2, "b-");
-        // plt::named_plot("gyro 2", x, y3, "g-");
+            // // y4.push_back(tello->_acc(0));
+            // // y5.push_back(tello->_acc(1));
+            // // y6.push_back(tello->_acc(2));
+
+            // plt::clf();
+            // plt::named_plot("acc 0", x, y1, "r-");
+            // plt::named_plot("acc 1", x, y2, "b-");
+            // plt::named_plot("acc 2", x, y3, "g-");
+            // plt::title("IMU Data");
+            // plt::legend();
+            // plt::pause(0.001);
+
+            // GYRO DATA: =========================================================================================
+            // x.push_back(tello->controller->get_time());
+            // y1.push_back(tello->_gyro(0));
+            // y2.push_back(tello->_gyro(1));
+            // y3.push_back(tello->_gyro(2));
+
+            // y4.push_back(tello->controller->get_dEA()(0));
+            // y5.push_back(tello->controller->get_dEA()(1));
+            // y6.push_back(tello->controller->get_dEA()(2));
+
+            // plt::clf();
+            // plt::named_plot("gyro 0", x, y1, "r-");
+            // plt::named_plot("gyro 1", x, y2, "b-");
+            // plt::named_plot("gyro 2", x, y3, "g-");
+            
+            // plt::named_plot("dEA 0", x, y4, "r--");
+            // plt::named_plot("dEA 1", x, y5, "b--");
+            // plt::named_plot("dEA 2", x, y6, "g--");
+
+            // plt::title("IMU Data");
+            // plt::legend();
+            // plt::pause(0.001);
+
+            // ROTATION DATA: =======================================================================================
+            // x.push_back(tello->controller->get_time());
+            // Vector3d euler_angles = filter_state.getRotation().eulerAngles(0, 1, 2); // XYZ order
+            // double roll = euler_angles(0);
+            // double pitch = euler_angles(1);
+            // double yaw = euler_angles(2);
+            
+            // y1.push_back(tello->controller->get_EA()(0)*180.0/M_PI);
+            // y2.push_back(tello->controller->get_EA()(1)*180.0/M_PI);
+            // y3.push_back(tello->controller->get_EA()(2)*180.0/M_PI);
+
+            // y4.push_back(roll*180.0/M_PI);
+            // y5.push_back(pitch*180.0/M_PI);
+            // y6.push_back(yaw*180.0/M_PI);
+
+            // plt::clf();
+            // plt::title("Rotation Data");
+            // plt::named_plot("Roll", x, y1, "r-");
+            // plt::named_plot("Pitch", x, y2, "b-");
+            // plt::named_plot("Yaw", x, y3, "g-");
+            // plt::named_plot("EKF_Roll", x, y4, "r--");
+            // plt::named_plot("EKF Pitch", x, y5, "b--");
+            // plt::named_plot("EKF Yaw", x, y6, "g--");
+            // plt::legend();
+            // plt::pause(0.001);
+
+            // FOOT POS DATA: =========================================================================================
+            // x.push_back(tello->controller->get_time());
+            // y1.push_back(tello->plot_data(9));
+            // y2.push_back(tello->plot_data(10));
+            // y3.push_back(tello->plot_data(11));
+
+            // plt::clf();
+            // plt::named_plot("Xcom", x, y1, "r-");
+            // plt::named_plot("Ycom", x, y2, "b-");
+            // plt::named_plot("Zcom", x, y3, "g-");
+
+            // plt::title("IMU Data");
+            // plt::legend();
+            // plt::pause(0.001);
+
+
+        }
         
-        // plt::named_plot("dEA 0", x, y4, "r--");
-        // plt::named_plot("dEA 1", x, y5, "b--");
-        // plt::named_plot("dEA 2", x, y6, "g--");
-
-        // plt::title("IMU Data");
-        // plt::legend();
-        // plt::pause(0.001);
 
 		handle_end_of_periodic_task(next,period);
 	}
-
+    return  0;
 }

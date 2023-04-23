@@ -221,6 +221,8 @@ namespace RoboDesignLab {
         // Balance controller
         SRBMController* controller;
 
+        VectorXd plot_data = VectorXd(20);
+
     private:
         // Kinematics Functions
         MatrixXd_function _jaco_motor2joint;

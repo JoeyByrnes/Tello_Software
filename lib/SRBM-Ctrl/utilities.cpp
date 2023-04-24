@@ -610,22 +610,18 @@ Vector3d dash_utils::hipToWorld(Vector3d vector_hip, Vector3d hip_pos_world, Vec
 
     Matrix4d T_world_to_hip;
     T_world_to_hip << cos(ry)*cos(rz), -cos(rx)*sin(rz) + sin(rx)*sin(ry)*cos(rz), sin(rx)*sin(rz) + cos(rx)*sin(ry)*cos(rz), tx,
-                     cos(ry)*sin(rz), cos(rx)*cos(rz) + sin(rx)*sin(ry)*sin(rz), -sin(rx)*cos(rz) + cos(rx)*sin(ry)*sin(rz), ty,
-                     -sin(ry), sin(rx)*cos(ry), cos(rx)*cos(ry), tz,
-                     0, 0, 0, 1;
-
-    // Calculate transformation matrix from hip frame to world frame
-    Matrix4d T_hip_to_world = T_world_to_hip.inverse();
+                        cos(ry)*sin(rz), cos(rx)*cos(rz) + sin(rx)*sin(ry)*sin(rz), -sin(rx)*cos(rz) + cos(rx)*sin(ry)*sin(rz), ty,
+                        -sin(ry), sin(rx)*cos(ry), cos(rx)*cos(ry), tz,
+                        0, 0, 0, 1;
 
     // Convert vector from hip frame to world frame
     Vector4d vector_hip_homogeneous;
     vector_hip_homogeneous << vector_hip, 1.0;
-    Vector4d vector_world_homogeneous = T_hip_to_world * vector_hip_homogeneous;
+    Vector4d vector_world_homogeneous = T_world_to_hip * vector_hip_homogeneous;
     Vector3d vector_world = vector_world_homogeneous.head(3);
 
     return vector_world;
 }
-
 
 // Define a function to parse the JSON file and write to an srb_params struct
 void dash_utils::parse_json_to_srb_params(const std::string& json_file_path, SRB_Params& params) {

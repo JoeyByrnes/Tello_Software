@@ -9,6 +9,7 @@ extern RoboDesignLab::DynamicRobot* tello;
 inekf::RobotState filter_state;
 extern MatrixXd lfv_dsp_start;
 Matrix3d rotation_mat;
+MatrixXd mujoco_lfv(4,3);
 
 char error[1000];
 
@@ -16,9 +17,8 @@ double sim_time;
 bool pause_sim = true;
 double stepping_in_progress = true;
 double CoM_z_last = 0;
+Vector4d z_plotting;
 
-MatrixXd right_leg_last(3,5);
-MatrixXd left_leg_last(3,5);
 VectorXd gnd_contacts(4);
 
 // robot states indices
@@ -131,7 +131,6 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     geom_id = mj_name2id(m, mjOBJ_GEOM, rfh);
     memcpy(right_foot_heel, &d->geom_xpos[3*geom_id], 3*sizeof(mjtNum));
 
-    MatrixXd mujoco_lfv(4,3);
     mujoco_lfv.row(0) = Vector3d(right_foot_toe[0],right_foot_toe[1],right_foot_toe[2]);
     mujoco_lfv.row(1) = Vector3d(right_foot_heel[0],right_foot_heel[1],right_foot_heel[2]);
     mujoco_lfv.row(2) = Vector3d(left_foot_toe[0],left_foot_toe[1],left_foot_toe[2]);
@@ -196,6 +195,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
         * AngleAxisd(psiR, Vector3d::UnitZ());
     rotation_mat = Rwb;
 
+    // add gravity to IMU:
     VectorXd imu_acc_world = Rwb*imu_acc;
     imu_acc_world +=Vector3d(0,0,9.81);
 
@@ -398,18 +398,9 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     tello->update_filter_contact_data(gnd_contacts);
     tello->update_filter_kinematic_data(controller->get_lfv_hip(),R_foot_right,R_foot_left);
     
-    // filter_state = tello->get_filter_state();
-    // Vector3d euler_angles = filter_state.getRotation().eulerAngles(0, 1, 2); // ZYX order
-    // double roll = euler_angles(0);
-    // double pitch = euler_angles(1);
-    // Matrix3d new_rotation_matrix;
-    // new_rotation_matrix = AngleAxisd(roll, Vector3d::UnitX()) * AngleAxisd(pitch, Vector3d::UnitY()) * AngleAxisd(0, Vector3d::UnitZ());
-    // filter_state.setRotation(new_rotation_matrix);
-    // tello->set_filter_state(filter_state);
-
+    filter_state = tello->get_filter_state();
 
     // end update filter states: ------------------------------------------------------
-    filter_state = tello->get_filter_state();
 
     // cout << "Position Error: " << (pc_curr-filter_state.getPosition()).transpose() << endl;
     // cout << "contacts: " << gnd_contacts.transpose() << endl;
@@ -650,7 +641,7 @@ void* plotting( void * arg )
     struct timespec next;
     clock_gettime(CLOCK_MONOTONIC, &next);
 
-    std::vector<double> x, y1,y2,y3,y4,y5,y6;
+    std::vector<double> x, y1,y2,y3,y4,y5,y6,y7,y8,y9,y10,y11,y12;
     while(tello->controller->get_time() < 0.01){ usleep(1000); }
 
     // Initialize the plot
@@ -671,13 +662,19 @@ void* plotting( void * arg )
     y4.push_back(0);
     y5.push_back(0);
     y6.push_back(0);
+    y7.push_back(0);
+    y8.push_back(0);
+    y9.push_back(0);
+    y10.push_back(0);
+    y11.push_back(0);
+    y12.push_back(0);
 
     while(!glfwWindowShouldClose(window))
     {
         handle_start_of_periodic_task(next);
     	// PLOTTING CODE HERE
         // Update the plot with new data
-
+        
         if(tello->controller->get_time() > x[x.size()-1])
         {
 
@@ -689,25 +686,61 @@ void* plotting( void * arg )
 
             y4.push_back(tello->get_filter_state().getPosition()(0));
             y5.push_back(tello->get_filter_state().getPosition()(1));
-            y6.push_back(tello->get_filter_state().getPosition()(2));
+            y6.push_back(CoM_z_last);
+
+            y7.push_back(z_plotting(0));
+            y8.push_back(z_plotting(1));
+            y9.push_back(z_plotting(2));
+            y10.push_back(z_plotting(3));
 
             plt::clf();
             plt::subplot(3, 1, 1);
             plt::title("CoM Tracking");
             plt::named_plot("CoM X", x, y1, "r-");
-            plt::named_plot("EKF X", x, y4, "b");
+            plt::named_plot("EKF X", x, y4, "b-");
             plt::legend();
             plt::subplot(3, 1, 2);
             plt::named_plot("CoM Y", x, y2, "r-");
-            plt::named_plot("EKF Y", x, y5, "b");
+            plt::named_plot("EKF Y", x, y5, "b-");
             plt::legend();
             plt::subplot(3, 1, 3);
             plt::named_plot("CoM Z", x, y3, "r-");
-            plt::named_plot("EKF Z", x, y6, "b");
+            plt::named_plot("Kin Z", x, y6, "b-");
             plt::legend();
             plt::pause(0.001);
 
-             // VELOCITY DATA ==================================================================================
+            // FOOT POSITION DATA =============================================================================
+            // x.push_back(tello->controller->get_time());
+            // Vector3d hip_right_pos_world = controller->get_right_leg_last().col(0);
+            // Vector3d hip_left_pos_world = controller->get_left_leg_last().col(0);
+            // Vector3d hip_orientation_world(tello->controller->get_EA());
+            // VectorXd task_pos = tello->joint_pos_to_task_pos(tello->getJointPositions());
+            // Vector3d task_right_front(task_pos(6),task_pos(7),task_pos(8));
+            // Vector3d rf_wrld = dash_utils::hipToWorld(task_right_front,hip_right_pos_world,hip_orientation_world);
+
+            // y1.push_back(rf_wrld(0));
+            // y2.push_back(rf_wrld(1));
+            // y3.push_back(rf_wrld(2));
+
+            // Vector3d rf_hip = dash_utils::worldToHip(mujoco_lfv.row(0),hip_right_pos_world,hip_orientation_world);
+
+            // y4.push_back(mujoco_lfv.row(0)(0)+0.002);
+            // y5.push_back(mujoco_lfv.row(0)(1)+0.002);
+            // y6.push_back(mujoco_lfv.row(0)(2)+0.002);
+
+            // plt::clf();
+            // plt::named_plot("task x", x, y1, "r-");
+            // plt::named_plot("task y", x, y2, "b-");
+            // plt::named_plot("task z", x, y3, "g-");
+
+            // plt::named_plot("MJ wrld X", x, y4, "r--");
+            // plt::named_plot("MJ wrld Y", x, y5, "b--");
+            // plt::named_plot("MJ wrld Z", x, y6, "g--");
+            // plt::title("Foot pos error");
+            // plt::legend();
+            // plt::pause(0.001);
+
+            // VELOCITY DATA ==================================================================================
             // x.push_back(tello->controller->get_time());
             // y1.push_back(tello->controller->get_dpc()(0));
             // y2.push_back(tello->controller->get_dpc()(1));
@@ -776,10 +809,31 @@ void* plotting( void * arg )
 
             // ROTATION DATA: =======================================================================================
             // x.push_back(tello->controller->get_time());
-            // Vector3d euler_angles = filter_state.getRotation().eulerAngles(0, 1, 2); // XYZ order
-            // double roll = euler_angles(0);
-            // double pitch = euler_angles(1);
-            // double yaw = euler_angles(2);
+            // // Vector3d euler_angles = filter_state.getRotation().eulerAngles(0, 1, 2); // XYZ order
+            // // double roll = euler_angles(0);
+            // // double pitch = euler_angles(1);
+            // // double yaw = euler_angles(2);
+
+            // Eigen::Quaterniond quat(filter_state.getRotation());
+            // double roll, pitch, yaw;
+            // Eigen::Matrix3d rotation = quat.toRotationMatrix();
+            // if (std::abs(rotation(2, 0)) != 1) {
+            //     pitch = -asin(rotation(2, 0));
+            //     roll = atan2(rotation(2, 1) / cos(pitch), rotation(2, 2) / cos(pitch));
+            //     yaw = atan2(rotation(1, 0) / cos(pitch), rotation(0, 0) / cos(pitch));
+            // } else {
+            //     pitch = rotation(2, 0) > 0 ? M_PI / 2 : -M_PI / 2;
+            //     roll = 0;
+            //     yaw = atan2(-rotation(1, 2), rotation(1, 1));
+            // }
+
+            // Eigen::Matrix3d rotation_matrix;
+            // Eigen::AngleAxisd roll_angle(roll, Eigen::Vector3d::UnitX());
+            // Eigen::AngleAxisd pitch_angle(pitch, Eigen::Vector3d::UnitY());
+            // Eigen::AngleAxisd yaw_angle(yaw, Eigen::Vector3d::UnitZ());
+
+            // Eigen::Quaterniond quat2 = roll_angle * pitch_angle * yaw_angle;
+            // rotation_matrix = quat2.toRotationMatrix();
             
             // y1.push_back(tello->controller->get_EA()(0)*180.0/M_PI);
             // y2.push_back(tello->controller->get_EA()(1)*180.0/M_PI);

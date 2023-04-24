@@ -527,7 +527,6 @@ void InEKF::CorrectKinematics(const vectorKinematics& measured_kinematics) {
             X_aug.block(0,startIndex,startIndex,1) = Eigen::MatrixXd::Zero(startIndex,1);
             X_aug(startIndex, startIndex) = 1;
             X_aug.block(0,startIndex,3,1) = p + R*it->pose.block<3,1>(0,3);
-            // X_aug.block(0,startIndex,3,1) = p + it->pose.block<3,1>(0,3);
 
             // Initialize new landmark covariance - TODO:speed up
             Eigen::MatrixXd F = Eigen::MatrixXd::Zero(state_.dimP()+3,state_.dimP()); 

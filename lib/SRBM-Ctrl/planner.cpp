@@ -158,11 +158,11 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     //cout << FSM_prev << "\t " << u1z << "\t " << u3z <<endl;
     if (FSM_prev == 0) // currently in DSP
     {
-        if ( (u1z < Fz_min || u2z < Fz_min) && t > 0 && s_dsp > 0.015 && next_SSP == 1) // enter SSP_L
+        if ( (u1z < Fz_min || u2z < Fz_min) && t > 0 && s_dsp > 0.002 && next_SSP == 1) // enter SSP_L
         {
             FSM_next = 1;
         }
-        else if ( (u3z < Fz_min || u4z < Fz_min) && t > 0 && s_dsp > 0.015 && next_SSP == -1) // enter SSP_R 
+        else if ( (u3z < Fz_min || u4z < Fz_min) && t > 0 && s_dsp > 0.002 && next_SSP == -1) // enter SSP_R 
         {
             FSM_next = -1;     
         }

@@ -35,7 +35,7 @@ DynamicRobot::DynamicRobot()
     noise_params.setAccelerometerNoise(0.001);
     noise_params.setGyroscopeBiasNoise(0.0001);
     noise_params.setAccelerometerBiasNoise(0.0001);
-    noise_params.setContactNoise(0.01);
+    noise_params.setContactNoise(0.00);
 
     // Initialize filter
     InEKF filter(initial_state, noise_params);

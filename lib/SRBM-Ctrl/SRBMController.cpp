@@ -1,4 +1,5 @@
 #include "SRBMController.h"
+extern Vector4d z_plotting;
 
 // Constructor is specific to Tello Robot
 SRBMController::SRBMController()
@@ -217,43 +218,38 @@ MatrixXd SRBMController::get_foot_orientation_wrt_body(VectorXd q_leg)
 double SRBMController::get_CoM_z(MatrixXd lfv_hip,VectorXd gnd_contacts, Vector3d EA)
 {
 
-    double W = 0.252;
+   double W = 0.252;
     double CoM2H_z_dist = 0.18;
-    // right hip to world
-    Eigen::Matrix4d HTMcom2hr = Matrix4d::Identity();
-    HTMcom2hr(1,3) = W/2.0;
-    HTMcom2hr(2,3) = CoM2H_z_dist;
-    // left hip to world
-    Eigen::Matrix4d HTMcom2hl = Matrix4d::Identity();
-    HTMcom2hl(1,3) = -W/2.0;
-    HTMcom2hl(2,3) = CoM2H_z_dist;
+
+    Vector3d CoM2hr(0,-W/2.0,-CoM2H_z_dist);
+    Vector3d CoM2hl(0, W/2.0,-CoM2H_z_dist);
 
     Vector3d right_front_in_hip = lfv_hip.row(0);
     Vector3d right_back_in_hip = lfv_hip.row(1);
     Vector3d left_front_in_hip = lfv_hip.row(2);
     Vector3d left_back_in_hip = lfv_hip.row(3);
 
-    Eigen::Vector4d right_front_in_hip_homogeneous;
-    right_front_in_hip_homogeneous << right_front_in_hip, 1.0;
-    Eigen::Vector3d right_front_in_CoM = (HTMcom2hr.inverse() * right_front_in_hip_homogeneous).head(3);
+    Eigen::Vector3d right_front_in_CoM = right_front_in_hip+CoM2hr;
+    Eigen::Vector3d right_back_in_CoM = right_back_in_hip+CoM2hr;
+    Eigen::Vector3d left_front_in_CoM = left_front_in_hip+CoM2hl;
+    Eigen::Vector3d left_back_in_CoM = left_back_in_hip+CoM2hl;
 
-    Eigen::Vector4d right_back_in_hip_homogeneous;
-    right_back_in_hip_homogeneous << right_back_in_hip, 1.0;
-    Eigen::Vector3d right_back_in_CoM = (HTMcom2hr.inverse() * right_back_in_hip_homogeneous).head(3);
+    Matrix3d Rwb;
+    Rwb = AngleAxisd(EA(0), Vector3d::UnitX())
+        * AngleAxisd(EA(1), Vector3d::UnitY())
+        * AngleAxisd(EA(2), Vector3d::UnitZ());
 
-    Eigen::Vector4d left_front_in_hip_homogeneous;
-    left_front_in_hip_homogeneous << left_front_in_hip, 1.0;
-    Eigen::Vector3d left_front_in_CoM = (HTMcom2hl.inverse() * left_front_in_hip_homogeneous).head(3);
+    double right_front_z = (Rwb*right_front_in_CoM)(2);
+    double right_back_z  = (Rwb*right_back_in_CoM)(2);
+    double left_front_z  = (Rwb*left_front_in_CoM)(2);
+    double left_back_z   = (Rwb*left_back_in_CoM)(2);
 
-    Eigen::Vector4d left_back_in_hip_homogeneous;
-    left_back_in_hip_homogeneous << left_back_in_hip, 1.0;
-    Eigen::Vector3d left_back_in_CoM = (HTMcom2hl.inverse() * left_back_in_hip_homogeneous).head(3);
-
-    double right_front_z = (dash_utils::hipToWorld(right_front_in_CoM, Vector3d(0,0,0), EA))(2);
-    double right_back_z  = (dash_utils::hipToWorld(right_back_in_CoM, Vector3d(0,0,0), EA))(2);
-    double left_front_z  = (dash_utils::hipToWorld(left_front_in_CoM, Vector3d(0,0,0), EA))(2);
-    double left_back_z   = (dash_utils::hipToWorld(left_back_in_CoM, Vector3d(0,0,0), EA))(2);
+    // double right_front_z = (dash_utils::hipToWorld(right_front_in_CoM, Vector3d(0,0,0), EA))(2);
+    // double right_back_z  = (dash_utils::hipToWorld(right_back_in_CoM, Vector3d(0,0,0), EA))(2);
+    // double left_front_z  = (dash_utils::hipToWorld(left_front_in_CoM, Vector3d(0,0,0), EA))(2);
+    // double left_back_z   = (dash_utils::hipToWorld(left_back_in_CoM, Vector3d(0,0,0), EA))(2);
     Vector4d z_heights(right_front_z,right_back_z,left_front_z,left_back_z);
+    z_plotting = -z_heights.array()-srb_params.hLIP;
     double z_height = 0;
     if(gnd_contacts.sum() == 0) return -1;
     

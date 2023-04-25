@@ -138,6 +138,8 @@
         "userdatacontainer": "cpp",
         "buffered_value": "cpp",
         "observer_ptr": "cpp",
-        "*.inc": "cpp"
+        "*.inc": "cpp",
+        "bufferobject": "cpp",
+        "vertexarraystate": "cpp"
     }
 }

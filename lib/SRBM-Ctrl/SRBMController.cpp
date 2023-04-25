@@ -212,6 +212,26 @@ MatrixXd SRBMController::get_foot_orientation_wrt_body(VectorXd q_leg)
 
     Matrix3d R_body_to_foot = dash_kin::fcn_HTM0lf1(q_leg, p_leg).block<3,3>(0,0);
 
+    // Eigen::Quaterniond quat(R_body_to_foot);                 // This code is used to edit individual euler angles
+    // double roll, pitch, yaw;
+    // Eigen::Matrix3d rotation = quat.toRotationMatrix();
+    // if (std::abs(rotation(2, 0)) != 1) {
+    //     pitch = -asin(rotation(2, 0));
+    //     roll = atan2(rotation(2, 1) / cos(pitch), rotation(2, 2) / cos(pitch));
+    //     yaw = atan2(rotation(1, 0) / cos(pitch), rotation(0, 0) / cos(pitch));
+    // } else {
+    //     pitch = rotation(2, 0) > 0 ? M_PI / 2 : -M_PI / 2;
+    //     roll = 0;
+    //     yaw = atan2(-rotation(1, 2), rotation(1, 1));
+    // }
+    // Eigen::Matrix3d rotation_matrix;
+    // Eigen::AngleAxisd roll_angle(roll, Eigen::Vector3d::UnitX());
+    // Eigen::AngleAxisd pitch_angle(pitch, Eigen::Vector3d::UnitY());
+    // Eigen::AngleAxisd yaw_angle(yaw, Eigen::Vector3d::UnitZ());
+
+    // Eigen::Quaterniond quat2 = roll_angle * pitch_angle * yaw_angle;
+    // rotation_matrix = quat2.toRotationMatrix();
+
     return R_body_to_foot;
 }
 

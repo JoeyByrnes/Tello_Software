@@ -36,186 +36,148 @@ RobotState::RobotState(const Eigen::MatrixXd& X, const Eigen::VectorXd& Theta, c
     X_(X), Theta_(Theta), P_(P) {}
 // TODO: error checking to make sure dimensions are correct and supported
 
+const Eigen::MatrixXd RobotState::getX() const { return X_; }
+const Eigen::VectorXd RobotState::getTheta() const { return Theta_; }
+const Eigen::MatrixXd RobotState::getP() const { return P_; }
+const Eigen::Matrix3d RobotState::getRotation() const { return X_.block<3,3>(0,0); }
+const Eigen::Vector3d RobotState::getVelocity() const { return X_.block<3,1>(0,3); }
+const Eigen::Vector3d RobotState::getPosition() const { return X_.block<3,1>(0,4); }
+const Eigen::Vector3d RobotState::getVector(int index) const { return X_.block<3,1>(0,index); }
 
-// // Move initialization
-// RobotState::RobotState(RobotState&& other) {
-//     lock_guard<mutex> lock(other.mutex_);
-//     X_ = std::move(other.X_);
-//     other.X_ = Eigen::MatrixXd;
-// }
+const Eigen::Vector3d RobotState::getGyroscopeBias() const { return Theta_.head(3); }
+const Eigen::Vector3d RobotState::getAccelerometerBias() const { return Theta_.tail(3); }
 
-#if INEKF_USE_MUTEX
-// Copy initialization
-RobotState::RobotState(const RobotState& other) {
-    lock_guard<mutex> other_lock(other.mutex_);
-    X_ = other.X_;
-    Theta_ = other.Theta_;
-    P_ = other.P_;
-}
+const Eigen::Matrix3d RobotState::getRotationCovariance() const { return P_.block<3,3>(0,0); }
+const Eigen::Matrix3d RobotState::getVelocityCovariance() const { return P_.block<3,3>(3,3); }
+const Eigen::Matrix3d RobotState::getPositionCovariance() const { return P_.block<3,3>(6,6); }
+const Eigen::Matrix3d RobotState::getGyroscopeBiasCovariance() const { return P_.block<3,3>(P_.rows()-6,P_.rows()-6); }
+const Eigen::Matrix3d RobotState::getAccelerometerBiasCovariance() const { return P_.block<3,3>(P_.rows()-3,P_.rows()-3); }
 
-// // Move assignment
-// RobotState::RobotState& operator = (RobotState&& other) {
-//     std::lock(mtx, other.mtx);
-//     std::lock_guard<std::mutex> self_lock(mtx, std::adopt_lock);
-//     std::lock_guard<std::mutex> other_lock(other.mtx, std::adopt_lock);
-//     value = std::move(other.value);
-//     other.value = 0;
-//     return *this;
-// }
-
-// Copy assignment
-RobotState& RobotState::operator = (const RobotState& other) {
-    lock(mutex_, other.mutex_);
-    lock_guard<mutex> self_lock(mutex_, adopt_lock);
-    lock_guard<mutex> other_lock(other.mutex_, adopt_lock);
-    X_ = other.X_;
-    Theta_ = other.Theta_;
-    P_ = other.P_;
-    return *this;
-}
-#endif
+const int RobotState::dimX() const { return X_.cols(); }
+const int RobotState::dimTheta() const {return Theta_.rows();}
+const int RobotState::dimP() const { return P_.cols(); }
 
 
-const Eigen::MatrixXd RobotState::getX() { 
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(mutex_);
-#endif
-    return X_; 
+const StateType RobotState::getStateType() const { return state_type_; }
+
+const Eigen::MatrixXd RobotState::getWorldX() const {
+    if (state_type_ == StateType::WorldCentric) {
+        return this->getX();
+    } else {
+        return this->Xinv();
+    }
 }
-const Eigen::VectorXd RobotState::getTheta() { 
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(mutex_);
-#endif
-    return Theta_; 
+const Eigen::Matrix3d RobotState::getWorldRotation() const {
+    if (state_type_ == StateType::WorldCentric) {
+        return this->getRotation();
+    } else {
+        return this->getRotation().transpose();
+    }
 }
-const Eigen::MatrixXd RobotState::getP() { 
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(mutex_);
-#endif
-    return P_; 
+const Eigen::Vector3d RobotState::getWorldVelocity() const {
+    if (state_type_ == StateType::WorldCentric) {
+        return this->getVelocity();
+    } else {
+        return -this->getRotation().transpose()*this->getVelocity();
+    }
 }
-const Eigen::Matrix3d RobotState::getRotation() { 
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(mutex_);
-#endif
-    return X_.block<3,3>(0,0); 
-}
-const Eigen::Vector3d RobotState::getVelocity() { 
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(mutex_);
-#endif
-    return X_.block<3,1>(0,3); 
-}
-const Eigen::Vector3d RobotState::getPosition() { 
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(mutex_);
-#endif
-    return X_.block<3,1>(0,4); 
-}
-const Eigen::Vector3d RobotState::getGyroscopeBias() { 
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(mutex_);
-#endif
-    return Theta_.head(3); 
-}
-const Eigen::Vector3d RobotState::getAccelerometerBias() { 
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(mutex_);
-#endif
-    return Theta_.tail(3); 
-}
-const int RobotState::dimX() { 
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(mutex_);
-#endif
-    return X_.cols(); 
-}
-const int RobotState::dimTheta() {
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(mutex_);
-#endif
-    return Theta_.rows();
-}
-const int RobotState::dimP() { 
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(mutex_);
-#endif
-    return P_.cols(); 
+const Eigen::Vector3d RobotState::getWorldPosition() const {
+    if (state_type_ == StateType::WorldCentric) {
+        return this->getPosition();
+    } else {
+        return -this->getRotation().transpose()*this->getPosition();
+    }
 }
 
-void RobotState::setX(const Eigen::MatrixXd& X) { 
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(mutex_);
-#endif
-    X_ = X; 
+const Eigen::MatrixXd RobotState::getBodyX() const {
+    if (state_type_ == StateType::BodyCentric) {
+        return this->getX();
+    } else {
+        return this->Xinv();
+    }
 }
-void RobotState::setTheta(const Eigen::VectorXd& Theta) { 
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(mutex_);
-#endif
-    Theta_ = Theta; 
+
+const Eigen::Matrix3d RobotState::getBodyRotation() const {
+    if (state_type_ == StateType::BodyCentric) {
+        return this->getRotation();
+    } else {
+        return this->getRotation().transpose();
+    }
 }
-void RobotState::setP(const Eigen::MatrixXd& P) { 
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(mutex_);
-#endif
-    P_ = P; 
+
+const Eigen::Vector3d RobotState::getBodyVelocity() const {
+    if (state_type_ == StateType::BodyCentric) {
+        return this->getVelocity();
+    } else {
+        return -this->getRotation().transpose()*this->getVelocity();
+    }
 }
-void RobotState::setRotation(const Eigen::Matrix3d& R) { 
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(mutex_);
-#endif
-    X_.block<3,3>(0,0) = R; 
-}
-void RobotState::setVelocity(const Eigen::Vector3d& v) { 
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(mutex_);
-#endif
-    X_.block<3,1>(0,3) = v; 
-}
-void RobotState::setPosition(const Eigen::Vector3d& p) { 
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(mutex_);
-#endif
-    X_.block<3,1>(0,4) = p; 
-}
-void RobotState::setGyroscopeBias(const Eigen::Vector3d& bg) { 
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(mutex_);
-#endif
-    Theta_.head(3) = bg; 
-}
-void RobotState::setAccelerometerBias(const Eigen::Vector3d& ba) { 
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(mutex_);
-#endif
-    Theta_.tail(3) = ba; 
+
+const Eigen::Vector3d RobotState::getBodyPosition() const {
+    if (state_type_ == StateType::BodyCentric) {
+        return this->getPosition();
+    } else {
+        return -this->getRotation().transpose()*this->getPosition();
+    }
 }
 
 
-void RobotState::copyDiagX(int n, Eigen::MatrixXd& BigX) {
+void RobotState::setX(const Eigen::MatrixXd& X) { X_ = X; }
+void RobotState::setTheta(const Eigen::VectorXd& Theta) { Theta_ = Theta; }
+void RobotState::setP(const Eigen::MatrixXd& P) { P_ = P; }
+void RobotState::setRotation(const Eigen::Matrix3d& R) { X_.block<3,3>(0,0) = R; }
+void RobotState::setVelocity(const Eigen::Vector3d& v) { X_.block<3,1>(0,3) = v; }
+void RobotState::setPosition(const Eigen::Vector3d& p) { X_.block<3,1>(0,4) = p; }
+void RobotState::setGyroscopeBias(const Eigen::Vector3d& bg) { Theta_.head(3) = bg; }
+void RobotState::setAccelerometerBias(const Eigen::Vector3d& ba) { Theta_.tail(3) = ba; }
+void RobotState::setRotationCovariance(const Eigen::Matrix3d& cov) { P_.block<3,3>(0,0) = cov; }
+void RobotState::setVelocityCovariance(const Eigen::Matrix3d& cov) { P_.block<3,3>(3,3) = cov; }
+void RobotState::setPositionCovariance(const Eigen::Matrix3d& cov) { P_.block<3,3>(6,6) = cov; }
+void RobotState::setGyroscopeBiasCovariance(const Eigen::Matrix3d& cov) { P_.block<3,3>(P_.rows()-6,P_.rows()-6) = cov; }
+void RobotState::setAccelerometerBiasCovariance(const Eigen::Matrix3d& cov) { P_.block<3,3>(P_.rows()-3,P_.rows()-3) = cov; }
+
+void RobotState::copyDiagX(int n, Eigen::MatrixXd& BigX) const {
     int dimX = this->dimX();
     for(int i=0; i<n; ++i) {
         int startIndex = BigX.rows();
         BigX.conservativeResize(startIndex + dimX, startIndex + dimX);
         BigX.block(startIndex,0,dimX,startIndex) = Eigen::MatrixXd::Zero(dimX,startIndex);
         BigX.block(0,startIndex,startIndex,dimX) = Eigen::MatrixXd::Zero(startIndex,dimX);
-#if INEKF_USE_MUTEX
-        unique_lock<mutex> mlock(mutex_);
-#endif
         BigX.block(startIndex,startIndex,dimX,dimX) = X_;
     }
     return;
 }
 
+void RobotState::copyDiagXinv(int n, Eigen::MatrixXd& BigXinv) const {
+    int dimX = this->dimX();
+    Eigen::MatrixXd Xinv = this->Xinv();
+    for(int i=0; i<n; ++i) {
+        int startIndex = BigXinv.rows();
+        BigXinv.conservativeResize(startIndex + dimX, startIndex + dimX);
+        BigXinv.block(startIndex,0,dimX,startIndex) = Eigen::MatrixXd::Zero(dimX,startIndex);
+        BigXinv.block(0,startIndex,startIndex,dimX) = Eigen::MatrixXd::Zero(startIndex,dimX);
+        BigXinv.block(startIndex,startIndex,dimX,dimX) = Xinv;
+    }
+    return;
+}
+
+const Eigen::MatrixXd RobotState::Xinv() const {
+    int dimX = this->dimX();
+    Eigen::MatrixXd Xinv = Eigen::MatrixXd::Identity(dimX,dimX);
+    Eigen::Matrix3d RT = X_.block<3,3>(0,0).transpose();
+    Xinv.block<3,3>(0,0) = RT;
+    for(int i=3; i<dimX; ++i) {
+        Xinv.block<3,1>(0,i) = -RT*X_.block<3,1>(0,i);
+    }
+    return Xinv;
+}
+
+
 ostream& operator<<(ostream& os, const RobotState& s) {  
-#if INEKF_USE_MUTEX
-    unique_lock<mutex> mlock(s.mutex_);
-#endif
     os << "--------- Robot State -------------" << endl;
     os << "X:\n" << s.X_ << endl << endl;
     os << "Theta:\n" << s.Theta_ << endl << endl;
-    os << "P:\n" << s.P_ << endl;
+    // os << "P:\n" << s.P_ << endl;
     os << "-----------------------------------";
     return os;  
 } 

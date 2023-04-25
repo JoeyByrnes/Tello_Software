@@ -14,99 +14,229 @@
 #ifndef INEKF_H
 #define INEKF_H 
 #include <Eigen/Dense>
+// #include <unsupported/Eigen/MatrixFunctions>
 #include <iostream>
 #include <vector>
 #include <map>
-#if INEKF_USE_MUTEX
-#include <mutex>
-#endif
 #include <algorithm>
 #include "RobotState.h"
 #include "NoiseParams.h"
 #include "LieGroup.h"
+#include "Observations.h"
+
+#include "NavState.h"
+
 
 namespace inekf {
 
-class Kinematics {
-    public:
-        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-        Kinematics(int id_in, Eigen::Matrix4d pose_in, Eigen::Matrix<double,6,6> covariance_in) : id(id_in), pose(pose_in), covariance(covariance_in) { }
-
-        int id;
-        Eigen::Matrix4d pose;
-        Eigen::Matrix<double,6,6> covariance;
-};
-
-class Landmark {
-    public:
-        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-        Landmark(int id_in, Eigen::Vector3d position_in) : id(id_in), position(position_in) { }
-
-        int id;
-        Eigen::Vector3d position;
-};
-
-typedef std::map<int,Eigen::Vector3d, std::less<int>, Eigen::aligned_allocator<std::pair<const int,Eigen::Vector3d> > > mapIntVector3d;
-typedef std::map<int,Eigen::Vector3d, std::less<int>, Eigen::aligned_allocator<std::pair<const int,Eigen::Vector3d> > >::iterator mapIntVector3dIterator;
-typedef std::vector<Landmark, Eigen::aligned_allocator<Landmark> > vectorLandmarks;
-typedef std::vector<Landmark, Eigen::aligned_allocator<Landmark> >::const_iterator vectorLandmarksIterator;
-typedef std::vector<Kinematics, Eigen::aligned_allocator<Kinematics> > vectorKinematics;
-typedef std::vector<Kinematics, Eigen::aligned_allocator<Kinematics> >::const_iterator vectorKinematicsIterator;
-
-class Observation {
-
-    public:
-        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-        Observation(Eigen::VectorXd& Y, Eigen::VectorXd& b, Eigen::MatrixXd& H, Eigen::MatrixXd& N, Eigen::MatrixXd& PI);
-        bool empty();
-
-        Eigen::VectorXd Y;
-        Eigen::VectorXd b;
-        Eigen::MatrixXd H;
-        Eigen::MatrixXd N;
-        Eigen::MatrixXd PI;
-
-        friend std::ostream& operator<<(std::ostream& os, const Observation& o);  
-};
-
+enum ErrorType {LeftInvariant, RightInvariant};
 
 class InEKF {
     
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    /// @name Constructors
+    /// @{
+        /**
+         * Default Constructor. Initializes the filter with default state (identity rotation, zero velocity, zero position) and noise parameters. 
+         * No contacts, prior landmarks, or magnetic field is set.            gfc = [
+
+         */
         InEKF();
+        /**
+         * Initialize filter with noise parameters. Initializes th            gfc = [
+the default (identity rotation, zero velocity, zero position).
+         * @param params: The noise parameters to be assigned.
+         */
         InEKF(NoiseParams params);
+        /**
+         * Initialize filter with state. Initializes the noise par            gfc = [
+the default.
+         * @param state: The state to be assigned.
+         */
         InEKF(RobotState state);
+        /**
+         * Initialize filter with state and noise parameters.
+         * @param state: The state to be assigned.
+         * @param params: The noise parameters to be assigned.
+         */        
         InEKF(RobotState state, NoiseParams params);
+        /**
+         * Initialize filter with state, noise, and error type.
+         * @param state: The state to be assigned.
+         * @param params: The noise parameters to be assigned.
+         * @param error_type: The type of invariant error to be used (affects covariance).
+         */       
+        InEKF(RobotState state, NoiseParams params, ErrorType error_type);
+    /// @}
 
-        RobotState getState();
-        NoiseParams getNoiseParams();
-        mapIntVector3d getPriorLandmarks();
-        std::map<int,int> getEstimatedLandmarks();
-        std::map<int,bool> getContacts();
-        std::map<int,int> getEstimatedContactPositions();
+    
+    /// @name Getters
+    /// @{
+        /**
+         * Gets the current error type.
+         */
+        ErrorType getErrorType() const;
+        /**
+         * Gets the current state estimate.
+         */
+        RobotState getState() const;
+        /**
+         * Gets the current noise parameters.
+         */
+        NoiseParams getNoiseParams() const;
+        /**
+         * Gets the filter's current contact states.
+         * @return  map of contact ID and bool that indicates if contact is registed
+         */
+        std::map<int,bool> getContacts() const;
+        /**
+         * Gets the current estimated contact positions.
+         * @return  map of contact ID and associated index in the state matrix X
+         */
+        std::map<int,int> getEstimatedContactPositions() const;
+
+        /**
+         * Gets the filter's prior landmarks.
+         * @return  map of prior landmark ID and position (as a Eigen::Vector3d)
+         */
+        mapIntVector3d getPriorLandmarks() const;
+        /**
+         * Gets the filter's estimated landmarks.
+         * @return  map of landmark ID and associated index in the state matrix X
+         */
+        std::map<int,int> getEstimatedLandmarks() const;
+        /**
+         * Gets the filter's set magnetic field.
+         * @return  magnetic field in world frame
+         */
+        Eigen::Vector3d getMagneticField() const;
+    /// @}
+
+
+    /// @name Setters
+    /// @{
+        /**
+         * Sets the current state estimate
+         * @param state: The state estimate to be assigned.
+         */
         void setState(RobotState state);
+        /**
+         * Sets the current noise parameters
+         * @param params: The noise parameters to be assigned.
+         */
         void setNoiseParams(NoiseParams params);
-        void setPriorLandmarks(const mapIntVector3d& prior_landmarks);
+        /**
+         * Sets the filter's current contact state.
+         * @param contacts: A vector of contact ID and indicator pairs. A true indicator means contact is detected.
+         */
         void setContacts(std::vector<std::pair<int,bool> > contacts);
+        /**
+         * Sets the filter's prior landmarks.
+         * @param prior_landmarks: A map of prior landmark IDs and associated position in the world frame.
+         */
+        void setPriorLandmarks(const mapIntVector3d& prior_landmarks);
+        /** TODO: Sets magnetic field for untested magnetometer measurement */
+        void setMagneticField(Eigen::Vector3d& true_magnetic_field);
+    /// @}
 
-        void Propagate(const Eigen::Matrix<double,6,1>& m, double dt);
-        void Correct(const Observation& obs);
+
+    /// @name Basic Utilities
+    /// @{
+        /**
+         * Resets the filter
+         * Initializes state matrix to identity, removes all augmented states, and assigns default noise parameters.
+         */
+        void clear();
+        /**
+         * Removes a single landmark from the filter's prior landmark set.
+         * @param landmark_id: The ID for the landmark to remove.
+         */
+        void RemovePriorLandmarks(const int landmark_id);
+        /**
+         * Removes a set of landmarks from the filter's prior landmark set.
+         * @param landmark_ids: A vector of IDs for the landmarks to remove.
+         */
+        void RemovePriorLandmarks(const std::vector<int> landmark_ids);
+        /**
+         * Removes a single landmark from the filter's estimated landmark set.
+         * @param landmark_id: The ID for the landmark to remove.
+         */
+        void RemoveLandmarks(const int landmark_id);
+        /**
+         * Removes a set of landmarks from the filter's estimated landmark set.
+         * @param landmark_ids: A vector of IDs for the landmarks to remove.
+         */
+        void RemoveLandmarks(const std::vector<int> landmark_ids);
+        /**
+         * Keeps a set of landmarks from the filter's estimated landmark set.
+         * @param landmark_ids: A vector of IDs for the landmarks to keep.
+         */
+        void KeepLandmarks(const std::vector<int> landmark_ids);
+    /// @}
+
+
+    /// @name Propagation and Correction Methods
+    /// @{
+        /**
+         * Propagates the estimated state mean and covariance forward using inertial measurements. 
+         * All landmarks positions are assumed to be static.
+         * All contacts velocities are assumed to be zero + Gaussian noise.
+         * The propagation model currently assumes that the covariance is for the right invariant error.
+         * @param imu: 6x1 vector containing stacked angular velocity and linear acceleration measurements
+         * @param dt: double indicating how long to integrate the inertial measurements for
+         */
+        void Propagate(const Eigen::Matrix<double,6,1>& imu, double dt);
+        /** 
+         * Corrects the state estimate using the measured forward kinematics between the IMU and a set of contact frames.
+         * If contact is indicated but not included in the state, the state is augmented to include the estimated contact position.
+         * If contact is not indicated but is included in the state, the contact position is marginalized out of the state. 
+         * This is a right-invariant measurement model. Example usage can be found in @include kinematics.cpp
+         * @param measured_kinematics: the measured kinematics containing the contact id, relative pose measurement in the IMU frame, and covariance
+         */
+        void CorrectKinematics(const vectorKinematics& measured_kinematics); 
+        /** 
+         * Corrects the state estimate using the measured position between a set of contact frames and the IMU.
+         * If the landmark is not included in the state, the state is augmented to include the estimated landmark position. 
+         * This is a right-invariant measurement model.
+         * @param measured_landmarks: the measured landmarks containing the contact id, relative position measurement in the IMU frame, and covariance
+         */
         void CorrectLandmarks(const vectorLandmarks& measured_landmarks);
-        void CorrectKinematics(const vectorKinematics& measured_kinematics);
+
+        /** TODO: Untested magnetometer measurement*/
+        void CorrectMagnetometer(const Eigen::Vector3d& measured_magnetic_field, const Eigen::Matrix3d& covariance);
+        /** TODO: Untested GPS measurement*/
+        void CorrectPosition(const Eigen::Vector3d& measured_position, const Eigen::Matrix3d& covariance, const Eigen::Vector3d& indices);
+        /** TODO: Untested contact position measurement*/
+        void CorrectContactPosition(const int id, const Eigen::Vector3d& measured_contact_position, const Eigen::Matrix3d& covariance, const Eigen::Vector3d& indices);
+    /// @} 
+
+    /** @example kinematics.cpp
+     * Testing
+     */
 
     private:
+        ErrorType error_type_ = ErrorType::LeftInvariant; 
+        bool estimate_bias_ = true;  
         RobotState state_;
         NoiseParams noise_params_;
-        const Eigen::Vector3d g_; // Gravity
-        mapIntVector3d prior_landmarks_;
-        std::map<int,int> estimated_landmarks_;
+        const Eigen::Vector3d g_; // Gravity vector in world frame (z-up)
         std::map<int,bool> contacts_;
         std::map<int,int> estimated_contact_positions_;
-#if INEKF_USE_MUTEX
-        std::mutex estimated_contacts_mutex_;
-        std::mutex estimated_landmarks_mutex_;
-#endif
+        mapIntVector3d prior_landmarks_;
+        std::map<int,int> estimated_landmarks_;
+        Eigen::Vector3d magnetic_field_;
+
+        Eigen::MatrixXd StateTransitionMatrix(Eigen::Vector3d& w, Eigen::Vector3d& a, double dt);
+        Eigen::MatrixXd DiscreteNoiseMatrix(Eigen::MatrixXd& Phi, double dt);
+
+        // Corrects state using invariant observation models
+        void CorrectRightInvariant(const Observation& obs);
+        void CorrectLeftInvariant(const Observation& obs);
+        void CorrectRightInvariant(const Eigen::MatrixXd& Z, const Eigen::MatrixXd& H, const Eigen::MatrixXd& N);
+        void CorrectLeftInvariant(const Eigen::MatrixXd& Z, const Eigen::MatrixXd& H, const Eigen::MatrixXd& N);
+        // void CorrectFullState(const Observation& obs); // TODO
 };
 
 } // end inekf namespace

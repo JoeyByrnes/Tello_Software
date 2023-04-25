@@ -540,7 +540,7 @@ void dash_planner::SRB_LIP_vel_traj(double des_walking_speed, VectorXd& t_traj, 
     // Tunable waypoints (time in s)
     VectorXd t_waypts_0p1to3ms(6), t_waypts_0p4ms(6), t_waypts_0p5to6ms(6), t_waypts_0p7ms(6), t_waypts_0p8ms(6);
     double step_end = 15;
-    t_waypts_0p1to3ms << 0.0, 7.0, 10.0, step_end, step_end+3, step_end+5;
+    t_waypts_0p1to3ms << 0.0, 4.0, 10.0, step_end, step_end+3, step_end+5;
     t_waypts_0p4ms << 0.0, 1.0, 2.0, 4.0, 6.0, 7.0;
     t_waypts_0p5to6ms << 0.0, 1.0, 2.0, 4.0, 6.0, 7.5;
     t_waypts_0p7ms << 0.0, 1.0, 4.0, 6.0, 9.0, 13.0;

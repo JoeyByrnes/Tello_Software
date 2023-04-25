@@ -2,6 +2,8 @@
 #include "mujoco_main.h"
 #include "mujoco_utilities.h"
 
+pthread_mutex_t plotting_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 namespace plt = matplotlibcpp;
 GLFWwindow* window;
 
@@ -10,6 +12,12 @@ inekf::RobotState filter_state;
 extern MatrixXd lfv_dsp_start;
 Matrix3d rotation_mat;
 MatrixXd mujoco_lfv(4,3);
+VectorXd EA_curr;
+VectorXd dEA_curr;
+VectorXd pc_curr;
+VectorXd dpc_curr;
+
+int camera_cnt = 0;
 
 char error[1000];
 
@@ -18,6 +26,19 @@ bool pause_sim = true;
 double stepping_in_progress = true;
 double CoM_z_last = 0;
 Vector4d z_plotting;
+double x_prev = 0;
+double x_vel;
+VectorXd x_vels = VectorXd(1);
+double y_prev = 0;
+double y_vel;
+VectorXd y_vels = VectorXd(1);
+double z_prev = 0;
+double z_vel;
+VectorXd z_vels = VectorXd(1);
+double dx_smoothed;
+double dy_smoothed;
+double dz_smoothed;
+double smoothFactor = 4;
 
 VectorXd gnd_contacts(4);
 
@@ -75,7 +96,7 @@ MatrixXd lfv0(4,3), lfdv0(4,3); // global so planner can access them for now
 void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 {
     // Net wrench based PD controller with optimization-based force distribution
-
+    
     // Simulation time
     double time = d->time;
     controller->set_time(time);
@@ -168,10 +189,10 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     VectorXd SRB_qd(6);
     SRB_q << xR, yR, zR, phiR, thetaR, psiR;
     SRB_qd << xdR, ydR, zdR, phidR, thetadR, psidR;
-
+    //pthread_mutex_lock(&plotting_mutex);
     // CoM vector
-    VectorXd pc_curr = SRB_q.head(3);
-    VectorXd dpc_curr = SRB_qd.head(3);
+    pc_curr = SRB_q.head(3);
+    dpc_curr = SRB_qd.head(3);
     MatrixXd pcom_row(1, 3);
     pcom_row = pc_curr.transpose();
     MatrixXd pcom_mat(4, 3);
@@ -197,7 +218,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
     // add gravity to IMU:
     VectorXd imu_acc_world = Rwb*imu_acc;
-    imu_acc_world +=Vector3d(0,0,9.81);
+    imu_acc_world += Vector3d(0,0,9.81);
 
     imu_acc = Rwb.transpose()*imu_acc_world;
 
@@ -212,8 +233,8 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     qd.row(0) = qdLeg_r;
 	qd.row(1) = qdLeg_l;
 	Eigen::Map<Eigen::VectorXd> R_curr(Rwb.data(), Rwb.size());
-	VectorXd EA_curr = Vector3d(phiR,thetaR,psiR);
-    VectorXd dEA_curr = Vector3d(phidR,thetadR,psidR);
+	EA_curr = Vector3d(phiR,thetaR,psiR);
+    dEA_curr = Vector3d(phidR,thetadR,psidR);
     VectorXd wb_curr = dash_utils::calc_wb(dEA_curr,EA_curr);
 
     VectorXd qVec(10), qdVec(10);
@@ -241,9 +262,31 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     Vector3d pc_curr_plot = pc_curr;
 
     Vector3d estimated_pc(filter_state.getPosition()(0),filter_state.getPosition()(1),CoM_z);
-    Vector3d estimated_dpc(filter_state.getVelocity()(0),dpc_curr(1),filter_state.getVelocity()(1));
 
+    x_vel = (estimated_pc(0) - x_prev)/0.001;
+    x_prev = estimated_pc(0);
+    y_vel = (estimated_pc(1) - y_prev)/0.001;
+    y_prev = estimated_pc(1);
+    z_vel = (estimated_pc(2) - z_prev)/0.001;
+    z_prev = estimated_pc(2);
+
+    x_vels.conservativeResize(x_vels.size() + 1);
+    x_vels(y_vels.size() - 1) = x_vel;
+    dx_smoothed = smoothVelocity(x_vels,2);
+
+    y_vels.conservativeResize(y_vels.size() + 1);
+    y_vels(y_vels.size() - 1) = y_vel;
+    dy_smoothed = smoothVelocity(y_vels,3);
+
+    z_vels.conservativeResize(z_vels.size() + 1);
+    z_vels(z_vels.size() - 1) = z_vel;
+    dz_smoothed = smoothVelocity(z_vels,3);
+
+    Vector3d estimated_dpc(dx_smoothed,dy_smoothed,dz_smoothed);
+    //pthread_mutex_unlock(&plotting_mutex);
     VectorXd tau = controller->update(pc_curr, dpc_curr, EA_curr, dEA_curr,q ,qd ,time);
+    // VectorXd tau = controller->update(estimated_pc, estimated_dpc, EA_curr, imu_gyro,q ,qd ,time);
+
     MatrixXd lfv_comm = controller->get_lfv_comm_world();
     MatrixXd lfdv_comm = controller->get_lfdv_comm_world();
     
@@ -259,7 +302,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     dash_utils::setOutputFolder("/home/joey/Desktop/tello_outputs/");
     dash_utils::writeVectorToCsv(vel_out,"vel_real_vs_filter.csv");
     
-
+    pthread_mutex_unlock(&plotting_mutex);
     // BEGIN TASK PD CODE ======================================+++++++++++++++++
 
     Joint_PD_config swing_conf, posture_conf;
@@ -389,7 +432,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     RoboDesignLab::IMU_data imu_data;
     imu_data.timestamp = time;
     imu_data.acc = imu_acc;
-    imu_data.gyro = imu_gyro;
+    imu_data.gyro = dEA_curr;
 
     Matrix3d R_foot_right = controller->get_foot_orientation_wrt_body(q.row(0));
     Matrix3d R_foot_left = controller->get_foot_orientation_wrt_body(q.row(1));
@@ -399,7 +442,13 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     tello->update_filter_kinematic_data(controller->get_lfv_hip(),R_foot_right,R_foot_left);
     
     filter_state = tello->get_filter_state();
-
+    Matrix3d Rwb_filter = filter_state.getRotation();
+    Vector3d origin_in_filter_frame = Rwb_filter*(-pc_curr);
+    if(camera_cnt%33 == 0)
+    {
+      // tello->update_filter_landmark_data(1,origin_in_filter_frame);
+    }
+    camera_cnt++;
     // end update filter states: ------------------------------------------------------
 
     // cout << "Position Error: " << (pc_curr-filter_state.getPosition()).transpose() << endl;
@@ -531,9 +580,9 @@ void* mujoco_Update_1KHz( void * arg )
 
     // initialize visualization data structures
     mjv_defaultCamera(&cam);
-    cam.elevation = -20;
+    cam.elevation = -18;
     cam.distance = 1.8;
-    cam.azimuth = 155;
+    cam.azimuth = 135;
     cam.lookat[0] = 0;
     cam.lookat[1] = 0;
     cam.lookat[2] = -0.2;
@@ -600,7 +649,7 @@ void* mujoco_Update_1KHz( void * arg )
 
 
         cam.lookat[0] = d->qpos[torso_x_idx];
-        cam.lookat[1] = 0;
+        cam.lookat[1] = d->qpos[torso_y_idx];
         // set the background color to white
 
         // update scene and render
@@ -644,11 +693,14 @@ void* plotting( void * arg )
     std::vector<double> x, y1,y2,y3,y4,y5,y6,y7,y8,y9,y10,y11,y12;
     while(tello->controller->get_time() < 0.01){ usleep(1000); }
 
+    int plotting_history = 50;
+
     // Initialize the plot
     plt::backend("TkAgg");
     plt::figure_size(1200, 800);
     plt::rcparams({{"font.size", "20"}});
     plt::rcparams({{"lines.linewidth", "2"}});
+    plt::subplots_adjust({{"wspace", 0.5}, {"hspace", 0.5}});
     plt::ion();
     plt::plot(x, y1);
     // Enable legend.
@@ -677,37 +729,36 @@ void* plotting( void * arg )
         
         if(tello->controller->get_time() > x[x.size()-1])
         {
-
             // POSITION DATA ==================================================================================
-            x.push_back(tello->controller->get_time());
-            y1.push_back(tello->controller->get_pc()(0));
-            y2.push_back(tello->controller->get_pc()(1));
-            y3.push_back(tello->controller->get_pc()(2));
+            // x.push_back(tello->controller->get_time());
+            // y1.push_back(tello->controller->get_pc()(0));
+            // y2.push_back(tello->controller->get_pc()(1));
+            // y3.push_back(tello->controller->get_pc()(2));
 
-            y4.push_back(tello->get_filter_state().getPosition()(0));
-            y5.push_back(tello->get_filter_state().getPosition()(1));
-            y6.push_back(CoM_z_last);
+            // y4.push_back(tello->get_filter_state().getPosition()(0));
+            // y5.push_back(tello->get_filter_state().getPosition()(1));
+            // y6.push_back(CoM_z_last);
 
-            y7.push_back(z_plotting(0));
-            y8.push_back(z_plotting(1));
-            y9.push_back(z_plotting(2));
-            y10.push_back(z_plotting(3));
+            // y7.push_back(z_plotting(0));
+            // y8.push_back(z_plotting(1));
+            // y9.push_back(z_plotting(2));
+            // y10.push_back(z_plotting(3));
 
-            plt::clf();
-            plt::subplot(3, 1, 1);
-            plt::title("CoM Tracking");
-            plt::named_plot("CoM X", x, y1, "r-");
-            plt::named_plot("EKF X", x, y4, "b-");
-            plt::legend();
-            plt::subplot(3, 1, 2);
-            plt::named_plot("CoM Y", x, y2, "r-");
-            plt::named_plot("EKF Y", x, y5, "b-");
-            plt::legend();
-            plt::subplot(3, 1, 3);
-            plt::named_plot("CoM Z", x, y3, "r-");
-            plt::named_plot("Kin Z", x, y6, "b-");
-            plt::legend();
-            plt::pause(0.001);
+            // plt::clf();
+            // plt::subplot(3, 1, 1);
+            // plt::title("CoM Tracking");
+            // plt::named_plot("CoM X", x, y1, "r-");
+            // plt::named_plot("EKF X", x, y4, "b-");
+            // plt::legend();
+            // plt::subplot(3, 1, 2);
+            // plt::named_plot("CoM Y", x, y2, "r-");
+            // plt::named_plot("EKF Y", x, y5, "b-");
+            // plt::legend();
+            // plt::subplot(3, 1, 3);
+            // plt::named_plot("CoM Z", x, y3, "r-");
+            // plt::named_plot("Kin Z", x, y6, "b-");
+            // plt::legend();
+            // plt::pause(0.001);
 
             // FOOT POSITION DATA =============================================================================
             // x.push_back(tello->controller->get_time());
@@ -740,31 +791,56 @@ void* plotting( void * arg )
             // plt::legend();
             // plt::pause(0.001);
 
-            // VELOCITY DATA ==================================================================================
-            // x.push_back(tello->controller->get_time());
-            // y1.push_back(tello->controller->get_dpc()(0));
-            // y2.push_back(tello->controller->get_dpc()(1));
-            // y3.push_back(tello->controller->get_dpc()(2));
+            // VELOCITY and Position DATA ==================================================================================
+            x.push_back(tello->controller->get_time());
+            y1.push_back(dpc_curr(0));
+            y2.push_back(dpc_curr(1));
+            y3.push_back(dpc_curr(2));
 
-            // y4.push_back(tello->get_filter_state().getVelocity()(0));
-            // y5.push_back(tello->get_filter_state().getVelocity()(1));
-            // y6.push_back(tello->get_filter_state().getVelocity()(2));
+            y4.push_back(dx_smoothed);
+            y5.push_back(dy_smoothed);
+            y6.push_back(dz_smoothed);
 
-            // plt::clf();
-            // plt::subplot(3, 1, 1);
-            // plt::title("CoM Tracking");
-            // plt::named_plot("CoM X", x, y1, "r-");
-            // plt::named_plot("EKF X", x, y4, "b");
-            // plt::legend();
-            // plt::subplot(3, 1, 2);
-            // plt::named_plot("CoM Y", x, y2, "r-");
-            // plt::named_plot("EKF Y", x, y5, "b");
-            // plt::legend();
-            // plt::subplot(3, 1, 3);
-            // plt::named_plot("CoM Z", x, y3, "r-");
-            // plt::named_plot("EKF Z", x, y6, "b");
-            // plt::legend();
-            // plt::pause(0.001);
+            y7.push_back(pc_curr(0));
+            y8.push_back(pc_curr(1));
+            y9.push_back(pc_curr(2));
+
+            y10.push_back(tello->get_filter_state().getPosition()(0));
+            y11.push_back(tello->get_filter_state().getPosition()(1));
+            y12.push_back(CoM_z_last);
+            plt::rcparams({{"legend.loc","lower left"}});
+            plt::clf();
+            plt::subplot(3, 2, 1);
+            plt::title("CoM X Position True vs EKF");
+            plt::named_plot("True X", x, y7, "r-");
+            plt::named_plot("EKF X", x, y10, "b-");
+            plt::legend();
+            plt::subplot(3, 2, 3);
+            plt::title("CoM Y Position True vs EKF");
+            plt::named_plot("True Y", x, y8, "r-");
+            plt::named_plot("EKF Y", x, y11, "b-");
+            plt::legend();
+            plt::subplot(3, 2, 5);
+            plt::title("CoM Z Position True vs Kinematics");
+            plt::named_plot("True Z", x, y9, "r-");
+            plt::named_plot("Kin Z", x, y12, "b-");
+            plt::legend();
+            plt::subplot(3, 2, 2);
+            plt::title("CoM X Velocity True vs Estimated");
+            plt::named_plot("True dX", x, y1, "r-");
+            plt::named_plot("Est. dX", x, y4, "b-");
+            plt::legend();
+            plt::subplot(3, 2, 4);
+            plt::title("CoM X Velocity True vs Estimated");
+            plt::named_plot("True dY", x, y2, "r-");
+            plt::named_plot("Est.  dY", x, y5, "b-");
+            plt::legend();
+            plt::subplot(3, 2, 6);
+            plt::title("CoM X Velocity True vs Estimated");
+            plt::named_plot("True dZ", x, y3, "r-");
+            plt::named_plot("Est. dZ", x, y6, "b-");
+            plt::legend();
+            plt::pause(0.001);
 
             // ACCELEROMETER DATA: ==============================================================================
             // x.push_back(tello->controller->get_time());
@@ -835,13 +911,13 @@ void* plotting( void * arg )
             // Eigen::Quaterniond quat2 = roll_angle * pitch_angle * yaw_angle;
             // rotation_matrix = quat2.toRotationMatrix();
             
-            // y1.push_back(tello->controller->get_EA()(0)*180.0/M_PI);
-            // y2.push_back(tello->controller->get_EA()(1)*180.0/M_PI);
-            // y3.push_back(tello->controller->get_EA()(2)*180.0/M_PI);
+            // y1.push_back(tello->controller->get_EA()(0));
+            // y2.push_back(tello->controller->get_EA()(1));
+            // y3.push_back(tello->controller->get_EA()(2));
 
-            // y4.push_back(roll*180.0/M_PI);
-            // y5.push_back(pitch*180.0/M_PI);
-            // y6.push_back(yaw*180.0/M_PI);
+            // y4.push_back(roll);
+            // y5.push_back(pitch);
+            // y6.push_back(yaw);
 
             // plt::clf();
             // plt::title("Rotation Data");
@@ -854,24 +930,109 @@ void* plotting( void * arg )
             // plt::legend();
             // plt::pause(0.001);
 
-            // FOOT POS DATA: =========================================================================================
+            // FOOT ROTATION: =======================================================================================
             // x.push_back(tello->controller->get_time());
-            // y1.push_back(tello->plot_data(9));
-            // y2.push_back(tello->plot_data(10));
-            // y3.push_back(tello->plot_data(11));
+            // // Vector3d euler_angles = filter_state.getRotation().eulerAngles(0, 1, 2); // XYZ order
+            // // double roll = euler_angles(0);
+            // // double pitch = euler_angles(1);
+            // // double yaw = euler_angles(2);
+
+            // Eigen::Quaterniond quat(tello->plot_mat);
+            // double roll, pitch, yaw;
+            // Eigen::Matrix3d rotation = quat.toRotationMatrix();
+            // if (std::abs(rotation(2, 0)) != 1) {
+            //     pitch = -asin(rotation(2, 0));
+            //     roll = atan2(rotation(2, 1) / cos(pitch), rotation(2, 2) / cos(pitch));
+            //     yaw = atan2(rotation(1, 0) / cos(pitch), rotation(0, 0) / cos(pitch));
+            // } else {
+            //     pitch = rotation(2, 0) > 0 ? M_PI / 2 : -M_PI / 2;
+            //     roll = 0;
+            //     yaw = atan2(-rotation(1, 2), rotation(1, 1));
+            // }
+
+            // Eigen::Matrix3d rotation_matrix;
+            // Eigen::AngleAxisd roll_angle(roll, Eigen::Vector3d::UnitX());
+            // Eigen::AngleAxisd pitch_angle(pitch, Eigen::Vector3d::UnitY());
+            // Eigen::AngleAxisd yaw_angle(yaw, Eigen::Vector3d::UnitZ());
+
+            // Eigen::Quaterniond quat2 = roll_angle * pitch_angle * yaw_angle;
+            // rotation_matrix = quat2.toRotationMatrix();
+            
+            // y1.push_back(tello->controller->get_EA()(0));
+            // y2.push_back(tello->controller->get_EA()(1));
+            // y3.push_back(tello->controller->get_EA()(2));
+
+            // y4.push_back(roll);
+            // y5.push_back(pitch);
+            // y6.push_back(yaw);
 
             // plt::clf();
-            // plt::named_plot("Xcom", x, y1, "r-");
-            // plt::named_plot("Ycom", x, y2, "b-");
-            // plt::named_plot("Zcom", x, y3, "g-");
-
-            // plt::title("IMU Data");
+            // plt::title("Rotation Data");
+            // plt::named_plot("Roll", x, y1, "r-");
+            // plt::named_plot("Pitch", x, y2, "b-");
+            // plt::named_plot("Yaw", x, y3, "g-");
+            // plt::named_plot("foot Roll", x, y4, "r--");
+            // plt::named_plot("foot Pitch", x, y5, "b--");
+            // plt::named_plot("foot Yaw", x, y6, "g--");
             // plt::legend();
             // plt::pause(0.001);
 
+            // FOOT POS DATA: =========================================================================================
+            // x.push_back(tello->controller->get_time());
+            // y1.push_back(tello->plot_data(0));
+            // y2.push_back(tello->plot_data(1));
+            // y3.push_back(tello->plot_data(2));
+
+            // y4.push_back(tello->plot_data(3));
+            // y5.push_back(tello->plot_data(4));
+            // y6.push_back(tello->plot_data(5));
+
+            // y7.push_back(tello->plot_data(6));
+            // y8.push_back(tello->plot_data(7));
+            // y9.push_back(tello->plot_data(8));
+
+            // y10.push_back(tello->plot_data(9));
+            // y11.push_back(tello->plot_data(10));
+            // y12.push_back(tello->plot_data(11));
+
+            // plt::clf();
+            // plt::subplot(3, 2, 1);
+            // plt::title("Foot Positions");
+            // plt::named_plot("RF X", x, y1, "r-");
+            // plt::named_plot("RB X", x, y4, "b-");
+            // plt::named_plot("LF X", x, y7, "g-");
+            // plt::named_plot("LB X", x, y10, "y-");
+            // plt::legend();
+            // plt::subplot(3, 1, 2);
+            // plt::named_plot("RF Y", x, y2, "r-");
+            // plt::named_plot("RB Y", x, y5, "b-");
+            // plt::named_plot("LF Y", x, y8, "g-");
+            // plt::named_plot("LB Y", x, y11, "y-");
+            // plt::subplot(3, 1, 3);
+            // plt::named_plot("RF Z", x, y3, "r-");
+            // plt::named_plot("RB Z", x, y6, "b-");
+            // plt::named_plot("LF Z", x, y9, "g-");
+            // plt::named_plot("LB Z", x, y12, "y-");
+            // plt::legend();
+            // plt::pause(0.001);
+
+            // Uncomment the following lines for scope-like plotting:
+            
+            // if (x.size() > plotting_history) x.erase(x.begin());
+            // if (y1.size() > plotting_history) y1.erase(y1.begin());
+            // if (y2.size() > plotting_history) y2.erase(y2.begin());
+            // if (y3.size() > plotting_history) y3.erase(y3.begin());
+            // if (y4.size() > plotting_history) y4.erase(y4.begin());
+            // if (y5.size() > plotting_history) y5.erase(y5.begin());
+            // if (y6.size() > plotting_history) y6.erase(y6.begin());
+            // if (y7.size() > plotting_history) y7.erase(y7.begin());
+            // if (y8.size() > plotting_history) y8.erase(y8.begin());
+            // if (y9.size() > plotting_history) y9.erase(y9.begin());
+            // if (y10.size() > plotting_history) y10.erase(y10.begin());
+            // if (y11.size() > plotting_history) y11.erase(y11.begin());
+            // if (y12.size() > plotting_history) y12.erase(y12.begin());
 
         }
-        
 
 		handle_end_of_periodic_task(next,period);
 	}

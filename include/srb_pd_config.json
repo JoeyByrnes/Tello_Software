@@ -3,7 +3,7 @@
       "Kp_xR": 10000,
       "Kd_xR": 1000,
       "Kp_yR": 10000,
-      "Kd_yR": 1000,
+      "Kd_yR": 5000,
       "Kp_zR": 40000, 
       "Kd_zR": 1000,
       "Kp_phiR": 100000,
@@ -14,7 +14,7 @@
       "Kd_psiR": 400,
       "Step_Period": 0.25,
       "Step_Height": 0.04,
-      "Walking_Speed": 0.2
+      "Walking_Speed": 0.4
     },
     
     "Posture_Control": {

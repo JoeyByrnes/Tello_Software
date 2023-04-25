@@ -31,11 +31,11 @@ DynamicRobot::DynamicRobot()
 
     // Initialize state covariance
     NoiseParams noise_params;
-    noise_params.setGyroscopeNoise(0.0001);
-    noise_params.setAccelerometerNoise(0.001);
+    noise_params.setGyroscopeNoise(0.001);
+    noise_params.setAccelerometerNoise(0.01);
     noise_params.setGyroscopeBiasNoise(0.0001);
     noise_params.setAccelerometerBiasNoise(0.0001);
-    noise_params.setContactNoise(0.00);
+    noise_params.setContactNoise(0.025);
 
     // Initialize filter
     InEKF filter(initial_state, noise_params);
@@ -43,6 +43,17 @@ DynamicRobot::DynamicRobot()
     std::cout << filter.getNoiseParams() << std::endl;
     std::cout << "Robot's state is initialized to: \n";
     std::cout << filter.getState() << std::endl;
+
+    mapIntVector3d prior_landmarks;
+    Eigen::Vector3d p_wl;
+    int id;
+
+    // Landmark at origin
+    id = 1;
+    p_wl << 0,0,0;
+    prior_landmarks.insert(pair<int,Eigen::Vector3d> (id, p_wl)); 
+
+    filter.setPriorLandmarks(prior_landmarks); 
 
     controller = new SRBMController();
 
@@ -784,7 +795,18 @@ void DynamicRobot::update_filter_kinematic_data(MatrixXd lfv_hip, Matrix3d R_rig
 
     plot_data << right_front_in_CoM,right_back_in_CoM,left_front_in_CoM,left_back_in_CoM,VectorXd::Zero(8);
 
+    plot_mat = R_left;
+
     filter.CorrectKinematics(measured_kinematics);
+}
+
+void DynamicRobot::update_filter_landmark_data(int id, Vector3d landmark_pos)
+{
+    vectorLandmarks measured_landmarks;
+    Eigen::Matrix3d covariance = Matrix3d::Zero();
+    Landmark landmark(id, landmark_pos, covariance);
+    measured_landmarks.push_back(landmark); 
+    filter.CorrectLandmarks(measured_landmarks);
 }
 
 RobotState DynamicRobot::get_filter_state()

@@ -172,6 +172,7 @@ namespace RoboDesignLab {
         void update_filter_IMU_data(IMU_data imu_data);
         void update_filter_contact_data(VectorXd ground_contacts);
         void update_filter_kinematic_data(MatrixXd lfv_hip, Matrix3d R_right, Matrix3d R_left);
+        void update_filter_landmark_data(int id, Vector3d landmark_pos);
         RobotState get_filter_state();
         void set_filter_state(RobotState state);
 
@@ -222,6 +223,7 @@ namespace RoboDesignLab {
         SRBMController* controller;
 
         VectorXd plot_data = VectorXd(20);
+        Matrix3d plot_mat;
 
     private:
         // Kinematics Functions

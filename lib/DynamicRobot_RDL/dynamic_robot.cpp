@@ -376,27 +376,6 @@ VectorXd DynamicRobot::swing_stance_mux(VectorXd stanceTorques, VectorXd swingTo
     double smoothVal = sigmoid((switchFactor - 0.5) * 12);  // Scale the switch factor to be between -5 and 5, and apply sigmoid function
     if(smoothVal < 0.05) smoothVal = 0;
     if(smoothVal > 0.95) smoothVal = 1;
-    // if(side) std::cout << "                                                              ";
-    // if(smoothVal > 0.95) std::cout << "SWING ---------------------------------------------------" << std::endl;
-    // else if(smoothVal < 0.05) std::cout << "-------------------------------------------------- STANCE" << std::endl;
-    // else
-    // {
-    //     int dashes_printed = 0;
-    //     for(int i=0; i<48;i++){
-    //         std::cout << "-";
-    //         if((1-smoothVal)*50 < i+2)
-    //         {
-    //             std::cout << " SMOOTH ";
-    //             dashes_printed = i;
-    //             break;
-    //         }
-    //     }
-    //     for(int i = dashes_printed; i < 48; i++){
-    //         std::cout << "-";
-    //     }
-    //     std::cout << std::endl;
-    // }
-    // compute the smoothed torques for each element in the vector
 
     smoothedTorques = ((1-smoothVal) * stanceTorques) + (smoothVal * swingTorques);
 
@@ -448,12 +427,12 @@ void DynamicRobot::jointPD(JointPDConfig joint_conf)
     motor_conf.motor_pos_desired = motor_pos_desired_real;
     motor_conf.motor_vel_desired = motor_vel_desired;
 
-    if(this->isSimulation){
-        this->sim_joint_torques << joint_torques + joint_conf.joint_ff_torque;
-    }
-    else{
+    // if(this->isSimulation){
+    //     this->sim_joint_torques << joint_torques + joint_conf.joint_ff_torque;
+    // }
+    // else{
         this->motorPD(motor_conf);
-    }
+    // }
 }
 
 // pos/vel is 12x1 vector: (3x1) left front, (3x1) left back, (3x1) right front, (3x1) right back
@@ -476,7 +455,7 @@ void DynamicRobot::taskPD(TaskPDConfig task_conf)
 
     // Use inverse kinematics to calculate joint pd
     VectorXd joint_pos_desired = this->task_pos_to_joint_pos(task_conf.task_pos_desired);
-    VectorXd joint_vel_desired = this->task_vel_to_joint_vel(task_conf.task_vel_desired); //VectorXd::Zero(10);
+    VectorXd joint_vel_desired = VectorXd::Zero(10);//this->task_vel_to_joint_vel(task_conf.task_vel_desired); //VectorXd::Zero(10);
 
     JointPDConfig joint_conf;
     joint_conf.joint_ff_torque = joint_torques;

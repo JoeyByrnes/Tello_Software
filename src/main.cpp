@@ -372,30 +372,106 @@ void run_tello_pd()
 
 	// ff force must be negative, make it about 1000
 
-	if(tello->_GRFs.left_front > 0.3){
-		//printf("LEFT CONTACT\n");
-		task_pd_config.task_kp.topRows(6).setZero();
-		task_pd_config.task_kd.topRows(6).setZero();
-		task_pd_config.joint_kp.topRows(6).setZero();
-		task_pd_config.joint_kd.topRows(6).setZero();
+	// if(tello->_GRFs.left_front > 0.3){
+	// 	//printf("LEFT CONTACT\n");
+	// 	task_pd_config.task_kp.topRows(6).setZero();
+	// 	task_pd_config.task_kd.topRows(6).setZero();
+	// 	task_pd_config.joint_kp.topRows(6).setZero();
+	// 	task_pd_config.joint_kd.topRows(6).setZero();
 
-		task_pd_config.task_ff_force(2) = -200;
-		task_pd_config.task_ff_force(5) = -200;
+	// 	task_pd_config.task_ff_force(2) = -200;
+	// 	task_pd_config.task_ff_force(5) = -200;
 
-	}
-	if(tello->_GRFs.right_front > 0.3){
-		//printf("RIGHT CONTACT\n");
-		task_pd_config.task_kp.bottomRows(6).setZero();
-		task_pd_config.task_kd.bottomRows(6).setZero();
-		task_pd_config.joint_kp.bottomRows(6).setZero();
-		task_pd_config.joint_kd.bottomRows(6).setZero();
+	// }
+	// if(tello->_GRFs.right_front > 0.3){
+	// 	//printf("RIGHT CONTACT\n");
+	// 	task_pd_config.task_kp.bottomRows(6).setZero();
+	// 	task_pd_config.task_kd.bottomRows(6).setZero();
+	// 	task_pd_config.joint_kp.bottomRows(6).setZero();
+	// 	task_pd_config.joint_kd.bottomRows(6).setZero();
 
-		task_pd_config.task_ff_force(8) = -200;
-		task_pd_config.task_ff_force(11) = -200;
+	// 	task_pd_config.task_ff_force(8) = -200;
+	// 	task_pd_config.task_ff_force(11) = -200;
 
-	}
+	// }
 
 	
+	tello->taskPD(task_pd_config);
+
+	pthread_mutex_unlock(&mutex_CAN_recv);
+}
+
+void run_tello_pd_DEMO()
+{
+	pthread_mutex_lock(&mutex_CAN_recv);
+	int joint_kp = 200;
+	int joint_kd = 10;
+	VectorXd kp_vec_joint = VectorXd::Ones(10)*(joint_kp);
+	VectorXd kd_vec_joint = VectorXd::Ones(10)*joint_kd;
+
+	MatrixXd kp_mat_joint = kp_vec_joint.asDiagonal();
+	MatrixXd kd_mat_joint = kd_vec_joint.asDiagonal();
+
+	int motor_kp = 0;
+	int motor_kd = 300;
+	VectorXd kp_vec_motor = VectorXd::Ones(10)*motor_kp;
+	VectorXd kd_vec_motor = VectorXd::Ones(10)*motor_kd;
+
+	VectorXd vel_desired = VectorXd::Zero(12);
+
+	if(move_up_down){
+			h_offset+=delta_task;
+	}
+	if(h_offset > 70){
+		delta_task = -0.02;
+	}
+	if(h_offset < 0){
+		delta_task = 0.02;
+	}
+	Vector3d target(0, 0, -0.460);
+
+	double foot_len_half = 0.060;
+	Vector3d target_front_left(foot_len_half+target(0), target(1), target(2));
+	Vector3d target_back_left(-foot_len_half+target(0), target(1), target(2));
+	Vector3d target_front_right(foot_len_half+target(0), target(1), target(2));
+	Vector3d target_back_right(-foot_len_half+target(0), target(1), target(2));
+
+	VectorXd pos_desired(12);
+	pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
+
+	int task_kp = 50000;
+	int task_kd = 0;
+	VectorXd kp_vec_task = VectorXd::Ones(12)*(task_kp+gain_adjustment);
+	VectorXd kd_vec_task = VectorXd::Ones(12)*task_kd;
+	int z_gain = (50000+gain_adjustment);
+	int x_gain = 2000;
+	int y_gain = 2000;
+	kp_vec_task(0) = x_gain;
+	kp_vec_task(1) = y_gain;
+	kp_vec_task(2) = z_gain;
+	kp_vec_task(3) = x_gain;
+	kp_vec_task(4) = y_gain;
+	kp_vec_task(5) = z_gain;
+	kp_vec_task(6) = x_gain;
+	kp_vec_task(7) = y_gain;
+	kp_vec_task(8) = z_gain;
+	kp_vec_task(9) = x_gain;
+	kp_vec_task(10) = y_gain;
+	kp_vec_task(11) = z_gain;
+	MatrixXd kp_mat_task = kp_vec_task.asDiagonal();
+	MatrixXd kd_mat_task = kd_vec_task.asDiagonal();
+
+	// Set up configuration struct for Task Space Controller
+	task_pd_config.task_ff_force = VectorXd::Zero(12);
+	task_pd_config.task_pos_desired = pos_desired;
+	task_pd_config.task_vel_desired = vel_desired;
+	task_pd_config.task_kp = kp_mat_task;
+	task_pd_config.task_kd = kd_mat_task;
+	task_pd_config.joint_kp = kp_mat_joint;
+	task_pd_config.joint_kd = kd_mat_joint;
+	task_pd_config.motor_kp = kp_vec_motor;
+	task_pd_config.motor_kd = kd_vec_motor;
+
 	tello->taskPD(task_pd_config);
 
 	pthread_mutex_unlock(&mutex_CAN_recv);
@@ -498,9 +574,10 @@ static void* update_1kHz( void * arg )
 				handle_Motion_Playback();
 				break;
 			case 4:
-				updateJointPositions();
 				run_tello_pd();
-
+				break;
+			case 5:
+				run_tello_pd_DEMO();
 				break;
 			default:
 				// do nothing
@@ -774,6 +851,17 @@ int main(int argc, char *argv[]) {
 				fsm_state = 4;
 				printf("\nTask Space Testing Mode:\n");
 				scheduleEnable();
+
+				break;
+			case 'R':
+				fsm_state = 5;
+				printf("\nTask Space Testing Mode:\n");
+				//scheduleEnable();
+				tello->motors[5]->enableMotor();
+				tello->motors[6]->enableMotor();
+				tello->motors[7]->enableMotor();
+				tello->motors[8]->enableMotor();
+				tello->motors[9]->enableMotor();
 
 				break;
 			case 'd':

@@ -23,6 +23,8 @@ SRBMController::SRBMController()
     for (int i = 0; i < 4; i++) {
 		Jv_mat[i] = MatrixXd::Zero(3, 5);
 	}
+
+    last_print_time = std::chrono::high_resolution_clock::now();
 }
 
 // all inputs must be in the world frame
@@ -64,15 +66,18 @@ VectorXd SRBMController::update(Vector3d body_position, Vector3d body_linear_vel
 
 VectorXd SRBMController::update(VectorXd srb_state, MatrixXd q, MatrixXd qd, double t) 
 {
-    
+
     // SRB FK
     MatrixXd torso_vertices(3,8);
     MatrixXd right_leg(3,5);
     MatrixXd left_leg(3,5);
+    this->q = q;
+    
     dash_kin::SRB_FK(torso_vertices, right_leg, left_leg, lfv, srb_params, x, q);
+    
     right_leg_last = right_leg;
     left_leg_last = left_leg;
-
+    
     // SRB kinematics
 	dash_kin::SRB_Kin(q, qd, Jv_mat, srb_params, x, lfv, lfdv);
     
@@ -82,8 +87,9 @@ VectorXd SRBMController::update(VectorXd srb_state, MatrixXd q, MatrixXd qd, dou
 								   tau_ext, SRB_state_ref, SRB_wrench_ref, lfv_comm, lfdv_comm);
 
     // SRB controller
+    
 	dash_ctrl::SRB_Balance_Controller(u, tau, srb_params, FSM, x, lfv, qd, Jv_mat, u, SRB_wrench_ref);
-
+    
     if(FSM == 1 && FSM_prev == 0)
     {
         // From double to single support left
@@ -285,4 +291,26 @@ double SRBMController::get_CoM_z(MatrixXd lfv_hip,VectorXd gnd_contacts, Vector3
     z_height = -z_height-srb_params.hLIP;
 
     return z_height;
+}
+
+void SRBMController::start_timer(){
+    start_time = std::chrono::high_resolution_clock::now();
+}
+
+void SRBMController::end_timer(){
+    end_time = std::chrono::high_resolution_clock::now();
+    // Calculate the elapsed time
+    std::chrono::nanoseconds elapsed_time = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time);
+
+    // Convert the elapsed time to milliseconds with a resolution of nanoseconds
+    double elapsed_time_ms = static_cast<double>(elapsed_time.count()) / 1000000.0;
+
+    std::chrono::nanoseconds elapsed_time_since_print = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - last_print_time);
+    double elapsed_time_since_print_ms = static_cast<double>(elapsed_time_since_print.count()) / 1000000.0;
+    
+    if(elapsed_time_since_print_ms > 250){
+        std::cout << "Elapsed time: " << elapsed_time_ms << " ms" << std::endl;
+        last_print_time = end_time;
+    }
+
 }

@@ -33,6 +33,7 @@
 #include "SRBM-Ctrl/kinematics.h"
 #include "compile_time_tracker.h"
 #include "mujoco_main.h"
+#include "state_estimator.h"
 
 #include <pcanfd.h>
 
@@ -308,6 +309,9 @@ void updateJointPositions()
 	motor_targets[8] = tello->motor_pos_model_to_real(8, motors(8));
 	motor_targets[9] = tello->motor_pos_model_to_real(9, motors(9));
 }
+int sample_index = 0;
+VectorXd pitch_deg_buffer(200);
+double x_off_prev = 0;
 
 bool move_up_down = false;
 int force_ctrl = 0;
@@ -318,15 +322,26 @@ void run_tello_pd()
 {
 	pthread_mutex_lock(&mutex_CAN_recv);
 	int joint_kp = 3000;
-	int joint_kd = 100;
+	int joint_kd = 150;
 	VectorXd kp_vec_joint = VectorXd::Ones(10)*(joint_kp+gain_adjustment);
 	VectorXd kd_vec_joint = VectorXd::Ones(10)*joint_kd;
 
-	MatrixXd kp_mat_joint = kp_vec_joint.asDiagonal();
-	MatrixXd kd_mat_joint = kd_vec_joint.asDiagonal();
+	kp_vec_joint(0) = joint_kp + gain_adjustment/5.0;
+	kp_vec_joint(1) = joint_kp + gain_adjustment/5.0;
+	kp_vec_joint(2) = joint_kp + gain_adjustment;
+	kp_vec_joint(3) = joint_kp + gain_adjustment;
+	kp_vec_joint(4) = joint_kp + gain_adjustment;
+
+	kp_vec_joint(5) = joint_kp + gain_adjustment/5.0;
+	kp_vec_joint(6) = joint_kp + gain_adjustment/2.0;
+	kp_vec_joint(7) = joint_kp + gain_adjustment;
+	kp_vec_joint(8) = joint_kp + gain_adjustment;
+	kp_vec_joint(9) = joint_kp + gain_adjustment;
+	
+
 
 	int motor_kp = 0;
-	int motor_kd = 1000;
+	int motor_kd = 1100;
 	VectorXd kp_vec_motor = VectorXd::Ones(10)*motor_kp;
 	VectorXd kd_vec_motor = VectorXd::Ones(10)*motor_kd;
 
@@ -344,29 +359,31 @@ void run_tello_pd()
 	Vector3d target(0, 0, -0.500+(h_offset/1000.0));
 
 	double foot_len_half = 0.060;
-	Vector3d target_front_left(foot_len_half+target(0), target(1)+0.050, target(2)-(tello_ypr[1]/4000.0));
-	Vector3d target_back_left(-foot_len_half+target(0), target(1)+0.050, target(2)+(tello_ypr[1]/4000.0));
-	Vector3d target_front_right(foot_len_half+target(0), target(1)-0.050, target(2)-(tello_ypr[1]/4000.0));
-	Vector3d target_back_right(-foot_len_half+target(0), target(1)-0.050, target(2)+(tello_ypr[1]/4000.0));
+	double pitch_degrees = tello_ypr[1];
+
+	double x_off = 0.002;
+	
+	Vector3d target_front_left(foot_len_half+target(0)+x_off, target(1)+0.050, target(2)-(pitch_degrees/3500.0));
+	Vector3d target_back_left(-foot_len_half+target(0)+x_off, target(1)+0.050, target(2)+(pitch_degrees/3500.0));
+	Vector3d target_front_right(foot_len_half+target(0)+x_off, target(1)-0.050, target(2)-(pitch_degrees/3500.0));
+	Vector3d target_back_right(-foot_len_half+target(0)+x_off, target(1)-0.050, target(2)+(pitch_degrees/3500.0));
 
 	VectorXd pos_desired(12);
 	pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
 
 	int task_kp = 0;
 	int task_kd = 0;
-	VectorXd kp_vec_task = VectorXd::Ones(12)*task_kp;
-	VectorXd kd_vec_task = VectorXd::Ones(12)*task_kd;
-	MatrixXd kp_mat_task = kp_vec_task.asDiagonal();
-	MatrixXd kd_mat_task = kd_vec_task.asDiagonal();
+	VectorXd kp_vec_task = VectorXd::Ones(3)*task_kp;
+	VectorXd kd_vec_task = VectorXd::Ones(3)*task_kd;
 
 	// Set up configuration struct for Task Space Controller
 	task_pd_config.task_ff_force = VectorXd::Zero(12);
 	task_pd_config.task_pos_desired = pos_desired;
 	task_pd_config.task_vel_desired = vel_desired;
-	task_pd_config.task_kp = kp_mat_task;
-	task_pd_config.task_kd = kd_mat_task;
-	task_pd_config.joint_kp = kp_mat_joint;
-	task_pd_config.joint_kd = kd_mat_joint;
+	task_pd_config.setTaskKp(kp_vec_task);
+	task_pd_config.setTaskKd(kd_vec_task);
+	task_pd_config.setJointKp(kp_vec_joint);
+	task_pd_config.setJointKd(kd_vec_joint);
 	task_pd_config.motor_kp = kp_vec_motor;
 	task_pd_config.motor_kd = kd_vec_motor;
 
@@ -545,6 +562,21 @@ static void* update_1kHz( void * arg )
 
 	uint16_t pos_cmds[10];
 
+	// set up UDP transmit here: =======================================================================
+	int sockfd;
+	char hmi_tx_buffer[100];
+	struct sockaddr_in	 servaddr;
+	// Creating socket file descriptor
+	if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
+		perror("socket creation failed");
+		exit(EXIT_FAILURE);
+	}
+	memset(&servaddr, 0, sizeof(servaddr));
+	// Filling server information
+	servaddr.sin_family = AF_INET;
+	servaddr.sin_port = htons(UDP_TRANSMIT_PORT);
+	servaddr.sin_addr.s_addr = inet_addr(HMI_IP_ADDRESS);
+	// ens UDP setup here: =============================================================================
 	printf('o',"\n\nEnter CTRL+C in terminal to exit.\n\n");
 
 	auto start = std::chrono::high_resolution_clock::now();
@@ -583,7 +615,16 @@ static void* update_1kHz( void * arg )
 				// do nothing
 				break;
 		}
-		
+		// handle UDP transmit here:
+		dash_utils::end_timer();
+		dash_utils::start_timer();
+		Human_dyn_data hdd = tello->controller->get_human_dyn_data();
+		hdd.FxH_hmi = hdd.dxH;
+		hdd.FyH_hmi = hdd.dxH;
+		hdd.FxH_spring = hdd.dxH;
+		dash_utils::pack_data_to_hmi((uint8_t*)hmi_tx_buffer,hdd);
+		int n = sendto(sockfd, hmi_tx_buffer, 12,MSG_CONFIRM, 
+			   (const struct sockaddr *) &servaddr, sizeof(servaddr));
 		pthread_mutex_lock(&mutex_CAN_recv);
 		if(disableScheduled){
 			tello->disable_all_motors();
@@ -744,8 +785,8 @@ int main(int argc, char *argv[]) {
 		\r\033[34mupload_command \033[39m= pio run -t exec -a \"-s\"\n\n");
 
 		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 1000);
-		tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, NULL, "plotting",TASK_CONSTANT_PERIOD, 5000);
-
+		//tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
+		// tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
 		while(1){ usleep(1000); }
 		return 0;
 	}
@@ -789,7 +830,7 @@ int main(int argc, char *argv[]) {
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd2),"rx_bus2",TASK_CONSTANT_DELAY, 50);
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd3),"rx_bus3",TASK_CONSTANT_DELAY, 50);
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd4),"rx_bus4",TASK_CONSTANT_DELAY, 50);
-	tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
+	tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 	tello->addPeriodicTask(&IMU_Comms, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL, "imu_task", TASK_CONSTANT_DELAY, 1000);
 	tello->addPeriodicTask(&update_1kHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, NULL, "update_task",TASK_CONSTANT_PERIOD, 1000);
 	// tello->addPeriodicTask(&BNO055_Comms, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL, "bno_imu_task", TASK_CONSTANT_DELAY, 1000);

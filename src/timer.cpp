@@ -17,7 +17,7 @@ void stopTimer(){
   gettimeofday(&et,NULL);
   int elapsed = ((et.tv_sec - st.tv_sec) * 1000000) + (et.tv_usec - st.tv_usec);
 
-  //printf("%d\n",elapsed);
+  printf("%d\n",elapsed);
 }
 
 int stopTimer(FILE * file){

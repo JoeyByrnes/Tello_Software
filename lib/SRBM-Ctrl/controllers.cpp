@@ -1,6 +1,10 @@
 #include "controllers.h"
 
 extern MatrixXd lfv_dsp_start;
+bool first_time_running_qp = true;
+real_t xOpt[12];
+QProblem GRFs_distribution_QP;
+int prev_FSM=0;
 
 void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm, Human_dyn_data& human_dyn_data, 
                                         SRB_Params srb_params, Human_params human_params, Traj_planner_dyn_data traj_planner_dyn_data, 
@@ -310,22 +314,14 @@ void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, 
 
     // compute phase variable
     double s = t_step / T_step;
-
+    
     // get desired velocity in x-direction at end of next step
     // vx_des = f(sim_time)
-    double vx_des = 0.0;
-    for (int i = 0; i < vx_des_t.size(); i++) {
-        if (t <= vx_des_t(i)) {
-            vx_des = vx_des_vx(i);
-            break;
-        }
-    }
-    // if (vx_des <= 0.0) {
-    //     vx_des = 0.0;
-    // }
-
+    //dash_utils::start_timer();
+    double vx_des = 0;
+    if((int)(1000*t) < vx_des_vx.size()) vx_des = vx_des_vx((int)(1000*t));
+    //dash_utils::end_timer();
     // LIP states
-    
     MatrixXd lf2CoM_mat = pc.replicate(1, num_end_effector_pts) - lfv.transpose();
 
     double xLIP, yLIP;
@@ -410,7 +406,7 @@ void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, 
         sw2CoM_end_step_x = 0.0;
         sw2CoM_end_step_y = 0.0;
     }
-
+    
     // sagittal plane control
     double xLIP_ref, xd_ref;
     if (abs(FSM) == 1) 
@@ -434,11 +430,10 @@ void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, 
     {
         FyR = m*omega*omega*yLIP;
     }
-
+    
     // desired step placement
     const Vector2d sw2CoM_end_step_des = {sw2CoM_end_step_x, sw2CoM_end_step_y};
     sw2CoM_end_step_strategy(lfv_comm, lfdv_comm, srb_params, traj_planner_dyn_data, FSM, s, x, lfv, lfdv, sw2CoM_end_step_des);
-
 }
 
 void dash_ctrl::sw2CoM_end_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm, const SRB_Params srb_params, const Traj_planner_dyn_data& traj_planner_dyn_data, const int FSM, 
@@ -659,13 +654,15 @@ VectorXd dash_ctrl::SRB_force_distribution_QP(SRB_Params srb_params,int FSM,Vect
     
     // Define options
     // qpOASES function call
+    if(first_time_running_qp){
+        GRFs_distribution_QP = QProblem(nVar, nCons, qpOASES::HST_POSDEF);
     
-    QProblem GRFs_distribution_QP(nVar, nCons, qpOASES::HST_POSDEF);
-    
-    Options options;
-    options.setToReliable();
-    options.printLevel = PL_NONE;
-    GRFs_distribution_QP.setOptions(options);
+        Options options;
+        options.setToReliable();
+        options.printLevel = PL_NONE;
+        GRFs_distribution_QP.setOptions(options);
+
+    }
 
     MatrixXd A1; VectorXd lbA; VectorXd ubA;   
     lbA = -1000*VectorXd::Ones(b.size());
@@ -692,12 +689,10 @@ VectorXd dash_ctrl::SRB_force_distribution_QP(SRB_Params srb_params,int FSM,Vect
     MatrixXd2real_t_vec(LB, lb_realt); 
     MatrixXd2real_t_vec(UB, ub_realt); 
     
-    int_t nWSR = 100;     
-    GRFs_distribution_QP.init(H_realt, f_realt, A_realt, lb_realt, ub_realt, lbA_realt, ubA_realt, nWSR);  
-    real_t xOpt[nVar];
+    int_t nWSR = 1000;     
+    GRFs_distribution_QP.init(H_realt, f_realt, A_realt, lb_realt, ub_realt, lbA_realt, ubA_realt, nWSR); 
+    GRFs_distribution_QP.getPrimalSolution(xOpt); 
 
-    GRFs_distribution_QP.getPrimalSolution(xOpt);   
-    //printf("U: ");
     // convert solution
     VectorXd xOpt_VectorXd = VectorXd::Zero(nVar);
     int xOpt_comp_idx;

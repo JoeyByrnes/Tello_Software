@@ -22,7 +22,6 @@ MatrixXd acc_cal(1000,3);
 long long print_index = 0;
 
 void* rx_CAN( void * arg ){
-	
     
 	TPCANStatus Status;
 	TPCANMsg Message;
@@ -132,10 +131,91 @@ void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* rob
 	}
 }
 
+// void* rx_UDP( void * arg ){
+
+// 	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+//     void* arg1 = std::get<1>(*arg_tuple_ptr);
+// 	void* arg0 = std::get<0>(*arg_tuple_ptr);
+// 	int period = std::get<2>(*arg_tuple_ptr);
+// 	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(arg0);
+
+// 	//setup
+// 	int sockfd;
+// 	char rx_buffer[100];
+
+// 	struct sockaddr_in servaddr, cliaddr;
+		
+// 	// Creating socket file descriptor
+// 	if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
+// 		perror("socket creation failed");
+// 		exit(EXIT_FAILURE);
+// 	}
+		
+// 	memset(&servaddr, 0, sizeof(servaddr));
+// 	memset(&cliaddr, 0, sizeof(cliaddr));
+		
+// 	// Filling server information
+// 	servaddr.sin_family = AF_INET; // IPv4
+// 	servaddr.sin_addr.s_addr = INADDR_ANY;
+// 	servaddr.sin_port = htons(UDP_RECEIVE_PORT);
+		
+// 	// Bind the socket with the server address
+// 	if ( bind(sockfd, (const struct sockaddr *)&servaddr,
+// 			sizeof(servaddr)) < 0 )
+// 	{
+// 		perror("bind failed");
+// 		exit(EXIT_FAILURE);
+// 	}
+
+// 	int core = sched_getcpu();
+// 	int policy;
+// 	sched_param param;
+//     pthread_t current_thread = pthread_self();
+//     int result = pthread_getschedparam(current_thread, &policy, &param);
+// 	int priority = param.sched_priority;
+// 	printf("UDP rx thread running on core %d, with priority %d\n", core, priority);
+
+// 	int len, n;
+
+// 	while(1)
+// 	{
+// 		socklen_t * len1;
+// 		n = recvfrom(sockfd, (char *)rx_buffer, 100,
+// 			MSG_WAITALL, ( struct sockaddr *) &cliaddr,
+// 			len1);
+// 		uint8_t checksum = 0;
+// 		for(int i=0;i<n-1;i++){
+// 			checksum += rx_buffer[i]&0xFF;
+// 		}
+// 		if(checksum == rx_buffer[n-1])
+// 		{
+// 			Human_dyn_data human_dyn_data;
+// 			dash_utils::unpack_data_from_hmi(human_dyn_data,(uint8_t*)rx_buffer);
+// 			tello->controller->set_human_dyn_data(human_dyn_data);
+// 			dash_utils::print_human_dyn_data(human_dyn_data);
+// 		}
+
+
+// 		// udp_data_ready = 0;
+// 		// memcpy(udp_control_packet,buffer,UDP_MAXLINE);
+// 		// udp_data_ready = 1;
+// 		// HERE WE HAVE A UDP CONTROL PACKET TO SEND TO THE UPDATE LOOP
+		
+
+// 		usleep(100);
+// 	}
+// }
 void* rx_UDP( void * arg ){
+
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+    void* arg1 = std::get<1>(*arg_tuple_ptr);
+	void* arg0 = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(arg0);
+
 	//setup
 	int sockfd;
-	char buffer[UDP_MAXLINE];
+	char rx_buffer[100];
 
 	struct sockaddr_in servaddr, cliaddr;
 		
@@ -151,13 +231,13 @@ void* rx_UDP( void * arg ){
 	// Filling server information
 	servaddr.sin_family = AF_INET; // IPv4
 	servaddr.sin_addr.s_addr = INADDR_ANY;
-	servaddr.sin_port = htons(UDP_PORT);
+	servaddr.sin_port = htons(UDP_RECEIVE_PORT);
 		
 	// Bind the socket with the server address
 	if ( bind(sockfd, (const struct sockaddr *)&servaddr,
 			sizeof(servaddr)) < 0 )
 	{
-		perror("bind failed");unsigned int pcd3 = PCAN_PCIBUS3;
+		perror("bind failed");
 		exit(EXIT_FAILURE);
 	}
 
@@ -174,23 +254,32 @@ void* rx_UDP( void * arg ){
 	while(1)
 	{
 		socklen_t * len1;
-		n = recvfrom(sockfd, (char *)buffer, UDP_MAXLINE,
+		n = recvfrom(sockfd, (char *)rx_buffer, 100,
 			MSG_WAITALL, ( struct sockaddr *) &cliaddr,
 			len1);
 		uint8_t checksum = 0;
 		for(int i=0;i<n-1;i++){
-			checksum += buffer[i]&0xFF;
+			checksum += rx_buffer[i]&0xFF;
 		}
-		//TODO: use checksum
+		// if(checksum == rx_buffer[n-1])
+		// {
+			Human_dyn_data human_dyn_data;
+			dash_utils::unpack_data_from_hmi(human_dyn_data,(uint8_t*)rx_buffer);
+			tello->controller->set_human_dyn_data(human_dyn_data);
+			dash_utils::print_human_dyn_data(human_dyn_data);
+		// }
 
+
+		// udp_data_ready = 0;
+		// memcpy(udp_control_packet,buffer,UDP_MAXLINE);
+		// udp_data_ready = 1;
 		// HERE WE HAVE A UDP CONTROL PACKET TO SEND TO THE UPDATE LOOP
-		udp_data_ready = 0;
-		memcpy(udp_control_packet,buffer,UDP_MAXLINE);
-		udp_data_ready = 1;
+		
 
-		usleep(100);
+		usleep(10);
 	}
 }
+
 
 //    IMU   =================================================================================
 

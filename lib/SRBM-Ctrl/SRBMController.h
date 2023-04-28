@@ -169,6 +169,10 @@ class SRBMController {
     // Getter function for _dpc
     Eigen::Vector3d get_dpc() const {return _dpc;}
 
+    // Duration measurement functions for debugging
+    void start_timer();
+    void end_timer();
+
   private:
 
     SRB_Params srb_params;
@@ -216,6 +220,10 @@ class SRBMController {
     bool isSwingToStanceRight = true;
     double transitionStartLeft = -10;
     double transitionStartRight = -10;
+
+    std::chrono::high_resolution_clock::time_point start_time;
+    std::chrono::high_resolution_clock::time_point end_time;
+    std::chrono::high_resolution_clock::time_point last_print_time;
 
 
 };

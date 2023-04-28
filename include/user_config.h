@@ -7,7 +7,9 @@
 #define ISOLATED_CORE_2_THREAD_1 6
 #define ISOLATED_CORE_2_THREAD_2 7
 
-#define UDP_PORT 2000
+#define UDP_RECEIVE_PORT 54003
+#define UDP_TRANSMIT_PORT 54004
+#define HMI_IP_ADDRESS "169.254.212.117"
 
 #define MOTION_LOG_NAME "motion_log.txt"
 

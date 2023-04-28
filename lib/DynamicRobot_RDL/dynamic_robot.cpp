@@ -659,7 +659,7 @@ VectorXd DynamicRobot::taskPD2(TaskPDConfig task_conf)
 
     // Use inverse kinematics to calculate joint pd
     VectorXd joint_pos_desired = this->task_pos_to_joint_pos(task_conf.task_pos_desired);
-    VectorXd joint_vel_desired = this->task_vel_to_joint_vel(task_conf.task_vel_desired); //VectorXd::Zero(10);
+    VectorXd joint_vel_desired = VectorXd::Zero(10);//this->task_vel_to_joint_vel(task_conf.task_vel_desired); //VectorXd::Zero(10);
 
     JointPDConfig joint_conf;
     joint_conf.joint_ff_torque = joint_torques;

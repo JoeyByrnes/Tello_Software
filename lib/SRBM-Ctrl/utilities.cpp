@@ -719,3 +719,71 @@ void dash_utils::parse_json_to_pd_params(const std::string& json_file_path, Join
     return;
   }
 }
+
+std::chrono::high_resolution_clock::time_point start_time;
+std::chrono::high_resolution_clock::time_point end_time;
+std::chrono::high_resolution_clock::time_point last_print_time;
+
+void dash_utils::start_timer(){
+    start_time = std::chrono::high_resolution_clock::now();
+}
+
+void dash_utils::end_timer(){
+    end_time = std::chrono::high_resolution_clock::now();
+    // Calculate the elapsed time
+    std::chrono::nanoseconds elapsed_time = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time);
+
+    // Convert the elapsed time to milliseconds with a resolution of nanoseconds
+    double elapsed_time_ms = static_cast<double>(elapsed_time.count()) / 1000000.0;
+
+    std::chrono::nanoseconds elapsed_time_since_print = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - last_print_time);
+    double elapsed_time_since_print_ms = static_cast<double>(elapsed_time_since_print.count()) / 1000000.0;
+    
+    if(elapsed_time_since_print_ms > 25){
+        std::cout << "Elapsed time: " << elapsed_time_ms << " ms" << std::endl;
+        last_print_time = end_time;
+    }
+
+}
+
+void dash_utils::unpack_data_from_hmi(Human_dyn_data& data, uint8_t* buffer)
+{
+    size_t size = sizeof(float) * 18; // Exclude: FxH_hmi, FyH_hmi, FxH_spring
+    memcpy(&data, buffer, size);
+}
+
+void dash_utils::pack_data_to_hmi(uint8_t* buffer, Human_dyn_data data)
+{
+    float* float_buffer = reinterpret_cast<float*>(buffer);
+    float_buffer[0] = data.FxH_hmi;
+    float_buffer[1] = data.FyH_hmi;
+    float_buffer[2] = data.FxH_spring;
+    for (int i = 0; i < 12; i++) {
+        buffer[12] += buffer[i];
+    }
+}
+
+void dash_utils::print_human_dyn_data(const Human_dyn_data& data)
+{
+    std::cout << "xH: " << data.xH << std::endl;
+    std::cout << "dxH: " << data.dxH << std::endl;
+    std::cout << "pxH: " << data.pxH << std::endl;
+    std::cout << "yH: " << data.yH << std::endl;
+    std::cout << "dyH: " << data.dyH << std::endl;
+    std::cout << "pyH: " << data.pyH << std::endl;
+    std::cout << "fxH_R: " << data.fxH_R << std::endl;
+    std::cout << "fyH_R: " << data.fyH_R << std::endl;
+    std::cout << "fzH_R: " << data.fzH_R << std::endl;
+    std::cout << "fxH_L: " << data.fxH_L << std::endl;
+    std::cout << "fyH_L: " << data.fyH_L << std::endl;
+    std::cout << "fzH_L: " << data.fzH_L << std::endl;
+    std::cout << "fdxH_R: " << data.fdxH_R << std::endl;
+    std::cout << "fdyH_R: " << data.fdyH_R << std::endl;
+    std::cout << "fdzH_R: " << data.fdzH_R << std::endl;
+    std::cout << "fdxH_L: " << data.fdxH_L << std::endl;
+    std::cout << "fdyH_L: " << data.fdyH_L << std::endl;
+    std::cout << "fdzH_L: " << data.fdzH_L << std::endl;
+    std::cout << "FxH_hmi: " << data.FxH_hmi << std::endl;
+    std::cout << "FyH_hmi: " << data.FyH_hmi << std::endl;
+    std::cout << "FxH_spring: " << data.FxH_spring << std::endl;
+}

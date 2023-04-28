@@ -47,4 +47,11 @@ namespace  dash_utils
     void parse_json_to_pd_params(const std::string& json_file_path, Joint_PD_config& swing, Joint_PD_config& posture);
     void parse_json_to_srb_params(const std::string& json_file_path, SRB_Params& params); 
 
+    void start_timer();
+    void end_timer();
+
+    void pack_data_to_hmi(uint8_t* buffer, Human_dyn_data data);
+    void unpack_data_from_hmi(Human_dyn_data& data, uint8_t* buffer);
+    void print_human_dyn_data(const Human_dyn_data& data);
+
 }

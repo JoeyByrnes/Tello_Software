@@ -140,6 +140,8 @@
         "observer_ptr": "cpp",
         "*.inc": "cpp",
         "bufferobject": "cpp",
-        "vertexarraystate": "cpp"
+        "vertexarraystate": "cpp",
+        "matrixd": "cpp",
+        "matrixf": "cpp"
     }
 }

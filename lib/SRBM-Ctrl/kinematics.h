@@ -2,6 +2,8 @@
 #include <math.h>
 #include "structs.h"
 #include "utilities.h"
+#include <algorithm>
+#include <cmath>
 
 #define NUM_EE_POINTS 4 // two per foot
 #define POSITION_VEC_SIZE 3 // x, y, z components

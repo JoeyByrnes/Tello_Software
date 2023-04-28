@@ -81,15 +81,52 @@ namespace RoboDesignLab {
     };
 
     struct TaskPDConfig{
-        VectorXd task_pos_desired;
-        VectorXd task_vel_desired;
+        VectorXd task_pos_desired = VectorXd(12);
+        VectorXd task_vel_desired = VectorXd(12);
         MatrixXd task_kp;
         MatrixXd task_kd;
         MatrixXd joint_kp;
         MatrixXd joint_kd;
-        VectorXd motor_kp;
-        VectorXd motor_kd;
-        VectorXd task_ff_force;
+        VectorXd motor_kp = VectorXd(10);
+        VectorXd motor_kd = VectorXd(10);
+        VectorXd task_ff_force = VectorXd(12);
+
+        void setTaskKp(double x, double y, double z) {
+            task_kp = ((Vector3d(x,y,z)).replicate(4, 1)).asDiagonal();
+        }
+        void setTaskKp(Vector3d kp) {
+            task_kp = ((kp).replicate(4, 1)).asDiagonal();
+        }
+        void setTaskKd(double x, double y, double z) {
+            task_kd = ((Vector3d(x,y,z)).replicate(4, 1)).asDiagonal();
+        }
+        void setTaskKd(Vector3d kd) {
+            task_kd = ((kd).replicate(4, 1)).asDiagonal();
+        }
+
+        void setJointKp(VectorXd kp) {
+            joint_kp = kp.asDiagonal();
+        }
+        void setJointKd(VectorXd kd) {
+            joint_kd = kd.asDiagonal();
+        }
+
+        void setMotorKp(double kp) {
+            motor_kp << kp,kp,kp,kp,kp,kp,kp,kp,kp,kp;
+        }
+        void setMotorKd(double kd) {
+            motor_kd << kd,kd,kd,kd,kd,kd,kd,kd,kd,kd;
+        }
+
+        void setTaskPosDesired(Vector3d lf, Vector3d lb, Vector3d rf, Vector3d rb) {
+            task_pos_desired << lf, lb, rf, rb;
+        }
+        void setTaskVelDesired(Vector3d lf, Vector3d lb, Vector3d rf, Vector3d rb) {
+            task_vel_desired << lf, lb, rf, rb;
+        }
+        void setFF(Vector3d lf, Vector3d lb, Vector3d rf, Vector3d rb) {
+            task_ff_force << lf, lb, rf, rb;
+        }
     };
 
     struct GRFs{
@@ -175,6 +212,10 @@ namespace RoboDesignLab {
         void update_filter_landmark_data(int id, Vector3d landmark_pos);
         RobotState get_filter_state();
         void set_filter_state(RobotState state);
+        void set_imu_data_for_ekf(IMU_data imu_data){_imu_data = imu_data;}
+        IMU_data get_imu_data_for_ekf(){return _imu_data;}
+        void set_gnd_contact_data_for_ekf(VectorXd ground_contacts){_ground_contacts = ground_contacts;}
+        VectorXd get_gnd_contact_data_for_ekf(){return _ground_contacts;}
 
         // Quaterniond getFootOrientation(const Vector3d& lf1, const Vector3d& lf2, const Vector3d& knee);
 

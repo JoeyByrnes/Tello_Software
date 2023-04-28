@@ -9,6 +9,8 @@ using Eigen::VectorXd;
 using Eigen::Vector3d;
 using Eigen::Vector2d;
 
+//#pragma pack(push, 1)
+
 struct SRB_Params
 {
     double dt;
@@ -80,28 +82,28 @@ struct Human_params {
 };
 
 struct Human_dyn_data {
-    double xH;
-    double dxH;
-    double pxH;
-    double yH;
-    double dyH;
-    double pyH;
-    double fxH_R;
-    double fyH_R;
-    double fzH_R;
-    double fxH_L;
-    double fyH_L;
-    double fzH_L;
-    double fdxH_R;
-    double fdyH_R;
-    double fdzH_R;
-    double fdxH_L;
-    double fdyH_L;
-    double fdzH_L;
-    double FxH_hmi;
-    double FyH_hmi;
-    double FxH_spring;
-};
+    float xH;
+    float dxH;
+    float pxH;
+    float yH;
+    float dyH;
+    float pyH;
+    float fxH_R;
+    float fyH_R;
+    float fzH_R;
+    float fxH_L;
+    float fyH_L;
+    float fzH_L;
+    float fdxH_R;
+    float fdyH_R;
+    float fdzH_R;
+    float fdxH_L;
+    float fdyH_L;
+    float fdzH_L;
+    float FxH_hmi;
+    float FyH_hmi;
+    float FxH_spring;
+}__attribute__((packed, aligned(1)));
 
 struct Traj_planner_dyn_data
 {
@@ -186,5 +188,7 @@ struct Joint_PD_config
     double ankle_Kp;
     double ankle_Kd;
 };
+
+//#pragma pack(pop)
 
 #endif

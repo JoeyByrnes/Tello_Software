@@ -24,6 +24,9 @@ SRBMController::SRBMController()
 		Jv_mat[i] = MatrixXd::Zero(3, 5);
 	}
 
+    // Initialize trajectory planner data
+    dash_planner::SRB_Init_Traj_Planner_Data(traj_planner_dyn_data, srb_params, human_params, x0, lfv0);
+
     last_print_time = std::chrono::high_resolution_clock::now();
 }
 
@@ -85,7 +88,6 @@ VectorXd SRBMController::update(VectorXd srb_state, MatrixXd q, MatrixXd qd, dou
 	dash_planner::SRB_Traj_Planner(srb_params, human_dyn_data, traj_planner_dyn_data,
 								   human_params, FSM, FSM_prev, t, x, lfv, lfdv, u, 
 								   tau_ext, SRB_state_ref, SRB_wrench_ref, lfv_comm, lfdv_comm);
-
     // SRB controller
     
 	dash_ctrl::SRB_Balance_Controller(u, tau, srb_params, FSM, x, lfv, qd, Jv_mat, u, SRB_wrench_ref);
@@ -217,26 +219,6 @@ MatrixXd SRBMController::get_foot_orientation_wrt_body(VectorXd q_leg)
     Eigen::Vector4d p_leg(thigh_length, calf_length, foot_length, heel_length);
 
     Matrix3d R_body_to_foot = dash_kin::fcn_HTM0lf1(q_leg, p_leg).block<3,3>(0,0);
-
-    // Eigen::Quaterniond quat(R_body_to_foot);                 // This code is used to edit individual euler angles
-    // double roll, pitch, yaw;
-    // Eigen::Matrix3d rotation = quat.toRotationMatrix();
-    // if (std::abs(rotation(2, 0)) != 1) {
-    //     pitch = -asin(rotation(2, 0));
-    //     roll = atan2(rotation(2, 1) / cos(pitch), rotation(2, 2) / cos(pitch));
-    //     yaw = atan2(rotation(1, 0) / cos(pitch), rotation(0, 0) / cos(pitch));
-    // } else {
-    //     pitch = rotation(2, 0) > 0 ? M_PI / 2 : -M_PI / 2;
-    //     roll = 0;
-    //     yaw = atan2(-rotation(1, 2), rotation(1, 1));
-    // }
-    // Eigen::Matrix3d rotation_matrix;
-    // Eigen::AngleAxisd roll_angle(roll, Eigen::Vector3d::UnitX());
-    // Eigen::AngleAxisd pitch_angle(pitch, Eigen::Vector3d::UnitY());
-    // Eigen::AngleAxisd yaw_angle(yaw, Eigen::Vector3d::UnitZ());
-
-    // Eigen::Quaterniond quat2 = roll_angle * pitch_angle * yaw_angle;
-    // rotation_matrix = quat2.toRotationMatrix();
 
     return R_body_to_foot;
 }

@@ -31,8 +31,8 @@ DynamicRobot::DynamicRobot()
 
     // Initialize state covariance
     NoiseParams noise_params;
-    noise_params.setGyroscopeNoise(0.001);
-    noise_params.setAccelerometerNoise(0.01);
+    noise_params.setGyroscopeNoise(0.9);
+    noise_params.setAccelerometerNoise(0.9);
     noise_params.setGyroscopeBiasNoise(0.0001);
     noise_params.setAccelerometerBiasNoise(0.0001);
     noise_params.setContactNoise(0.025);

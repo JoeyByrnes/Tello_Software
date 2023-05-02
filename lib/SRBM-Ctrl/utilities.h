@@ -54,4 +54,6 @@ namespace  dash_utils
     void unpack_data_from_hmi(Human_dyn_data& data, uint8_t* buffer);
     void print_human_dyn_data(const Human_dyn_data& data);
 
+    void rotate_foot(Eigen::Vector3d& point1, Eigen::Vector3d& point2, double theta);
+
 }

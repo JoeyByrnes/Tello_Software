@@ -17,7 +17,11 @@ extern int can_data_ready_to_save;
 extern vn::math::vec3f tello_ypr;
 extern bool calibrate_IMU_bias;
 int cal_index = 0;
-MatrixXd acc_cal(1000,3);
+MatrixXd acc_cal(20000,3);
+MatrixXd gyro_cal(20000,3);
+
+double initial_yaw = 0;
+bool yaw_offset_recorded = false;
 
 long long print_index = 0;
 
@@ -311,7 +315,7 @@ Eigen::Matrix3d rotateAlign(Eigen::Vector3d v1, Eigen::Vector3d v2)
     return result;
 }
 
-VectorXd calculate_accelerometer_bias(const MatrixXd& acceleration_data) {
+VectorXd calculate_bias(const MatrixXd& acceleration_data) {
     int num_samples = acceleration_data.rows(); // get the number of samples
     VectorXd accelerometer_bias(3); // create a vector to store the biases
 
@@ -330,6 +334,27 @@ long long getDeltaT() {
 }
 
 Eigen::VectorXd subtractGravity2(const Eigen::Vector3d& ypr, const Eigen::VectorXd& acc)
+{
+    // Construct rotation matrix from roll-pitch-yaw angles
+    AngleAxisd pitchRotation(ypr[1], Vector3d::UnitY());
+    AngleAxisd rollRotation(ypr[2], Vector3d::UnitX());
+
+    Matrix3d R = pitchRotation.matrix() * rollRotation.matrix();
+
+
+    // Calculate gravitational acceleration in body frame
+    Eigen::Vector3d g_body(0, 0, 10.02);
+    Eigen::Vector3d g_enu = R.transpose() * g_body;
+
+    // Subtract gravitational acceleration from measured acceleration
+    Eigen::VectorXd acc_out(3);
+    acc_out = acc - g_enu;
+
+	// printf("    %.5f, \t\t %.5f, \t\t %.5f                   \r", g_enu[0], g_enu[1], g_enu[2]);
+	// cout.flush();
+    return acc_out;
+}
+Eigen::VectorXd subtractAccelBiases(const Eigen::Vector3d& ypr, const Eigen::VectorXd& acc)
 {
     // Construct rotation matrix from roll-pitch-yaw angles
     AngleAxisd pitchRotation(ypr[1], Vector3d::UnitY());
@@ -563,6 +588,7 @@ void IMUMessageReceived(void * robot, Packet & p, size_t index)
 
 	vec3f ypr = cd.yawPitchRoll();
 	vec3f acc = cd.acceleration();
+	vec3f gyro = cd.angularRate();
 
 	// if(fabs(acc[0]) < 0.5) acc[0] = 0;
 	// if(fabs(acc[1]) < 0.5) acc[1] = 0;
@@ -576,24 +602,42 @@ void IMUMessageReceived(void * robot, Packet & p, size_t index)
 		ypr[2] = 180.0 + ypr[2];
 	}
 	ypr[1] = -ypr[1];
-	
+
+	if(!yaw_offset_recorded) 
+	{
+		initial_yaw = ypr[0];
+		yaw_offset_recorded = true;
+	}
+
+	ypr[0] = -ypr[0] + initial_yaw;
+
 	tello_ypr = ypr;
 	tello->_ypr = vn2Eig_3D(ypr)*DEGREES_TO_RADIANS;
-	Vector3d acc_eig = vn2Eig_3D(acc);
-	acc_eig = subtractGravity2(tello->_ypr,acc_eig);
+	tello->_rpy = tello->_ypr.reverse().eval();
+	tello->_rpy(2) = 0;
+	Vector3d acc_eig = vn2Eig_3D(acc).array()*(9.81/10.02);
+	//acc_eig = subtractGravity2(tello->_ypr,acc_eig);
 	tello->_acc = acc_eig;
+	tello->_gyro = vn2Eig_3D(gyro);
 	if(calibrate_IMU_bias){
-		if(cal_index < 1000){
+		if(cal_index < 20000){
 			acc_cal.row(cal_index) = acc_eig.transpose();
+			gyro_cal.row(cal_index) = tello->_gyro.transpose();
 			cal_index++;
 		}
-		else{
-			VectorXd biases = calculate_accelerometer_bias(acc_cal);
-			printf("Biases: %.6f,\t\t %.6f,\t\t %.6f                    \n\n",biases[0], biases[1], biases[2]);
+		else{ // NOTE: VN100 seems to be calibrated without measureable bias over 20,000 samples
+			VectorXd acc_biases = calculate_bias(acc_cal);
+			printf("ACC Biases: %.6f,\t\t %.6f,\t\t %.6f                    \n\n",acc_biases[0], acc_biases[1], acc_biases[2]);
+
+			VectorXd gyro_biases = calculate_bias(gyro_cal);
+			printf("GYR Biases: %.6f,\t\t %.6f,\t\t %.6f                    \n\n",gyro_biases[0], gyro_biases[1], gyro_biases[2]);
+
 			calibrate_IMU_bias = false;
 			cal_index = 0;
 		}
 	}
+
+
 	// printf("YPR: %.2f,\t %.2f,\t %.2f          \r",ypr[0], ypr[1], ypr[2]);
 	// cout.flush();
 	// printf("%.4f,\t\t %.4f,\t\t %.4f               \n",acc_eig[0], acc_eig[1], acc_eig[2]);

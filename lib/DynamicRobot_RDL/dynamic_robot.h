@@ -50,7 +50,7 @@ using namespace inekf;
 #define ENCODER_TO_RADIANS ((double)(12.5/32768.0))
 #define VELOCITY_TO_RADIANS_PER_SEC ((double)(65.0/4096.0))
 #define DT_MIN 1e-6
-#define DT_MAX 0.005
+#define DT_MAX 0.025
 
 typedef VectorXd (*VectorXd_function)(const VectorXd&);
 typedef MatrixXd (*MatrixXd_function)(const VectorXd&);
@@ -216,6 +216,10 @@ namespace RoboDesignLab {
         IMU_data get_imu_data_for_ekf(){return _imu_data;}
         void set_gnd_contact_data_for_ekf(VectorXd ground_contacts){_ground_contacts = ground_contacts;}
         VectorXd get_gnd_contact_data_for_ekf(){return _ground_contacts;}
+        void set_lfv_hip_data_for_ekf(MatrixXd direct_lfv_hip){_direct_lfv_hip = direct_lfv_hip;}
+        MatrixXd get_lfv_hip_data_for_ekf(){return _direct_lfv_hip;}
+        void set_q_data_for_ekf(MatrixXd q){_ekf_q = q;}
+        MatrixXd get_q_data_for_ekf(){return _ekf_q;}
 
         // Quaterniond getFootOrientation(const Vector3d& lf1, const Vector3d& lf2, const Vector3d& knee);
 
@@ -243,6 +247,7 @@ namespace RoboDesignLab {
         Eigen::Vector3d updatePosFromIMU(const Eigen::Vector3d& acc, const Eigen::Vector3d& ypr, double delta_t, Eigen::Vector3d& pos, Eigen::Vector3d& vel);
         VnSensor imu;
         Vector3d _ypr;
+        Vector3d _rpy;
         Vector3d _acc = VectorXd::Zero(3);
         Vector3d _gyro = VectorXd::Zero(3);
         Vector3d _vel = VectorXd::Zero(3);
@@ -290,6 +295,8 @@ namespace RoboDesignLab {
         IMU_data _imu_data;
         IMU_data _imu_data_prev;
         VectorXd _ground_contacts = VectorXd(4);
+        MatrixXd _direct_lfv_hip = MatrixXd(4,3);
+        MatrixXd _ekf_q = MatrixXd(2,5);
 
     };
 }

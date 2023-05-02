@@ -44,6 +44,9 @@
 
 RoboDesignLab::DynamicRobot* tello;
 bool calibrate_IMU_bias = false;
+bool ekf_position_initialied = false;
+bool tare_efk_pos = false;
+Vector3d ekf_position_offset;
 
 int udp_data_ready = 0;
 char udp_control_packet[UDP_MAXLINE];
@@ -114,6 +117,7 @@ int motor_kd = 600;
 int playback_kp = 1000;
 
 pthread_mutex_t mutex_CAN_recv = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t EKF_mutex = PTHREAD_MUTEX_INITIALIZER;
 int can_data_ready_to_save = 1;
 int disabled = 1;
 
@@ -127,6 +131,8 @@ extern bool disableScheduled;
 extern bool zeroScheduled;
 
 int simulation_mode = 0;
+extern bool filter_data_ready;
+double t_program_start;
 
 void signal_callback_handler(int signum);
 
@@ -494,6 +500,92 @@ void run_tello_pd_DEMO()
 	pthread_mutex_unlock(&mutex_CAN_recv);
 }
 
+void run_balance_controller()
+{
+	auto now = std::chrono::system_clock::now();  // Get the current time
+    auto micros = std::chrono::time_point_cast<std::chrono::microseconds>(now);  // Round down to nearest microsecond
+    auto since_epoch = micros.time_since_epoch();  // Get duration since epoch
+    double t = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch).count() / 1000000.0 - t_program_start;  // Convert to double with resolution of microseconds
+	tello->controller->set_time(t);
+
+	// Set pc_curr, dpc_curr, EA_curr, dEA_Curr, q, qd here:
+	Vector3d pc_curr = Vector3d(0,0,0);
+	Vector3d dpc_curr = Vector3d(0,0,0);
+	Vector3d EA_curr = tello->_rpy;
+	Vector3d dEA_curr = tello->_gyro;
+
+	VectorXd task_velocities = tello->joint_vel_to_task_vel(tello->getJointVelocities());
+
+    MatrixXd lfdv_hip(4,3);
+    lfdv_hip.row(2) = task_velocities.segment<3>(0);
+    lfdv_hip.row(3) = task_velocities.segment<3>(3);
+    lfdv_hip.row(0) = task_velocities.segment<3>(6);
+    lfdv_hip.row(1) = task_velocities.segment<3>(9);
+    tello->controller->set_lfdv_hip(lfdv_hip);
+
+	VectorXd joint_pos_vec = tello->getJointPositions();
+	MatrixXd q = MatrixXd::Zero(2,5);
+	q.row(0) = joint_pos_vec.tail(5);
+	q.row(1) = joint_pos_vec.head(5);
+	VectorXd joint_vel_vec = tello->getJointVelocities();
+	MatrixXd qd = MatrixXd::Zero(2,5);
+	// qd.row(0) = joint_vel_vec.tail(5);
+	// qd.row(1) = joint_vel_vec.head(5);
+	VectorXd gnd_contacts = VectorXd::Ones(4);
+
+	VectorXd tau = tello->controller->update(pc_curr, dpc_curr, EA_curr, dEA_curr,q ,qd ,t);
+
+	Matrix3d R_foot_right = tello->controller->get_foot_orientation_wrt_body(q.row(0));
+	Matrix3d R_foot_left = tello->controller->get_foot_orientation_wrt_body(q.row(1));
+
+	// EKF calls here
+
+	inekf::RobotState filter_state;
+	filter_state = tello->get_filter_state();
+	if(tare_efk_pos)
+	{
+		tare_efk_pos = false;
+		ekf_position_offset = filter_state.getPosition();
+	}
+
+	RoboDesignLab::IMU_data imu_data;
+    imu_data.timestamp = t;
+    imu_data.acc = tello->_acc;		// DATA DIRECTIONS AND BIASES VERIFIED
+    imu_data.gyro = tello->_gyro; 	// DATA DIRECTIONS AND BIASES VERIFIED
+
+	//pthread_mutex_lock(&EKF_mutex);
+	MatrixXd direct_lfv_hip = MatrixXd(4,3);
+	VectorXd task_pos = tello->joint_pos_to_task_pos(tello->getJointPositions());
+	direct_lfv_hip.row(0) = task_pos.segment<3>(6);
+	direct_lfv_hip.row(1) = task_pos.segment<3>(9);
+	direct_lfv_hip.row(2) = task_pos.segment<3>(0);
+	direct_lfv_hip.row(3) = task_pos.segment<3>(3); // DATA VERIFIED
+	tello->set_imu_data_for_ekf(imu_data);
+	tello->set_gnd_contact_data_for_ekf(gnd_contacts);
+	tello->set_lfv_hip_data_for_ekf(direct_lfv_hip);
+	tello->set_q_data_for_ekf(q);
+	double CoM_z = tello->controller->get_CoM_z(direct_lfv_hip,gnd_contacts,EA_curr); 
+
+	filter_data_ready = true;
+	// tello->update_filter_IMU_data(imu_data);
+	// tello->update_filter_contact_data(gnd_contacts);
+	// tello->update_filter_kinematic_data(direct_lfv_hip,R_foot_right,R_foot_left);
+	
+
+	double x = filter_state.getPosition()(0)-ekf_position_offset(0);
+	double y = filter_state.getPosition()(1)-ekf_position_offset(1);
+	double z = filter_state.getPosition()(2)-ekf_position_offset(2);
+
+	//cout << direct_lfv_hip << endl;
+	//cout << "lfv_comm: " << tello->controller->get_lfv0().row(3) << "            \r"; // lfv_comm verified
+	//cout << "==================================================================================================" << endl;
+	// cout << "X: " << x << "       Y: " << y << "       Z: " << z << "       t: " << t << "             \n";
+	//cout << x << ",\t" << y << ",\t" << z << ",\t" << t << "\n";
+	//cout << "R: " << EA_curr(0) << "       P: " << EA_curr(1) << "       Y: " << EA_curr(2) << "       t: " << t << "             \n";
+	//cout << "X: " << tello->_acc(0) << "       Y: " << tello->_acc(1) << "       Z: " << tello->_acc(2) << "       t: " << t << "             \n";
+	cout.flush();
+}
+
 
 static void* update_1kHz( void * arg )
 {
@@ -611,20 +703,23 @@ static void* update_1kHz( void * arg )
 			case 5:
 				run_tello_pd_DEMO();
 				break;
+			case 6:
+				run_balance_controller();
+				break;
 			default:
 				// do nothing
 				break;
 		}
 		// handle UDP transmit here:
-		dash_utils::end_timer();
-		dash_utils::start_timer();
-		Human_dyn_data hdd = tello->controller->get_human_dyn_data();
-		hdd.FxH_hmi = hdd.dxH;
-		hdd.FyH_hmi = hdd.dxH;
-		hdd.FxH_spring = hdd.dxH;
-		dash_utils::pack_data_to_hmi((uint8_t*)hmi_tx_buffer,hdd);
-		int n = sendto(sockfd, hmi_tx_buffer, 12,MSG_CONFIRM, 
-			   (const struct sockaddr *) &servaddr, sizeof(servaddr));
+		// dash_utils::end_timer();
+		// dash_utils::start_timer();
+		// Human_dyn_data hdd = tello->controller->get_human_dyn_data();
+		// hdd.FxH_hmi = hdd.dxH;
+		// hdd.FyH_hmi = hdd.dxH;
+		// hdd.FxH_spring = hdd.dxH;
+		// dash_utils::pack_data_to_hmi((uint8_t*)hmi_tx_buffer,hdd);
+		// int n = sendto(sockfd, hmi_tx_buffer, 12,MSG_CONFIRM, 
+		// 	   (const struct sockaddr *) &servaddr, sizeof(servaddr));
 		pthread_mutex_lock(&mutex_CAN_recv);
 		if(disableScheduled){
 			tello->disable_all_motors();
@@ -775,6 +870,11 @@ int main(int argc, char *argv[]) {
 	tello->assign_fk_motors_to_joints(fk_motors_to_joints);
 	tello->assign_fk_joints_to_task(fk_joints_to_task);
 
+	auto now = std::chrono::system_clock::now();  // Get the current time
+    auto micros = std::chrono::time_point_cast<std::chrono::microseconds>(now);  // Round down to nearest microsecond
+    auto since_epoch = micros.time_since_epoch();  // Get duration since epoch
+    t_program_start = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch).count() / 1000000.0;  // Convert to double with resolution of microseconds
+
 	
 	if(simulation_mode)
 	{
@@ -785,6 +885,7 @@ int main(int argc, char *argv[]) {
 		\r\033[34mupload_command \033[39m= pio run -t exec -a \"-s\"\n\n");
 
 		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 1000);
+		tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_1_THREAD_1, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 5000);
 		//tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
 		// tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
 		while(1){ usleep(1000); }
@@ -830,10 +931,12 @@ int main(int argc, char *argv[]) {
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd2),"rx_bus2",TASK_CONSTANT_DELAY, 50);
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd3),"rx_bus3",TASK_CONSTANT_DELAY, 50);
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd4),"rx_bus4",TASK_CONSTANT_DELAY, 50);
-	tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
+	// tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 	tello->addPeriodicTask(&IMU_Comms, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL, "imu_task", TASK_CONSTANT_DELAY, 1000);
-	tello->addPeriodicTask(&update_1kHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, NULL, "update_task",TASK_CONSTANT_PERIOD, 1000);
+	tello->addPeriodicTask(&update_1kHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, NULL, "update_task",TASK_CONSTANT_PERIOD, 2000);
 	// tello->addPeriodicTask(&BNO055_Comms, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL, "bno_imu_task", TASK_CONSTANT_DELAY, 1000);
+	tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
+	// tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, 3, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
 	
 	usleep(1000);
 	
@@ -893,6 +996,15 @@ int main(int argc, char *argv[]) {
 				printf("\nTask Space Testing Mode:\n");
 				scheduleEnable();
 
+				break;
+			case 'B':
+				fsm_state = 6;
+				printf("\nBalance Controller & EKF Testing Mode:\n");
+
+				break;
+			case 't':
+				printf("\nEKF Position Tared:\n");
+				tare_efk_pos = true;
 				break;
 			case 'R':
 				fsm_state = 5;

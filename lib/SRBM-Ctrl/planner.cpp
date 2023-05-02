@@ -230,7 +230,6 @@ void dash_planner::SRB_Init_Traj_Planner_Data(Traj_planner_dyn_data& traj_planne
     // Only planner_type = LIP_ang_mom_reg
     traj_planner_dyn_data.next_SSP = 0; // next SSP (SSP_L = 1 or SSP_R = -1)
     traj_planner_dyn_data.step_width = (abs(lf2CoM0_mat(1, 0)) + abs(lf2CoM0_mat(1, 3))); // desired step width (updated at the start depending on initial feet width)
-    cout << "step_width: " << traj_planner_dyn_data.step_width << endl;
     traj_planner_dyn_data.st2CoM_beg_step = VectorXd::Zero(position_vec_size); // stance-leg/foot position at the beginning-of-step relative to CoM
     traj_planner_dyn_data.sw2CoM_beg_step = VectorXd::Zero(position_vec_size); // swing-leg/foot position at the beginning-of-step relative to CoM
     traj_planner_dyn_data.xLIP_init = VectorXd::Zero(2); // initial conditions for sagittal plane LIP
@@ -239,6 +238,9 @@ void dash_planner::SRB_Init_Traj_Planner_Data(Traj_planner_dyn_data& traj_planne
     traj_planner_dyn_data.sw_beg_step = VectorXd::Zero(position_vec_size); // swing-leg/foot position at the beginning-of-step
     traj_planner_dyn_data.human_leg_joystick_pos_beg_step = VectorXd::Zero(position_vec_size); // human leg joystick end-effector position at the beginning of step
     traj_planner_dyn_data.sigma1H = wH*(1.0/(tanh((T_step_init/2.0)*wH))); // human orbital line slope
+
+    ::lfv0 = lfv0;
+    ::lfdv0.setZero();
     
 }
 
@@ -277,7 +279,6 @@ void dash_planner::SRB_Traj_Planner(
     
     // Update planner data
     traj_planner_dyn_data_gen(srb_params, human_params, traj_planner_dyn_data, human_dyn_data, t, FSM_prev, FSM, x, lfv);
-    
     double FxR, FyR;
      // Control
     if (planner_type == 0)

@@ -5,6 +5,10 @@ bool first_time_running_qp = true;
 real_t xOpt[12];
 QProblem GRFs_distribution_QP;
 int prev_FSM=0;
+extern bool PS4_connected;
+extern double vx_desired_ps4;
+extern double vy_desired_ps4;
+extern double yaw_desired_ps4;
 
 void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm, Human_dyn_data& human_dyn_data, 
                                         SRB_Params srb_params, Human_params human_params, Traj_planner_dyn_data traj_planner_dyn_data, 
@@ -320,6 +324,9 @@ void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, 
     //dash_utils::start_timer();
     double vx_des = 0;
     if((int)(1000*t) < vx_des_vx.size()) vx_des = vx_des_vx((int)(1000*t));
+    if(PS4_connected){
+        vx_des = vx_desired_ps4;
+    }
     //dash_utils::end_timer();
     // LIP states
     MatrixXd lf2CoM_mat = pc.replicate(1, num_end_effector_pts) - lfv.transpose();
@@ -383,14 +390,14 @@ void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, 
         // Bipedal Locomotion: Validation in a LIP-based Controller
         double Lxdes_end_next_step = m*H*vx_des;
         double Lydes_end_next_step_mag = (1.0/2.0)*m*H*W*(omega*sinh(omega*T)/(1.0 + cosh(omega*T)));
-        double Lydes_end_next_step = 0.0;
+        double Lydes_end_next_step = m*H*vy_desired_ps4;
         if (FSM == 1)
         {
-            Lydes_end_next_step = 1.0*Lydes_end_next_step_mag;
+            Lydes_end_next_step = 1.0*Lydes_end_next_step_mag + m*H*vy_desired_ps4;
         }
         else if (FSM == -1)
         {
-            Lydes_end_next_step = -1.0*Lydes_end_next_step_mag;
+            Lydes_end_next_step = -1.0*Lydes_end_next_step_mag + m*H*vy_desired_ps4;
         }
 
         // compute desired step length (s)
@@ -474,6 +481,7 @@ void dash_ctrl::sw2CoM_end_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm
             // z-position trajectories
             lfv_comm(0, 2) = pc(2) - sw2CoM_traj_z(0); lfv_comm(1, 2) = lfv_comm(0, 2);
             lfdv_comm(0, 2) = sw2CoM_traj_z(1); lfdv_comm(1, 2) = lfdv_comm(0, 2);
+
         }
         else if (FSM == -1) // SSP_R
         {
@@ -486,6 +494,7 @@ void dash_ctrl::sw2CoM_end_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm
             // z-position trajectories
             lfv_comm(2, 2) = pc(2) - sw2CoM_traj_z(0); lfv_comm(3, 2) = lfv_comm(2, 2);
             lfdv_comm(2, 2) = sw2CoM_traj_z(1); lfdv_comm(3, 2) = lfdv_comm(2, 2);
+
         }
     }
 

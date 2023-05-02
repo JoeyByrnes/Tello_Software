@@ -43,7 +43,13 @@
 #include "SRBM-Ctrl/planner.h"
 #include "SRBMController.h"
 
+// PS4 Controller  includes:
+#include "Driver/DualShock4.h"
+#include "Driver/DataPacket/DataPacket.h"
+#include "Driver/DualShock4Connector.h"
+
 void* mujoco_Update_1KHz( void * arg );
 void* plotting( void * arg );
+void* PS4_Controller( void * arg );
 
 #endif

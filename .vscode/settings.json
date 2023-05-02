@@ -142,6 +142,7 @@
         "bufferobject": "cpp",
         "vertexarraystate": "cpp",
         "matrixd": "cpp",
-        "matrixf": "cpp"
+        "matrixf": "cpp",
+        "light": "cpp"
     }
 }

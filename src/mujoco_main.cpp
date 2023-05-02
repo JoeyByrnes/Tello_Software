@@ -4,10 +4,14 @@
 #include "state_estimator.h"
 
 pthread_mutex_t plotting_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t EKF_mutex = PTHREAD_MUTEX_INITIALIZER;
+extern pthread_mutex_t EKF_mutex;
 
 namespace plt = matplotlibcpp;
 GLFWwindow* window;
+
+double vx_desired_ps4 = 0;
+double vy_desired_ps4 = 0;
+bool PS4_connected = false;
 
 extern RoboDesignLab::DynamicRobot* tello;
 inekf::RobotState filter_state;
@@ -593,7 +597,7 @@ void* mujoco_Update_1KHz( void * arg )
             mjtNum simstart = d->time;
             while (d->time - simstart < 1.0 / 60.0){
                 mj_step(m, d);
-            }  
+           }  
         } 
         std::string text = "\tTello Mujoco Simulation    |    Test: " + recording_file_name + "    |    Time: " + std::to_string(d->time)+ "\t";
         glfwSetWindowTitle(window, text.c_str());
@@ -633,6 +637,44 @@ void* mujoco_Update_1KHz( void * arg )
 
     exit(0);
     return NULL;
+}
+
+void* PS4_Controller( void * arg )
+{
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	void* dynamic_robot_ptr = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
+
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
+
+    // PS4 Controller Setup code here:
+    DualShock4<BLUETOOTH>* ds4;
+
+    const Connection* connection = DualShock4Connector::GetConnectedDualShock4Device();
+    if (connection->connectionType == BLUETOOTH){
+        ds4 = new DualShock4<BLUETOOTH>(connection->hidDevice);
+        PS4_connected = true;
+    } 
+    int print_cnt=0;
+    struct timespec next;
+    clock_gettime(CLOCK_MONOTONIC, &next);
+    while(1)
+    {
+        handle_start_of_periodic_task(next);
+
+        // PS4 Controller repeating code here
+        ds4->ReceiveInputDataPacket();
+        if(print_cnt%5 == 0){
+            if(ds4->packet->circle) pause_sim = false;
+            if(ds4->packet->cross) pause_sim = true;
+            vx_desired_ps4 = (127-(double)ds4->packet->rightStick_Y)*(0.6/127.0);
+            vy_desired_ps4 = (127-(double)ds4->packet->rightStick_X)*(0.3/127.0);
+        }
+        print_cnt++;
+
+		handle_end_of_periodic_task(next,period);
+	}
+    return  0;
 }
 
 void* plotting( void * arg )
@@ -678,7 +720,7 @@ void* plotting( void * arg )
     y11.push_back(0);
     y12.push_back(0);
 
-    while(!glfwWindowShouldClose(window))
+    while(1)
     {
         handle_start_of_periodic_task(next);
     	// PLOTTING CODE HERE
@@ -687,36 +729,37 @@ void* plotting( void * arg )
         if(tello->controller->get_time() > x[x.size()-1])
         {
             // POSITION DATA ==================================================================================
-            // x.push_back(tello->controller->get_time());
+            x.push_back(tello->controller->get_time());
             // y1.push_back(tello->controller->get_pc()(0));
             // y2.push_back(tello->controller->get_pc()(1));
             // y3.push_back(tello->controller->get_pc()(2));
 
-            // y4.push_back(tello->get_filter_state().getPosition()(0));
-            // y5.push_back(tello->get_filter_state().getPosition()(1));
-            // y6.push_back(CoM_z_last);
+            y4.push_back(tello->get_filter_state().getPosition()(0));
+            y5.push_back(tello->get_filter_state().getPosition()(1));
+            y6.push_back(tello->get_filter_state().getPosition()(2));
 
             // y7.push_back(z_plotting(0));
             // y8.push_back(z_plotting(1));
             // y9.push_back(z_plotting(2));
             // y10.push_back(z_plotting(3));
-
-            // plt::clf();
-            // plt::subplot(3, 1, 1);
-            // plt::title("CoM Tracking");
-            // plt::named_plot("CoM X", x, y1, "r-");
-            // plt::named_plot("EKF X", x, y4, "b-");
-            // plt::legend();
-            // plt::subplot(3, 1, 2);
-            // plt::named_plot("CoM Y", x, y2, "r-");
-            // plt::named_plot("EKF Y", x, y5, "b-");
-            // plt::legend();
-            // plt::subplot(3, 1, 3);
-            // plt::named_plot("CoM Z", x, y3, "r-");
-            // plt::named_plot("Kin Z", x, y6, "b-");
-            // plt::legend();
-            // plt::pause(0.001);
-
+            if(tello->controller->get_time() - last_plot_time > 0.3){
+                last_plot_time = tello->controller->get_time();
+                plt::clf();
+                plt::subplot(3, 1, 1);
+                plt::title("CoM Tracking");
+                // plt::named_plot("CoM X", x, y1, "r-");
+                plt::named_plot("EKF X", x, y4, "b-");
+                plt::legend();
+                plt::subplot(3, 1, 2);
+                // plt::named_plot("CoM Y", x, y2, "r-");
+                plt::named_plot("EKF Y", x, y5, "b-");
+                plt::legend();
+                plt::subplot(3, 1, 3);
+                // plt::named_plot("CoM Z", x, y3, "r-");
+                plt::named_plot("Kin Z", x, y6, "b-");
+                plt::legend();
+                plt::pause(0.001);
+            }
             // FOOT POSITION DATA =============================================================================
             // x.push_back(tello->controller->get_time());
             // Vector3d hip_right_pos_world = controller->get_right_leg_last().col(0);
@@ -749,59 +792,59 @@ void* plotting( void * arg )
             // plt::pause(0.001);
 
             // VELOCITY and Position DATA ==================================================================================
-            x.push_back(tello->controller->get_time());
-            y1.push_back(dpc_curr(0));
-            y2.push_back(dpc_curr(1));
-            y3.push_back(dpc_curr(2));
+            // x.push_back(tello->controller->get_time());
+            // y1.push_back(dpc_curr(0));
+            // y2.push_back(dpc_curr(1));
+            // y3.push_back(dpc_curr(2));
 
-            y4.push_back(dx_smoothed);
-            y5.push_back(dy_smoothed);
-            y6.push_back(dz_smoothed);
+            // y4.push_back(dx_smoothed);
+            // y5.push_back(dy_smoothed);
+            // y6.push_back(dz_smoothed);
 
-            y7.push_back(pc_curr(0));
-            y8.push_back(pc_curr(1));
-            y9.push_back(pc_curr(2));
+            // y7.push_back(pc_curr(0));
+            // y8.push_back(pc_curr(1));
+            // y9.push_back(pc_curr(2));
 
-            y10.push_back(tello->get_filter_state().getPosition()(0));
-            y11.push_back(tello->get_filter_state().getPosition()(1));
-            y12.push_back(CoM_z_last);
+            // y10.push_back(tello->get_filter_state().getPosition()(0));
+            // y11.push_back(tello->get_filter_state().getPosition()(1));
+            // y12.push_back(CoM_z_last);
 
-            if(tello->controller->get_time() - last_plot_time > 0.1){
-                last_plot_time = tello->controller->get_time();
-                plt::rcparams({{"legend.loc","lower left"}});
-                plt::clf();
-                plt::subplot(3, 2, 1);
-                plt::title("CoM X Position True vs EKF");
-                plt::named_plot("True X", x, y7, "r-");
-                plt::named_plot("EKF X", x, y10, "b-");
-                plt::legend();
-                plt::subplot(3, 2, 3);
-                plt::title("CoM Y Position True vs EKF");
-                plt::named_plot("True Y", x, y8, "r-");
-                plt::named_plot("EKF Y", x, y11, "b-");
-                plt::legend();
-                plt::subplot(3, 2, 5);
-                plt::title("CoM Z Position True vs Kinematics");
-                plt::named_plot("True Z", x, y9, "r-");
-                plt::named_plot("Kin Z", x, y12, "b-");
-                plt::legend();
-                plt::subplot(3, 2, 2);
-                plt::title("CoM X Velocity True vs Estimated");
-                plt::named_plot("True dX", x, y1, "r-");
-                plt::named_plot("Est. dX", x, y4, "b-");
-                plt::legend();
-                plt::subplot(3, 2, 4);
-                plt::title("CoM X Velocity True vs Estimated");
-                plt::named_plot("True dY", x, y2, "r-");
-                plt::named_plot("Est.  dY", x, y5, "b-");
-                plt::legend();
-                plt::subplot(3, 2, 6);
-                plt::title("CoM X Velocity True vs Estimated");
-                plt::named_plot("True dZ", x, y3, "r-");
-                plt::named_plot("Est. dZ", x, y6, "b-");
-                plt::legend();
-                plt::pause(0.001);
-            }
+            // if(tello->controller->get_time() - last_plot_time > 0.1){
+            //     last_plot_time = tello->controller->get_time();
+            //     plt::rcparams({{"legend.loc","lower left"}});
+            //     plt::clf();
+            //     plt::subplot(3, 2, 1);
+            //     plt::title("CoM X Position True vs EKF");
+            //     plt::named_plot("True X", x, y7, "r-");
+            //     plt::named_plot("EKF X", x, y10, "b-");
+            //     plt::legend();
+            //     plt::subplot(3, 2, 3);
+            //     plt::title("CoM Y Position True vs EKF");
+            //     plt::named_plot("True Y", x, y8, "r-");
+            //     plt::named_plot("EKF Y", x, y11, "b-");
+            //     plt::legend();
+            //     plt::subplot(3, 2, 5);
+            //     plt::title("CoM Z Position True vs Kinematics");
+            //     plt::named_plot("True Z", x, y9, "r-");
+            //     plt::named_plot("Kin Z", x, y12, "b-");
+            //     plt::legend();
+            //     plt::subplot(3, 2, 2);
+            //     plt::title("CoM X Velocity True vs Estimated");
+            //     plt::named_plot("True dX", x, y1, "r-");
+            //     plt::named_plot("Est. dX", x, y4, "b-");
+            //     plt::legend();
+            //     plt::subplot(3, 2, 4);
+            //     plt::title("CoM X Velocity True vs Estimated");
+            //     plt::named_plot("True dY", x, y2, "r-");
+            //     plt::named_plot("Est.  dY", x, y5, "b-");
+            //     plt::legend();
+            //     plt::subplot(3, 2, 6);
+            //     plt::title("CoM X Velocity True vs Estimated");
+            //     plt::named_plot("True dZ", x, y3, "r-");
+            //     plt::named_plot("Est. dZ", x, y6, "b-");
+            //     plt::legend();
+            //     plt::pause(0.001);
+            // }
             
 
             // ACCELEROMETER DATA: ==============================================================================
@@ -994,7 +1037,7 @@ void* plotting( void * arg )
             // if (y11.size() > plotting_history) y11.erase(y11.begin());
             // if (y12.size() > plotting_history) y12.erase(y12.begin());
         }
-        usleep(1000);
+        usleep(100);
 		//handle_end_of_periodic_task(next,period);
 	}
     return  0;

@@ -787,3 +787,31 @@ void dash_utils::print_human_dyn_data(const Human_dyn_data& data)
     std::cout << "FyH_hmi: " << data.FyH_hmi << std::endl;
     std::cout << "FxH_spring: " << data.FxH_spring << std::endl;
 }
+
+void dash_utils::rotate_foot(Eigen::Vector3d& point1, Eigen::Vector3d& point2, double theta) {
+  // Compute the midpoint of the two input points
+  Eigen::Vector3d midpoint = (point1 + point2) / 2.0;
+  
+  // Compute the rotation matrix around the z-axis
+  double c = cos(theta);
+  double s = sin(theta);
+  Eigen::Matrix3d rotation;
+  rotation << c, -s, 0,
+              s,  c, 0,
+              0,  0, 1;
+
+  // Translate the points to the origin, rotate them, and translate them back
+  Eigen::Vector3d translated1 = point1 - midpoint;
+  Eigen::Vector3d rotated1 = rotation * translated1;
+  Eigen::Vector3d translated_back1 = rotated1 + midpoint;
+  
+  Eigen::Vector3d translated2 = point2 - midpoint;
+  Eigen::Vector3d rotated2 = rotation * translated2;
+  Eigen::Vector3d translated_back2 = rotated2 + midpoint;
+  
+  // Pack the resulting points into a dynamically allocated VectorXd array
+  Eigen::VectorXd* result = new Eigen::VectorXd[2];
+  point1 = translated_back1;
+  point2 = translated_back2;
+
+}

@@ -33,6 +33,7 @@
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/qpOASES",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/qpOASES/include",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/InEKF",
+                "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/PS4_Controller",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Tello_IMU",
                 ""
             ],
@@ -64,6 +65,7 @@
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/qpOASES",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/qpOASES/include",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/InEKF",
+                    "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/PS4_Controller",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Tello_IMU",
                     ""
                 ]

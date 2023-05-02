@@ -68,8 +68,10 @@ void handle_end_of_periodic_task(struct timespec &next){
 }
 
 void handle_end_of_periodic_task(struct timespec &next,int period_us){
-
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
   next.tv_nsec += (period_us-2) * 1000;
+  if(next.tv_nsec < now.tv_nsec) next.tv_nsec = now.tv_nsec + (10) * 1000;
   if (next.tv_nsec >= 1000000000)
   {
       next.tv_nsec -= 1000000000;

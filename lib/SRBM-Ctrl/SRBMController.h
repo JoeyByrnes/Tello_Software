@@ -23,12 +23,15 @@ struct SRBMState
 class SRBMController {
   public:
     SRBMController();
+    SRBMController(int sim_mode);
     ~SRBMController() {}
 
     VectorXd update(Vector3d body_position, Vector3d body_linear_velocity,
                                  Vector3d body_orientation, Vector3d body_angular_velocity,
                                  MatrixXd q, MatrixXd qd, double t);  
     VectorXd update(VectorXd srb_state, MatrixXd q, MatrixXd qd, double t);  
+
+    VectorXd update_euler_integration(VectorXd srb_state, MatrixXd q, MatrixXd qd, double t); 
 
     // Getter and setter functions for SRB_Params
     SRB_Params get_SRB_params() const { return srb_params; }
@@ -173,6 +176,12 @@ class SRBMController {
     void start_timer();
     void end_timer();
 
+    // Getter and setter functions for simulation_mode
+    double get_sim_mode() const { return simulation_mode; }
+    void set_sim_mode(int sim_mode) { simulation_mode = sim_mode; }
+
+    void reset();
+
   private:
 
     SRB_Params srb_params;
@@ -182,6 +191,8 @@ class SRBMController {
     double t = 0;
     int FSM = 0;
     int FSM_prev = 0;
+    VectorXd net_external_wrench = VectorXd::Zero(6);
+    VectorXd x_next = VectorXd::Zero(21);
 
     Vector3d _EA;
     Vector3d _dEA;
@@ -207,7 +218,7 @@ class SRBMController {
     VectorXd u0 = VectorXd(12);
     VectorXd x0 = VectorXd(21);
 
-    VectorXd tau_ext; 
+    VectorXd tau_ext = VectorXd::Zero(6);
     VectorXd tau;
     MatrixXd SRB_state_ref = MatrixXd(6,2); 
     VectorXd SRB_wrench_ref  = VectorXd(6);
@@ -224,6 +235,8 @@ class SRBMController {
     std::chrono::high_resolution_clock::time_point start_time;
     std::chrono::high_resolution_clock::time_point end_time;
     std::chrono::high_resolution_clock::time_point last_print_time;
+
+    int simulation_mode = 1;
 
 
 };

@@ -56,4 +56,6 @@ namespace  dash_utils
 
     void rotate_foot(Eigen::Vector3d& point1, Eigen::Vector3d& point2, double theta);
 
+    double smoothVelocity(const Eigen::VectorXd& vel, double smoothingFactor);
+
 }

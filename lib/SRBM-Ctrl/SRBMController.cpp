@@ -1,12 +1,11 @@
 #include "SRBMController.h"
 extern Vector4d z_plotting;
 
-// Constructor is specific to Tello Robot
+
 SRBMController::SRBMController()
 {
     // Load Tello parameters
     dash_init::SRB_params_tello(srb_params);
-
 	// Human initialization
     dash_init::Human_Init(human_params, human_dyn_data);
 
@@ -33,48 +32,50 @@ SRBMController::SRBMController()
 // all inputs must be in the world frame
 VectorXd SRBMController::update(Vector3d body_position, Vector3d body_linear_velocity,
                                  Vector3d body_orientation, Vector3d body_angular_velocity,
-                                 MatrixXd q, MatrixXd qd, double t) 
+                                 MatrixXd joint_pos, MatrixXd joint_vel, double t) 
 {
-    _EA = body_orientation;
-    _dEA = body_angular_velocity;
-    _pc = body_position;
-    _dpc = body_linear_velocity;
     
-    double phiR   = body_orientation(0);
-    double thetaR = body_orientation(1);
-    double psiR   = body_orientation(2);
+        _EA = body_orientation;
+        _dEA = body_angular_velocity;
+        _pc = body_position;
+        _dpc = body_linear_velocity;
+        
+        double phiR   = body_orientation(0);
+        double thetaR = body_orientation(1);
+        double psiR   = body_orientation(2);
 
-    double phidR   = body_angular_velocity(0);
-    double thetadR = body_angular_velocity(1);
-    double psidR   = body_angular_velocity(2);
+        double phidR   = body_angular_velocity(0);
+        double thetadR = body_angular_velocity(1);
+        double psidR   = body_angular_velocity(2); 
 
-    // Compute rotation matrix from world to body frame
-    Matrix3d Rwb;
-    Rwb = AngleAxisd(phiR  , Vector3d::UnitX())
-        * AngleAxisd(thetaR, Vector3d::UnitY())
-        * AngleAxisd(psiR  , Vector3d::UnitZ());
+        // Compute rotation matrix from world to body frame
+        Matrix3d Rwb;
+        Rwb = AngleAxisd(phiR  , Vector3d::UnitX())
+            * AngleAxisd(thetaR, Vector3d::UnitY())
+            * AngleAxisd(psiR  , Vector3d::UnitZ());
 
-	Eigen::Map<Eigen::VectorXd> R_curr(Rwb.data(), Rwb.size());
-    VectorXd wb_curr = dash_utils::calc_wb(body_angular_velocity,body_orientation);
+        Eigen::Map<Eigen::VectorXd> R_curr(Rwb.data(), Rwb.size());
+        VectorXd wb_curr = dash_utils::calc_wb(body_angular_velocity,body_orientation);
 
-	x.segment(0, 3) = body_position;
-	x.segment(3, 3) = body_linear_velocity;
-	x.segment(6, 9) = R_curr;
-	x.segment(15, 3) = wb_curr;
-	x.segment(18, 3) = body_orientation;
-
-
-    return update(x, q, qd, t);
+        x.segment(0, 3) = body_position;
+        x.segment(3, 3) = body_linear_velocity;
+        x.segment(6, 9) = R_curr;
+        x.segment(15, 3) = wb_curr;
+        x.segment(18, 3) = body_orientation;
+ 
+    return update(x, joint_pos, joint_vel, t);
 }
 
-VectorXd SRBMController::update(VectorXd srb_state, MatrixXd q, MatrixXd qd, double t) 
+VectorXd SRBMController::update(VectorXd srb_state, MatrixXd joint_pos, MatrixXd joint_vel, double t) 
 {
 
     // SRB FK
     MatrixXd torso_vertices(3,8);
     MatrixXd right_leg(3,5);
     MatrixXd left_leg(3,5);
-    this->q = q;
+    q = joint_pos;
+    qd = joint_vel;
+    x = srb_state;
     
     dash_kin::SRB_FK(torso_vertices, right_leg, left_leg, lfv, srb_params, x, q);
     
@@ -83,7 +84,7 @@ VectorXd SRBMController::update(VectorXd srb_state, MatrixXd q, MatrixXd qd, dou
     
     // SRB kinematics
 	dash_kin::SRB_Kin(q, qd, Jv_mat, srb_params, x, lfv, lfdv);
-    
+
 	// SRB trajectory planner
 	dash_planner::SRB_Traj_Planner(srb_params, human_dyn_data, traj_planner_dyn_data,
 								   human_params, FSM, FSM_prev, t, x, lfv, lfdv, u, 
@@ -116,8 +117,76 @@ VectorXd SRBMController::update(VectorXd srb_state, MatrixXd q, MatrixXd qd, dou
         isSwingToStanceLeft = true;
         transitionStartLeft = t;
     }
+    
+    if(simulation_mode == 2)
+    {
+        dash_dyn::SRB_Dyn(x_next, net_external_wrench, srb_params, x, lfv, u, tau_ext);
+        x = x_next;
+        lfv = lfv_comm;
+        lfdv = lfdv_comm;
+        dash_kin::SRB_Kin(q, qd, Jv_mat, srb_params, x, lfv, lfdv);
+    }
 
     FSM_prev = FSM;
+    // Return joint torques
+    return tau;
+}
+
+VectorXd SRBMController::update_euler_integration(VectorXd srb_state, MatrixXd q, MatrixXd qd, double t) 
+{
+
+    // SRB FK
+    MatrixXd torso_vertices(3,8);
+    MatrixXd right_leg(3,5);
+    MatrixXd left_leg(3,5);
+    this->q = q;
+    
+    dash_kin::SRB_FK(torso_vertices, right_leg, left_leg, lfv, srb_params, x, q);
+    
+    right_leg_last = right_leg;
+    left_leg_last = left_leg;
+    
+    // SRB kinematics
+	dash_kin::SRB_Kin(q, qd, Jv_mat, srb_params, x, lfv, lfdv);
+    
+	// SRB trajectory planner
+	dash_planner::SRB_Traj_Planner(srb_params, human_dyn_data, traj_planner_dyn_data,
+								   human_params, FSM, FSM_prev, t, x, lfv, lfdv, u, 
+								   tau_ext, SRB_state_ref, SRB_wrench_ref, lfv_comm, lfdv_comm);
+    // SRB controller
+    
+	dash_ctrl::SRB_Balance_Controller(u, tau, srb_params, FSM, x, lfv, qd, Jv_mat, u, SRB_wrench_ref);
+
+    // SRB dynamics
+    dash_dyn::SRB_Dyn(x_next, net_external_wrench, srb_params, x, lfv, u, tau_ext);
+    
+    // if(FSM == 1 && FSM_prev == 0)
+    // {
+    //     // From double to single support left
+    //     isSwingToStanceLeft = false;
+    //     transitionStartLeft = t;
+    // }
+    // if(FSM == -1 && FSM_prev == 0)
+    // {
+    //     // From double to single support right
+    //     isSwingToStanceRight = false;
+    //     transitionStartRight = t;
+    // }
+    // if(FSM == 0 && FSM_prev == -1)
+    // {
+    //     // From single support right to double
+    //     isSwingToStanceRight = true;
+    //     transitionStartRight = t;
+    // }
+    // if(FSM == 0 && FSM_prev == 1)
+    // {
+    //     // From single support left to double
+    //     isSwingToStanceLeft = true;
+    //     transitionStartLeft = t;
+    // }
+
+    FSM_prev = FSM;
+    x = x_next;
     // Return joint torques
     return tau;
 }
@@ -295,4 +364,46 @@ void SRBMController::end_timer(){
         last_print_time = end_time;
     }
 
+}
+
+void SRBMController::reset()
+{
+    FSM = 0;
+    FSM_prev = 0;
+    t = 0;
+    x.setZero();
+    SRB_state_ref.setZero();
+    SRB_wrench_ref.setZero();
+    tau_ext.setZero();
+    net_external_wrench.setZero();
+    tau.setZero();
+    _EA.setZero();
+    _dEA.setZero();
+    _pc.setZero();
+    _dpc.setZero();
+
+
+    // Load Tello parameters
+    dash_init::SRB_params_tello(srb_params);
+	// Human initialization
+    dash_init::Human_Init(human_params, human_dyn_data);
+
+    // Robot Initialization
+    dash_init::SRB_Init(x0, q0, qd0, lfv0, lfdv0, u0, srb_params, human_params);
+	x = x0;
+	q = q0;
+	qd = qd0;
+	lfv = lfv0;
+	lfdv = lfdv0;
+	u = u0;
+    lfv_dsp_start = lfv0;
+
+    for (int i = 0; i < 4; i++) {
+		Jv_mat[i] = MatrixXd::Zero(3, 5);
+	}
+
+    // Initialize trajectory planner data
+    dash_planner::SRB_Init_Traj_Planner_Data(traj_planner_dyn_data, srb_params, human_params, x0, lfv0);
+
+    last_print_time = std::chrono::high_resolution_clock::now();
 }

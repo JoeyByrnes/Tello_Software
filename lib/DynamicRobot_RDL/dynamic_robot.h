@@ -89,7 +89,8 @@ namespace RoboDesignLab {
         MatrixXd joint_kd;
         VectorXd motor_kp = VectorXd(10);
         VectorXd motor_kd = VectorXd(10);
-        VectorXd task_ff_force = VectorXd(12);
+        VectorXd task_ff_force = VectorXd::Zero(12);
+        VectorXd joint_ff_torque = VectorXd::Zero(10);
 
         void setTaskKp(double x, double y, double z) {
             task_kp = ((Vector3d(x,y,z)).replicate(4, 1)).asDiagonal();
@@ -204,6 +205,7 @@ namespace RoboDesignLab {
         // Simulation:
         VectorXd jointPD2(JointPDConfig joint_conf);
         VectorXd taskPD2(TaskPDConfig task_conf);
+        void resetController(){controller = new SRBMController();}
 
         // InEKF Functions:
         void update_filter_IMU_data(IMU_data imu_data);

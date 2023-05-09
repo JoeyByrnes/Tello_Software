@@ -49,6 +49,7 @@ double y_vel;
 VectorXd y_vels = VectorXd(100);
 double z_prev = 0;
 double z_vel;
+int vel_index = 0;
 VectorXd z_vels = VectorXd(100);
 double dx_smoothed;
 double dy_smoothed;
@@ -100,6 +101,7 @@ double push_force_y = 0;
 double push_force_z = 0;
 
 bool sim_was_restarted = false;
+extern int simulation_mode;
 
 // begin SRBM-Ctrl Variables here ================================================================
 
@@ -109,6 +111,55 @@ MatrixXd lfv0(4,3), lfdv0(4,3); // global so planner can access them for now
 // end SRBM-Ctrl Variables here ============================================================
 
 // Define variables here so code runs faster:
+
+void set_mujoco_state(VectorXd x)
+{
+    Vector3d pc = x.segment(0, 3);
+    Vector3d dpc = x.segment(3, 3);
+    Matrix3d R_curr = Eigen::Map<Matrix3d>(x.segment(6,9).data());
+    Vector3d EA = dash_utils::calc_EA(R_curr);
+    Vector3d wb_curr = x.segment(15, 3);
+    Vector3d dEA = dash_utils::calc_dEA(R_curr,wb_curr);
+    MatrixXd q = tello->controller->get_q();
+    MatrixXd qd = tello->controller->get_qd();
+
+    // Get robot states
+    d->qpos[torso_x_idx] = pc(0);
+    d->qvel[torso_x_idx] = dpc(0);
+    d->qpos[torso_y_idx] = pc(1);
+    d->qvel[torso_y_idx] = dpc(1);
+    d->qpos[torso_z_idx] = pc(2);
+    d->qvel[torso_z_idx] = dpc(2);
+
+    d->qpos[torso_roll_idx] = EA(0);
+    d->qvel[torso_roll_idx] = dEA(0);
+    d->qpos[torso_pitch_idx] = EA(1);
+    d->qvel[torso_pitch_idx] = dEA(1);
+    d->qpos[torso_yaw_idx] = EA(2);
+    d->qvel[torso_yaw_idx] = dEA(2);
+
+    d->qpos[hip_yaw_l_idx] = q(1,0);
+    d->qpos[hip_roll_l_idx] = q(1,1);
+    d->qpos[hip_pitch_l_idx] = q(1,2);
+    d->qpos[knee_pitch_l_idx] = q(1,3);
+    d->qpos[ankle_pitch_l_idx] = q(1,4);
+    d->qpos[hip_yaw_r_idx] = q(0,0);
+    d->qpos[hip_roll_r_idx] = q(0,1);
+    d->qpos[hip_pitch_r_idx] = q(0,2);
+    d->qpos[knee_pitch_r_idx] = q(0,3);
+    d->qpos[ankle_pitch_r_idx] = q(0,4);
+
+    d->qvel[hip_yaw_l_idx] = qd(1,0);
+    d->qvel[hip_roll_l_idx] = qd(1,1);
+    d->qvel[hip_pitch_l_idx] = qd(1,2);             
+    d->qvel[knee_pitch_l_idx] = qd(1,3);   
+    d->qvel[ankle_pitch_l_idx] = qd(1,4);    
+    d->qvel[hip_yaw_r_idx] = qd(0,0);
+    d->qvel[hip_roll_r_idx] = qd(0,1);
+    d->qvel[hip_pitch_r_idx] = qd(0,2);             
+    d->qvel[knee_pitch_r_idx] = qd(0,3);   
+    d->qvel[ankle_pitch_r_idx] = qd(0,4);
+}
 
 void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 {
@@ -152,6 +203,8 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     double qd3r = d->qvel[hip_pitch_r_idx];             
     double qd4r = d->qvel[knee_pitch_r_idx];   
     double qd5r = d->qvel[ankle_pitch_r_idx];  
+
+    double t_end_stepping;
 
     mjtNum left_foot_toe[3];
     mjtNum left_foot_heel[3];
@@ -268,7 +321,8 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     lfdv_hip.row(3) = task_velocities.segment<3>(3);
     lfdv_hip.row(0) = task_velocities.segment<3>(6);
     lfdv_hip.row(1) = task_velocities.segment<3>(9);
-    controller->set_lfdv_hip(lfdv_hip);
+    if(simulation_mode == 1)
+        controller->set_lfdv_hip(lfdv_hip);
 
 	// call SRBM-Ctrl here ======================================================================================
     double CoM_z = controller->get_CoM_z(controller->get_lfv_hip(),gnd_contacts,EA_curr); 
@@ -278,129 +332,139 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     // Populate Controller inputs with estimated data instead of mujoco given data:
     Vector3d pc_curr_plot = pc_curr;
 
-    //Vector3d estimated_pc(filter_state.getPosition()(0),filter_state.getPosition()(1),CoM_z);
+    Vector3d estimated_pc(filter_state.getPosition()(0),filter_state.getPosition()(1),CoM_z);
 
-    // x_vel = (estimated_pc(0) - x_prev)/0.001;
-    // x_prev = estimated_pc(0);
-    // y_vel = (estimated_pc(1) - y_prev)/0.001;
-    // y_prev = estimated_pc(1);
-    // z_vel = (estimated_pc(2) - z_prev)/0.001;
-    // z_prev = estimated_pc(2);
+    x_vel = (estimated_pc(0) - x_prev)/0.001;
+    x_prev = estimated_pc(0);
+    y_vel = (estimated_pc(1) - y_prev)/0.001;
+    y_prev = estimated_pc(1);
+    z_vel = (estimated_pc(2) - z_prev)/0.001;
+    z_prev = estimated_pc(2);
 
-    // x_vels(pos_sample_index) = x_vel;
-    // dx_smoothed = filter_EMA(x_vels,2,pos_sample_index);
+    x_vels.tail(99) = x_vels.head(99).eval();
+    x_vels[0] = x_vel;
+    y_vels.tail(99) = y_vels.head(99).eval();
+    y_vels[0] = y_vel;
+    z_vels.tail(99) = z_vels.head(99).eval();
+    z_vels[0] = z_vel;
 
-    // y_vels(pos_sample_index) = y_vel;
-    // dy_smoothed = filter_EMA(y_vels,3,pos_sample_index);
-
-    // z_vels(pos_sample_index) = z_vel;
-    // dz_smoothed = filter_EMA(z_vels,3,pos_sample_index);
-    // pos_sample_index = pos_sample_index + 1;
-    // if(pos_sample_index >= z_vels.size()) pos_sample_index = 0;
+    dx_smoothed = smoothVelocity(x_vels,3);
+    dy_smoothed = smoothVelocity(y_vels,3);
+    dz_smoothed = smoothVelocity(z_vels,3);
 
     // Vector3d estimated_dpc(dx_smoothed,dy_smoothed,dz_smoothed);
     
     VectorXd tau = controller->update(pc_curr, dpc_curr, EA_curr, dEA_curr,q ,qd ,t);
-    // VectorXd tau = controller->update(estimated_pc, estimated_dpc, EA_curr, imu_gyro,q ,qd ,time);
-    MatrixXd lfv_comm = controller->get_lfv_comm_world();
-    MatrixXd lfdv_comm = controller->get_lfdv_comm_world();
-    
-    double t_end_stepping = controller->get_SRB_params().t_end_stepping;  
 
-    // filter debugging:
-    VectorXd pos_out(11),vel_out(11), EA_out(6), pc_out(9);
-    //pos_out << pc_curr_plot, 0, filter_state.getPosition(), CoM_z, (pc_curr_plot-filter_state.getPosition());
-    //dash_utils::writeVectorToCsv(pos_out,"pos_real_vs_filter.csv");
+    t_end_stepping = controller->get_SRB_params().t_end_stepping;
+    if(tello->controller->get_sim_mode() == 2)
+    {
+        // set_mujoco_state(tello->controller->get_x());
+    }
+    else
+    {
+        // VectorXd tau = controller->update(estimated_pc, estimated_dpc, EA_curr, imu_gyro,q ,qd ,time);
+        MatrixXd lfv_comm = controller->get_lfv_comm_world();
+        MatrixXd lfdv_comm = controller->get_lfdv_comm_world();
+        
+        // t_end_stepping = controller->get_SRB_params().t_end_stepping;  
 
-    //vel_out << dpc_curr, 0, filter_state.getVelocity(), 0, (dpc_curr-filter_state.getVelocity());
-    //dash_utils::writeVectorToCsv(vel_out,"vel_real_vs_filter.csv");
-    // BEGIN TASK PD CODE ======================================+++++++++++++++++
+        // filter debugging:
+        VectorXd pos_out(11),vel_out(11), EA_out(6), pc_out(9);
+        //pos_out << pc_curr_plot, 0, filter_state.getPosition(), CoM_z, (pc_curr_plot-filter_state.getPosition());
+        //dash_utils::writeVectorToCsv(pos_out,"pos_real_vs_filter.csv");
 
-	Vector3d target_front_left = controller->get_lfv_comm_hip().row(2);
-	Vector3d target_back_left = controller->get_lfv_comm_hip().row(3);
-	Vector3d target_front_right = controller->get_lfv_comm_hip().row(0);
-	Vector3d target_back_right = controller->get_lfv_comm_hip().row(1);
+        //vel_out << dpc_curr, 0, filter_state.getVelocity(), 0, (dpc_curr-filter_state.getVelocity());
+        //dash_utils::writeVectorToCsv(vel_out,"vel_real_vs_filter.csv");
+        // BEGIN TASK PD CODE ======================================+++++++++++++++++
 
-    Vector3d target_front_left_vel = controller->get_lfdv_comm_hip().row(2);
-	Vector3d target_back_left_vel = controller->get_lfdv_comm_hip().row(3);
-	Vector3d target_front_right_vel = controller->get_lfdv_comm_hip().row(0);
-	Vector3d target_back_right_vel = controller->get_lfdv_comm_hip().row(1);
+        Vector3d target_front_left = controller->get_lfv_comm_hip().row(2);
+        Vector3d target_back_left = controller->get_lfv_comm_hip().row(3);
+        Vector3d target_front_right = controller->get_lfv_comm_hip().row(0);
+        Vector3d target_back_right = controller->get_lfv_comm_hip().row(1);
 
-    VectorXd vel_desired(12);
-    vel_desired  << target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel;
+        Vector3d target_front_left_vel = controller->get_lfdv_comm_hip().row(2);
+        Vector3d target_back_left_vel = controller->get_lfdv_comm_hip().row(3);
+        Vector3d target_front_right_vel = controller->get_lfdv_comm_hip().row(0);
+        Vector3d target_back_right_vel = controller->get_lfdv_comm_hip().row(1);
 
-	VectorXd pos_desired(12);
-	pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
+        VectorXd vel_desired(12);
+        vel_desired  << target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel;
 
-	// Set up configuration struct for Task Space Controller
-    
-	swing_pd_config.task_ff_force = VectorXd::Zero(12);
-	swing_pd_config.setTaskPosDesired(target_front_left, target_back_left, target_front_right, target_back_right);
-	swing_pd_config.setTaskVelDesired(target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel);
-	swing_pd_config.setTaskKp(0,0,0);
-	swing_pd_config.setTaskKd(0,0,0);
-	swing_pd_config.setJointKp(kp_vec_joint_swing);
-	swing_pd_config.setJointKd(kd_vec_joint_swing);
-	swing_pd_config.motor_kp = VectorXd::Zero(10);
-	swing_pd_config.motor_kd = VectorXd::Zero(10);
-	
-	VectorXd swing_leg_torques = tello->taskPD2(swing_pd_config);
+        VectorXd pos_desired(12);
+        pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
 
-    // Re-using
-    posture_pd_config = swing_pd_config;
-    posture_pd_config.setTaskKp(0,0,0);
-	posture_pd_config.setTaskKd(0,0,0);
-    posture_pd_config.setJointKp(kp_vec_joint_posture);
-	posture_pd_config.setJointKd(kd_vec_joint_posture);
+        // Set up configuration struct for Task Space Controller
+        
+        swing_pd_config.task_ff_force = VectorXd::Zero(12);
+        swing_pd_config.setTaskPosDesired(target_front_left, target_back_left, target_front_right, target_back_right);
+        swing_pd_config.setTaskVelDesired(target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel);
+        swing_pd_config.setTaskKp(0,0,0);
+        swing_pd_config.setTaskKd(0,0,0);
+        swing_pd_config.setJointKp(kp_vec_joint_swing);
+        swing_pd_config.setJointKd(kd_vec_joint_swing);
+        swing_pd_config.motor_kp = VectorXd::Zero(10);
+        swing_pd_config.motor_kd = VectorXd::Zero(10);
+        
+        VectorXd swing_leg_torques = tello->taskPD2(swing_pd_config);
 
-    VectorXd posture_ctrl_torques = tello->taskPD2(posture_pd_config);
+        // Re-using
+        posture_pd_config = swing_pd_config;
+        posture_pd_config.setTaskKp(0,0,0);
+        posture_pd_config.setTaskKd(0,0,0);
+        posture_pd_config.setJointKp(kp_vec_joint_posture);
+        posture_pd_config.setJointKd(kd_vec_joint_posture);
 
-    // END TASK PD CODE ======================================+++++++++++++++++
-    VectorXd tau_LR(10);
-    tau_LR << tau.tail(5), tau.head(5);
-    tau_LR = tau_LR + posture_ctrl_torques;
+        VectorXd posture_ctrl_torques = tello->taskPD2(posture_pd_config);
 
-    VectorXd torques_left  = tello->swing_stance_mux(tau_LR.head(5), swing_leg_torques.head(5),
-                                                          0.00,controller->get_isSwingToStanceRight(), 
-                                                          d->time-controller->get_transitionStartRight(), 
-                                                          0);
-    VectorXd torques_right = tello->swing_stance_mux(tau_LR.tail(5), swing_leg_torques.tail(5),
-                                                          0.00,controller->get_isSwingToStanceLeft(),
-                                                          d->time-controller->get_transitionStartLeft(), 
-                                                          1);
-    VectorXd tau_LR_muxed(10);
-    tau_LR_muxed << torques_left,torques_right;
+        // END TASK PD CODE ======================================+++++++++++++++++
+        VectorXd tau_LR(10);
+        tau_LR << tau.tail(5), tau.head(5);
+        tau_LR = tau_LR + posture_ctrl_torques;
 
-
-    applyJointTorquesMujoco(tau_LR_muxed);
-
-    // begin update filter states: ------------------------------------------------------
-    RoboDesignLab::IMU_data imu_data;
-    imu_data.timestamp = t;
-    imu_data.acc = imu_acc;
-    imu_data.gyro = imu_gyro;
-    // pthread_mutex_lock(&EKF_mutex);
-    // filter_state = tello->get_filter_state();
-    // pthread_mutex_unlock(&EKF_mutex);
-    // tello->set_imu_data_for_ekf(imu_data);
-    // tello->set_gnd_contact_data_for_ekf(gnd_contacts);
-    // filter_data_ready = true;
-
-    
-    // Matrix3d Rwb_filter = filter_state.getRotation();
-    // Vector3d origin_in_filter_frame = Rwb_filter*(-pc_curr);
-    // if(camera_cnt%33 == 0)
-    // {
-    //   // tello->update_filter_landmark_data(1,origin_in_filter_frame);
-    // }
-    // camera_cnt++;
-    // end update filter states: ------------------------------------------------------
-
-    // cout << "Position Error: " << (pc_curr-filter_state.getPosition()).transpose() << endl;
-    // cout << "contacts: " << gnd_contacts.transpose() << endl;
-    // cout << "imu_acc: " << imu_acc.transpose() << endl;
+        VectorXd torques_left  = tello->swing_stance_mux(tau_LR.head(5), swing_leg_torques.head(5),
+                                                            0.00,controller->get_isSwingToStanceRight(), 
+                                                            d->time-controller->get_transitionStartRight(), 
+                                                            0);
+        VectorXd torques_right = tello->swing_stance_mux(tau_LR.tail(5), swing_leg_torques.tail(5),
+                                                            0.00,controller->get_isSwingToStanceLeft(),
+                                                            d->time-controller->get_transitionStartLeft(), 
+                                                            1);
+        VectorXd tau_LR_muxed(10);
+        tau_LR_muxed << torques_left,torques_right;
 
 
+        applyJointTorquesMujoco(tau_LR_muxed);
+
+        // begin update filter states: ------------------------------------------------------
+        RoboDesignLab::IMU_data imu_data;
+        imu_data.timestamp = t;
+        imu_data.acc = imu_acc;
+        imu_data.gyro = imu_gyro;
+        pthread_mutex_lock(&EKF_mutex);
+        filter_state = tello->get_filter_state();
+        pthread_mutex_unlock(&EKF_mutex);
+        tello->set_imu_data_for_ekf(imu_data);
+        tello->set_gnd_contact_data_for_ekf(gnd_contacts);
+        tello->set_lfv_hip_data_for_ekf(tello->controller->get_lfv_hip());
+        tello->set_q_data_for_ekf(q);
+        filter_data_ready = true;
+
+        
+        // Matrix3d Rwb_filter = filter_state.getRotation();
+        // Vector3d origin_in_filter_frame = Rwb_filter*(-pc_curr);
+        // if(camera_cnt%33 == 0)
+        // {
+        //   // tello->update_filter_landmark_data(1,origin_in_filter_frame);
+        // }
+        // camera_cnt++;
+        // end update filter states: ------------------------------------------------------
+
+        // cout << "Position Error: " << (pc_curr-filter_state.getPosition()).transpose() << endl;
+        // cout << "contacts: " << gnd_contacts.transpose() << endl;
+        // cout << "imu_acc: " << imu_acc.transpose() << endl;
+
+    }
     if(d->time > t_end_stepping+4 && stepping_in_progress)
     {
         // stepping has finished, switch to balancing
@@ -408,7 +472,109 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
         pause_sim = true;
     }
 }
+VectorXd x0;
+MatrixXd q0;
+std::string recording_file_name;
 
+void initializeSRBMCtrl()
+{
+    controller = tello->controller;
+    SRB_Params srb_params = controller->get_SRB_params();
+    Traj_planner_dyn_data traj_planner_dyn_data = controller->get_traj_planner_dyn_data();
+    Human_params human_params = controller->get_human_params();
+    x0 = controller->get_x0();
+    q0 = controller->get_q0();
+    lfv0 = controller->get_lfv0();
+    lfdv0 = controller->get_lfdv0();
+    lfv_dsp_start = lfv0;
+    
+    if(simulation_mode == 1)
+        dash_utils::parse_json_to_srb_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",srb_params);
+
+    if(simulation_mode == 2)
+        dash_utils::parse_json_to_srb_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config_SRBsim.json",srb_params);
+
+    dash_utils::parse_json_to_pd_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",swing_conf,posture_conf);
+    //dash_utils::parse_json_to_srb_params("tello_files/srb_pd_config.json",srb_params);
+    // dash_utils::parse_json_to_pd_params("tello_files/srb_pd_config.json",swing_conf,posture_conf);
+
+    kp_vec_joint_swing <<   swing_conf.hip_yaw_Kp, swing_conf.hip_roll_Kp,swing_conf.hip_pitch_Kp, swing_conf.knee_Kp, swing_conf.ankle_Kp,
+                            swing_conf.hip_yaw_Kp, swing_conf.hip_roll_Kp,swing_conf.hip_pitch_Kp, swing_conf.knee_Kp, swing_conf.ankle_Kp;
+    kd_vec_joint_swing <<   swing_conf.hip_yaw_Kd, swing_conf.hip_roll_Kd,swing_conf.hip_pitch_Kd, swing_conf.knee_Kd, swing_conf.ankle_Kd,
+                            swing_conf.hip_yaw_Kd, swing_conf.hip_roll_Kd,swing_conf.hip_pitch_Kd, swing_conf.knee_Kd, swing_conf.ankle_Kd;
+    kp_vec_joint_posture << posture_conf.hip_yaw_Kp, posture_conf.hip_roll_Kp,posture_conf.hip_pitch_Kp, posture_conf.knee_Kp, posture_conf.ankle_Kp,
+                            posture_conf.hip_yaw_Kp, posture_conf.hip_roll_Kp,posture_conf.hip_pitch_Kp, posture_conf.knee_Kp, posture_conf.ankle_Kp;
+    kd_vec_joint_posture << posture_conf.hip_yaw_Kd, posture_conf.hip_roll_Kd,posture_conf.hip_pitch_Kd, posture_conf.knee_Kd, posture_conf.ankle_Kd,
+                            posture_conf.hip_yaw_Kd, posture_conf.hip_roll_Kd,posture_conf.hip_pitch_Kd, posture_conf.knee_Kd, posture_conf.ankle_Kd;
+    
+    //if(simulation_mode == 1)
+    //{
+        printf("Choose a Test:\n\n");
+        printf("x: lean\n");
+        printf("y: side2side\n");
+        printf("z: squat\n");
+        printf("r: roll\n");
+        printf("p: pitch\n");
+        printf("w: yaw\n");
+        printf("b: balance\n");
+        printf("s: stepping/walking\n");
+        //cin.get();
+        // char DoF;
+        // cin.get(DoF);
+        // if(DoF != 's')
+        // {
+        //     dash_planner::SRB_6DoF_Test(recording_file_name,sim_time,srb_params,lfv0,DoF,1);
+        // }
+        // else{
+            printf("Walking Selected\n\n");
+            // Option 2: Walking using LIP angular momentum regulation about contact point
+            // user input (walking speed and step frequency)
+            double des_walking_speed = srb_params.des_walking_speed;
+            // double des_walking_step_period = 0.2;<---- CHANGE IN JSON, NOT HERE
+            // end user input
+            recording_file_name = "Walking";
+            srb_params.planner_type = 1; 
+            // srb_params.T = des_walking_step_period;<---- CHANGE IN JSON, NOT HERE
+            VectorXd t_traj, v_traj;
+            double t_beg_stepping_time, t_end_stepping_time;
+            dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
+            srb_params.vx_des_t = t_traj;
+            srb_params.vx_des_vx = v_traj;
+            srb_params.t_beg_stepping = t_beg_stepping_time;
+            srb_params.t_end_stepping = t_end_stepping_time;
+            sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
+        // }
+
+    //}
+    //else if(simulation_mode == 2) srb_params.planner_type = 2;
+
+	// Initialize trajectory planner data
+    dash_planner::SRB_Init_Traj_Planner_Data(traj_planner_dyn_data, srb_params, human_params, x0, lfv0);
+
+    controller->set_SRB_params(srb_params);
+    controller->set_traj_planner_dyn_data(traj_planner_dyn_data);    
+
+
+}
+
+void initializeLegs()
+{
+    d->qpos[hip_yaw_l_idx] = q0.row(1)(0);
+    d->qpos[hip_roll_l_idx] = q0.row(1)(1);
+    d->qpos[hip_pitch_l_idx] = q0.row(1)(2);
+    d->qpos[knee_pitch_l_idx] = q0.row(1)(3);
+    d->qpos[ankle_pitch_l_idx] = q0.row(1)(4);
+    d->qpos[hip_yaw_r_idx] = q0.row(0)(0);
+    d->qpos[hip_roll_r_idx] = q0.row(0)(1);
+    d->qpos[hip_pitch_r_idx] = q0.row(0)(2);
+    d->qpos[knee_pitch_r_idx] = q0.row(0)(3);
+    d->qpos[ankle_pitch_r_idx] = q0.row(0)(4);
+}
+
+ImVec4 hex2ImVec4(int hex)
+{
+    return ImVec4(((hex & 0xFF0000) >> 16)/ 255.0f, ((hex & 0xFF00) >> 8)/ 255.0f, (hex & 0xFF)/255.0f, 1.0f);
+}
 
 void* mujoco_Update_1KHz( void * arg )
 {
@@ -431,72 +597,7 @@ void* mujoco_Update_1KHz( void * arg )
 
     // INITIALIZE SRBM CONTROLLER ========================================================
 
-    controller = tello->controller;
-    SRB_Params srb_params = controller->get_SRB_params();
-    Traj_planner_dyn_data traj_planner_dyn_data = controller->get_traj_planner_dyn_data();
-    Human_params human_params = controller->get_human_params();
-    VectorXd x0 = controller->get_x0();
-    MatrixXd q0 = controller->get_q0();
-    lfv0 = controller->get_lfv0();
-    lfdv0 = controller->get_lfdv0();
-    lfv_dsp_start = lfv0;
-
-    dash_utils::parse_json_to_srb_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",srb_params);
-    dash_utils::parse_json_to_pd_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",swing_conf,posture_conf);
-    //dash_utils::parse_json_to_srb_params("tello_files/srb_pd_config.json",srb_params);
-    // dash_utils::parse_json_to_pd_params("tello_files/srb_pd_config.json",swing_conf,posture_conf);
-
-    kp_vec_joint_swing <<   swing_conf.hip_yaw_Kp, swing_conf.hip_roll_Kp,swing_conf.hip_pitch_Kp, swing_conf.knee_Kp, swing_conf.ankle_Kp,
-                            swing_conf.hip_yaw_Kp, swing_conf.hip_roll_Kp,swing_conf.hip_pitch_Kp, swing_conf.knee_Kp, swing_conf.ankle_Kp;
-    kd_vec_joint_swing <<   swing_conf.hip_yaw_Kd, swing_conf.hip_roll_Kd,swing_conf.hip_pitch_Kd, swing_conf.knee_Kd, swing_conf.ankle_Kd,
-                            swing_conf.hip_yaw_Kd, swing_conf.hip_roll_Kd,swing_conf.hip_pitch_Kd, swing_conf.knee_Kd, swing_conf.ankle_Kd;
-    kp_vec_joint_posture << posture_conf.hip_yaw_Kp, posture_conf.hip_roll_Kp,posture_conf.hip_pitch_Kp, posture_conf.knee_Kp, posture_conf.ankle_Kp,
-                            posture_conf.hip_yaw_Kp, posture_conf.hip_roll_Kp,posture_conf.hip_pitch_Kp, posture_conf.knee_Kp, posture_conf.ankle_Kp;
-    kd_vec_joint_posture << posture_conf.hip_yaw_Kd, posture_conf.hip_roll_Kd,posture_conf.hip_pitch_Kd, posture_conf.knee_Kd, posture_conf.ankle_Kd,
-                            posture_conf.hip_yaw_Kd, posture_conf.hip_roll_Kd,posture_conf.hip_pitch_Kd, posture_conf.knee_Kd, posture_conf.ankle_Kd;
-
-    std::string recording_file_name;
-    printf("Choose a Test:\n\n");
-    printf("x: lean\n");
-    printf("y: side2side\n");
-    printf("z: squat\n");
-    printf("r: roll\n");
-    printf("p: pitch\n");
-    printf("w: yaw\n");
-    printf("b: balance\n");
-    printf("s: stepping/walking\n");
-    //cin.get();
-    char DoF;
-    cin.get(DoF);
-    if(DoF != 's')
-    {
-        dash_planner::SRB_6DoF_Test(recording_file_name,sim_time,srb_params,lfv0,DoF,1);
-    }
-    else{
-        printf("Walking Selected\n\n");
-        // Option 2: Walking using LIP angular momentum regulation about contact point
-        // user input (walking speed and step frequency)
-        double des_walking_speed = srb_params.des_walking_speed;
-        // double des_walking_step_period = 0.2;<---- CHANGE IN JSON, NOT HERE
-        // end user input
-        recording_file_name = "Walking";
-        srb_params.planner_type = 1; 
-        // srb_params.T = des_walking_step_period;<---- CHANGE IN JSON, NOT HERE
-        VectorXd t_traj, v_traj;
-        double t_beg_stepping_time, t_end_stepping_time;
-        dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
-        srb_params.vx_des_t = t_traj;
-        srb_params.vx_des_vx = v_traj;
-        srb_params.t_beg_stepping = t_beg_stepping_time;
-        srb_params.t_end_stepping = t_end_stepping_time;
-        sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
-    }
-
-	// Initialize trajectory planner data
-    dash_planner::SRB_Init_Traj_Planner_Data(traj_planner_dyn_data, srb_params, human_params, x0, lfv0);
-
-    controller->set_SRB_params(srb_params);
-    controller->set_traj_planner_dyn_data(traj_planner_dyn_data);    
+    initializeSRBMCtrl();
 
     // BEGIN SETUP CODE FOR MUJOCO ======================================================================
     
@@ -504,7 +605,14 @@ void* mujoco_Update_1KHz( void * arg )
     mj_activate("./lib/Mujoco/mjkey.txt");
     // mj_activate("tello_files/mjkey.txt");
 
-	m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-color.xml", NULL, error, 1000);
+    if(simulation_mode == 1)
+    {
+        m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-color.xml", NULL, error, 1000);
+    }
+    else
+    {
+        m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-blue-grey.xml", NULL, error, 1000);
+    }
     // m = mj_loadXML("tello_files/tello-massive-color.xml", NULL, error, 1000);
 	if (!m)
     {
@@ -514,19 +622,11 @@ void* mujoco_Update_1KHz( void * arg )
 	// make data
     d = mj_makeData(m);
 
-    d->qpos[hip_yaw_l_idx] = q0.row(1)(0);
-    d->qpos[hip_roll_l_idx] = q0.row(1)(1);
-    d->qpos[hip_pitch_l_idx] = q0.row(1)(2);
-    d->qpos[knee_pitch_l_idx] = q0.row(1)(3);
-    d->qpos[ankle_pitch_l_idx] = q0.row(1)(4);
-    d->qpos[hip_yaw_r_idx] = q0.row(0)(0);
-    d->qpos[hip_roll_r_idx] = q0.row(0)(1);
-    d->qpos[hip_pitch_r_idx] = q0.row(0)(2);
-    d->qpos[knee_pitch_r_idx] = q0.row(0)(3);
-    d->qpos[ankle_pitch_r_idx] = q0.row(0)(4);
+    initializeLegs();
 
     // install control callback
     mjcb_control = TELLO_locomotion_ctrl;
+
 
 	// init GLFW
     if (!glfwInit())
@@ -559,12 +659,21 @@ void* mujoco_Update_1KHz( void * arg )
     glfwSetMouseButtonCallback(window, mouse_button);
     glfwSetScrollCallback(window, scroll);
 
-    m->opt.timestep = 0.001;
+    m->opt.timestep = 0.002;
 
     // Plotting:
 
 	// END SETUP CODE FOR MUJOCO ========================================================================
     mj_step(m, d);
+
+    // initialize ImGui
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 130");
+    ImGui::StyleColorsDark();
+    ImFont* font = io.Fonts->AddFontFromFileTTF("../../../lib/imGUI/fonts/roboto/Roboto-Light.ttf", 50);
     
 	while(!glfwWindowShouldClose(window))
     {
@@ -592,13 +701,29 @@ void* mujoco_Update_1KHz( void * arg )
             printf("Pushed in Z\n");
             push_force_z = 0;
         }
-
-        if(!pause_sim){
-            mjtNum simstart = d->time;
-            while (d->time - simstart < 1.0 / 60.0){
-                mj_step(m, d);
-           }  
-        } 
+        if(simulation_mode == 1)
+        {
+            if(!pause_sim){
+                mjtNum simstart = d->time;
+                while (d->time - simstart < 1.0 / 60.0){
+                    mj_step(m, d);
+                }  
+            } 
+        }
+        if(simulation_mode == 2)
+        {
+            if(!pause_sim){
+                mjtNum simstart = d->time;
+                while (d->time - simstart < 1.0 / 60.0){
+                    d->time = d->time + 0.002;
+                    TELLO_locomotion_ctrl(m,d);
+                    set_mujoco_state(tello->controller->get_x());
+                    mj_kinematics(m,d);
+                }
+            } 
+            // cout << "CoM XYZ:" << tello->controller->get_x().head(3).transpose() << endl;
+            //cout << "q right:" << tello->controller->get_q().row(0) << endl;
+        }
         std::string text = "\tTello Mujoco Simulation    |    Test: " + recording_file_name + "    |    Time: " + std::to_string(d->time)+ "\t";
         glfwSetWindowTitle(window, text.c_str());
 
@@ -614,6 +739,55 @@ void* mujoco_Update_1KHz( void * arg )
         // update scene and render
         mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
         mjr_render(viewport, &scn, &con);
+
+        // render ImGui GUI
+        ImVec4 dark_navy = hex2ImVec4(0x082032);
+        ImVec4 med_navy = hex2ImVec4(0x2C394B);
+        ImVec4 light_navy = hex2ImVec4(0x334756);
+        ImVec4 lighter_navy = hex2ImVec4(0x54748c);
+        
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        ImGui::SetNextWindowSizeConstraints(ImVec2(-1, 50), ImVec2(-1, FLT_MAX));
+        // add toolbar with button
+        ImGui::PushStyleColor(ImGuiCol_MenuBarBg, dark_navy);
+        ImGui::PushStyleColor(ImGuiCol_Button, med_navy);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, light_navy);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, lighter_navy);
+        ImGui::PushFont(font);
+        ImGui::BeginMainMenuBar();
+        if (ImGui::Button("  Restart  ")) {
+            mj_resetData(m, d);
+            //tello->resetController();
+            tello->controller->reset();
+            initializeSRBMCtrl();
+            set_mujoco_state(tello->controller->get_x());
+            initializeLegs();
+            mj_step(m, d);
+        }
+        if(pause_sim)
+        {
+            if (ImGui::Button("    Run    ")) {
+                pause_sim = false;
+            }
+        }
+        else
+        {
+            if (ImGui::Button("  Pause  ")) {
+                pause_sim = true;
+            }
+        }
+        
+        ImGui::EndMainMenuBar();
+        ImGui::PopFont();
+        ImGui::PopStyleColor();
+        ImGui::PopStyleColor();
+        ImGui::PopStyleColor();
+        ImGui::PopStyleColor();
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 
         // swap OpenGL buffers (blocking call due to v-sync)
         glfwSwapBuffers(window);
@@ -729,37 +903,37 @@ void* plotting( void * arg )
         if(tello->controller->get_time() > x[x.size()-1])
         {
             // POSITION DATA ==================================================================================
-            x.push_back(tello->controller->get_time());
-            // y1.push_back(tello->controller->get_pc()(0));
-            // y2.push_back(tello->controller->get_pc()(1));
-            // y3.push_back(tello->controller->get_pc()(2));
+            // x.push_back(tello->controller->get_time());
+            // // y1.push_back(tello->controller->get_pc()(0));
+            // // y2.push_back(tello->controller->get_pc()(1));
+            // // y3.push_back(tello->controller->get_pc()(2));
 
-            y4.push_back(tello->get_filter_state().getPosition()(0));
-            y5.push_back(tello->get_filter_state().getPosition()(1));
-            y6.push_back(tello->get_filter_state().getPosition()(2));
+            // y4.push_back(tello->get_filter_state().getPosition()(0));
+            // y5.push_back(tello->get_filter_state().getPosition()(1));
+            // y6.push_back(tello->get_filter_state().getPosition()(2));
 
-            // y7.push_back(z_plotting(0));
-            // y8.push_back(z_plotting(1));
-            // y9.push_back(z_plotting(2));
-            // y10.push_back(z_plotting(3));
-            if(tello->controller->get_time() - last_plot_time > 0.3){
-                last_plot_time = tello->controller->get_time();
-                plt::clf();
-                plt::subplot(3, 1, 1);
-                plt::title("CoM Tracking");
-                // plt::named_plot("CoM X", x, y1, "r-");
-                plt::named_plot("EKF X", x, y4, "b-");
-                plt::legend();
-                plt::subplot(3, 1, 2);
-                // plt::named_plot("CoM Y", x, y2, "r-");
-                plt::named_plot("EKF Y", x, y5, "b-");
-                plt::legend();
-                plt::subplot(3, 1, 3);
-                // plt::named_plot("CoM Z", x, y3, "r-");
-                plt::named_plot("Kin Z", x, y6, "b-");
-                plt::legend();
-                plt::pause(0.001);
-            }
+            // // y7.push_back(z_plotting(0));
+            // // y8.push_back(z_plotting(1));
+            // // y9.push_back(z_plotting(2));
+            // // y10.push_back(z_plotting(3));
+            // if(tello->controller->get_time() - last_plot_time > 0.3){
+            //     last_plot_time = tello->controller->get_time();
+            //     plt::clf();
+            //     plt::subplot(3, 1, 1);
+            //     plt::title("CoM Tracking");
+            //     // plt::named_plot("CoM X", x, y1, "r-");
+            //     plt::named_plot("EKF X", x, y4, "b-");
+            //     plt::legend();
+            //     plt::subplot(3, 1, 2);
+            //     // plt::named_plot("CoM Y", x, y2, "r-");
+            //     plt::named_plot("EKF Y", x, y5, "b-");
+            //     plt::legend();
+            //     plt::subplot(3, 1, 3);
+            //     // plt::named_plot("CoM Z", x, y3, "r-");
+            //     plt::named_plot("Kin Z", x, y6, "b-");
+            //     plt::legend();
+            //     plt::pause(0.001);
+            // }
             // FOOT POSITION DATA =============================================================================
             // x.push_back(tello->controller->get_time());
             // Vector3d hip_right_pos_world = controller->get_right_leg_last().col(0);
@@ -792,14 +966,14 @@ void* plotting( void * arg )
             // plt::pause(0.001);
 
             // VELOCITY and Position DATA ==================================================================================
-            // x.push_back(tello->controller->get_time());
-            // y1.push_back(dpc_curr(0));
-            // y2.push_back(dpc_curr(1));
-            // y3.push_back(dpc_curr(2));
+            x.push_back(tello->controller->get_time());
+            y1.push_back(dpc_curr(0));
+            y2.push_back(dpc_curr(1));
+            y3.push_back(dpc_curr(2));
 
-            // y4.push_back(dx_smoothed);
-            // y5.push_back(dy_smoothed);
-            // y6.push_back(dz_smoothed);
+            y4.push_back(dx_smoothed);
+            y5.push_back(dy_smoothed);
+            y6.push_back(dz_smoothed);
 
             // y7.push_back(pc_curr(0));
             // y8.push_back(pc_curr(1));
@@ -809,42 +983,42 @@ void* plotting( void * arg )
             // y11.push_back(tello->get_filter_state().getPosition()(1));
             // y12.push_back(CoM_z_last);
 
-            // if(tello->controller->get_time() - last_plot_time > 0.1){
-            //     last_plot_time = tello->controller->get_time();
-            //     plt::rcparams({{"legend.loc","lower left"}});
-            //     plt::clf();
-            //     plt::subplot(3, 2, 1);
-            //     plt::title("CoM X Position True vs EKF");
-            //     plt::named_plot("True X", x, y7, "r-");
-            //     plt::named_plot("EKF X", x, y10, "b-");
-            //     plt::legend();
-            //     plt::subplot(3, 2, 3);
-            //     plt::title("CoM Y Position True vs EKF");
-            //     plt::named_plot("True Y", x, y8, "r-");
-            //     plt::named_plot("EKF Y", x, y11, "b-");
-            //     plt::legend();
-            //     plt::subplot(3, 2, 5);
-            //     plt::title("CoM Z Position True vs Kinematics");
-            //     plt::named_plot("True Z", x, y9, "r-");
-            //     plt::named_plot("Kin Z", x, y12, "b-");
-            //     plt::legend();
-            //     plt::subplot(3, 2, 2);
-            //     plt::title("CoM X Velocity True vs Estimated");
-            //     plt::named_plot("True dX", x, y1, "r-");
-            //     plt::named_plot("Est. dX", x, y4, "b-");
-            //     plt::legend();
-            //     plt::subplot(3, 2, 4);
-            //     plt::title("CoM X Velocity True vs Estimated");
-            //     plt::named_plot("True dY", x, y2, "r-");
-            //     plt::named_plot("Est.  dY", x, y5, "b-");
-            //     plt::legend();
-            //     plt::subplot(3, 2, 6);
-            //     plt::title("CoM X Velocity True vs Estimated");
-            //     plt::named_plot("True dZ", x, y3, "r-");
-            //     plt::named_plot("Est. dZ", x, y6, "b-");
-            //     plt::legend();
-            //     plt::pause(0.001);
-            // }
+            if(tello->controller->get_time() - last_plot_time > 0.1){
+                last_plot_time = tello->controller->get_time();
+                plt::rcparams({{"legend.loc","lower left"}});
+                plt::clf();
+                // plt::subplot(3, 2, 1);
+                // plt::title("CoM X Position True vs EKF");
+                // plt::named_plot("True X", x, y7, "r-");
+                // plt::named_plot("EKF X", x, y10, "b-");
+                // plt::legend();
+                // plt::subplot(3, 2, 3);
+                // plt::title("CoM Y Position True vs EKF");
+                // plt::named_plot("True Y", x, y8, "r-");
+                // plt::named_plot("EKF Y", x, y11, "b-");
+                // plt::legend();
+                // plt::subplot(3, 2, 5);
+                // plt::title("CoM Z Position True vs Kinematics");
+                // plt::named_plot("True Z", x, y9, "r-");
+                // plt::named_plot("Kin Z", x, y12, "b-");
+                // plt::legend();
+                plt::subplot(3, 1, 1);
+                plt::title("CoM X Velocity True vs Estimated");
+                plt::named_plot("True dX", x, y1, "r-");
+                plt::named_plot("Est. dX", x, y4, "b-");
+                plt::legend();
+                plt::subplot(3, 1, 2);
+                plt::title("CoM X Velocity True vs Estimated");
+                plt::named_plot("True dY", x, y2, "r-");
+                plt::named_plot("Est.  dY", x, y5, "b-");
+                plt::legend();
+                plt::subplot(3, 1, 3);
+                plt::title("CoM X Velocity True vs Estimated");
+                plt::named_plot("True dZ", x, y3, "r-");
+                plt::named_plot("Est. dZ", x, y6, "b-");
+                plt::legend();
+                plt::pause(0.001);
+            }
             
 
             // ACCELEROMETER DATA: ==============================================================================

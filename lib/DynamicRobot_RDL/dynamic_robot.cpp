@@ -55,7 +55,7 @@ DynamicRobot::DynamicRobot()
 
     filter.setPriorLandmarks(prior_landmarks); 
 
-    controller = new SRBMController();
+    controller = new SRBMController(); // set to empty or 1 for mujoco sim initialization
 
 
 }
@@ -458,7 +458,7 @@ void DynamicRobot::taskPD(TaskPDConfig task_conf)
     VectorXd joint_vel_desired = VectorXd::Zero(10);//this->task_vel_to_joint_vel(task_conf.task_vel_desired); //VectorXd::Zero(10);
 
     JointPDConfig joint_conf;
-    joint_conf.joint_ff_torque = joint_torques;
+    joint_conf.joint_ff_torque = joint_torques+task_conf.joint_ff_torque;
     joint_conf.joint_pos_desired = joint_pos_desired;
     joint_conf.joint_vel_desired = joint_vel_desired;
     joint_conf.joint_kp = task_conf.joint_kp;

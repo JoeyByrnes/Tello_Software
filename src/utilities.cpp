@@ -6,6 +6,8 @@
 #include <cstdarg>
 #include <cstring>
 
+using namespace Eigen;
+
 cpu_set_t  mask;
 
 bool enableScheduled = 0;

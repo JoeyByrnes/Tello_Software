@@ -5,7 +5,7 @@
 #include "FingerType.h"
 
 struct FingerPair{
-    unsigned int packetCounter : BYTE;
+    unsigned int packetCounter : PS4_BYTE;
     Finger       finger1;
     Finger       finger2;
 } __attribute__((packed));

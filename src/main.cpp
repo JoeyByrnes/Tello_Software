@@ -47,6 +47,8 @@ bool calibrate_IMU_bias = false;
 bool ekf_position_initialied = false;
 bool tare_efk_pos = false;
 Vector3d ekf_position_offset;
+bool run_motors_for_balancing = false;
+bool apply_balance_torques = false;
 
 int udp_data_ready = 0;
 char udp_control_packet[UDP_MAXLINE];
@@ -133,6 +135,25 @@ extern bool zeroScheduled;
 int simulation_mode = 0;
 extern bool filter_data_ready;
 double t_program_start;
+
+double dx_prev = 0;
+double dx;
+VectorXd dx_vec = VectorXd(100);
+double dy_prev = 0;
+double dy;
+VectorXd dy_vec = VectorXd(100);
+double dz_prev = 0;
+double dz;
+VectorXd dz_vec = VectorXd(100);
+double dx_filtered;
+double dy_filtered;
+double dz_filtered;
+Vector3d pc = Vector3d(0,0,0);
+Vector3d dpc = Vector3d(0,0,0);
+Vector3d EA;
+Vector3d dEA;
+VectorXd jointFFTorque = VectorXd::Zero(10);
+bool use_filter_pc = false;
 
 void signal_callback_handler(int signum);
 
@@ -500,6 +521,62 @@ void run_tello_pd_DEMO()
 	pthread_mutex_unlock(&mutex_CAN_recv);
 }
 
+void balance_pd(MatrixXd lfv_hip)
+{
+	int joint_kp = 2000;
+	int joint_kd = 100;
+	VectorXd kp_vec_joint = VectorXd::Ones(10)*(joint_kp+gain_adjustment);
+	VectorXd kd_vec_joint = VectorXd::Ones(10)*joint_kd;
+
+	kp_vec_joint(0) = joint_kp + gain_adjustment/5.0;
+	kp_vec_joint(1) = joint_kp + gain_adjustment/5.0;
+	kp_vec_joint(2) = joint_kp + gain_adjustment;
+	kp_vec_joint(3) = joint_kp + gain_adjustment;
+	kp_vec_joint(4) = joint_kp + gain_adjustment;
+
+	kp_vec_joint(5) = joint_kp + gain_adjustment/5.0;
+	kp_vec_joint(6) = joint_kp + gain_adjustment/2.0;
+	kp_vec_joint(7) = joint_kp + gain_adjustment;
+	kp_vec_joint(8) = joint_kp + gain_adjustment;
+	kp_vec_joint(9) = joint_kp + gain_adjustment;
+	
+	int motor_kp = 0;
+	int motor_kd = 1100;
+	VectorXd kp_vec_motor = VectorXd::Ones(10)*motor_kp;
+	VectorXd kd_vec_motor = VectorXd::Ones(10)*motor_kd;
+
+	VectorXd vel_desired = VectorXd::Zero(12);
+
+	Vector3d target(0, 0, -0.500+(h_offset/1000.0));
+
+	Vector3d target_front_left = lfv_hip.row(2);
+	Vector3d target_back_left = lfv_hip.row(3);
+	Vector3d target_front_right = lfv_hip.row(0);;
+	Vector3d target_back_right = lfv_hip.row(1);
+
+	VectorXd pos_desired(12);
+	pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
+
+	int task_kp = 0;
+	int task_kd = 0;
+	VectorXd kp_vec_task = VectorXd::Ones(3)*task_kp;
+	VectorXd kd_vec_task = VectorXd::Ones(3)*task_kd;
+
+	// Set up configuration struct for Task Space Controller
+	task_pd_config.task_ff_force = VectorXd::Zero(12);
+	task_pd_config.task_pos_desired = pos_desired;
+	task_pd_config.task_vel_desired = vel_desired;
+	task_pd_config.setTaskKp(kp_vec_task);
+	task_pd_config.setTaskKd(kd_vec_task);
+	task_pd_config.setJointKp(kp_vec_joint);
+	task_pd_config.setJointKd(kd_vec_joint);
+	task_pd_config.motor_kp = kp_vec_motor;
+	task_pd_config.motor_kd = kd_vec_motor;
+	task_pd_config.joint_ff_torque = jointFFTorque;
+	
+	tello->taskPD(task_pd_config);
+}
+
 void run_balance_controller()
 {
 	auto now = std::chrono::system_clock::now();  // Get the current time
@@ -509,8 +586,8 @@ void run_balance_controller()
 	tello->controller->set_time(t);
 
 	// Set pc_curr, dpc_curr, EA_curr, dEA_Curr, q, qd here:
-	Vector3d pc_curr = Vector3d(0,0,0);
-	Vector3d dpc_curr = Vector3d(0,0,0);
+	
+	// Vector3d dpc_curr = Vector3d(0,0,0);
 	Vector3d EA_curr = tello->_rpy;
 	Vector3d dEA_curr = tello->_gyro;
 
@@ -533,7 +610,11 @@ void run_balance_controller()
 	// qd.row(1) = joint_vel_vec.head(5);
 	VectorXd gnd_contacts = VectorXd::Ones(4);
 
-	VectorXd tau = tello->controller->update(pc_curr, dpc_curr, EA_curr, dEA_curr,q ,qd ,t);
+	VectorXd tau = tello->controller->update(pc, Vector3d(0,0,0), EA_curr, dEA_curr,q ,qd ,t);
+	VectorXd tau_LR(10);
+    tau_LR << tau.tail(5).array()*(2048.0/35.0), tau.head(5).array()*(2048.0/35.0);
+	if(apply_balance_torques) jointFFTorque = tau_LR;
+
 
 	Matrix3d R_foot_right = tello->controller->get_foot_orientation_wrt_body(q.row(0));
 	Matrix3d R_foot_left = tello->controller->get_foot_orientation_wrt_body(q.row(1));
@@ -546,8 +627,29 @@ void run_balance_controller()
 	{
 		tare_efk_pos = false;
 		ekf_position_offset = filter_state.getPosition();
+		use_filter_pc = true;
 	}
 
+	Vector3d estimated_pc(filter_state.getPosition()(0),filter_state.getPosition()(1),filter_state.getPosition()(2));
+    dx = (estimated_pc(0) - dx_prev)/0.001;
+    dx_prev = estimated_pc(0);
+    dy = (estimated_pc(1) - dy_prev)/0.001;
+    dy_prev = estimated_pc(1);
+    dz = (estimated_pc(2) - dz_prev)/0.001;
+    dz_prev = estimated_pc(2);
+    dx_vec.tail(99) = dx_vec.head(99).eval();
+    dx_vec[0] = dx;
+    dy_vec.tail(99) = dy_vec.head(99).eval();
+    dy_vec[0] = dy;
+    dz_vec.tail(99) = dz_vec.head(99).eval();
+    dz_vec[0] = dz;
+    dx_filtered = dash_utils::smoothVelocity(dx_vec,3);
+    dy_filtered = dash_utils::smoothVelocity(dy_vec,3);
+    dz_filtered = dash_utils::smoothVelocity(dz_vec,3);
+    Vector3d estimated_dpc(dx_filtered,dy_filtered,dz_filtered);
+	dpc = estimated_dpc;
+	pc = Vector3d(0,0,0);
+	
 	RoboDesignLab::IMU_data imu_data;
     imu_data.timestamp = t;
     imu_data.acc = tello->_acc;		// DATA DIRECTIONS AND BIASES VERIFIED
@@ -565,6 +667,7 @@ void run_balance_controller()
 	tello->set_lfv_hip_data_for_ekf(direct_lfv_hip);
 	tello->set_q_data_for_ekf(q);
 	double CoM_z = tello->controller->get_CoM_z(direct_lfv_hip,gnd_contacts,EA_curr); 
+	pc(2) = CoM_z;
 
 	filter_data_ready = true;
 	// tello->update_filter_IMU_data(imu_data);
@@ -576,14 +679,22 @@ void run_balance_controller()
 	double y = filter_state.getPosition()(1)-ekf_position_offset(1);
 	double z = filter_state.getPosition()(2)-ekf_position_offset(2);
 
+	Vector3d rf_error = tello->controller->get_lfv_comm_hip().row(2) - direct_lfv_hip.row(2);
 	//cout << direct_lfv_hip << endl;
-	//cout << "lfv_comm: " << tello->controller->get_lfv0().row(3) << "            \r"; // lfv_comm verified
+	//cout << "lfv_comm_hip: " << tello->controller->get_lfv_comm_hip().row(2) << "            \r"; // lfv_comm verified
 	//cout << "==================================================================================================" << endl;
-	// cout << "X: " << x << "       Y: " << y << "       Z: " << z << "       t: " << t << "             \n";
+	//cout << "X: " << x << "       Y: " << y << "       Z: " << z << "       t: " << t << "             \r";
+	cout << tau_LR.transpose() << "           \r";
 	//cout << x << ",\t" << y << ",\t" << z << ",\t" << t << "\n";
 	//cout << "R: " << EA_curr(0) << "       P: " << EA_curr(1) << "       Y: " << EA_curr(2) << "       t: " << t << "             \n";
 	//cout << "X: " << tello->_acc(0) << "       Y: " << tello->_acc(1) << "       Z: " << tello->_acc(2) << "       t: " << t << "             \n";
 	cout.flush();
+	if(run_motors_for_balancing){
+		balance_pd(tello->controller->get_lfv_comm_hip());
+	}
+	else{
+		
+	}
 }
 
 
@@ -749,7 +860,7 @@ void signal_callback_handler(int signum){
     else if (signum == SIGSEGV) {
         printf('r',"Program crashed due to Seg Fault");
     }
-	if(!simulation_mode)
+	if(simulation_mode == 0)
 	{
 		for(int i=0;i<10;i++){
 		tello->motors[i]->disableMotor(); 
@@ -782,6 +893,9 @@ int main(int argc, char *argv[]) {
         std::string arg1 = argv[1];
         if (arg1 == "--simulation" || arg1 == "-s") {
             simulation_mode = 1;
+        }
+		else if (arg1 == "--euler-simulation" || arg1 == "-e") {
+            simulation_mode = 2;
         } else {
             std::cerr << "Invalid input: " << arg1 << std::endl;
             return 1;
@@ -848,7 +962,7 @@ int main(int argc, char *argv[]) {
 
 	SIM_START:
 	tello = new RoboDesignLab::DynamicRobot();
-	if(simulation_mode) tello->isSimulation = true;
+	if(simulation_mode != 0) tello->isSimulation = true;
 	for(int i = 0; i<10; i++){ // not in the constructor becuase I want to change how this works
 		tello->motor_zeros[i] = motor_zeros[i];
 		tello->motor_directions[i] = motor_directions[i];
@@ -870,23 +984,44 @@ int main(int argc, char *argv[]) {
 	tello->assign_fk_motors_to_joints(fk_motors_to_joints);
 	tello->assign_fk_joints_to_task(fk_joints_to_task);
 
+	SRB_Params srb_params = tello->controller->get_SRB_params();
+	dash_utils::parse_json_to_srb_params("./tello_files/srb_pd_config_HW.json",srb_params);
+	tello->controller->set_SRB_params(srb_params);
+
 	auto now = std::chrono::system_clock::now();  // Get the current time
     auto micros = std::chrono::time_point_cast<std::chrono::microseconds>(now);  // Round down to nearest microsecond
     auto since_epoch = micros.time_since_epoch();  // Get duration since epoch
     t_program_start = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch).count() / 1000000.0;  // Convert to double with resolution of microseconds
 
 	
-	if(simulation_mode)
+	if(simulation_mode == 1)
 	{
+		tello->controller->set_sim_mode(1);
 		// SIMULATION MODE (Interfaces with Mujoco instead of real sensors)
 		printf('o',"Software running in Simulation Mode.\n\n");
 		//printf('o',"Software running in Simulation Mode.\n\
 		\r\033[1;38;5;208mIf this is a mistake, run without the \033[1;33m-s 1;38;5;208mflag or comment the following line in platformio.ini:\n\
 		\r\033[34mupload_command \033[39m= pio run -t exec -a \"-s\"\n\n");
 
-		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 1000);
+		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 2000);
 		tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_1_THREAD_1, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 5000);
-		//tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
+		tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
+		// tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
+		while(1){ usleep(1000); }
+		return 0;
+	}
+	else if(simulation_mode == 2)
+	{
+		tello->controller->set_sim_mode(2);
+		// SIMULATION MODE (Interfaces with Mujoco instead of real sensors)
+		printf('o',"Software running in Euler-Integration Simulation Mode.\n\n");
+		//printf('o',"Software running in Simulation Mode.\n\
+		\r\033[1;38;5;208mIf this is a mistake, run without the \033[1;33m-s 1;38;5;208mflag or comment the following line in platformio.ini:\n\
+		\r\033[34mupload_command \033[39m= pio run -t exec -a \"-s\"\n\n");
+
+		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 2000);
+		tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_1_THREAD_1, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 5000);
+		// tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
 		// tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
 		while(1){ usleep(1000); }
 		return 0;
@@ -1001,6 +1136,13 @@ int main(int argc, char *argv[]) {
 				fsm_state = 6;
 				printf("\nBalance Controller & EKF Testing Mode:\n");
 
+				break;
+			case 'M':
+				scheduleEnable();
+				run_motors_for_balancing = true;
+				break;
+			case 'A':
+				apply_balance_torques = true;
 				break;
 			case 't':
 				printf("\nEKF Position Tared:\n");

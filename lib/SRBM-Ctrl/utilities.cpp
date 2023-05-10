@@ -724,11 +724,19 @@ std::chrono::high_resolution_clock::time_point start_time;
 std::chrono::high_resolution_clock::time_point end_time;
 std::chrono::high_resolution_clock::time_point last_print_time;
 
+std::chrono::high_resolution_clock::time_point start_sim_time;
+std::chrono::high_resolution_clock::time_point end_sim_time;
+std::chrono::high_resolution_clock::time_point last_sim_print_time;
+
 void dash_utils::start_timer(){
     start_time = std::chrono::high_resolution_clock::now();
 }
 
-void dash_utils::end_timer(){
+void dash_utils::start_sim_timer(){
+    start_sim_time = std::chrono::high_resolution_clock::now();
+}
+
+void dash_utils::print_timer(){
     end_time = std::chrono::high_resolution_clock::now();
     // Calculate the elapsed time
     std::chrono::nanoseconds elapsed_time = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time);
@@ -739,11 +747,28 @@ void dash_utils::end_timer(){
     std::chrono::nanoseconds elapsed_time_since_print = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - last_print_time);
     double elapsed_time_since_print_ms = static_cast<double>(elapsed_time_since_print.count()) / 1000000.0;
     
-    if(elapsed_time_since_print_ms > 25){
+    if(elapsed_time_since_print_ms > 500){
         std::cout << "Elapsed time: " << elapsed_time_ms << " ms" << std::endl;
         last_print_time = end_time;
     }
+}
 
+double dash_utils::measure_sim_timer(){
+    end_time = std::chrono::high_resolution_clock::now();
+    // Calculate the elapsed time
+    std::chrono::nanoseconds elapsed_time = std::chrono::duration_cast<std::chrono::nanoseconds>(end_sim_time - start_sim_time);
+
+    // Convert the elapsed time to milliseconds with a resolution of nanoseconds
+    double elapsed_time_ms = static_cast<double>(elapsed_time.count()) / 1000000.0;
+
+    std::chrono::nanoseconds elapsed_time_since_print = std::chrono::duration_cast<std::chrono::nanoseconds>(end_sim_time - last_sim_print_time);
+    double elapsed_time_since_print_ms = static_cast<double>(elapsed_time_since_print.count()) / 1000000.0;
+    
+    if(elapsed_time_since_print_ms > 500){
+        //std::cout << "Elapsed time: " << elapsed_time_ms << " ms" << std::endl;
+        last_sim_print_time = end_sim_time;
+    }
+    return elapsed_time_ms/1000.0;
 }
 
 void dash_utils::unpack_data_from_hmi(Human_dyn_data& data, uint8_t* buffer)

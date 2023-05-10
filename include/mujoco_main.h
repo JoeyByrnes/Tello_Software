@@ -38,6 +38,7 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <glm/glm.hpp>
+#include <filesystem>
 
 #include "SRBM-Ctrl/utilities.h"
 #include "SRBM-Ctrl/controllers.h"

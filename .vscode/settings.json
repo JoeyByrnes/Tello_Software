@@ -143,6 +143,8 @@
         "vertexarraystate": "cpp",
         "matrixd": "cpp",
         "matrixf": "cpp",
-        "light": "cpp"
+        "light": "cpp",
+        "csignal": "cpp",
+        "regex": "cpp"
     }
 }

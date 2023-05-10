@@ -487,14 +487,25 @@ void initializeSRBMCtrl()
     lfv0 = controller->get_lfv0();
     lfdv0 = controller->get_lfdv0();
     lfv_dsp_start = lfv0;
+
+    if (std::filesystem::is_directory("/home/tello")) {
+        //std::cout << "The directory /home/tello exists!" << std::endl;
+        if(simulation_mode == 1)
+            dash_utils::parse_json_to_srb_params("tello_files/srb_pd_config.json",srb_params);
+        if(simulation_mode == 2)
+            dash_utils::parse_json_to_srb_params("tello_files/srb_pd_config_SRBsim.json",srb_params);
+        dash_utils::parse_json_to_pd_params("tello_files/srb_pd_config.json",swing_conf,posture_conf);
+    }
+    else {
+        //std::cout << "The directory /home/tello does not exist!" << std::endl;
+        if(simulation_mode == 1)
+            dash_utils::parse_json_to_srb_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",srb_params);
+        if(simulation_mode == 2)
+            dash_utils::parse_json_to_srb_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config_SRBsim.json",srb_params);
+        dash_utils::parse_json_to_pd_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",swing_conf,posture_conf);
+            
+    }
     
-    if(simulation_mode == 1)
-        dash_utils::parse_json_to_srb_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",srb_params);
-
-    if(simulation_mode == 2)
-        dash_utils::parse_json_to_srb_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config_SRBsim.json",srb_params);
-
-    dash_utils::parse_json_to_pd_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",swing_conf,posture_conf);
     //dash_utils::parse_json_to_srb_params("tello_files/srb_pd_config.json",srb_params);
     // dash_utils::parse_json_to_pd_params("tello_files/srb_pd_config.json",swing_conf,posture_conf);
 
@@ -602,16 +613,32 @@ void* mujoco_Update_1KHz( void * arg )
     // BEGIN SETUP CODE FOR MUJOCO ======================================================================
     
 	// activate software
-    mj_activate("./lib/Mujoco/mjkey.txt");
+    // mj_activate("./lib/Mujoco/mjkey.txt");
     // mj_activate("tello_files/mjkey.txt");
-
-    if(simulation_mode == 1)
-    {
-        m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-color.xml", NULL, error, 1000);
+    if (std::filesystem::is_directory("/home/tello")) {
+        //std::cout << "The directory /home/tello exists!" << std::endl;
+        mj_activate("tello_files/mjkey.txt");
+        if(simulation_mode == 1)
+        {
+            m = mj_loadXML("./tello_files/tello-massive-color.xml", NULL, error, 1000);
+        }
+        else
+        {
+            m = mj_loadXML("./tello_files/tello-massive-blue-grey.xml", NULL, error, 1000);
+        }
     }
-    else
-    {
-        m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-blue-grey.xml", NULL, error, 1000);
+    else {
+        //std::cout << "The directory /home/tello does not exist!" << std::endl;
+        mj_activate("./lib/Mujoco/mjkey.txt");
+        if(simulation_mode == 1)
+        {
+            m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-color.xml", NULL, error, 1000);
+        }
+        else
+        {
+            m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-blue-grey.xml", NULL, error, 1000);
+        }
+        
     }
     // m = mj_loadXML("tello_files/tello-massive-color.xml", NULL, error, 1000);
 	if (!m)
@@ -635,7 +662,7 @@ void* mujoco_Update_1KHz( void * arg )
 		// create window, make OpenGL context current, request v-sync
     window = glfwCreateWindow(1920, 1080, "Tello Mujoco Sim", NULL, NULL);
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(1);
+    glfwSwapInterval(0);
 
     // initialize visualization data structures
     mjv_defaultCamera(&cam);
@@ -673,13 +700,25 @@ void* mujoco_Update_1KHz( void * arg )
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
     ImGui::StyleColorsDark();
-    ImFont* font = io.Fonts->AddFontFromFileTTF("../../../lib/imGUI/fonts/roboto/Roboto-Light.ttf", 50);
+    
+    ImFont* font;
+    if (std::filesystem::is_directory("/home/tello")) {
+        //std::cout << "The directory /home/tello exists!" << std::endl;
+        font = io.Fonts->AddFontFromFileTTF("./tello_files/fonts/roboto/Roboto-Light.ttf", 50);
+    }
+    else {
+        //std::cout << "The directory /home/tello does not exist!" << std::endl;
+        font = io.Fonts->AddFontFromFileTTF("../../../lib/imGUI/fonts/roboto/Roboto-Light.ttf", 50);
+        
+    }
     
 	while(!glfwWindowShouldClose(window))
     {
         handle_start_of_periodic_task(next);
 		// BEGIN LOOP CODE FOR MUJOCO ===================================================================
-
+        double elapsed = dash_utils::measure_sim_timer();
+        m->opt.timestep = elapsed;
+        dash_utils::start_sim_timer();
         // Get body ID
         int body_id = mj_name2id(m, mjOBJ_BODY, "torso");
 
@@ -704,22 +743,24 @@ void* mujoco_Update_1KHz( void * arg )
         if(simulation_mode == 1)
         {
             if(!pause_sim){
-                mjtNum simstart = d->time;
-                while (d->time - simstart < 1.0 / 60.0){
+                //mjtNum simstart = d->time;
+                //while (d->time - simstart < 1.0 / 60.0){
                     mj_step(m, d);
-                }  
+                //}  
             } 
         }
         if(simulation_mode == 2)
         {
             if(!pause_sim){
-                mjtNum simstart = d->time;
-                while (d->time - simstart < 1.0 / 60.0){
-                    d->time = d->time + 0.002;
+                //mjtNum simstart = d->time;
+                //while (d->time - simstart < 1.0 / 60.0){
+                    d->time = d->time + 0.002;//elapsed;
+                    dash_utils::start_timer();
                     TELLO_locomotion_ctrl(m,d);
+                    dash_utils::print_timer();
                     set_mujoco_state(tello->controller->get_x());
                     mj_kinematics(m,d);
-                }
+                //}
             } 
             // cout << "CoM XYZ:" << tello->controller->get_x().head(3).transpose() << endl;
             //cout << "q right:" << tello->controller->get_q().row(0) << endl;
@@ -735,11 +776,11 @@ void* mujoco_Update_1KHz( void * arg )
         cam.lookat[0] = d->qpos[torso_x_idx];
         cam.lookat[1] = d->qpos[torso_y_idx];
         // set the background color to white
-
+        
         // update scene and render
         mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
         mjr_render(viewport, &scn, &con);
-
+        
         // render ImGui GUI
         ImVec4 dark_navy = hex2ImVec4(0x082032);
         ImVec4 med_navy = hex2ImVec4(0x2C394B);
@@ -788,16 +829,15 @@ void* mujoco_Update_1KHz( void * arg )
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-
         // swap OpenGL buffers (blocking call due to v-sync)
+        
         glfwSwapBuffers(window);
-
+        
         // process pending GUI events, call GLFW callbacks
         glfwPollEvents();
-
 		// END LOOP CODE FOR MUJOCO =====================================================================
 		handle_end_of_periodic_task(next,period);
-        dash_utils::start_timer();
+        
 	}
 
 	//free visualization storage

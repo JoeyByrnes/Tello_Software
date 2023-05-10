@@ -48,7 +48,9 @@ namespace  dash_utils
     void parse_json_to_srb_params(const std::string& json_file_path, SRB_Params& params); 
 
     void start_timer();
-    void end_timer();
+    void print_timer();
+    void start_sim_timer();
+    double measure_sim_timer();
 
     void pack_data_to_hmi(uint8_t* buffer, Human_dyn_data data);
     void unpack_data_from_hmi(Human_dyn_data& data, uint8_t* buffer);

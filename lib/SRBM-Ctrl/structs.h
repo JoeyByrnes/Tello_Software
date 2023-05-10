@@ -122,7 +122,11 @@ struct Traj_planner_dyn_data
     bool left_in_contact = true;
     bool right_in_contact = true;
     int left_off_gnd_cnt = 0;
-    int right_off_gnd_cnt = 0;
+    int right_off_gnd_cnt = 0;  
+    double x_HWRM;
+    double dx_HWRM;
+    Vector2d x_plus_HWRM; 
+    double uk_HWRM;         
 };
 
 struct Teleop_Ref {

@@ -4,7 +4,7 @@
 #include "structs.h"
 #include "utilities.h"
 #include "controllers.h"
-
+#include "dynamics.h"
 
 namespace  dash_planner
 {

@@ -4,6 +4,7 @@
 #include "utilities.h"
 #include "qpOASES.hpp"
 #include <limits.h>
+#include "dynamics.h"
 
 using namespace qpOASES;
 
@@ -13,6 +14,9 @@ namespace dash_ctrl
     void Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm, Human_dyn_data& human_dyn_data, 
                                             SRB_Params srb_params, Human_params human_params, Traj_planner_dyn_data traj_planner_dyn_data, 
                                             int FSM, double t, VectorXd x, MatrixXd lfv, MatrixXd lfdv, VectorXd tau_ext);
+    void Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm, Human_dyn_data& human_dyn_data, 
+                                            SRB_Params srb_params, Human_params human_params, Traj_planner_dyn_data& traj_planner_dyn_data, 
+                                            int FSM, double t, VectorXd x, MatrixXd lfv, MatrixXd lfdv, VectorXd tau_ext);                                            
     void bilateral_teleop_law(VectorXd LIPR_params, VectorXd LIPH_params, VectorXd LIPR_dyn, VectorXd LIPH_dyn, 
                             double FH, double FR_ext_est, double FB_gain, double& FR, double& FH_hmi);
 
@@ -37,4 +41,6 @@ namespace dash_ctrl
                                     MatrixXd& A_GRF_torque_lim,VectorXd& ubA_GRF_torque_lim,int& num_const_total);
 
     VectorXd SRB_PD_Wrench_Controller(SRB_Params srb_params, VectorXd x, MatrixXd SRB_state_ref, MatrixXd SRB_wrench_FF);
+    void opt_stepping_controller(double& uk, VectorXd xk, VectorXd xk_des, double T_SSP, double T_DSP, double w);
+    
 }

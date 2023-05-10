@@ -100,11 +100,10 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     // Parameters
     double Fz_min = srb_params.Fz_min_FSM; 
     double CoMz_init = srb_params.hLIP;
-    double T = srb_params.T;
-
     double T_DSP = srb_params.T_DSP;
 
     // Planner info
+    double T = traj_planner_dyn_data.T_step;
     double t_sw_start;
     if (t != 0)
         t_sw_start = traj_planner_dyn_data.t_sw_start;
@@ -118,7 +117,6 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
         t_dsp_start = 0.0;
 
     int next_SSP = traj_planner_dyn_data.next_SSP;
-
 
     // get swing-foot z-position (front line foot pt) relative to ground --
     // assume constant height for now
@@ -144,10 +142,11 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     lfz = u3z;
     lbz = u4z;
 
-    // compute phase variable
+    // compute phase variable for SSP
     double s = (t - t_sw_start) / T;
 
-    double s_dsp = (t - t_dsp_start);
+    // compute time variable for DSP
+    double t_dsp = (t - t_dsp_start);
 
     // Finite-State Machine (FSM)    
     // From DSP can switch to SSP_L or SSP_R based on front toe z-direction GRFs
@@ -158,11 +157,11 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     //cout << FSM_prev << "\t " << u1z << "\t " << u3z <<endl;
     if (FSM_prev == 0) // currently in DSP
     {
-        if ( (u1z < Fz_min || u2z < Fz_min) && t > 0 && s_dsp > 0.002 && next_SSP == 1) // enter SSP_L
+        if ( (u1z < Fz_min || u2z < Fz_min) && t > 0 && t_dsp > 0.002 && next_SSP == 1) // enter SSP_L
         {
             FSM_next = 1;
         }
-        else if ( (u3z < Fz_min || u4z < Fz_min) && t > 0 && s_dsp > 0.002 && next_SSP == -1) // enter SSP_R 
+        else if ( (u3z < Fz_min || u4z < Fz_min) && t > 0 && t_dsp > 0.002 && next_SSP == -1) // enter SSP_R 
         {
             FSM_next = -1;     
         }
@@ -238,10 +237,12 @@ void dash_planner::SRB_Init_Traj_Planner_Data(Traj_planner_dyn_data& traj_planne
     traj_planner_dyn_data.sw_beg_step = VectorXd::Zero(position_vec_size); // swing-leg/foot position at the beginning-of-step
     traj_planner_dyn_data.human_leg_joystick_pos_beg_step = VectorXd::Zero(position_vec_size); // human leg joystick end-effector position at the beginning of step
     traj_planner_dyn_data.sigma1H = wH*(1.0/(tanh((T_step_init/2.0)*wH))); // human orbital line slope
-
+    traj_planner_dyn_data.x_HWRM = 0.0; // initial CoM position of HWRM-LIP
+    traj_planner_dyn_data.dx_HWRM = 0.0; // initial CoM velocity of HWRM-LIP
+    traj_planner_dyn_data.x_plus_HWRM = VectorXd::Zero(2); // initial HWRM-LIP state vector pre-phase (SSP or DSP)
+    traj_planner_dyn_data.uk_HWRM = 0.0; // initial HWRM-LIP step placement
     ::lfv0 = lfv0;
     ::lfdv0.setZero();
-    
 }
 
 void dash_planner::SRB_Traj_Planner(
@@ -279,6 +280,7 @@ void dash_planner::SRB_Traj_Planner(
     
     // Update planner data
     traj_planner_dyn_data_gen(srb_params, human_params, traj_planner_dyn_data, human_dyn_data, t, FSM_prev, FSM, x, lfv);
+    
     double FxR, FyR;
      // Control
     if (planner_type == 0)
@@ -354,6 +356,9 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
     // Get trajectory planner current data
     double t_sw_start = traj_planner_dyn_data.t_sw_start;
     double T_step = traj_planner_dyn_data.T_step;
+    double x_HWRM = traj_planner_dyn_data.x_HWRM;
+    double dx_HWRM = traj_planner_dyn_data.dx_HWRM;
+    double uk_HWRM = traj_planner_dyn_data.uk_HWRM;
 
     // Get SRB states
     VectorXd pc = x.head(3);
@@ -398,10 +403,17 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
         int st_idx_R;
         int sw_idx_R;
         int sw_idx_H;
+        Vector2d x_plus_HWRM;
+        Vector2d x_minus_HWRM;
+        x_minus_HWRM << x_HWRM, dx_HWRM;
+
         if (FSM_prev == 0 && abs(FSM) == 1) { // DSP to SSP transition
 
             // initialize swing-phase time variable
             traj_planner_dyn_data.t_sw_start = t;
+
+            // DSP to SSP reset map for HWRM dyn.
+            dash_dyn::HLIP_Reset_Map_DSP_SSP(x_plus_HWRM, x_minus_HWRM, uk_HWRM);
 
             // get correct swing and stance leg idx 
             // schedule next SSP
@@ -439,20 +451,36 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
             } else if (planner_type == 2) { // planner_type = Human_Dyn_Telelocomotion
 
                 // update
+                traj_planner_dyn_data.next_SSP = next_SSP;
                 traj_planner_dyn_data.sw_beg_step = lfv.row(sw_idx_R);
                 traj_planner_dyn_data.sw_beg_step(0) = traj_planner_dyn_data.sw_beg_step(0) - (1.0/2.0)*ft_l;
                 traj_planner_dyn_data.human_leg_joystick_pos_beg_step = human_leg_joystick_data.segment<3>(sw_idx_H);
                 traj_planner_dyn_data.sigma1H = wH*(1.0/(tanh((T_step/2.0)*wH)));
+                traj_planner_dyn_data.x_plus_HWRM = x_plus_HWRM;
 
             }
 
         } else if ((FSM_prev == 1 || FSM_prev == -1) && FSM == 0) { // SSP to DSP transition
+
             // update step time with previous step duration
             traj_planner_dyn_data.t_dsp_start = t;
             lfv_dsp_start = lfv;
 
+            // final step time (store as assumed step time for next step)
+            double T_step_final = t - t_sw_start;
+
+            // update HWRM step placement (if necessary)
+            if (T_step_final < T_step) {
+                 uk_HWRM = (1/2) * (1 - cos(M_PI * (T_step_final/T_step))) * uk_HWRM;
+                 traj_planner_dyn_data.uk_HWRM = uk_HWRM;
+            }
+
+            // DSP to SSP reset map for HWRM dyn.
+            dash_dyn::HLIP_Reset_Map_SSP_DSP(x_plus_HWRM, x_minus_HWRM);            
+
             if (planner_type == 2) {
-                traj_planner_dyn_data.T_step = t - traj_planner_dyn_data.t_sw_start;
+                traj_planner_dyn_data.T_step = T_step_final;
+                traj_planner_dyn_data.x_plus_HWRM = x_plus_HWRM;
             }
 
             // terminate walking/stepping

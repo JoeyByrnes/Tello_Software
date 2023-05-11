@@ -126,6 +126,10 @@ VectorXd SRBMController::update(VectorXd srb_state, MatrixXd joint_pos, MatrixXd
         lfdv = lfdv_comm;
         dash_kin::SRB_Kin(q, qd, Jv_mat, srb_params, x, lfv, lfdv);
     }
+    // cout << lfv_comm  << endl;
+    // cout << "===============================" << endl;
+    // cout << endl;
+    cout << "FSM: " << FSM << endl;
 
     FSM_prev = FSM;
     // Return joint torques

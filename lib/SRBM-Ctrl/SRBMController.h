@@ -55,6 +55,7 @@ class SRBMController {
 
     // Getter function for FSM
     int get_FSM() const { return FSM; }
+    void set_FSM(int fsm) { FSM=fsm; }
 
     // Getter function for FSM_prev
     int get_FSM_prev() const { return FSM_prev; }
@@ -182,6 +183,10 @@ class SRBMController {
 
     void reset();
 
+    void enable_human_ctrl(){ enable_human_dyn_data = true;}
+    void disable_human_ctrl(){ enable_human_dyn_data = false;}
+    bool is_human_ctrl_enabled(){return enable_human_dyn_data; }
+
   private:
 
     SRB_Params srb_params;
@@ -237,6 +242,8 @@ class SRBMController {
     std::chrono::high_resolution_clock::time_point last_print_time;
 
     int simulation_mode = 1;
+
+    bool enable_human_dyn_data = false;
 
 
 };

@@ -821,16 +821,22 @@ static void* update_1kHz( void * arg )
 				// do nothing
 				break;
 		}
-		// handle UDP transmit here:
-		// dash_utils::end_timer();
-		// dash_utils::start_timer();
-		// Human_dyn_data hdd = tello->controller->get_human_dyn_data();
-		// hdd.FxH_hmi = hdd.dxH;
-		// hdd.FyH_hmi = hdd.dxH;
-		// hdd.FxH_spring = hdd.dxH;
-		// dash_utils::pack_data_to_hmi((uint8_t*)hmi_tx_buffer,hdd);
-		// int n = sendto(sockfd, hmi_tx_buffer, 12,MSG_CONFIRM, 
-		// 	   (const struct sockaddr *) &servaddr, sizeof(servaddr));
+		//handle UDP transmit here:
+		Human_dyn_data hdd = tello->controller->get_human_dyn_data();
+		if(tello->controller->is_human_ctrl_enabled())
+		{
+			
+		}
+		else
+		{
+			hdd.FxH_hmi = 0;
+			hdd.FyH_hmi = 0;
+			hdd.FxH_spring = 0;
+		}
+		cout << "Fx: " << hdd.FxH_hmi << "Fy: " << hdd.FyH_hmi << endl;
+		dash_utils::pack_data_to_hmi((uint8_t*)hmi_tx_buffer,hdd);
+		int n = sendto(sockfd, hmi_tx_buffer, 12,MSG_CONFIRM, 
+			   (const struct sockaddr *) &servaddr, sizeof(servaddr));
 		pthread_mutex_lock(&mutex_CAN_recv);
 		if(disableScheduled){
 			tello->disable_all_motors();
@@ -1004,9 +1010,11 @@ int main(int argc, char *argv[]) {
 		\r\033[34mupload_command \033[39m= pio run -t exec -a \"-s\"\n\n");
 
 		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 1940);
-		// tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 5000);
+		tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 5000);
+		tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 		// tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
 		// tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
+		// tello->addPeriodicTask(&plot_human_data, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
 		while(1){ usleep(1000); }
 		return 0;
 	}
@@ -1020,9 +1028,11 @@ int main(int argc, char *argv[]) {
 		\r\033[34mupload_command \033[39m= pio run -t exec -a \"-s\"\n\n");
 
 		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 1940);
-		// tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 5000);
+		tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 5000);
+		tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 		// tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
 		// tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
+		// tello->addPeriodicTask(&plot_human_data, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
 		while(1){ usleep(1000); }
 		return 0;
 	}

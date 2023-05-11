@@ -268,11 +268,19 @@ void* rx_UDP( void * arg ){
 		// if(checksum == rx_buffer[n-1])
 		// {
 			Human_dyn_data human_dyn_data;
-			dash_utils::unpack_data_from_hmi(human_dyn_data,(uint8_t*)rx_buffer);
-			tello->controller->set_human_dyn_data(human_dyn_data);
-			dash_utils::print_human_dyn_data(human_dyn_data);
 		// }
-
+		
+		if(tello->controller->is_human_ctrl_enabled())
+		{
+			dash_utils::unpack_data_from_hmi(human_dyn_data,(uint8_t*)rx_buffer);
+		}
+		else
+		{
+			Human_params hp;
+			dash_init::Human_Init(hp,human_dyn_data);
+		}
+		tello->controller->set_human_dyn_data(human_dyn_data);
+		//dash_utils::print_human_dyn_data(human_dyn_data);
 
 		// udp_data_ready = 0;
 		// memcpy(udp_control_packet,buffer,UDP_MAXLINE);

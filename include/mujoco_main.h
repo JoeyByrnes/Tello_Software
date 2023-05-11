@@ -55,6 +55,7 @@
 
 void* mujoco_Update_1KHz( void * arg );
 void* plotting( void * arg );
+void* plot_human_data( void * arg );
 void* PS4_Controller( void * arg );
 
 #endif

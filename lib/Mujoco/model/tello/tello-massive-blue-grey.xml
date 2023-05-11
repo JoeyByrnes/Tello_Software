@@ -42,9 +42,9 @@
          rgb2 = "0.7 0.7 0.7"/>  
     <texture name = "texgeom" type = "cube" builtin = "flat" mark = "cross" width = "127" height = "1278" 
          rgb1 = "0.8 0.6 0.4" rgb2 = "0.8 0.6 0.4" markrgb = "1 1 1" random = "0.01"/>  
-     <texture name = "texplane" type = "2d" builtin = "checker" rgb1 = "1 1 1" rgb2 = "0.7 0.7 0.7" 
+     <texture name = "texplane" type = "2d" builtin = "checker" rgb1 = "0.8 0.8 0.8" rgb2 = "0.5 0.5 0.5" 
          width = "512" height = "512"/>  
-     <material name = 'MatPlane' reflectance = '0.5' texture = "texplane" texrepeat = "1 1" texuniform = "true"/>	
+     <material name = 'MatPlane' reflectance = '0.1' texture = "texplane" texrepeat = "1 1" texuniform = "true"/>	
 	
   </asset>
   
@@ -54,7 +54,8 @@
  	<geom name ='floor' pos ='0 0 -0.7' size ='8 8 .125' type = 'plane' material ='MatPlane' condim = '3' conaffinity = '15'/>
 	<!-- <light mode ='trackcom' pos = '0 0 5' dir = '0 0 -1'/> -->
 	<light directional = 'true' pos = '0 0 3' dir = '0 0 -1' diffuse = '0.2 0.2 0.2' specular = '0 0 0'/>	 
-    <light name="com_light" mode='trackcom' pos='10 0 10' dir='-1 0 -1'/>
+    <light name="com_light" mode='trackcom' pos='10 0 10' dir='-1 0 -1' castshadow="false"/>
+	<light name="back_light" mode='trackcom' pos='-10 0 10' dir='1 0 -1' castshadow="false"/>
   
 	<body name = 'torso' pos = '0 0 0.05'> 
 	

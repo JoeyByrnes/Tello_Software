@@ -227,25 +227,25 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
         // placement and tracking normalized human end-effector dynamics
         if (FSM == 1) { // SSP_L
             // x-position trajectories
-            lfv_comm(0,0) = swx_traj[0] + (1.0/2.0)*ft_l; lfv_comm(3,0) = swx_traj[0] - (1.0/2.0)*ft_l;
-            lfdv_comm(0,0) = swx_traj[1]; lfdv_comm(3,0) = lfdv_comm(0,0);
+            lfv_comm(0,0) = swx_traj[0] + (1.0/2.0)*ft_l; lfv_comm(1,0) = swx_traj[0] - (1.0/2.0)*ft_l;
+            lfdv_comm(0,0) = swx_traj[1]; lfdv_comm(1,0) = lfdv_comm(0,0);
             // y-position trajectories
-            lfv_comm(1,0) = swy0 + (hR/hH)*(fyH_R - fyH0); lfv_comm(4,0) = lfv_comm(1,0);
-            lfdv_comm(1,0) = (wR/wH)*fdyH_R; lfdv_comm(4,0) = lfdv_comm(1,0);
+            lfv_comm(0,1) = swy0 + (hR/hH)*(fyH_R - fyH0); lfv_comm(1,1) = lfv_comm(0,1);
+            lfdv_comm(0,1) = (wR/wH)*fdyH_R; lfdv_comm(1,1) = lfdv_comm(0,1);
             // z-position trajectories
-            lfv_comm(2,0) = swz0 + (hR/hH)*(fzH_R - fzH0); lfv_comm(5,0) = lfv_comm(2,0);
-            lfdv_comm(2,0) = (wR/wH)*fdzH_R; lfdv_comm(5,0) = lfdv_comm(2,0);
+            lfv_comm(0,2) = swz0 + (hR/hH)*(fzH_R - fzH0); lfv_comm(1,2) = lfv_comm(0,2);
+            lfdv_comm(0,2) = (wR/wH)*fdzH_R; lfdv_comm(1,2) = lfdv_comm(0,2);
         }
         else if (FSM == -1) { // SSP_R
         // x-position trajectories
-            lfv_comm(6,0) = swx_traj(0) + 0.5*ft_l; lfv_comm(9,0) = swx_traj(0) - 0.5*ft_l;
-            lfdv_comm(6,0) = swx_traj(1); lfdv_comm(9,0) = lfdv_comm(6,0);
+            lfv_comm(2,0) = swx_traj(0) + 0.5*ft_l; lfv_comm(3,0) = swx_traj(0) - 0.5*ft_l;
+            lfdv_comm(2,0) = swx_traj(1); lfdv_comm(3,0) = lfdv_comm(2,0);
             // y-position trajectories
-            lfv_comm(7,0) = swy0 - (hR/hH)*(fyH_L - fyH0); lfv_comm(10,0) = lfv_comm(7,0);
-            lfdv_comm(7,0) = (wR/wH)*fdyH_L; lfdv_comm(10,0) = lfdv_comm(7);
+            lfv_comm(2,1) = swy0 - (hR/hH)*(fyH_L - fyH0); lfv_comm(3,1) = lfv_comm(2,1);
+            lfdv_comm(2,1) = (wR/wH)*fdyH_L; lfdv_comm(3,1) = lfdv_comm(2,1);
             // z-position trajectories
-            lfv_comm(8,0) = swz0 + (hR/hH)*(fzH_L - fzH0); lfv_comm(11,0) = lfv_comm(8,0);
-            lfdv_comm(8,0) = (wR/wH)*fdzH_L; lfdv_comm(11,0) = lfdv_comm(8,0);
+            lfv_comm(2,2) = swz0 + (hR/hH)*(fzH_L - fzH0); lfv_comm(3,2) = lfv_comm(2,2);
+            lfdv_comm(2,2) = (wR/wH)*fdzH_L; lfdv_comm(3,2) = lfdv_comm(2,2);
         }
 
     }
@@ -522,25 +522,25 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
         // placement and tracking normalized human end-effector dynamics
         if (FSM == 1) { // SSP_L
             // x-position trajectories
-            lfv_comm(0,0) = swx_traj[0] + (1.0/2.0)*ft_l; lfv_comm(3,0) = swx_traj[0] - (1.0/2.0)*ft_l;
-            lfdv_comm(0,0) = swx_traj[1]; lfdv_comm(3,0) = lfdv_comm(0,0);
+            lfv_comm(0,0) = swx_traj[0] + (1.0/2.0)*ft_l; lfv_comm(1,0) = swx_traj[0] - (1.0/2.0)*ft_l;
+            lfdv_comm(0,0) = swx_traj[1]; lfdv_comm(1,0) = lfdv_comm(0,0);
             // y-position trajectories
-            lfv_comm(1,0) = swy0 + (hR/hH)*(fyH_R - fyH0); lfv_comm(4,0) = lfv_comm(1,0);
-            lfdv_comm(1,0) = (wR/wH)*fdyH_R; lfdv_comm(4,0) = lfdv_comm(1,0);
+            lfv_comm(0,1) = swy0 + (hR/hH)*(fyH_R - fyH0); lfv_comm(1,1) = lfv_comm(0,1);
+            lfdv_comm(0,1) = (wR/wH)*fdyH_R; lfdv_comm(1,1) = lfdv_comm(0,1);
             // z-position trajectories
-            lfv_comm(2,0) = swz0 + (hR/hH)*(fzH_R - fzH0); lfv_comm(5,0) = lfv_comm(2,0);
-            lfdv_comm(2,0) = (wR/wH)*fdzH_R; lfdv_comm(5,0) = lfdv_comm(2,0);
+            lfv_comm(0,2) = swz0 + (hR/hH)*(fzH_R - fzH0); lfv_comm(1,2) = lfv_comm(0,2);
+            lfdv_comm(0,2) = (wR/wH)*fdzH_R; lfdv_comm(1,2) = lfdv_comm(0,2);
         }
         else if (FSM == -1) { // SSP_R
         // x-position trajectories
-            lfv_comm(6,0) = swx_traj(0) + 0.5*ft_l; lfv_comm(9,0) = swx_traj(0) - 0.5*ft_l;
-            lfdv_comm(6,0) = swx_traj(1); lfdv_comm(9,0) = lfdv_comm(6,0);
+            lfv_comm(2,0) = swx_traj(0) + 0.5*ft_l; lfv_comm(3,0) = swx_traj(0) - 0.5*ft_l;
+            lfdv_comm(2,0) = swx_traj(1); lfdv_comm(3,0) = lfdv_comm(2,0);
             // y-position trajectories
-            lfv_comm(7,0) = swy0 - (hR/hH)*(fyH_L - fyH0); lfv_comm(10,0) = lfv_comm(7,0);
-            lfdv_comm(7,0) = (wR/wH)*fdyH_L; lfdv_comm(10,0) = lfdv_comm(7);
+            lfv_comm(2,1) = swy0 - (hR/hH)*(fyH_L - fyH0); lfv_comm(3,1) = lfv_comm(2,1);
+            lfdv_comm(2,1) = (wR/wH)*fdyH_L; lfdv_comm(3,1) = lfdv_comm(2,1);
             // z-position trajectories
-            lfv_comm(8,0) = swz0 + (hR/hH)*(fzH_L - fzH0); lfv_comm(11,0) = lfv_comm(8,0);
-            lfdv_comm(8,0) = (wR/wH)*fdzH_L; lfdv_comm(11,0) = lfdv_comm(8,0);
+            lfv_comm(2,2) = swz0 + (hR/hH)*(fzH_L - fzH0); lfv_comm(3,2) = lfv_comm(2,2);
+            lfdv_comm(2,2) = (wR/wH)*fdzH_L; lfdv_comm(3,2) = lfdv_comm(2,2);
         }
 
     }
@@ -573,6 +573,8 @@ void dash_ctrl::bilateral_teleop_law(VectorXd LIPR_params, VectorXd LIPH_params,
 
     // feedback force (track normalized human DCM)
     double FR_fb = FB_gain*((DCMH/hH) - (DCMR/hR));
+
+    // cout << "(DCMH/hH): " << (DCMH/hH) << "         (DCMR/hR):" << (DCMR/hR) << "         (Diff):" << (DCMH/hH) - (DCMR/hR) << "            \r";
 
     // robot force
     FR = FR_ff + FR_fb;

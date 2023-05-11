@@ -754,7 +754,7 @@ void dash_utils::print_timer(){
 }
 
 double dash_utils::measure_sim_timer(){
-    end_time = std::chrono::high_resolution_clock::now();
+    end_sim_time = std::chrono::high_resolution_clock::now();
     // Calculate the elapsed time
     std::chrono::nanoseconds elapsed_time = std::chrono::duration_cast<std::chrono::nanoseconds>(end_sim_time - start_sim_time);
 
@@ -788,29 +788,40 @@ void dash_utils::pack_data_to_hmi(uint8_t* buffer, Human_dyn_data data)
     }
 }
 
+std::chrono::high_resolution_clock::time_point last_comms_print_time;
+
 void dash_utils::print_human_dyn_data(const Human_dyn_data& data)
 {
-    std::cout << "xH: " << data.xH << std::endl;
-    std::cout << "dxH: " << data.dxH << std::endl;
-    std::cout << "pxH: " << data.pxH << std::endl;
-    std::cout << "yH: " << data.yH << std::endl;
-    std::cout << "dyH: " << data.dyH << std::endl;
-    std::cout << "pyH: " << data.pyH << std::endl;
-    std::cout << "fxH_R: " << data.fxH_R << std::endl;
-    std::cout << "fyH_R: " << data.fyH_R << std::endl;
-    std::cout << "fzH_R: " << data.fzH_R << std::endl;
-    std::cout << "fxH_L: " << data.fxH_L << std::endl;
-    std::cout << "fyH_L: " << data.fyH_L << std::endl;
-    std::cout << "fzH_L: " << data.fzH_L << std::endl;
-    std::cout << "fdxH_R: " << data.fdxH_R << std::endl;
-    std::cout << "fdyH_R: " << data.fdyH_R << std::endl;
-    std::cout << "fdzH_R: " << data.fdzH_R << std::endl;
-    std::cout << "fdxH_L: " << data.fdxH_L << std::endl;
-    std::cout << "fdyH_L: " << data.fdyH_L << std::endl;
-    std::cout << "fdzH_L: " << data.fdzH_L << std::endl;
-    std::cout << "FxH_hmi: " << data.FxH_hmi << std::endl;
-    std::cout << "FyH_hmi: " << data.FyH_hmi << std::endl;
-    std::cout << "FxH_spring: " << data.FxH_spring << std::endl;
+    std::chrono::high_resolution_clock::time_point time_now = std::chrono::high_resolution_clock::now();
+    std::chrono::nanoseconds elapsed_time_since_print = std::chrono::duration_cast<std::chrono::nanoseconds>(time_now - last_comms_print_time);
+    double elapsed_time_since_print_ms = static_cast<double>(elapsed_time_since_print.count()) / 1000000.0;
+    if(elapsed_time_since_print_ms > 20)
+    {
+        last_comms_print_time = std::chrono::high_resolution_clock::now();
+        std::cout << "xH: " << data.xH << std::endl;
+        std::cout << "dxH: " << data.dxH << std::endl;
+        std::cout << "pxH: " << data.pxH << std::endl;
+        std::cout << "yH: " << data.yH << std::endl;
+        std::cout << "dyH: " << data.dyH << std::endl;
+        std::cout << "pyH: " << data.pyH << std::endl;
+        std::cout << "fxH_R: " << data.fxH_R << std::endl;
+        std::cout << "fyH_R: " << data.fyH_R << std::endl;
+        std::cout << "fzH_R: " << data.fzH_R << std::endl;
+        std::cout << "fxH_L: " << data.fxH_L << std::endl;
+        std::cout << "fyH_L: " << data.fyH_L << std::endl;
+        std::cout << "fzH_L: " << data.fzH_L << std::endl;
+        std::cout << "fdxH_R: " << data.fdxH_R << std::endl;
+        std::cout << "fdyH_R: " << data.fdyH_R << std::endl;
+        std::cout << "fdzH_R: " << data.fdzH_R << std::endl;
+        std::cout << "fdxH_L: " << data.fdxH_L << std::endl;
+        std::cout << "fdyH_L: " << data.fdyH_L << std::endl;
+        std::cout << "fdzH_L: " << data.fdzH_L << std::endl;
+        std::cout << "FxH_hmi: " << data.FxH_hmi << std::endl;
+        std::cout << "FyH_hmi: " << data.FyH_hmi << std::endl;
+        std::cout << "FxH_spring: " << data.FxH_spring << std::endl;
+        std::cout << "================================================================" << std::endl;
+        std::cout << std::endl;
+    }
 }
 
 void dash_utils::rotate_foot(Eigen::Vector3d& point1, Eigen::Vector3d& point2, double theta) {

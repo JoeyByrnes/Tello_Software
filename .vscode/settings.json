@@ -145,6 +145,13 @@
         "matrixf": "cpp",
         "light": "cpp",
         "csignal": "cpp",
-        "regex": "cpp"
+        "regex": "cpp",
+        "drawable": "cpp",
+        "nodevisitor": "cpp",
+        "plane": "cpp",
+        "referenced": "cpp",
+        "shape": "cpp",
+        "view": "cpp",
+        "ref_ptr": "cpp"
     }
 }

@@ -22,7 +22,7 @@ void dash_init::Human_Init(Human_params &Human_params, Human_dyn_data &Human_dyn
 
     // lower-body joysticks
     Human_dyn_data.fxH_R = 0.0; // human right end effector (x-position)
-    Human_dyn_data.fyH_R = 0.0; // human right end effector (y-position)
+    Human_dyn_data.fyH_R = 0.0; // human right end effector (y-position) //default is 0.494 from center
     Human_dyn_data.fzH_R = 0.0; // human right end effector (z-position)
     Human_dyn_data.fxH_L = 0.0; // human left end effector (x-position)
     Human_dyn_data.fyH_L = 0.0; // human left end effector (y-position)
@@ -342,7 +342,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.beta_trans = 0.465; // transmission kinematics beta term
         srb_params.gamma_trans = 0.5; // transmission kinematics gamma term
         srb_params.Fz_min_QP = 0.0; // vertical force min to make sure no pulling on the ground (force distribution QP)
-        srb_params.Fz_min_FSM = 0.1; // vertical force min to detect when foot breaks contact (FSM) 
+        srb_params.Fz_min_FSM = 5; // vertical force min to detect when foot breaks contact (FSM) 
 
         // joint limits
         srb_params.q1_lim << -M_PI/9, M_PI/9;

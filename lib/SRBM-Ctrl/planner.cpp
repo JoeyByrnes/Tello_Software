@@ -152,50 +152,52 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     // From DSP can switch to SSP_L or SSP_R based on front toe z-direction GRFs
     // From SSP_L can switch to DSP based on right foot z-position
     // From SSP_R can switch to DSP based on left foot z-position
+
+    //cout << "next_SSP: " << next_SSP << "   u1z: " << u1z  << "   u2z: " << u2z  << endl;
     
     int FSM_next;
     //cout << FSM_prev << "\t " << u1z << "\t " << u3z <<endl;
-    if (FSM_prev == 0) // currently in DSP
-    {
-        if ( (u1z < Fz_min || u2z < Fz_min) && t > 0 && t_dsp > 0.002 && next_SSP == 1) // enter SSP_L
-        {
-            FSM_next = 1;
-        }
-        else if ( (u3z < Fz_min || u4z < Fz_min) && t > 0 && t_dsp > 0.002 && next_SSP == -1) // enter SSP_R 
-        {
-            FSM_next = -1;     
-        }
-        else // stay in DSP 
-        {
-            FSM_next = 0;
-        }
-    }
-    else if (FSM_prev == 1) // currently in SSP_L
-    {
-        if ( (lf1z <= 0.0 || lf2z <= 0.0) && s > 0.5) // enter DSP
-        {
-            FSM_next = 0;
-        }
-        else // stay in SSP_L
-        {
-            FSM_next = 1;
-        }
-    }
-    else if (FSM_prev == -1) // currently in SSP_R
-    {
-        if ( (lf3z <= 0.0 || lf3z <= 0.0) && s > 0.5) // enter DSP
-        {
-            FSM_next = 0;
-        }
-        else // stay in SSP_R
-        {
-            FSM_next = -1;
-        } 
-    }
-    else // should not end up here
-    {
-        FSM_next = 0;
-    }
+    // if (FSM_prev == 0) // currently in DSP
+    // {
+    //     if ( (u1z < Fz_min || u2z < Fz_min) && t > 0 && t_dsp > 0.002 && next_SSP == 1) // enter SSP_L
+    //     {
+    //         FSM_next = 1;
+    //     }
+    //     else if ( (u3z < Fz_min || u4z < Fz_min) && t > 0 && t_dsp > 0.002 && next_SSP == -1) // enter SSP_R 
+    //     {
+    //         FSM_next = -1;     
+    //     }
+    //     else // stay in DSP 
+    //     {
+    //         FSM_next = 0;
+    //     }
+    // }
+    // else if (FSM_prev == 1) // currently in SSP_L
+    // {
+    //     if ( (lf1z <= 0.0 || lf2z <= 0.0) && s > 0.5) // enter DSP
+    //     {
+    //         FSM_next = 0;
+    //     }
+    //     else // stay in SSP_L
+    //     {
+    //         FSM_next = 1;
+    //     }
+    // }
+    // else if (FSM_prev == -1) // currently in SSP_R
+    // {
+    //     if ( (lf3z <= 0.0 || lf3z <= 0.0) && s > 0.5) // enter DSP
+    //     {
+    //         FSM_next = 0;
+    //     }
+    //     else // stay in SSP_R
+    //     {
+    //         FSM_next = -1;
+    //     } 
+    // }
+    // else // should not end up here
+    // {
+    //     FSM_next = 0;
+    // }
 
     return FSM_next;
 
@@ -387,6 +389,7 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
     if (planner_type == 2) {
         traj_planner_dyn_data.stepping_flg = true;
         t_end_stepping = 1e6;
+        traj_planner_dyn_data.next_SSP = 1;
     }
 
     // stepping dynamic data

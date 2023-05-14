@@ -21,7 +21,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
     double lmaxR = srb_params.lmaxR;
     double g = srb_params.g; 
     double xDCMH_deadband = srb_params.xDCMH_deadband;
-    double KxDCMH = srb_params.KxDCMH;
+    double KxDCMH = 2.0;//srb_params.KxDCMH;
     double Kx_DCM_mult = srb_params.Kx_DCM_mult;
     double Ky_DCM_mult = srb_params.Ky_DCM_mult;
     double T_DSP = srb_params.T_DSP;
@@ -122,6 +122,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
     // human reference trajectory (based on analytical solution to LIP dyn.)
     double xDCMH0_ref = xH0_ref + (dxH0_ref/wH); // initial human DCM of reference trajectory
     double xDCMH_ref = xDCMH0_ref*exp(wH*t_step); // human DCM reference trajectory at current time step
+    //cout << "xDCMH_ref: " << xDCMH_ref << "   xH: " << xH << endl;
     double xH_ref, dxH_ref;
     dash_utils::LIP_dyn_ref(t_step, wH, xH0_ref, dxH0_ref, xH_ref, dxH_ref);
 
@@ -184,8 +185,8 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
     // walking reference LIP and robot LIP at step transitions
 
     // initialize commanded end-effector positions (DSP)
-    lfv_comm = lfv;
-    lfdv_comm = lfdv;
+    lfv_comm = lfv_dsp_start;
+    lfdv_comm.setZero();
 
     // swing-leg trajectories
     if (abs(FSM) == 1) { // SSP
@@ -311,7 +312,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
     MatrixXd A_S2S(2, 2);
     VectorXd B_S2S(2);
     Vector3d LIPR_params, LIPH_params;
-
+    
     // Step time variable
     if (abs(FSM) == 1) { // SSP
         t_step = t - t_sw_start;
@@ -320,6 +321,8 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
     }
     // Compute phase variable
     s = t_step / T_step;     
+
+    // cout << "x_HWRM: " << x_HWRM << "     dx_HWRM: " << dx_HWRM << "    t_step: " << t_step;
 
     // Get SRB states
     xR = x(0);
@@ -433,8 +436,8 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
     // walking reference LIP and robot LIP at step transitions
 
     // initialize commanded end-effector positions (DSP)
-    lfv_comm = lfv;
-    lfdv_comm = lfdv;
+    lfv_comm = lfv_dsp_start;
+    lfdv_comm.setZero();
 
     // swing-leg trajectories
     if (abs(FSM) == 1) { // SSP
@@ -469,6 +472,8 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
         // Optimal control policy for HWRM-LIP (based on S2S dynamics)
         dash_ctrl::opt_stepping_controller(uk_HWRM, xk_HWRM, xk_HWRM_des, Ts, T_DSP, wH);
         traj_planner_dyn_data.uk_HWRM = uk_HWRM;
+
+        cout << "    Controller uk_HWRM: " << uk_HWRM << endl;
 
         // S2S Dynamics (next-step)
         dash_dyn::HLIP_S2S_Dyn(A_S2S, B_S2S, Ts, T_DSP, wH);

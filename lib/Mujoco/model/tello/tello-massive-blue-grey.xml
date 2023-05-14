@@ -51,7 +51,7 @@
   
   <worldbody>
   
- 	<geom name ='floor' pos ='0 0 -0.7' size ='8 8 .125' type = 'plane' material ='MatPlane' condim = '3' conaffinity = '15'/>
+ 	<geom name ='floor' pos ='0 0 -0.65' size ='8 8 .125' type = 'plane' material ='MatPlane' condim = '3' conaffinity = '15'/>
 	<!-- <light mode ='trackcom' pos = '0 0 5' dir = '0 0 -1'/> -->
 	<light directional = 'true' pos = '0 0 3' dir = '0 0 -1' diffuse = '0.2 0.2 0.2' specular = '0 0 0'/>	 
     <light name="com_light" mode='trackcom' pos='10 0 10' dir='-1 0 -1' castshadow="false"/>

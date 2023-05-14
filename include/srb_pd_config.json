@@ -18,10 +18,10 @@
     },
     
     "Posture_Control": {
-      "Hip_Yaw_Kp": 100,
+      "Hip_Yaw_Kp": 500,
       "Hip_Yaw_Kd": 10,
       
-      "Hip_Roll_Kp": 100,
+      "Hip_Roll_Kp": 2000,
       "Hip_Roll_Kd": 10,
       
       "Hip_Pitch_Kp": 100,

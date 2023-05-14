@@ -594,6 +594,11 @@ ImVec4 hex2ImVec4(int hex)
 {
     return ImVec4(((hex & 0xFF0000) >> 16)/ 255.0f, ((hex & 0xFF00) >> 8)/ 255.0f, (hex & 0xFF)/255.0f, 1.0f);
 }
+double last_Xf = 0;
+double last_Yf = 0;
+double last_springf = 0;
+bool controller_unstable = false;
+
 
 void* mujoco_Update_1KHz( void * arg )
 {
@@ -790,9 +795,9 @@ void* mujoco_Update_1KHz( void * arg )
                 //mjtNum simstart = d->time;
                 //while (d->time - simstart < 1.0 / 60.0){
                     d->time = d->time + elapsed;
-                    dash_utils::start_timer();
+                    //dash_utils::start_timer();
                     TELLO_locomotion_ctrl(m,d);
-                    dash_utils::print_timer();
+                    //dash_utils::print_timer();
                     set_mujoco_state(tello->controller->get_x());
                     mj_kinematics(m,d);
                 //}
@@ -840,6 +845,10 @@ void* mujoco_Update_1KHz( void * arg )
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.6f, 0.2f, 0.0f, 1.0f)); // set active color
         if (ImGui::Button("  Restart  ")) {
             pause_sim = true;
+            controller_unstable = false;
+            last_Xf = 0;
+            last_Yf = 0;
+            last_springf = 0;
             tello->controller->disable_human_ctrl();
             mj_resetData(m, d);
             //tello->resetController();
@@ -866,7 +875,7 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.45f, 0.0f, 0.45f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.65f, 0.0f, 0.65f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.25f, 0.0f, 0.25f, 1.0f));
-            if (ImGui::Button("  Pause  ")) {
+            if (ImGui::Button("  Pause  ") || controller_unstable) {
                 pause_sim = true;
                 tello->controller->disable_human_ctrl();
             }
@@ -912,7 +921,15 @@ void* mujoco_Update_1KHz( void * arg )
 
         //handle UDP transmit here:
 		Human_dyn_data hdd = tello->controller->get_human_dyn_data();
-		if(tello->controller->is_human_ctrl_enabled())
+
+        if( (fabs(hdd.FxH_hmi - last_Xf) > 100) || (fabs(hdd.FyH_hmi - last_Yf) > 100) || (fabs(hdd.FxH_spring - last_springf) > 100)){
+            controller_unstable = true;
+        }
+        last_Xf = hdd.FxH_hmi;
+        last_Yf = hdd.FyH_hmi;
+        last_springf = hdd.FxH_spring;
+
+		if(tello->controller->is_human_ctrl_enabled() && !controller_unstable)
 		{
 			hdd.FxH_hmi = 0;
             hdd.FxH_spring = 0;

@@ -156,48 +156,48 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     //cout << "next_SSP: " << next_SSP << "   u1z: " << u1z  << "   u2z: " << u2z  << endl;
     
     int FSM_next;
-    //cout << FSM_prev << "\t " << u1z << "\t " << u3z <<endl;
-    // if (FSM_prev == 0) // currently in DSP
-    // {
-    //     if ( (u1z < Fz_min || u2z < Fz_min) && t > 0 && t_dsp > 0.002 && next_SSP == 1) // enter SSP_L
-    //     {
-    //         FSM_next = 1;
-    //     }
-    //     else if ( (u3z < Fz_min || u4z < Fz_min) && t > 0 && t_dsp > 0.002 && next_SSP == -1) // enter SSP_R 
-    //     {
-    //         FSM_next = -1;     
-    //     }
-    //     else // stay in DSP 
-    //     {
-    //         FSM_next = 0;
-    //     }
-    // }
-    // else if (FSM_prev == 1) // currently in SSP_L
-    // {
-    //     if ( (lf1z <= 0.0 || lf2z <= 0.0) && s > 0.5) // enter DSP
-    //     {
-    //         FSM_next = 0;
-    //     }
-    //     else // stay in SSP_L
-    //     {
-    //         FSM_next = 1;
-    //     }
-    // }
-    // else if (FSM_prev == -1) // currently in SSP_R
-    // {
-    //     if ( (lf3z <= 0.0 || lf3z <= 0.0) && s > 0.5) // enter DSP
-    //     {
-    //         FSM_next = 0;
-    //     }
-    //     else // stay in SSP_R
-    //     {
-    //         FSM_next = -1;
-    //     } 
-    // }
-    // else // should not end up here
-    // {
-    //     FSM_next = 0;
-    // }
+    // cout << FSM_prev << "\t u1z:" << u1z << "\t u2z" << u3z << "\t t_dsp" << t_dsp << endl;
+    if (FSM_prev == 0) // currently in DSP
+    {
+        if ( (u1z < Fz_min || u2z < Fz_min) && t > 0 && t_dsp > 0.002 && next_SSP == 1) // enter SSP_L
+        {
+            FSM_next = 1;
+        }
+        else if ( (u3z < Fz_min || u4z < Fz_min) && t > 0 && t_dsp > 0.002 && next_SSP == -1) // enter SSP_R 
+        {
+            FSM_next = -1;     
+        }
+        else // stay in DSP 
+        {
+            FSM_next = 0;
+        }
+    }
+    else if (FSM_prev == 1) // currently in SSP_L
+    {
+        if ( (lf1z <= 0.0 || lf2z <= 0.0) && s > 0.5) // enter DSP
+        {
+            FSM_next = 0;
+        }
+        else // stay in SSP_L
+        {
+            FSM_next = 1;
+        }
+    }
+    else if (FSM_prev == -1) // currently in SSP_R
+    {
+        if ( (lf3z <= 0.0 || lf3z <= 0.0) && s > 0.5) // enter DSP
+        {
+            FSM_next = 0;
+        }
+        else // stay in SSP_R
+        {
+            FSM_next = -1;
+        } 
+    }
+    else // should not end up here
+    {
+        FSM_next = 0;
+    }
 
     return FSM_next;
 
@@ -320,7 +320,7 @@ void dash_planner::SRB_Traj_Planner(
             dash_ctrl::LIP_ang_mom_strat(FxR, FyR, lfv_comm, lfdv_comm, srb_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv);
         } else if (planner_type == 2) { // Human Whole-Body Dynamic Telelocomotion
             // Human pilot is the planner
-            dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(FxR, FyR, lfv_comm, lfdv_comm, human_dyn_data, srb_params, human_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv, tau_ext);  
+            dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(FxR, FyR, lfv_comm, lfdv_comm, human_dyn_data, srb_params, human_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv, tau_ext);  
         }
         
         // SRB state reference (regulate all around SRB states around zero)
@@ -344,7 +344,7 @@ void dash_planner::SRB_Traj_Planner(
 
 }
 
-
+bool first_time = true;
 void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_params& human_params, Traj_planner_dyn_data& traj_planner_dyn_data, Human_dyn_data human_dyn_data,double t,int FSM_prev,int FSM, VectorXd x, MatrixXd lfv)
 {
     // Parameters
@@ -361,6 +361,7 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
     double x_HWRM = traj_planner_dyn_data.x_HWRM;
     double dx_HWRM = traj_planner_dyn_data.dx_HWRM;
     double uk_HWRM = traj_planner_dyn_data.uk_HWRM;
+    cout << "    Planner uk_HWRM: " << uk_HWRM;
 
     // Get SRB states
     VectorXd pc = x.head(3);
@@ -389,7 +390,12 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
     if (planner_type == 2) {
         traj_planner_dyn_data.stepping_flg = true;
         t_end_stepping = 1e6;
-        traj_planner_dyn_data.next_SSP = 1;
+        if(first_time)
+        {
+            traj_planner_dyn_data.next_SSP = 1;
+            lfv_dsp_start = lfv;
+            first_time = false;
+        }
     }
 
     // stepping dynamic data

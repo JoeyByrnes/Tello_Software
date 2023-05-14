@@ -92,6 +92,9 @@ VectorXd SRBMController::update(VectorXd srb_state, MatrixXd joint_pos, MatrixXd
     // SRB controller
     
 	dash_ctrl::SRB_Balance_Controller(u, tau, srb_params, FSM, x, lfv, qd, Jv_mat, u, SRB_wrench_ref);
+
+    // cout << "Tau: " << tau.transpose() << endl;
+    // cout << "GRFs: " << u.transpose() << endl;
     
     if(FSM == 1 && FSM_prev == 0)
     {
@@ -129,7 +132,7 @@ VectorXd SRBMController::update(VectorXd srb_state, MatrixXd joint_pos, MatrixXd
     // cout << lfv_comm  << endl;
     // cout << "===============================" << endl;
     // cout << endl;
-    cout << "FSM: " << FSM << endl;
+    // cout << "FSM: " << FSM << endl;
 
     FSM_prev = FSM;
     // Return joint torques

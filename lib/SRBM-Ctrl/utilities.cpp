@@ -492,6 +492,87 @@ void dash_utils::writeMatrixToCsv(const MatrixXd& mat, const std::string& filena
     file.close();
 }
 
+void dash_utils::writeHumanDynDataToCsv(const Human_dyn_data& data, const std::string& filename) {
+    std::ofstream file(_foldername + filename, std::ios::app);
+
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file for writing: " << filename << std::endl;
+        return;
+    }
+
+    const char* delimiter = ",";
+    const char* newline = "\n";
+
+    file << data.xH << delimiter
+         << data.dxH << delimiter
+         << data.pxH << delimiter
+         << data.yH << delimiter
+         << data.dyH << delimiter
+         << data.pyH << delimiter
+         << data.fxH_R << delimiter
+         << data.fyH_R << delimiter
+         << data.fzH_R << delimiter
+         << data.fxH_L << delimiter
+         << data.fyH_L << delimiter
+         << data.fzH_L << delimiter
+         << data.fdxH_R << delimiter
+         << data.fdyH_R << delimiter
+         << data.fdzH_R << delimiter
+         << data.fdxH_L << delimiter
+         << data.fdyH_L << delimiter
+         << data.fdzH_L << delimiter
+         << data.FxH_hmi << delimiter
+         << data.FyH_hmi << delimiter
+         << data.FxH_spring << newline;
+
+    file.close();
+}
+
+void dash_utils::writeTrajPlannerDataToCsv(const Traj_planner_dyn_data& data, const std::string& filename) {
+    std::ofstream file(_foldername + filename, std::ios::app);
+
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file for writing: " << filename << std::endl;
+        return;
+    }
+
+    const char* delimiter = ",";
+    const char* newline = "\n";
+
+    file << (data.stepping_flg ? 1 : 0) << delimiter
+         << data.T_step << delimiter
+         << data.t_sw_start << delimiter
+         << data.t_dsp_start << delimiter
+         << data.next_SSP << delimiter
+         << data.step_width << delimiter
+         << data.st2CoM_beg_step.x() << delimiter
+         << data.st2CoM_beg_step.y() << delimiter
+         << data.st2CoM_beg_step.z() << delimiter
+         << data.sw2CoM_beg_step.x() << delimiter
+         << data.sw2CoM_beg_step.y() << delimiter
+         << data.sw2CoM_beg_step.z() << delimiter
+         << data.xLIP_init.x() << delimiter
+         << data.xLIP_init.y() << delimiter
+         << data.sw_beg_step.x() << delimiter
+         << data.sw_beg_step.y() << delimiter
+         << data.sw_beg_step.z() << delimiter
+         << data.human_leg_joystick_pos_beg_step.x() << delimiter
+         << data.human_leg_joystick_pos_beg_step.y() << delimiter
+         << data.human_leg_joystick_pos_beg_step.z() << delimiter
+         << data.sigma1H << delimiter
+         << (data.left_in_contact ? 1 : 0) << delimiter
+         << (data.right_in_contact ? 1 : 0) << delimiter
+         << data.left_off_gnd_cnt << delimiter
+         << data.right_off_gnd_cnt << delimiter
+         << data.x_HWRM << delimiter
+         << data.dx_HWRM << delimiter
+         << data.x_plus_HWRM.x() << delimiter
+         << data.x_plus_HWRM.y() << delimiter
+         << data.uk_HWRM << newline;
+
+    file.close();
+}
+
 void dash_utils::writeSRBParamsToTxt(const SRB_Params& params, const std::string& filename)
 {
     std::ofstream file(_foldername + filename);
@@ -572,6 +653,93 @@ void dash_utils::writeSRBParamsToTxt(const SRB_Params& params, const std::string
     }
 }
 
+std::vector<Human_dyn_data> dash_utils::readHumanDynDataFromFile(const std::string& filename) 
+{
+    std::ifstream file(filename);
+    std::vector<Human_dyn_data> dataVector;
+
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file for reading: " << filename << std::endl;
+        return dataVector; // Return empty vector on failure
+    }
+
+    std::string line;
+    while (std::getline(file, line)) {
+        std::stringstream ss(line);
+        Human_dyn_data data;
+
+        std::string value;
+        std::getline(ss, value, ',');
+        data.xH = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.dxH = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.pxH = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.yH = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.dyH = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.pyH = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.fxH_R = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.fyH_R = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.fzH_R = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.fxH_L = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.fyH_L = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.fzH_L = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.fdxH_R = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.fdyH_R = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.fdzH_R = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.fdxH_L = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.fdyH_L = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.fdzH_L = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.FxH_hmi = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.FyH_hmi = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data.FxH_spring = std::stof(value);
+
+        dataVector.push_back(data);
+        }
+
+        file.close();
+        return dataVector;
+
+}
+
 // Function to convert foot position in world frame to hip frame
 Vector3d dash_utils::worldToHip(Vector3d foot_pos_world, Vector3d hip_pos_world, Vector3d hip_orient_world)
 {
@@ -628,7 +796,7 @@ void dash_utils::parse_json_to_srb_params(const std::string& json_file_path, SRB
   // Open the JSON file
   std::ifstream json_file(json_file_path);
   if (!json_file.is_open()) {
-    std::cerr << "Error: could not open JSON file\n";
+    std::cerr << "Error: could not open JSON file for SRB_Params\n";
     return;
   }
 
@@ -673,7 +841,7 @@ void dash_utils::parse_json_to_pd_params(const std::string& json_file_path, Join
   // Open the JSON file
   std::ifstream json_file(json_file_path);
   if (!json_file.is_open()) {
-    std::cerr << "Error: could not open JSON file\n";
+    std::cerr << "Error: could not open JSON file for PD params\n";
     return;
   }
 
@@ -698,6 +866,8 @@ void dash_utils::parse_json_to_pd_params(const std::string& json_file_path, Join
     posture.knee_Kd = json_data["Posture_Control"]["Knee_Kd"].get<double>();
     posture.ankle_Kp = json_data["Posture_Control"]["Ankle_Kp"].get<double>();
     posture.ankle_Kd = json_data["Posture_Control"]["Ankle_Kd"].get<double>();
+
+    printJointPDConfig(posture);
     
   } catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << "\n";
@@ -718,6 +888,20 @@ void dash_utils::parse_json_to_pd_params(const std::string& json_file_path, Join
     std::cerr << "Error: " << e.what() << "\n";
     return;
   }
+}
+
+void dash_utils::printJointPDConfig(const Joint_PD_config& config)
+{
+    std::cout << "hip_yaw_Kp: " << config.hip_yaw_Kp << std::endl;
+    std::cout << "hip_yaw_Kd: " << config.hip_yaw_Kd << std::endl;
+    std::cout << "hip_roll_Kp: " << config.hip_roll_Kp << std::endl;
+    std::cout << "hip_roll_Kd: " << config.hip_roll_Kd << std::endl;
+    std::cout << "hip_pitch_Kp: " << config.hip_pitch_Kp << std::endl;
+    std::cout << "hip_pitch_Kd: " << config.hip_pitch_Kd << std::endl;
+    std::cout << "knee_Kp: " << config.knee_Kp << std::endl;
+    std::cout << "knee_Kd: " << config.knee_Kd << std::endl;
+    std::cout << "ankle_Kp: " << config.ankle_Kp << std::endl;
+    std::cout << "ankle_Kd: " << config.ankle_Kd << std::endl;
 }
 
 std::chrono::high_resolution_clock::time_point start_time;
@@ -871,4 +1055,30 @@ double dash_utils::smoothVelocity(const Eigen::VectorXd& vel, double smoothingFa
     }
 
     return smoothedVel(n - 1);
+}
+
+double dash_utils::EMA(const VectorXd& circularBuffer, int latestSampleIndex, int numPreviousSamples, double smoothingParameter) {
+    int bufferSize = circularBuffer.size();
+    
+    // Create a mask to select the previous samples
+    VectorXi mask(numPreviousSamples);
+    for (int i = 0; i < numPreviousSamples; ++i) {
+        int index = (latestSampleIndex - i - 1 + bufferSize) % bufferSize;
+        mask(i) = index;
+    }
+    
+    // Extract the previous samples from the circular buffer using the mask
+    VectorXd previousSamples = circularBuffer(mask);
+    
+    // Compute the weights for the previous samples
+    double weight = 1.0 - smoothingParameter;
+    VectorXd weights = VectorXd::Constant(numPreviousSamples, weight);
+    for (int i = 1; i < numPreviousSamples; ++i)
+        weights(i) = weights(i - 1) * weight;
+    
+    // Compute the weighted average
+    double normalizationFactor = weights.sum();
+    VectorXd weightedAverage = (weights.array() / normalizationFactor) * previousSamples.array();
+    
+    return weightedAverage.sum();
 }

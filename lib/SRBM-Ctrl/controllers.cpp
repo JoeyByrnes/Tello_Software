@@ -234,7 +234,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
             lfv_comm(0,1) = swy0 + (hR/hH)*(fyH_R - fyH0); lfv_comm(1,1) = lfv_comm(0,1);
             lfdv_comm(0,1) = (wR/wH)*fdyH_R; lfdv_comm(1,1) = lfdv_comm(0,1);
             // z-position trajectories
-            lfv_comm(0,2) = swz0 + (hR/hH)*(fzH_R - fzH0); lfv_comm(1,2) = lfv_comm(0,2);
+            lfv_comm(0,2) = swz0 + (hR/hH)*(std::max(0.0,(fzH_R - fzH0))); lfv_comm(1,2) = lfv_comm(0,2);
             lfdv_comm(0,2) = (wR/wH)*fdzH_R; lfdv_comm(1,2) = lfdv_comm(0,2);
         }
         else if (FSM == -1) { // SSP_R
@@ -245,7 +245,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
             lfv_comm(2,1) = swy0 - (hR/hH)*(fyH_L - fyH0); lfv_comm(3,1) = lfv_comm(2,1);
             lfdv_comm(2,1) = (wR/wH)*fdyH_L; lfdv_comm(3,1) = lfdv_comm(2,1);
             // z-position trajectories
-            lfv_comm(2,2) = swz0 + (hR/hH)*(fzH_L - fzH0); lfv_comm(3,2) = lfv_comm(2,2);
+            lfv_comm(2,2) = swz0 + (hR/hH)*(std::max(0.0,(fzH_L - fzH0))); lfv_comm(3,2) = lfv_comm(2,2);
             lfdv_comm(2,2) = (wR/wH)*fdzH_L; lfdv_comm(3,2) = lfdv_comm(2,2);
         }
 
@@ -473,7 +473,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
         dash_ctrl::opt_stepping_controller(uk_HWRM, xk_HWRM, xk_HWRM_des, Ts, T_DSP, wH);
         traj_planner_dyn_data.uk_HWRM = uk_HWRM;
 
-        cout << "    Controller uk_HWRM: " << uk_HWRM << endl;
+        // cout << "    Controller uk_HWRM: " << uk_HWRM << endl;
 
         // S2S Dynamics (next-step)
         dash_dyn::HLIP_S2S_Dyn(A_S2S, B_S2S, Ts, T_DSP, wH);

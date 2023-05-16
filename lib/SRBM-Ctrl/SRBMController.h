@@ -186,6 +186,7 @@ class SRBMController {
     void enable_human_ctrl(){ enable_human_dyn_data = true;}
     void disable_human_ctrl(){ enable_human_dyn_data = false;}
     bool is_human_ctrl_enabled(){return enable_human_dyn_data; }
+    bool human_playback_enabled(){return using_human_playback; }
 
   private:
 
@@ -244,6 +245,7 @@ class SRBMController {
     int simulation_mode = 1;
 
     bool enable_human_dyn_data = false;
+    bool using_human_playback = false;
 
 
 };

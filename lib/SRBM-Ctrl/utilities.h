@@ -37,6 +37,11 @@ namespace  dash_utils
     VectorXd flatten(MatrixXd matrix); 
     void writeVectorToCsv(const VectorXd& vec, const std::string& filename);
     void writeMatrixToCsv(const MatrixXd& mat, const std::string& filename);
+    void writeHumanDynDataToCsv(const Human_dyn_data& data, const std::string& filename);
+
+    std::vector<Human_dyn_data> readHumanDynDataFromFile(const std::string& filename);
+
+    void writeTrajPlannerDataToCsv(const Traj_planner_dyn_data& data, const std::string& filename);
     void setOutputFolder(const std::string& foldername);
 
     void writeSRBParamsToTxt(const SRB_Params& params, const std::string& filename);
@@ -46,6 +51,8 @@ namespace  dash_utils
 
     void parse_json_to_pd_params(const std::string& json_file_path, Joint_PD_config& swing, Joint_PD_config& posture);
     void parse_json_to_srb_params(const std::string& json_file_path, SRB_Params& params); 
+
+    void printJointPDConfig(const Joint_PD_config& config);
 
     void start_timer();
     void print_timer();
@@ -59,5 +66,6 @@ namespace  dash_utils
     void rotate_foot(Eigen::Vector3d& point1, Eigen::Vector3d& point2, double theta);
 
     double smoothVelocity(const Eigen::VectorXd& vel, double smoothingFactor);
+    double EMA(const VectorXd& circularBuffer, int latestSampleIndex, int numPreviousSamples, double smoothingParameter);
 
 }

@@ -322,7 +322,9 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     lfdv_hip.row(0) = task_velocities.segment<3>(6);
     lfdv_hip.row(1) = task_velocities.segment<3>(9);
     if(simulation_mode == 1)
+    {
         controller->set_lfdv_hip(lfdv_hip);
+    }
 
 	// call SRBM-Ctrl here ======================================================================================
     double CoM_z = controller->get_CoM_z(controller->get_lfv_hip(),gnd_contacts,EA_curr); 
@@ -417,7 +419,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
         posture_pd_config.setJointKd(kd_vec_joint_posture);
 
         VectorXd posture_ctrl_torques = tello->taskPD2(posture_pd_config);
-
+        
         // END TASK PD CODE ======================================+++++++++++++++++
         VectorXd tau_LR(10);
         tau_LR << tau.tail(5), tau.head(5);
@@ -438,18 +440,18 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
         applyJointTorquesMujoco(tau_LR_muxed);
 
         // begin update filter states: ------------------------------------------------------
-        RoboDesignLab::IMU_data imu_data;
-        imu_data.timestamp = t;
-        imu_data.acc = imu_acc;
-        imu_data.gyro = imu_gyro;
-        pthread_mutex_lock(&EKF_mutex);
-        filter_state = tello->get_filter_state();
-        pthread_mutex_unlock(&EKF_mutex);
-        tello->set_imu_data_for_ekf(imu_data);
-        tello->set_gnd_contact_data_for_ekf(gnd_contacts);
-        tello->set_lfv_hip_data_for_ekf(tello->controller->get_lfv_hip());
-        tello->set_q_data_for_ekf(q);
-        filter_data_ready = true;
+        // RoboDesignLab::IMU_data imu_data;
+        // imu_data.timestamp = t;
+        // imu_data.acc = imu_acc;
+        // imu_data.gyro = imu_gyro;
+        // pthread_mutex_lock(&EKF_mutex);
+        // filter_state = tello->get_filter_state();
+        // pthread_mutex_unlock(&EKF_mutex);
+        // tello->set_imu_data_for_ekf(imu_data);
+        // tello->set_gnd_contact_data_for_ekf(gnd_contacts);
+        // tello->set_lfv_hip_data_for_ekf(tello->controller->get_lfv_hip());
+        // tello->set_q_data_for_ekf(q);
+        // filter_data_ready = true;
 
         
         // Matrix3d Rwb_filter = filter_state.getRotation();
@@ -492,20 +494,29 @@ void initializeSRBMCtrl()
     if (std::filesystem::is_directory("/home/tello")) {
         //std::cout << "The directory /home/tello exists!" << std::endl;
         if(simulation_mode == 1)
+        {
+            cout << "RUNNING ON TELLO" << endl;
             dash_utils::parse_json_to_srb_params("tello_files/srb_pd_config.json",srb_params);
             dash_utils::parse_json_to_pd_params("tello_files/srb_pd_config.json",swing_conf,posture_conf);
+        }
         if(simulation_mode == 2)
+        {
             dash_utils::parse_json_to_srb_params("tello_files/srb_pd_config_SRBsim.json",srb_params);
-            dash_utils::parse_json_to_pd_params("tello_files/srb_pd_config.json",swing_conf,posture_conf);
+            dash_utils::parse_json_to_pd_params("tello_files/srb_pd_config_SRBsim.json",swing_conf,posture_conf);
+        }
     }
     else {
         //std::cout << "The directory /home/tello does not exist!" << std::endl;
         if(simulation_mode == 1)
+        {
             dash_utils::parse_json_to_srb_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",srb_params);
             dash_utils::parse_json_to_pd_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",swing_conf,posture_conf);
+        }
         if(simulation_mode == 2)
+        {
             dash_utils::parse_json_to_srb_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config_SRBsim.json",srb_params);
-            dash_utils::parse_json_to_pd_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",swing_conf,posture_conf);
+            dash_utils::parse_json_to_pd_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config_SRBsim.json",swing_conf,posture_conf);
+        }
             
     }
     
@@ -520,52 +531,55 @@ void initializeSRBMCtrl()
                             posture_conf.hip_yaw_Kp, posture_conf.hip_roll_Kp,posture_conf.hip_pitch_Kp, posture_conf.knee_Kp, posture_conf.ankle_Kp;
     kd_vec_joint_posture << posture_conf.hip_yaw_Kd, posture_conf.hip_roll_Kd,posture_conf.hip_pitch_Kd, posture_conf.knee_Kd, posture_conf.ankle_Kd,
                             posture_conf.hip_yaw_Kd, posture_conf.hip_roll_Kd,posture_conf.hip_pitch_Kd, posture_conf.knee_Kd, posture_conf.ankle_Kd;
-    
-    //if(simulation_mode == 1)
-    //{
-        printf("Choose a Test:\n\n");
-        printf("x: lean\n");
-        printf("y: side2side\n");
-        printf("z: squat\n");
-        printf("r: roll\n");
-        printf("p: pitch\n");
-        printf("w: yaw\n");
-        printf("b: balance\n");
-        printf("s: stepping/walking\n");
-        //cin.get();
-        // char DoF;
-        // cin.get(DoF);
-        // if(DoF != 's')
-        // {
-        //     dash_planner::SRB_6DoF_Test(recording_file_name,sim_time,srb_params,lfv0,DoF,1);
-        // }
-        // else{
-            // printf("Walking Selected\n\n");
-            // // Option 2: Walking using LIP angular momentum regulation about contact point
-            // // user input (walking speed and step frequency)
-            // double des_walking_speed = srb_params.des_walking_speed;
-            // // double des_walking_step_period = 0.2;<---- CHANGE IN JSON, NOT HERE
-            // // end user input
-            // recording_file_name = "Walking";
-            // srb_params.planner_type = 1; 
-            // // srb_params.T = des_walking_step_period;<---- CHANGE IN JSON, NOT HERE
-            // VectorXd t_traj, v_traj;
-            // double t_beg_stepping_time, t_end_stepping_time;
-            // dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
-            // srb_params.vx_des_t = t_traj;
-            // srb_params.vx_des_vx = v_traj;
-            // srb_params.t_beg_stepping = t_beg_stepping_time;
-            // srb_params.t_end_stepping = t_end_stepping_time;
-            // sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
-        // }
-        printf("Telelop Selected\n\n");
-        recording_file_name = "Telelop";
-        srb_params.planner_type = 2; 
-        // srb_params.init_type = 1;
-        sim_time = 1.0;
-
-    //}
-    //else if(simulation_mode == 2) srb_params.planner_type = 2;
+    cout << "------------------------------------------------------------------------------------------------------------------------------" << endl;
+    cout << "Swing Kp Gains: " << kp_vec_joint_swing.transpose() << endl;
+    cout << "------------------------------------------------------------------------------------------------------------------------------" << endl;
+    cout << "Swing Kd Gains: " << kd_vec_joint_swing.transpose() << endl;
+    cout << "------------------------------------------------------------------------------------------------------------------------------" << endl;
+    cout << "Posture Kp Gains: " << kp_vec_joint_posture.transpose() << endl;
+    cout << "------------------------------------------------------------------------------------------------------------------------------" << endl;
+    cout << "Posture Kd Gains: " << kd_vec_joint_posture.transpose() << endl;
+    cout << "------------------------------------------------------------------------------------------------------------------------------" << endl;
+    // printf("Choose a Test:\n\n");
+    // printf("x: lean\n");
+    // printf("y: side2side\n");
+    // printf("z: squat\n");
+    // printf("r: roll\n");
+    // printf("p: pitch\n");
+    // printf("w: yaw\n");
+    // printf("b: balance\n");
+    // printf("s: stepping/walking\n");
+    //cin.get();
+    // char DoF;
+    // cin.get(DoF);
+    // if(DoF != 's')
+    // {
+    //     dash_planner::SRB_6DoF_Test(recording_file_name,sim_time,srb_params,lfv0,DoF,1);
+    // }
+    // else{
+        // printf("Walking Selected\n\n");
+        // // Option 2: Walking using LIP angular momentum regulation about contact point
+        // // user input (walking speed and step frequency)
+        // double des_walking_speed = srb_params.des_walking_speed;
+        // // double des_walking_step_period = 0.2;<---- CHANGE IN JSON, NOT HERE
+        // // end user input
+        // recording_file_name = "Walking";
+        // srb_params.planner_type = 1; 
+        // // srb_params.T = des_walking_step_period;<---- CHANGE IN JSON, NOT HERE
+        // VectorXd t_traj, v_traj;
+        // double t_beg_stepping_time, t_end_stepping_time;
+        // dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
+        // srb_params.vx_des_t = t_traj;
+        // srb_params.vx_des_vx = v_traj;
+        // srb_params.t_beg_stepping = t_beg_stepping_time;
+        // srb_params.t_end_stepping = t_end_stepping_time;
+        // sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
+    // }
+    printf("Telelop Selected\n\n");
+    recording_file_name = "Telelop";
+    srb_params.planner_type = 2; 
+    srb_params.init_type = 1;
+    sim_time = 1.0;
 
 	// Initialize trajectory planner data
     dash_planner::SRB_Init_Traj_Planner_Data(traj_planner_dyn_data, srb_params, human_params, x0, lfv0);
@@ -599,7 +613,14 @@ double last_Yf = 0;
 double last_springf = 0;
 bool controller_unstable = false;
 
+VectorXd y_forces(100);
+VectorXd x_forces(100);
+VectorXd s_forces(100);
+double y_force, x_force, s_force;
+int force_idx = 0;
 
+double sin_cnt = 0;
+double sin_val = 0;
 void* mujoco_Update_1KHz( void * arg )
 {
 	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
@@ -730,7 +751,7 @@ void* mujoco_Update_1KHz( void * arg )
     // Plotting:
 
 	// END SETUP CODE FOR MUJOCO ========================================================================
-    mj_step(m, d);
+    mj_forward(m, d);
 
     // initialize ImGui
     IMGUI_CHECKVERSION();
@@ -751,6 +772,8 @@ void* mujoco_Update_1KHz( void * arg )
         
     }
     dash_utils::start_sim_timer();
+
+    dash_utils::setOutputFolder("/home/joey/Desktop/tello_outputs/teleop/");
     
 	while(!glfwWindowShouldClose(window))
     {
@@ -759,6 +782,8 @@ void* mujoco_Update_1KHz( void * arg )
         double elapsed = dash_utils::measure_sim_timer();
         m->opt.timestep = elapsed;
         dash_utils::start_sim_timer();
+        // dash_utils::print_timer();
+        // dash_utils::start_timer();
         // Get body ID
         int body_id = mj_name2id(m, mjOBJ_BODY, "torso");
 
@@ -795,9 +820,28 @@ void* mujoco_Update_1KHz( void * arg )
                 //mjtNum simstart = d->time;
                 //while (d->time - simstart < 1.0 / 60.0){
                     d->time = d->time + elapsed;
-                    //dash_utils::start_timer();
+                    
                     TELLO_locomotion_ctrl(m,d);
-                    //dash_utils::print_timer();
+                    // dash_utils::start_timer();
+                    // logging:
+                    // dash_utils::writeVectorToCsv(tello->controller->get_x(),"x.csv");
+                    // dash_utils::writeVectorToCsv(tello->controller->get_x(),"u.csv");
+                    // dash_utils::writeVectorToCsv(tello->controller->get_joint_torques(),"tau.csv");
+                    // dash_utils::writeVectorToCsv(tello->controller->get_tau_ext(),"tau_ext.csv");
+
+                    // dash_utils::writeVectorToCsv(dash_utils::flatten(tello->controller->get_q()),"q.csv");
+                    // dash_utils::writeVectorToCsv(dash_utils::flatten(tello->controller->get_qd()),"qd.csv");
+
+                    // dash_utils::writeVectorToCsv(dash_utils::flatten(tello->controller->get_lfv_world()),"lfv.csv");
+                    // dash_utils::writeVectorToCsv(dash_utils::flatten(tello->controller->get_lfdv_world()),"lfdv.csv");
+
+                    // dash_utils::writeVectorToCsv(Eigen::Vector2d(tello->controller->get_time(),tello->controller->get_FSM()),"t_and_FSM.csv");
+
+                    dash_utils::writeHumanDynDataToCsv(tello->controller->get_human_dyn_data(),"human_dyn_data.csv");
+                    // dash_utils::writeTrajPlannerDataToCsv(tello->controller->get_traj_planner_dyn_data(),"traj_planner_dyn_data.csv");
+                    // end logging
+
+                    // dash_utils::print_timer();
                     set_mujoco_state(tello->controller->get_x());
                     mj_kinematics(m,d);
                 //}
@@ -922,17 +966,36 @@ void* mujoco_Update_1KHz( void * arg )
         //handle UDP transmit here:
 		Human_dyn_data hdd = tello->controller->get_human_dyn_data();
 
-        if( (fabs(hdd.FxH_hmi - last_Xf) > 100) || (fabs(hdd.FyH_hmi - last_Yf) > 100) || (fabs(hdd.FxH_spring - last_springf) > 100)){
+        if( (fabs(hdd.FxH_hmi - last_Xf) > 200) || (fabs(hdd.FyH_hmi - last_Yf) > 200) || (fabs(hdd.FxH_spring - last_springf) > 200)){
             controller_unstable = true;
         }
         last_Xf = hdd.FxH_hmi;
         last_Yf = hdd.FyH_hmi;
         last_springf = hdd.FxH_spring;
 
+        // hdd.FyH_hmi = 20*sin(sin_cnt);
+        // sin_cnt+= 0.016;
+        // if(sin_cnt >= 2*M_PI) sin_cnt = 0;
+        // sin_val = hdd.FyH_hmi;
+        x_forces.tail(99) = x_forces.head(99).eval();
+        x_forces[0] = hdd.FxH_hmi;
+        y_forces.tail(99) = y_forces.head(99).eval();
+        y_forces[0] = hdd.FyH_hmi;
+        s_forces.tail(99) = s_forces.head(99).eval();
+        s_forces[0] = hdd.FxH_spring;
+
+        //dash_utils::start_timer();
+        x_force = dash_utils::smoothVelocity(x_forces,0.8);
+        y_force = dash_utils::smoothVelocity(y_forces,0.8);
+        s_force = dash_utils::smoothVelocity(s_forces,0.8);
+        //dash_utils::print_timer();
+        hdd.FyH_hmi = y_force;
+        hdd.FxH_hmi = x_force;
+        hdd.FxH_spring = s_force;
 		if(tello->controller->is_human_ctrl_enabled() && !controller_unstable)
 		{
-			hdd.FxH_hmi = 0;
-            hdd.FxH_spring = 0;
+			// hdd.FxH_hmi = 0;
+            // hdd.FxH_spring = 0;
 		}
 		else
 		{
@@ -944,7 +1007,7 @@ void* mujoco_Update_1KHz( void * arg )
 		dash_utils::pack_data_to_hmi((uint8_t*)hmi_tx_buffer,hdd);
 		int n = sendto(sockfd, hmi_tx_buffer, 12,MSG_CONFIRM, 
 			   (const struct sockaddr *) &servaddr, sizeof(servaddr));
-
+        
 		// END LOOP CODE FOR MUJOCO =====================================================================
 		handle_end_of_periodic_task(next,period);
         
@@ -962,6 +1025,8 @@ void* mujoco_Update_1KHz( void * arg )
     exit(0);
     return NULL;
 }
+
+double xH_Commanded = 0;
 int cmd_FSM = 0;
 void* PS4_Controller( void * arg )
 {
@@ -993,14 +1058,45 @@ void* PS4_Controller( void * arg )
             // if(ds4->packet->cross) pause_sim = true;
             // vx_desired_ps4 = (127-(double)ds4->packet->rightStick_Y)*(0.6/127.0);
             // vy_desired_ps4 = (127-(double)ds4->packet->rightStick_X)*(0.3/127.0);
-            if(ds4->packet->circle) cmd_FSM = 1;
-            tello->controller->set_FSM(cmd_FSM);
             //if(ds4->packet->cross) pause_sim = true;
+            xH_Commanded = (127-(double)ds4->packet->rightStick_Y)*(0.1/127.0);
         }
         print_cnt++;
 
 		handle_end_of_periodic_task(next,period);
 	}
+    return  0;
+}
+
+void* Human_Playback( void * arg )
+{
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	void* dynamic_robot_ptr = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
+
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
+
+    std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Desktop/tello_outputs/teleop/human_dyn_data_GOOD_DATA_FOR_TUNING.csv");
+    // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Documents/hdd-tuning.csv");
+
+    int hdd_cnt=0;
+   
+    struct timespec next;
+    clock_gettime(CLOCK_MONOTONIC, &next);
+    while(hdd_cnt < hdd_vec.size())
+    {
+        handle_start_of_periodic_task(next);
+        if(tello->controller->is_human_ctrl_enabled())
+        {
+            //dash_utils::print_human_dyn_data(hdd_vec[hdd_cnt]);
+            if(PS4_connected) hdd_vec[hdd_cnt].xH = xH_Commanded;
+            tello->controller->set_human_dyn_data(hdd_vec[hdd_cnt++]);
+            //cout << "applying HDD struct # " << hdd_cnt << endl;
+         }
+
+		handle_end_of_periodic_task(next,period);
+	}
+    cout << "Human Playback Complete" << endl;
     return  0;
 }
 
@@ -1059,57 +1155,31 @@ void* plotting( void * arg )
             // TELEOP DATA ====================================================================================
 
             x.push_back(tello->controller->get_time());
-            y1.push_back(dpc_curr(0));
-            y2.push_back(dpc_curr(1));
-            y3.push_back(dpc_curr(2));
+            Human_dyn_data hdd = tello->controller->get_human_dyn_data();
+            y1.push_back(hdd.FxH_hmi);
+            y2.push_back(hdd.FyH_hmi);
+            y3.push_back(hdd.FxH_spring);
 
-            y4.push_back(dx_smoothed);
-            y5.push_back(dy_smoothed);
-            y6.push_back(dz_smoothed);
-
-            // y7.push_back(pc_curr(0));
-            // y8.push_back(pc_curr(1));
-            // y9.push_back(pc_curr(2));
-
-            // y10.push_back(tello->get_filter_state().getPosition()(0));
-            // y11.push_back(tello->get_filter_state().getPosition()(1));
-            // y12.push_back(CoM_z_last);
+            y4.push_back(x_force);
+            y5.push_back(y_force);
+            y6.push_back(s_force);
 
             if(tello->controller->get_time() - last_plot_time > 0.1){
                 last_plot_time = tello->controller->get_time();
                 plt::rcparams({{"legend.loc","lower left"}});
                 plt::clf();
-                // plt::subplot(3, 2, 1);
-                // plt::title("CoM X Position True vs EKF");
-                // plt::named_plot("True X", x, y7, "r-");
-                // plt::named_plot("EKF X", x, y10, "b-");
-                // plt::legend();
-                // plt::subplot(3, 2, 3);
-                // plt::title("CoM Y Position True vs EKF");
-                // plt::named_plot("True Y", x, y8, "r-");
-                // plt::named_plot("EKF Y", x, y11, "b-");
-                // plt::legend();
-                // plt::subplot(3, 2, 5);
-                // plt::title("CoM Z Position True vs Kinematics");
-                // plt::named_plot("True Z", x, y9, "r-");
-                // plt::named_plot("Kin Z", x, y12, "b-");
-                // plt::legend();
-                // plt::subplot(3, 1, 1);
-                // plt::title("CoM X Velocity True vs Estimated");
-                // plt::named_plot("True dX", x, y1, "r-");
-                // plt::named_plot("Est. dX", x, y4, "b-");
-                // plt::legend();
-                // plt::subplot(3, 1, 2);
-                // plt::title("CoM X Velocity True vs Estimated");
-                // plt::named_plot("True dY", x, y2, "r-");
-                // plt::named_plot("Est.  dY", x, y5, "b-");
-                // plt::legend();
-                // plt::subplot(3, 1, 3);
-                // plt::title("CoM X Velocity True vs Estimated");
-                // plt::named_plot("True dZ", x, y3, "r-");
-                // plt::named_plot("Est. dZ", x, y6, "b-");
-                // plt::legend();
-                // plt::pause(0.001);
+                plt::title("CoM X Position True vs EKF");
+                plt::subplot(3, 1, 1);
+                plt::named_plot("X", x, y1, "r-");
+                plt::named_plot("Y", x, y4, "b-");
+                plt::subplot(3, 1, 2);
+                plt::named_plot("Y", x, y2, "r-");
+                plt::named_plot("Y", x, y5, "b-");
+                plt::subplot(3, 1, 3);
+                plt::named_plot("S", x, y3, "r-");
+                plt::named_plot("Y", x, y6, "b-");
+                plt::legend();
+                plt::pause(0.001);
                 
             }
             

@@ -133,6 +133,7 @@ extern bool disableScheduled;
 extern bool zeroScheduled;
 
 int simulation_mode = 0;
+bool walking = false;
 extern bool filter_data_ready;
 double t_program_start;
 
@@ -154,6 +155,10 @@ Vector3d EA;
 Vector3d dEA;
 VectorXd jointFFTorque = VectorXd::Zero(10);
 bool use_filter_pc = false;
+
+int sockfd_tx;
+char hmi_tx_buffer[100];
+struct sockaddr_in servaddr_tx;
 
 void signal_callback_handler(int signum);
 
@@ -643,9 +648,9 @@ void run_balance_controller()
     dy_vec[0] = dy;
     dz_vec.tail(99) = dz_vec.head(99).eval();
     dz_vec[0] = dz;
-    dx_filtered = dash_utils::smoothVelocity(dx_vec,3);
-    dy_filtered = dash_utils::smoothVelocity(dy_vec,3);
-    dz_filtered = dash_utils::smoothVelocity(dz_vec,3);
+    dx_filtered = dash_utils::smoothData(dx_vec,3);
+    dy_filtered = dash_utils::smoothData(dy_vec,3);
+    dz_filtered = dash_utils::smoothData(dz_vec,3);
     Vector3d estimated_dpc(dx_filtered,dy_filtered,dz_filtered);
 	dpc = estimated_dpc;
 	pc = Vector3d(0,0,0);
@@ -859,6 +864,15 @@ static void* update_1kHz( void * arg )
 
 // This callback handles CTRL+C and Segfaults
 void signal_callback_handler(int signum){
+
+	Human_dyn_data hdd;
+	hdd.FxH_spring = 0;
+	hdd.FxH_hmi = 0;
+	hdd.FyH_hmi = 0;
+	dash_utils::pack_data_to_hmi((uint8_t*)hmi_tx_buffer,hdd);
+	int n = sendto(sockfd_tx, hmi_tx_buffer, 12,MSG_CONFIRM, 
+			(const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
+
 	fsm_state = 0;
 	if (signum == SIGINT) {
         printf('o',"\nProgram disabled by user.\n");
@@ -1008,11 +1022,13 @@ int main(int argc, char *argv[]) {
 		//printf('o',"Software running in Simulation Mode.\n\
 		\r\033[1;38;5;208mIf this is a mistake, run without the \033[1;33m-s 1;38;5;208mflag or comment the following line in platformio.ini:\n\
 		\r\033[34mupload_command \033[39m= pio run -t exec -a \"-s\"\n\n");
-
-		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 2000);
-		tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 2000);
-		tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
+		tello->addPeriodicTask(&sim_step_task, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"sim_step_task",TASK_CONSTANT_PERIOD, 100);
+		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 98, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 2000);
+		// tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 2000);
+		// tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 		tello->addPeriodicTask(&Human_Playback, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"human_playback_task",TASK_CONSTANT_PERIOD, 2000);
+		tello->addPeriodicTask(&logging, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"logging_task",TASK_CONSTANT_PERIOD, 1000);
+		tello->addPeriodicTask(&screenRecord, SCHED_FIFO, 10, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
 		// tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&plot_human_data, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
@@ -1027,11 +1043,13 @@ int main(int argc, char *argv[]) {
 		//printf('o',"Software running in Simulation Mode.\n\
 		\r\033[1;38;5;208mIf this is a mistake, run without the \033[1;33m-s 1;38;5;208mflag or comment the following line in platformio.ini:\n\
 		\r\033[34mupload_command \033[39m= pio run -t exec -a \"-s\"\n\n");
-
-		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 2000);
-		tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 2000);
-		tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
+		tello->addPeriodicTask(&sim_step_task, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"sim_step_task",TASK_CONSTANT_PERIOD, 100);
+		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 98, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 2000);
+		// tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 2000);
+		// tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 		tello->addPeriodicTask(&Human_Playback, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"human_playback_task",TASK_CONSTANT_PERIOD, 2000);
+		tello->addPeriodicTask(&logging, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"logging_task",TASK_CONSTANT_PERIOD, 1000);
+		tello->addPeriodicTask(&screenRecord, SCHED_FIFO, 10, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
 		// tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&plot_human_data, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);

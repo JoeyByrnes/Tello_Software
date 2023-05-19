@@ -766,6 +766,48 @@ bool ImGui::InvisibleButton(const char* str_id, const ImVec2& size_arg, ImGuiBut
     IMGUI_TEST_ENGINE_ITEM_INFO(id, str_id, g.LastItemData.StatusFlags);
     return pressed;
 }
+bool ImGui::PauseButtonEx(const char* str_id, ImGuiDir dir, ImVec2 size, ImGuiButtonFlags flags)
+{
+    ImGuiContext& g = *GImGui;
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    const ImGuiID id = window->GetID(str_id);
+    const ImRect bb(window->DC.CursorPos, window->DC.CursorPos + size);
+    const float default_size = GetFrameHeight();
+    ItemSize(size, (size.y >= default_size) ? g.Style.FramePadding.y : -1.0f);
+    if (!ItemAdd(bb, id))
+        return false;
+
+    if (g.LastItemData.InFlags & ImGuiItemFlags_ButtonRepeat)
+        flags |= ImGuiButtonFlags_Repeat;
+
+    bool hovered, held;
+    bool pressed = ButtonBehavior(bb, id, &hovered, &held, flags);
+
+    // Render
+    const ImU32 bg_col = GetColorU32((held && hovered) ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
+    const ImU32 text_col = GetColorU32(ImGuiCol_Text);
+    RenderNavHighlight(bb, id);
+    RenderFrame(bb.Min, bb.Max, bg_col, true, g.Style.FrameRounding);
+
+    // Render pause symbol
+    const ImVec2 symbol_pos = bb.Min + size * 0.5f - ImVec2(g.FontSize * 0.25f, g.FontSize * 0.5f);
+    const float symbol_width = g.FontSize * 0.2f;
+    const float symbol_height = g.FontSize * 0.8f;
+    window->DrawList->AddRectFilled(symbol_pos, symbol_pos + ImVec2(symbol_width, symbol_height), text_col);
+    window->DrawList->AddRectFilled(symbol_pos + ImVec2(2.0*symbol_width, symbol_height), symbol_pos + ImVec2(3.0*symbol_width, symbol_height), text_col);
+
+    IMGUI_TEST_ENGINE_ITEM_INFO(id, str_id, g.LastItemData.StatusFlags);
+    return pressed;
+}
+
+bool ImGui::PauseButton(const char* str_id, ImGuiDir dir)
+{
+    float sz = GetFrameHeight();
+    return PauseButtonEx(str_id, dir, ImVec2(sz, sz), ImGuiButtonFlags_None);
+}
 
 bool ImGui::ArrowButtonEx(const char* str_id, ImGuiDir dir, ImVec2 size, ImGuiButtonFlags flags)
 {
@@ -1402,7 +1444,7 @@ void ImGui::SeparatorEx(ImGuiSeparatorFlags flags)
     ImGuiContext& g = *GImGui;
     IM_ASSERT(ImIsPowerOfTwo(flags & (ImGuiSeparatorFlags_Horizontal | ImGuiSeparatorFlags_Vertical)));   // Check that only 1 option is selected
 
-    const float thickness = 1.0f; // Cannot use g.Style.SeparatorTextSize yet for various reasons.
+    const float thickness = 15.0f; // Cannot use g.Style.SeparatorTextSize yet for various reasons.
     if (flags & ImGuiSeparatorFlags_Vertical)
     {
         // Vertical separator, for menu bars (use current line height).

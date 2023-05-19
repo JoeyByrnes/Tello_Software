@@ -14,7 +14,7 @@
 
 #include <cstdio>
 #include <cstring>
-
+#include <iostream>
 #include <GLFW/glfw3.h>
 #include <mujoco/mujoco.h>
 

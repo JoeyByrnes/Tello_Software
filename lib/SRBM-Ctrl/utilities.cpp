@@ -1036,7 +1036,7 @@ void dash_utils::rotate_foot(Eigen::Vector3d& point1, Eigen::Vector3d& point2, d
 
 }
 
-double dash_utils::smoothVelocity(const Eigen::VectorXd& vel, double smoothingFactor) {
+double dash_utils::smoothData(const Eigen::VectorXd& vel, double smoothingFactor) {
     int n = vel.size();
     Eigen::VectorXd smoothedVel(n);
     smoothedVel.setZero();

@@ -8,7 +8,7 @@ void dash_init::Human_Init(Human_params &Human_params, Human_dyn_data &Human_dyn
     // Human Parameters
     Human_params.m = 75; // human weight in kg
     Human_params.hLIP = 1.2; // nominal human LIP height
-    Human_params.human_nom_ft_width = 0.246; // nominal human feet width //was 0.175
+    Human_params.human_nom_ft_width = 0.175; // nominal human feet width //was 0.175
 
     // HMI data
 
@@ -82,7 +82,7 @@ void dash_init::SRB_Init(VectorXd& x0, MatrixXd& q0, MatrixXd& qd0, MatrixXd& lf
         // default initialization places feet underneath hips
         // assumes no hip roll or yaw
         double hip_angle_yaw_init = 0;
-        double hip_angle_roll_init = 0;//0.0472665;
+        double hip_angle_roll_init = 0.0472665;
         double HK_length = thigh_length;
         double KA_length = calf_length;
         double HA_length = hR - CoM2H_z_dist - heel_length;
@@ -164,7 +164,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
 
         // SRB specific
         srb_params.m = 23; // robot mass in kg // was 23 for mujoco
-        srb_params.hLIP = 0.65; // nominal robot LIP height // was 0.66 for mujoco
+        srb_params.hLIP = 0.66; // nominal robot LIP height // was 0.66 for mujoco
         srb_params.Ib = Matrix3d::Identity();
         srb_params.Ib(0,0) = 0.4874;
         srb_params.Ib(1,1) = 0.3081;

@@ -10,5 +10,5 @@ void contactforce(const mjModel* m, mjData* d, int FSM);
 void applyJointTorquesMujoco(VectorXd torques);
 Eigen::Vector3d add_Noise_3D(const Eigen::Vector3d& euler_angles, const double std_dev);
 VectorXd mux_and_smooth(VectorXd initialOutput, VectorXd finalOutput, double start_time, double end_time, double time);
-double smoothVelocity(const Eigen::VectorXd& vel, double smoothingFactor);
+double smoothData(const Eigen::VectorXd& vel, double smoothingFactor);
 double firstOrderFilter(const Eigen::VectorXd& x, double alpha);

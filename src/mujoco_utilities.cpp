@@ -103,6 +103,7 @@ void mouse_button(GLFWwindow* window, int button, int act, int mods)
 // mouse move callback
 void mouse_move(GLFWwindow* window, double xpos, double ypos)
 {
+    if(ypos < 100) return;
     // no buttons down: nothing to do
     if (!button_left && !button_middle && !button_right)
         return;
@@ -285,7 +286,7 @@ VectorXd mux_and_smooth(VectorXd initialOutput, VectorXd finalOutput, double sta
     return out;
 }
 
-double smoothVelocity(const Eigen::VectorXd& vel, double smoothingFactor) {
+double smoothData(const Eigen::VectorXd& vel, double smoothingFactor) {
     int n = vel.size();
     Eigen::VectorXd smoothedVel(n);
     smoothedVel.setZero();

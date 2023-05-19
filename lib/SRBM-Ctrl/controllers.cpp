@@ -184,6 +184,12 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
     // and using step placement law that reduces the normalized DCM of the human
     // walking reference LIP and robot LIP at step transitions
 
+    // cout << "LFV: =============================" << endl;
+    // cout << lfv << endl;
+    // cout << "LFV DSP_START: ===================" << endl;
+    // cout << lfv_dsp_start << endl;
+    // cout << "FSM: " << FSM << endl;
+
     // initialize commanded end-effector positions (DSP)
     lfv_comm = lfv_dsp_start;
     lfdv_comm.setZero();
@@ -284,7 +290,6 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
     double fyH0 = traj_planner_dyn_data.human_leg_joystick_pos_beg_step[1];
     double fzH0 = traj_planner_dyn_data.human_leg_joystick_pos_beg_step[2];
     Vector2d x_plus_HWRM = traj_planner_dyn_data.x_plus_HWRM;
-
     // Get human dynamic data
     double xH = human_dyn_data.xH; 
     double dxH = human_dyn_data.dxH; 
@@ -381,7 +386,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
         }
 
     }    
-
+    
     // Compute HWRM DCM
     xDCM_HWRM = x_HWRM + (dx_HWRM / wH);    
 
@@ -395,6 +400,9 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
     // Update HWRM dynamics in traj_planner_dyn_data
     traj_planner_dyn_data.x_HWRM = x_HWRM;
     traj_planner_dyn_data.dx_HWRM = dx_HWRM;
+
+    //cout << "FSM: "<< FSM << "    t_step: " << t - t_sw_start << "    x_plus_HWRM: " << x_plus_HWRM.transpose() << "    x_minus_HWRM: " << traj_planner_dyn_data.x_HWRM << " " << traj_planner_dyn_data.dx_HWRM <<  "    uk_HWRM: " << traj_planner_dyn_data.uk_HWRM << endl;
+    
 
     // Sagittal Plane Control (x-direction)
     // Dynamic Bilateral Teleoperation

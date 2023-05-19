@@ -14,6 +14,10 @@
 #include <cstdlib>
 #include "vn/sensors.h"
 #include "../lib/Eigen/Dense"
+#include <ctime>
+#include <chrono>
+#include <sstream>
+#include <sys/stat.h>
 
 #define GOV_PERFORMANCE "performance"
 #define GOV_POWERSAVE "powersave"
@@ -33,3 +37,6 @@ vn::math::mat3f eigenToVnMatrix(const Eigen::Matrix3d& eigenMat);
 void printf(char color, const char* message, ...);
 
 bool optimize_serial_communication(std::string portName);
+
+std::string getCurrentDateTime();
+std::string createLogFolder(const std::string& location);

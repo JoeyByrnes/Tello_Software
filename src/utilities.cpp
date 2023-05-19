@@ -124,3 +124,26 @@ bool optimize_serial_communication(std::string portName)
   ::close(portFd);
   return true;
 }
+
+std::string getCurrentDateTime() {
+    auto now = std::chrono::system_clock::now();
+    auto time_t_now = std::chrono::system_clock::to_time_t(now);
+
+    std::stringstream ss;
+    ss << std::put_time(std::localtime(&time_t_now), "%m-%d-%y__%H-%M-%S");
+    return ss.str();
+}
+
+std::string createLogFolder(const std::string& location) {
+    std::string folderName = getCurrentDateTime();
+    std::string folderPath = location + "/" + folderName;
+
+    // Create the folder
+    if (mkdir(folderPath.c_str(), 0777) == -1) {
+        std::cerr << "Failed to create folder." << std::endl;
+        return "";
+    }
+
+    std::cout << "Log Folder created successfully: " << folderPath << std::endl;
+    return folderPath + "/";
+}

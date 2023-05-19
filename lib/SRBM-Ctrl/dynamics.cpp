@@ -77,8 +77,8 @@ void dash_dyn::HLIP_dyn_xk2x0(double& x0, double& dx0, VectorXd xk, double w, do
     double dxT = xk(1);
 
     // HLIP SSP dynamics (x0 to xk)
-    double c1 = (1/2) * exp(-w * Ts) * (xT + (1.0 / w) * dxT);
-    double c2 = (1/2) * exp(w * Ts) * (xT - (1.0 / w) * dxT);
+    double c1 = (1.0/2.0) * exp(-w * Ts) * (xT + (1.0 / w) * dxT);
+    double c2 = (1.0/2.0) * exp(w * Ts) * (xT - (1.0 / w) * dxT);
     x0 = c1 + c2;
     dx0 = w * (c1 - c2);
 
@@ -106,11 +106,11 @@ void dash_dyn::HLIP_SSP_dyn(double& x, double& dx, double t, double w, double x0
     // HLIP SSP dynamics
 
     // x0 to xk (completely passive)
-    double c1 = (1/2) * (x0 + (1.0 / w) * dx0);
-    double c2 = (1/2) * (x0 - (1.0 / w) * dx0);
+    double c1 = (1.0/2.0) * (x0 + (1.0/w) * dx0);
+    double c2 = (1.0/2.0) * (x0 - (1.0/w) * dx0);
     x = c1 * exp(w * t) + c2 * exp(-w * t);
     dx = w * (c1 * exp(w * t) - c2 * exp(-w * t));
-
+    cout << "x: " << x << "   dx: " << dx << "   x0: " << x0 << "   dx0: " << dx0 << "   t: " << t  << "   w: " << w << endl;
 }
 
 void dash_dyn::HLIP_DSP_dyn(double& x, double& dx, double t, double x0, double dx0) {

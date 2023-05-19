@@ -58,5 +58,8 @@ void* plotting( void * arg );
 void* plot_human_data( void * arg );
 void* PS4_Controller( void * arg );
 void* Human_Playback( void * arg );
+void* logging( void * arg );
+void* sim_step_task( void * arg );
+void* screenRecord( void * arg );
 
 #endif

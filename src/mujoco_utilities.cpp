@@ -306,3 +306,28 @@ double smoothData(const Eigen::VectorXd& vel, double smoothingFactor) {
 
     return smoothedVel(n - 1);
 }
+
+std::string executeCommand(const std::string& command) {
+    std::string result;
+    char buffer[128];
+
+    // Open the command using popen and read the output
+    FILE* pipe = popen(command.c_str(), "r");
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+
+    while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+        result += buffer;
+    }
+
+    // Close the pipe
+    pclose(pipe);
+
+    // Remove the trailing newline character if present
+    if (!result.empty() && result.back() == '\n') {
+        result.pop_back();
+    }
+
+    return result;
+}

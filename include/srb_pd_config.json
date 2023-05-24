@@ -1,11 +1,11 @@
 {
     "srb_params": {
-      "Kp_xR": 1000,
-      "Kd_xR": 50,
-      "Kp_yR": 500,
-      "Kd_yR": 50,
+      "Kp_xR": 10000,
+      "Kd_xR": 500,
+      "Kp_yR": 10000,
+      "Kd_yR": 500,
       "Kp_zR": 50000, 
-      "Kd_zR": 1000,
+      "Kd_zR": 500,
       "Kp_phiR": 100000,
       "Kd_phiR": 1000,
       "Kp_thetaR": 100000,
@@ -18,10 +18,10 @@
     },
     
     "Posture_Control": {
-      "Hip_Yaw_Kp": 50,
-      "Hip_Yaw_Kd": 0,
+      "Hip_Yaw_Kp": 5000,
+      "Hip_Yaw_Kd": 50,
       
-      "Hip_Roll_Kp": 50,
+      "Hip_Roll_Kp": 1000,
       "Hip_Roll_Kd": 0,
       
       "Hip_Pitch_Kp": 0,
@@ -35,11 +35,11 @@
     },
     
     "Swing_Control": {
-      "Hip_Yaw_Kp": 3000,
-      "Hip_Yaw_Kd": 20,
+      "Hip_Yaw_Kp": 6000,
+      "Hip_Yaw_Kd": 50,
       
-      "Hip_Roll_Kp": 500,
-      "Hip_Roll_Kd": 10,
+      "Hip_Roll_Kp": 5000,
+      "Hip_Roll_Kd": 50,
       
       "Hip_Pitch_Kp": 1100,
       "Hip_Pitch_Kd": 4,

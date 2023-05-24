@@ -12,3 +12,4 @@ Eigen::Vector3d add_Noise_3D(const Eigen::Vector3d& euler_angles, const double s
 VectorXd mux_and_smooth(VectorXd initialOutput, VectorXd finalOutput, double start_time, double end_time, double time);
 double smoothData(const Eigen::VectorXd& vel, double smoothingFactor);
 double firstOrderFilter(const Eigen::VectorXd& x, double alpha);
+std::string executeCommand(const std::string& command);

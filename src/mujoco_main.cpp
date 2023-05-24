@@ -4,8 +4,13 @@
 #include "state_estimator.h"
 #include "utilities.h"
 #include <X11/Xlib.h>
+#include <regex>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+#include "IconsFontAwesome5.h"
 
 pthread_mutex_t plotting_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t sim_step_mutex = PTHREAD_MUTEX_INITIALIZER;
 extern pthread_mutex_t EKF_mutex;
 
 namespace plt = matplotlibcpp;
@@ -13,6 +18,7 @@ GLFWwindow* window;
 
 FILE* screen_record_pipe;
 pid_t screen_rec_pid = -1;
+bool recording_in_progress = false;
 
 double vx_desired_ps4 = 0;
 double vy_desired_ps4 = 0;
@@ -21,6 +27,7 @@ bool enable_human_ff = false;
 bool zero_human = false;
 float master_gain = 0;
 bool screen_recording = false;
+int hdd_cnt=0; // human_playback counter
 
 //logging
 bool log_data_ready = false;
@@ -191,6 +198,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     // Simulation time
     // dash_utils::end_timer();
     // dash_utils::start_timer();
+    pthread_mutex_lock(&sim_step_mutex);
     double t = d->time;
     controller->set_time(t);
     // Get robot states
@@ -399,7 +407,76 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
         // filter debugging:
         VectorXd pos_out(11),vel_out(11), EA_out(6), pc_out(9);
         //pos_out << pc_curr_plot, 0, filter_state.getPosition(), CoM_z, (pc_curr_plot-filter_state.getPosition());
-        //dash_utils::writeVecto            ImGui::Checkbox("Another Window", &show_another_window);KF_mutex);
+        //dash_utils::writeVectorToCsv(pos_out,"pos_real_vs_filter.csv");
+
+        //vel_out << dpc_curr, 0, filter_state.getVelocity(), 0, (dpc_curr-filter_state.getVelocity());
+        //dash_utils::writeVectorToCsv(vel_out,"vel_real_vs_filter.csv");
+        // BEGIN TASK PD CODE ======================================+++++++++++++++++
+
+        Vector3d target_front_left = controller->get_lfv_comm_hip().row(2);
+        Vector3d target_back_left = controller->get_lfv_comm_hip().row(3);
+        Vector3d target_front_right = controller->get_lfv_comm_hip().row(0);
+        Vector3d target_back_right = controller->get_lfv_comm_hip().row(1);
+
+        Vector3d target_front_left_vel = controller->get_lfdv_comm_hip().row(2);
+        Vector3d target_back_left_vel = controller->get_lfdv_comm_hip().row(3);
+        Vector3d target_front_right_vel = controller->get_lfdv_comm_hip().row(0);
+        Vector3d target_back_right_vel = controller->get_lfdv_comm_hip().row(1);
+
+        VectorXd vel_desired(12);
+        vel_desired  << target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel;
+
+        VectorXd pos_desired(12);
+        pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
+
+        // Set up configuration struct for Task Space Controller
+        
+        swing_pd_config.task_ff_force = VectorXd::Zero(12);
+        swing_pd_config.setTaskPosDesired(target_front_left, target_back_left, target_front_right, target_back_right);
+        swing_pd_config.setTaskVelDesired(target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel);
+        swing_pd_config.setTaskKp(0,0,0);
+        swing_pd_config.setTaskKd(0,0,0);
+        swing_pd_config.setJointKp(kp_vec_joint_swing);
+        swing_pd_config.setJointKd(kd_vec_joint_swing);
+        swing_pd_config.motor_kp = VectorXd::Zero(10);
+        swing_pd_config.motor_kd = VectorXd::Zero(10);
+        
+        VectorXd swing_leg_torques = tello->taskPD2(swing_pd_config);
+
+        // Re-using
+        posture_pd_config = swing_pd_config;
+        posture_pd_config.setTaskKp(0,0,0);
+        posture_pd_config.setTaskKd(0,0,0);
+        posture_pd_config.setJointKp(kp_vec_joint_posture);
+        posture_pd_config.setJointKd(kd_vec_joint_posture);
+
+        VectorXd posture_ctrl_torques = tello->taskPD2(posture_pd_config);
+        
+        // END TASK PD CODE ======================================+++++++++++++++++
+        VectorXd tau_LR(10);
+        tau_LR << tau.tail(5), tau.head(5);
+        tau_LR = tau_LR + posture_ctrl_torques;
+
+        VectorXd torques_left  = tello->swing_stance_mux(tau_LR.head(5), swing_leg_torques.head(5),
+                                                            0.00,controller->get_isSwingToStanceRight(), 
+                                                            d->time-controller->get_transitionStartRight(), 
+                                                            0);
+        VectorXd torques_right = tello->swing_stance_mux(tau_LR.tail(5), swing_leg_torques.tail(5),
+                                                            0.00,controller->get_isSwingToStanceLeft(),
+                                                            d->time-controller->get_transitionStartLeft(), 
+                                                            1);
+        VectorXd tau_LR_muxed(10);
+        tau_LR_muxed << torques_left,torques_right;
+
+
+        applyJointTorquesMujoco(tau_LR_muxed);
+
+        // begin update filter states: ------------------------------------------------------
+        // RoboDesignLab::IMU_data imu_data;
+        // imu_data.timestamp = t;
+        // imu_data.acc = imu_acc;
+        // imu_data.gyro = imu_gyro;
+        // pthread_mutex_lock(&EKF_mutex);
         // filter_state = tello->get_filter_state();
         // pthread_mutex_unlock(&EKF_mutex);
         // tello->set_imu_data_for_ekf(imu_data);
@@ -429,6 +506,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     //     stepping_in_progress = false;
     //     pause_sim = true;
     // }
+    pthread_mutex_unlock(&sim_step_mutex);
 }
 VectorXd x0;
 MatrixXd q0;
@@ -526,8 +604,8 @@ void initializeSRBMCtrl()
         // dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
         // srb_params.vx_des_t = t_traj;
         // srb_params.vx_des_vx = v_traj;
-        // srb_params.t_beg_stepping = 1e5;//t_beg_stepping_time;
-        // srb_params.t_end_stepping = 1e6;//t_end_stepping_time;
+        // srb_params.t_beg_stepping = t_beg_stepping_time;
+        // srb_params.t_end_stepping = t_end_stepping_time;
         // sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
     // }
     printf("Telelop Selected\n\n");
@@ -578,6 +656,7 @@ int force_idx = 0;
 
 double sin_cnt = 0;
 double sin_val = 0;
+int video_pulse_indicator_cnt = 0;
 
 void* mujoco_Update_1KHz( void * arg )
 {
@@ -713,20 +792,33 @@ void* mujoco_Update_1KHz( void * arg )
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 130");
+    ImGui_ImplOpenGL3_Init("#version 330");
     ImGui::StyleColorsDark();
+
+    float baseFontSize = 60.0f; // 13.0f is the size of the default font. Change to the font size you use.
+    float iconFontSize = baseFontSize * 2.25f / 3.0f; // FontAwesome fonts need to have their sizes reduced by 2.0f/3.0f in order to align correctly
+
     
     ImFont* font;
     if (std::filesystem::is_directory("/home/tello")) {
         //std::cout << "The directory /home/tello exists!" << std::endl;
-        font = io.Fonts->AddFontFromFileTTF("./tello_files/fonts/roboto/Roboto-Light.ttf", 60);
+        font = io.Fonts->AddFontFromFileTTF("./tello_files/fonts/roboto/Roboto-Light.ttf", baseFontSize);
     }
     else {
         //std::cout << "The directory /home/tello does not exist!" << std::endl;
-        font = io.Fonts->AddFontFromFileTTF("../../../lib/imGUI/fonts/roboto/Roboto-Light.ttf", 60);
+        font = io.Fonts->AddFontFromFileTTF("../../../lib/imGUI/fonts/roboto/Roboto-Light.ttf", baseFontSize);
         // font = io.Fonts->AddFontFromFileTTF("../../../lib/imGUI/fonts/seguisym.ttf", 80);
         
     }
+    // merge in icons from Font Awesome
+    static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
+    ImFontConfig icons_config; 
+    icons_config.MergeMode = true; 
+    icons_config.PixelSnapH = true; 
+    icons_config.GlyphMinAdvanceX = iconFontSize;
+    io.Fonts->AddFontFromFileTTF( "../../../lib/imGUI/fonts/fa-solid-900.ttf", iconFontSize, &icons_config, icons_ranges );
+
+
     dash_utils::start_sim_timer();
 
     log_folder = createLogFolder("/home/joey/Desktop/tello_outputs/Logs/");
@@ -878,17 +970,45 @@ void* mujoco_Update_1KHz( void * arg )
         ImGui::Separator();
         ImGui::PopStyleColor();
 
+        bool dummy;
+        ImGui::PushStyleColor(ImGuiCol_Separator,grey5);        
+        if (ImGui::BeginMenu(" " ICON_FA_BARS " "))
+        {
+            ImGui::Separator();
+            ImGui::Checkbox(" " ICON_FA_FILE_CSV "  Enable Data Logging   ", &dummy);
+            ImGui::Separator();
+            ImGui::Checkbox(" " ICON_FA_CAMERA "  Enable HMI Video   ", &dummy);
+            ImGui::Separator();
+            ImGui::Checkbox(" " ICON_FA_TV "  Enable Mujoco Video   ", &dummy);
+            ImGui::Separator();
+            ImGui::Checkbox(" " ICON_FA_CHECK_CIRCLE "  Auto-Record Session   ", &dummy);
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+            ImGui::Separator();
+            ImGui::PushStyleColor(ImGuiCol_Separator,grey5);  
+            ImGui::Separator();
+            if (ImGui::MenuItem(" " ICON_FA_SAVE "  Save Configuration"))  { /* do something */int x = 1; }
+            ImGui::Separator();
+            ImGui::EndMenu();
+        }
+
+        ImGui::PopStyleColor();
+        ImGui::PushStyleColor(ImGuiCol_Separator,grey5);
+        ImGui::Separator();
+        ImGui::PopStyleColor();
+
 
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.3f, 0.0f, 1.0f)); // set button color
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.4f, 0.0f, 1.0f)); // set hover color
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.6f, 0.2f, 0.0f, 1.0f)); // set active color
-        if (ImGui::Button(" Reset ")) {
+        if (ImGui::Button(" " ICON_FA_UNDO " ")) {
             pause_sim = true;
             controller_unstable = false;
             last_Xf = 0;
             last_Yf = 0;
             last_springf = 0;
             tello->controller->disable_human_ctrl();
+            hdd_cnt = 0;
             mj_resetData(m, d);
             //tello->resetController();
             tello->controller->reset();
@@ -905,7 +1025,7 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.4f, 0.0f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.6f, 0.0f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.8f, 0.0f, 1.0f));
-            if (ImGui::Button("    Run    ")) {
+            if (ImGui::Button(" " ICON_FA_PLAY_CIRCLE " ")) {
                 pause_sim = false;
             }
             ImGui::PopStyleColor(3);
@@ -915,7 +1035,7 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.45f, 0.0f, 0.45f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.65f, 0.0f, 0.65f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.25f, 0.0f, 0.25f, 1.0f));
-            if (ImGui::Button("   Stop   ") || controller_unstable) {
+            if (ImGui::Button(" " ICON_FA_PAUSE_CIRCLE " ") || controller_unstable) {
                 pause_sim = true;
                 tello->controller->disable_human_ctrl();
             }
@@ -929,13 +1049,13 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::PushStyleColor(ImGuiCol_Button, red);
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, redHover);
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, redActive);
-            if (ImGui::Button("   Screen Record   ")) {
+            if (ImGui::Button(" " ICON_FA_VIDEO " ")) {
                 screen_recording = true;
-                setenv("DISPLAY", ":1", 1);
+                // setenv("DISPLAY", ":1", 1);
                 // const char* command = "taskset -c 0 ffmpeg -f x11grab -video_size 3840x2160 -framerate 30 -i :1 -c:v h264_nvenc -qp 0 output.mp4";
                 // screen_record_pipe = popen(command, "w");
                 // if (!screen_record_pipe) {
-                //     std::cerr << "Error starting ffmpeg process!" << std::endl;
+                //      std::cerr << "Error starting ffmpeg process!" << std::endl;
                 // }
                 
 
@@ -944,16 +1064,21 @@ void* mujoco_Update_1KHz( void * arg )
         }
         else
         {
-            ImGui::PushStyleColor(ImGuiCol_Button, red);
+            double color_offset = 20 * std::sin(video_pulse_indicator_cnt / 1000.0);  // Adjust frequency by dividing counter
+            video_pulse_indicator_cnt +=5;
+            if(video_pulse_indicator_cnt > 6283) video_pulse_indicator_cnt = 0;
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4((181.0f+color_offset) / 255.0f, 16.0f / 255.0f, 33.0f / 255.0f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, redHover);
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, redActive);
-            if (ImGui::Button("  Stop Recording  ")) {
+            if (ImGui::Button(" " ICON_FA_VIDEO_SLASH " ")) {
                 screen_recording = false;
+                system("killall -2 ffmpeg");
+                recording_in_progress = false;
                 // pid_t pid = fileno(screen_record_pipe);
                 // cout << "pid: " << pid << endl;
                 // if (pid != -1) {
-                //     kill(pid, SIGINT); // You can change SIGINT to SIGTERM if needed
-                //     cout << "Killing process" << endl;
+                // kill(pid, SIGINT); // You can change SIGINT to SIGTERM if needed
+                //      cout << "Killing process" << endl;
                 // }
                 // // fprintf(screen_record_pipe, "%c", 3);
                 // int exitCode = pclose(screen_record_pipe);
@@ -963,7 +1088,8 @@ void* mujoco_Update_1KHz( void * arg )
                 // if (exitCode == -1) {
                 //     std::cerr << "Error stopping ffmpeg process!" << std::endl;
                 // }
-                kill(screen_rec_pid, SIGINT);  // Send SIGTERM signal to child process
+                //kill(screen_rec_pid, SIGINT);  // Send SIGTERM signal to child process
+                //screen_rec_pid = -1;
                 usleep(2000);
             }
             ImGui::PopStyleColor(3);
@@ -975,16 +1101,17 @@ void* mujoco_Update_1KHz( void * arg )
         ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,white);
         ImGui::PushStyleColor(ImGuiCol_FrameBgActive,grey2);
         ImGui::Separator();
-        ImGui::Checkbox(" Human Ctrl   ", &tello->controller->enable_human_dyn_data);
         ImGui::Separator();
-        ImGui::Checkbox(" Real-time   ", &realtime_enabled);
+        ImGui::Checkbox(" Human-Ctrl   ", &tello->controller->enable_human_dyn_data);
         ImGui::Separator();
-        ImGui::Checkbox(" Force Fdbk   ", &enable_human_ff);      // Edit bools storing our window open/close state
+        ImGui::Checkbox(" Real-Time   ", &realtime_enabled);
+        ImGui::Separator();
+        ImGui::Checkbox(" Force-Fdbk   ", &enable_human_ff);      // Edit bools storing our window open/close state
         ImGui::Separator();
             ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
-            if (ImGui::Button("  Tare CoM  ")) {
+            if (ImGui::Button(" " ICON_FA_WEIGHT " Tare CoM  ")) {
                 // add tare com code here
             }
             ImGui::PopStyleColor(3);
@@ -1014,9 +1141,12 @@ void* mujoco_Update_1KHz( void * arg )
         //handle UDP transmit here:
 		Human_dyn_data hdd = tello->controller->get_human_dyn_data();
 
-        if( (fabs(hdd.FxH_hmi - last_Xf) > 100) || (fabs(hdd.FyH_hmi - last_Yf) > 100) || (fabs(hdd.FxH_spring - last_springf) > 100)){
+        if( (fabs(hdd.FxH_hmi - last_Xf) > 1000) || (fabs(hdd.FyH_hmi - last_Yf) > 1000) || (fabs(hdd.FxH_spring - last_springf) > 1000)){
             controller_unstable = true;
         }
+        // if( (fabs(hdd.FyH_hmi - last_Yf) > 100) ){
+        //     controller_unstable = true;
+        // }
         last_Xf = hdd.FxH_hmi;
         last_Yf = hdd.FyH_hmi;
         last_springf = hdd.FxH_spring;
@@ -1060,7 +1190,7 @@ void* mujoco_Update_1KHz( void * arg )
 		handle_end_of_periodic_task(next,period);
         
 	}
-
+    system("killall -2 ffmpeg");
 	//free visualization storage
     mjv_freeScene(&scn);
     mjr_freeContext(&con);
@@ -1135,12 +1265,16 @@ void* sim_step_task( void * arg )
         double elapsed = dash_utils::measure_sim_timer();
         if(realtime_enabled)
         {
-            m->opt.timestep = elapsed;
+            if(elapsed < 0.005)
+                m->opt.timestep = elapsed;
+            else
+                m->opt.timestep = 0.001;
         }
         else{
-             m->opt.timestep = 0.001;
+            m->opt.timestep = 0.001;
         }
         dash_utils::start_sim_timer();
+        pthread_mutex_lock(&sim_step_mutex);
         
         if(!pause_sim)
         {
@@ -1158,6 +1292,7 @@ void* sim_step_task( void * arg )
             }
             
         }
+        pthread_mutex_unlock(&sim_step_mutex);
 
 		handle_end_of_periodic_task(next,period);
 	}
@@ -1174,7 +1309,6 @@ void* sim_step_task( void * arg )
     return  0;
 }
 
-
 void* Human_Playback( void * arg )
 {
 	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
@@ -1184,26 +1318,78 @@ void* Human_Playback( void * arg )
 	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
 
     std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Desktop/tello_outputs/Logs/05-17-23__14-41-29/human_dyn_data.csv");
+    // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Desktop/tello_outputs/teleop/5-15_to_16/5-16-23-stepping-with-no-sim/human_dyn_data.csv");
     // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Documents/hdd-tuning.csv");
 
-    int hdd_cnt=0;
+    hdd_cnt=0;
+
+    VectorXd  xHvec(100);
+    VectorXd dxHvec(100);
+    VectorXd pxHvec(100);
+    VectorXd  yHvec(100);
+    VectorXd dyHvec(100);
+    VectorXd pyHvec(100);
+    double xHval, dxHval, pxHval, yHval, dyHval, pyHval;
+    int dyn_data_idx = 0;
    
     struct timespec next;
     clock_gettime(CLOCK_MONOTONIC, &next);
-    while(hdd_cnt < hdd_vec.size())
+    while(1)
     {
-        handle_start_of_periodic_task(next);
-        if(tello->controller->is_human_ctrl_enabled())
+        while(hdd_cnt < hdd_vec.size())
         {
-            //dash_utils::print_human_dyn_data(hdd_vec[hdd_cnt]);
-            if(PS4_connected) hdd_vec[hdd_cnt].xH = xH_Commanded;
-            tello->controller->set_human_dyn_data(hdd_vec[hdd_cnt++]);
-            //cout << "applying HDD struct # " << hdd_cnt << endl;
-        }
+            handle_start_of_periodic_task(next);
+            if(tello->controller->is_human_ctrl_enabled() && (!pause_sim))
+            {
+                //dash_utils::print_human_dyn_data(hdd_vec[hdd_cnt]);
+                if(PS4_connected) hdd_vec[hdd_cnt].xH = xH_Commanded;
+                Human_dyn_data human_dyn_data = hdd_vec[hdd_cnt];
+                hdd_cnt += 1;
+                
+                //smooth data here
+                // xHvec.tail(99) = xHvec.head(99).eval();
+                // xHvec[0] = human_dyn_data.xH;
+                // dxHvec.tail(99) = dxHvec.head(99).eval();
+                // dxHvec[0] = human_dyn_data.dxH;
+                // pxHvec.tail(99) = pxHvec.head(99).eval();
+                // pxHvec[0] = human_dyn_data.pxH;
 
-		handle_end_of_periodic_task(next,period);
-	}
-    cout << "Human Playback Complete" << endl;
+                // yHvec.tail(99) = yHvec.head(99).eval();
+                // yHvec[0] = human_dyn_data.yH;
+                // dyHvec.tail(99) = dyHvec.head(99).eval();
+                // dyHvec[0] = human_dyn_data.dyH;
+                // pyHvec.tail(99) = pyHvec.head(99).eval();
+                // pyHvec[0] = human_dyn_data.pyH;
+                
+
+                // //dash_utils::start_timer();
+                // xHval = dash_utils::smoothData(xHvec,1);
+                // dxHval = dash_utils::smoothData(dxHvec,1);
+                // pxHval = dash_utils::smoothData(pxHvec,1);
+                // yHval = dash_utils::smoothData(yHvec,1);
+                // dyHval = dash_utils::smoothData(dyHvec,1);
+                // pyHval = dash_utils::smoothData(pyHvec,1);
+                // //dash_utils::print_timer();
+                // human_dyn_data.xH  =  xHval;
+                // human_dyn_data.dxH = dxHval;
+                // human_dyn_data.pxH = pxHval;
+                // human_dyn_data.yH  =  yHval;
+                // human_dyn_data.dyH = dyHval;
+                // human_dyn_data.pyH = pyHval;
+
+
+                tello->controller->set_human_dyn_data(human_dyn_data);
+                //cout << "applying HDD struct # " << hdd_cnt << endl;
+            }
+
+            handle_end_of_periodic_task(next,period);
+        }
+        hdd_cnt = 0;
+        tello->controller->disable_human_ctrl();
+        cout << "Human Playback Complete" << endl;
+
+    }
+   
     return  0;
 }
 
@@ -1245,7 +1431,7 @@ void* logging( void * arg )
     cout << "Human Playback Complete" << endl;
     return  0;
 }
-
+int recording_cnt = 0;
 void* screenRecord( void * arg )
 {
 	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
@@ -1253,17 +1439,130 @@ void* screenRecord( void * arg )
 	int period = std::get<2>(*arg_tuple_ptr);
 
 	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
-   
-    while(!screen_recording) usleep (1000);
-    screen_rec_pid = fork();
+    std::string cnt_str;
 
-    if (screen_rec_pid == 0) {
-        // Child process - execute FFmpeg command
-        execl("/usr/bin/ffmpeg", "ffmpeg", "-f", "x11grab", "-video_size", "3840x2160", "-loglevel", "quiet", "-framerate", "30", "-i", ":1+eDP-1-1", "-c:v", "h264_nvenc", "-qp", "0", "output.mp4", NULL);
+    usleep(1000000);
+    std::string text = executeCommand("xwininfo -root -tree | grep \"Tello Mujoco\"");
+    size_t paren_position = text.find(')');
+    text = text.substr(paren_position+1);
+    cout << "TEXT: " << text << endl;
+    std::string win_pos;
+    std::string win_size;
+
+    std::regex sizeRegex(R"(\b(\d+x\d+)\b)");
+    std::regex posRegex(R"( \+(\d+)\+(\d+))");
+
+    std::smatch sizeMatch, posMatch;
+
+    if (std::regex_search(text, sizeMatch, sizeRegex)) {
+        win_size = sizeMatch[1].str();
+        std::cout << "win_size: " << win_size << std::endl;
     }
-    
-    
-    cout << "Recording Done" << endl;
+
+    if (std::regex_search(text, posMatch, posRegex)) {
+        win_pos = posMatch[1].str() + "," + posMatch[2].str();
+        std::cout << "win_pos: " << win_pos << std::endl;
+    }
+
+    // screen_rec_pid = fork();
+    while(1)
+    {
+
+        while(!screen_recording || recording_in_progress) usleep (1000);
+        // screen_rec_pid = fork();
+        if (!recording_in_progress) {
+
+            std::string text = executeCommand("xwininfo -root -tree | grep \"Tello Mujoco\"");
+            size_t paren_position = text.find(')');
+            text = text.substr(paren_position+1);
+            cout << "TEXT: " << text << endl;
+            std::string win_pos;
+            std::string win_size;
+
+            std::regex sizeRegex(R"(\b(\d+x\d+)\b)");
+            std::regex posRegex(R"( \+(\d+)\+(\d+))");
+
+            std::smatch sizeMatch, posMatch;
+
+            if (std::regex_search(text, sizeMatch, sizeRegex)) {
+                win_size = sizeMatch[1].str();
+                std::cout << "win_size: " << win_size << std::endl;
+            }
+
+            if (std::regex_search(text, posMatch, posRegex)) {
+                win_pos = posMatch[1].str() + "," + posMatch[2].str();
+                std::cout << "win_pos: " << win_pos << std::endl;
+            }
+
+            // Parsing str1
+            std::istringstream iss1(win_size);
+            std::string token1;
+            int size_x, size_y;
+
+            std::getline(iss1, token1, 'x');
+            size_x = std::stoi(token1);
+
+            std::getline(iss1, token1);
+            size_y = std::stoi(token1)+72;
+
+            // Parsing str2
+            std::istringstream iss2(win_pos);
+            std::string token2;
+            int pos_x, pos_y;
+
+            std::getline(iss2, token2, ',');
+            pos_x = std::stoi(token2);
+
+            std::getline(iss2, token2);
+            pos_y = std::stoi(token2)-72;
+
+            std::ostringstream oss1;
+            oss1 << size_x << 'x' << size_y;
+            std::string window_size = oss1.str();
+
+            std::ostringstream oss2;
+            oss2 << pos_x << ',' << pos_y;
+            std::string window_pos = oss2.str();
+
+            cout << "pos x: " << pos_x << "   pos y: " << pos_y << "   size x: " << size_x << "   size y: " << size_y << endl;
+            recording_in_progress = true;
+            // Child process - execute FFmpeg command
+            cnt_str = to_string(recording_cnt);
+            //execl("/usr/bin/ffmpeg", "ffmpeg", "-f", "x11grab", "-video_size", "3840x2160", /*"-loglevel", "quiet",*/ "-framerate", "30", "-i", ":1+eDP-1-1", "-c:v", "h264_nvenc", "-qp", "0", "ScreenCapture.mp4", NULL);
+            //cout << "recording to: " << log_folder+"ScreenCapture_"+cnt_str+".mp4" << endl;
+            system(("ffmpeg -f x11grab -video_size "+window_size+" -loglevel fatal -framerate 30 -i $DISPLAY+"+window_pos+" -c:v h264_nvenc -qp 0 " + log_folder+"ScreenCapture_"+cnt_str+".mp4").c_str());
+            recording_cnt++;
+        }
+        usleep(10000);
+    }
+
+    return  0;
+}
+int usb_recording_cnt = 0;
+void* usbCamRecord( void * arg )
+{
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	void* dynamic_robot_ptr = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
+
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
+    std::string cnt_str;
+    // screen_rec_pid = fork();
+    while(1)
+    {
+
+        while(!screen_recording || recording_in_progress) usleep (1000);
+        // screen_rec_pid = fork();
+        if (!recording_in_progress) {
+            recording_in_progress = true;
+            // Child process - execute FFmpeg command
+            cnt_str = to_string(usb_recording_cnt);
+            system(("ffmpeg -f v4l2 -loglevel fatal -framerate 30 -video_size 800x600 -input_format mjpeg -i /dev/video4 -c:v copy " + log_folder+"usb_camera_"+cnt_str+".mp4").c_str());
+            usb_recording_cnt++;
+        }
+        usleep(10000);
+    }
+
     return  0;
 }
 

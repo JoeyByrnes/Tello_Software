@@ -61,5 +61,6 @@ void* Human_Playback( void * arg );
 void* logging( void * arg );
 void* sim_step_task( void * arg );
 void* screenRecord( void * arg );
+void* usbCamRecord( void * arg );
 
 #endif

@@ -209,6 +209,17 @@ void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* rob
 // 		usleep(100);
 // 	}
 // }
+
+VectorXd  xHvec(100);
+VectorXd dxHvec(100);
+VectorXd pxHvec(100);
+VectorXd  yHvec(100);
+VectorXd dyHvec(100);
+VectorXd pyHvec(100);
+double xHval, dxHval, pxHval, yHval, dyHval, pyHval;
+int dyn_data_idx = 0;
+
+
 void* rx_UDP( void * arg ){
 
 	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
@@ -279,6 +290,39 @@ void* rx_UDP( void * arg ){
 			Human_params hp;
 			dash_init::Human_Init(hp,human_dyn_data);
 		}
+
+	// 	// smooth data here
+	// 	xHvec.tail(99) = xHvec.head(99).eval();
+    //     xHvec[0] = human_dyn_data.xH;
+	// 	dxHvec.tail(99) = dxHvec.head(99).eval();
+    //     dxHvec[0] = human_dyn_data.dxH;
+	// 	pxHvec.tail(99) = pxHvec.head(99).eval();
+    //     pxHvec[0] = human_dyn_data.pxH;
+
+	// 	yHvec.tail(99) = yHvec.head(99).eval();
+    //     yHvec[0] = human_dyn_data.yH;
+	// 	dyHvec.tail(99) = dyHvec.head(99).eval();
+    //     dyHvec[0] = human_dyn_data.dyH;
+	// 	pyHvec.tail(99) = pyHvec.head(99).eval();
+    //     pyHvec[0] = human_dyn_data.pyH;
+        
+
+    //    //dash_utils::start_timer();
+	// 	xHval = dash_utils::smoothData(xHvec,2);
+	// 	dxHval = dash_utils::smoothData(dxHvec,0.5);
+	// 	pxHval = dash_utils::smoothData(pxHvec,0.5);
+	// 	yHval = dash_utils::smoothData(yHvec,2);
+	// 	dyHval = dash_utils::smoothData(dyHvec,0.5);
+	// 	pyHval = dash_utils::smoothData(pyHvec,0.5);
+	// 	//dash_utils::print_timer();
+    //     human_dyn_data.xH  =  xHval;
+	// 	human_dyn_data.dxH = dxHval;
+	// 	human_dyn_data.pxH = pxHval;
+	// 	human_dyn_data.yH  =  yHval;
+	// 	human_dyn_data.dyH = dyHval;
+	// 	human_dyn_data.pyH = pyHval;
+
+
 		tello->controller->set_human_dyn_data(human_dyn_data);
 		//dash_utils::print_human_dyn_data(human_dyn_data);
 

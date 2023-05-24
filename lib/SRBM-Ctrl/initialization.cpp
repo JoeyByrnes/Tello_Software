@@ -164,7 +164,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
 
         // SRB specific
         srb_params.m = 23; // robot mass in kg // was 23 for mujoco
-        srb_params.hLIP = 0.66; // nominal robot LIP height // was 0.66 for mujoco
+        srb_params.hLIP = 0.57; // nominal robot LIP height // was 0.66 for mujoco
         srb_params.Ib = Matrix3d::Identity();
         srb_params.Ib(0,0) = 0.4874;
         srb_params.Ib(1,1) = 0.3081;
@@ -178,7 +178,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.calf_length = 0.26; // calf length in m (L2)
         srb_params.foot_length = 0.12; // foot length in m (L3)
         srb_params.heel_length = 0.0485; // heel length in m (L4)
-        srb_params.CoM2H_z_dist = 0.18; // CoM to hip connection z-direction distance in m was 0.18 for mujoco
+        srb_params.CoM2H_z_dist = 0.088; // CoM to hip connection z-direction distance in m was 0.18 for mujoco
 
         // planner (all) -- perhaps move to a separate data structure later
         srb_params.planner_type = 0; // none = 0, LIP_ang_mom_reg = 1, Human_Dyn_Telelocomotion = 2
@@ -263,7 +263,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
 
         // SRB specific
         srb_params.m = 20.2; // robot mass in kg // was 23 for mujoco
-        srb_params.hLIP = 0.65; // nominal robot LIP height // was 0.66 for mujoco
+        srb_params.hLIP = 0.57; // nominal robot LIP height // was 0.66 for mujoco
         srb_params.Ib = Matrix3d::Identity();
         srb_params.Ib(0,0) = 0.4874;
         srb_params.Ib(1,1) = 0.3081;
@@ -277,7 +277,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.calf_length = 0.26; // calf length in m (L2)
         srb_params.foot_length = 0.12; // foot length in m (L3)
         srb_params.heel_length = 0.0485; // heel length in m (L4)
-        srb_params.CoM2H_z_dist = 0.18; // CoM to hip connection z-direction distance in m
+        srb_params.CoM2H_z_dist = 0.088; // CoM to hip connection z-direction distance in m
 
         // planner (all) -- perhaps move to a separate data structure later
         srb_params.planner_type = 0; // none = 0, LIP_ang_mom_reg = 1, Human_Dyn_Telelocomotion = 2

@@ -16,3 +16,5 @@
 #define MOTOR_TIMEOUT 3 //Milliseconds until motors cut out
 
 #define SIMULATED_COMMS_LATENCY_US 750
+
+#define TELEOP_FILTER_GAIN 2

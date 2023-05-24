@@ -37,6 +37,7 @@
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
+#include <implot.h>
 #include <glm/glm.hpp>
 #include <filesystem>
 
@@ -62,5 +63,13 @@ void* logging( void * arg );
 void* sim_step_task( void * arg );
 void* screenRecord( void * arg );
 void* usbCamRecord( void * arg );
+
+struct simConfig {
+    bool en_data_logging;
+    bool en_auto_record;
+    bool en_HMI_recording;
+    bool en_screen_recording;
+    bool en_realtime_plot;
+};
 
 #endif

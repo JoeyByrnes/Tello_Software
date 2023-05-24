@@ -1,5 +1,8 @@
 #include "mujoco_utilities.h"
 
+extern simConfig sim_conf;
+extern int plot_width;
+
 // MuJoCo data structures
 extern mjModel* m;                  // MuJoCo model
 extern mjData* d;                   // MuJoCo data
@@ -99,11 +102,15 @@ void mouse_button(GLFWwindow* window, int button, int act, int mods)
     // update mouse position
     glfwGetCursorPos(window, &lastx, &lasty);
 }
-
+double last_xpos = 0;
+double last_ypos = 0;
 // mouse move callback
 void mouse_move(GLFWwindow* window, double xpos, double ypos)
 {
+    last_xpos = xpos;
+    last_ypos = ypos;
     if(ypos < 100) return;
+    if(sim_conf.en_realtime_plot && xpos < plot_width) return;
     // no buttons down: nothing to do
     if (!button_left && !button_middle && !button_right)
         return;
@@ -138,6 +145,8 @@ void mouse_move(GLFWwindow* window, double xpos, double ypos)
 // scroll callback
 void scroll(GLFWwindow* window, double xoffset, double yoffset)
 {
+    if(last_ypos < 100) return;
+    if(sim_conf.en_realtime_plot && last_xpos < plot_width) return;
     // emulate vertical mouse motion = 5% of window height
     mjv_moveCamera(m, mjMOUSE_ZOOM, 0, -0.05 * yoffset, &scn, &cam);
 }
@@ -330,4 +339,57 @@ std::string executeCommand(const std::string& command) {
     }
 
     return result;
+}
+
+using json = nlohmann::json;
+
+simConfig readSimConfigFromFile(const std::string& filename) {
+    simConfig config;
+
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return config;
+    }
+
+    try {
+        json jsonData;
+        file >> jsonData;
+
+        config.en_data_logging = jsonData["en_data_logging"];
+        config.en_auto_record = jsonData["en_auto_record"];
+        config.en_HMI_recording = jsonData["en_HMI_recording"];
+        config.en_screen_recording = jsonData["en_screen_recording"];
+        config.en_realtime_plot = jsonData["en_realtime_plot"];
+    } catch (json::exception& e) {
+        std::cerr << "Error parsing JSON: " << e.what() << std::endl;
+    }
+
+    file.close();
+    return config;
+}
+
+void writeSimConfigToFile(const simConfig& config, const std::string& filename) {
+    json jsonData;
+    jsonData["en_data_logging"] = config.en_data_logging;
+    jsonData["en_auto_record"] = config.en_auto_record;
+    jsonData["en_HMI_recording"] = config.en_HMI_recording;
+    jsonData["en_screen_recording"] = config.en_screen_recording;
+    jsonData["en_realtime_plot"] = config.en_realtime_plot;
+
+
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return;
+    }
+
+    try {
+        file << std::setw(4) << jsonData << std::endl;
+        std::cout << "Config successfully written to file: " << filename << std::endl;
+    } catch (json::exception& e) {
+        std::cerr << "Error writing JSON: " << e.what() << std::endl;
+    }
+
+    file.close();
 }

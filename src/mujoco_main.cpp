@@ -15,10 +15,17 @@ extern pthread_mutex_t EKF_mutex;
 
 namespace plt = matplotlibcpp;
 GLFWwindow* window;
+int windowWidth, windowHeight;
 
 FILE* screen_record_pipe;
 pid_t screen_rec_pid = -1;
 bool recording_in_progress = false;
+bool usb_recording_in_progress = false;
+
+extern struct termios originalSettings;
+
+simConfig sim_conf;
+int plot_width = 0;
 
 double vx_desired_ps4 = 0;
 double vy_desired_ps4 = 0;
@@ -27,6 +34,7 @@ bool enable_human_ff = false;
 bool zero_human = false;
 float master_gain = 0;
 bool screen_recording = false;
+bool usbcam_recording = false;
 int hdd_cnt=0; // human_playback counter
 
 //logging
@@ -658,6 +666,42 @@ double sin_cnt = 0;
 double sin_val = 0;
 int video_pulse_indicator_cnt = 0;
 
+static float xH[5001], yH[5001], t[5001];
+
+void DrawPlot()
+{
+    glfwGetWindowSize(window, &windowWidth, &windowHeight);
+    ImPlot::StyleColorsLight();
+    ImGui::SetNextWindowSize(ImVec2((double)windowWidth/4.0,windowHeight-95));
+    ImGui::SetNextWindowPos(ImVec2(0,95));
+    plot_width = windowWidth/4.0+5;
+    ImGui::Begin("ImGraph",nullptr,ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize);
+    
+    static float xs1[5001], ys1[5001];
+    for (int i = 0; i <5000; i++) {
+        if(!pause_sim){
+            xH[i] = xH[i+1];
+            yH[i] = yH[i+1];
+        }
+        t[i] = i;
+    }
+    if(!pause_sim){
+        xH[5000] = tello->controller->get_human_dyn_data().xH;
+        yH[5000] = tello->controller->get_human_dyn_data().yH;
+    }
+        t[5000] = 5000;
+    if (ImPlot::BeginPlot("Tello Real-Time Data",ImVec2((double)windowWidth/4.0-15,windowHeight-115),ImPlotFlags_NoMouseText)) {
+        ImPlot::SetupAxes("x","y",ImPlotAxisFlags_NoDecorations,ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_AutoFit);
+        ImPlot::SetNextLineStyle(ImVec4(0.5, 0, 0, 1), 3.0f);
+        ImPlot::PlotLine("xH", t, xH, 5001,ImPlotLineFlags_None);
+        ImPlot::SetNextLineStyle(ImVec4(0, 0, 0.5, 1), 3.0f);
+        ImPlot::PlotLine("yH", t, yH, 5001,ImPlotLineFlags_None);
+        ImPlot::EndPlot();
+    }
+    ImGui::End();
+}
+
+
 void* mujoco_Update_1KHz( void * arg )
 {
 	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
@@ -676,6 +720,8 @@ void* mujoco_Update_1KHz( void * arg )
 
     struct timespec next;
     clock_gettime(CLOCK_MONOTONIC, &next);
+
+    sim_conf = readSimConfigFromFile("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/sim_config.json");
 
 
     // INITIALIZE SRBM CONTROLLER ========================================================
@@ -790,6 +836,7 @@ void* mujoco_Update_1KHz( void * arg )
     // initialize ImGui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImPlot::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
@@ -947,17 +994,20 @@ void* mujoco_Update_1KHz( void * arg )
         ImVec4 redActive = hex2ImVec4(0x7a0b16);
         // ImVec4 grey2 = hex2ImVec4(0x7d7d7d);
         // ImVec4 grey2 = hex2ImVec4(0x7d7d7d);
-
+        glfwGetWindowSize(window, &windowWidth, &windowHeight);
+        double screenScale = ((double)windowWidth/3840.0)*1.2;
+        if(screenScale > 1.0) screenScale = 1.0;
+        io.FontGlobalScale = screenScale;
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         ImGui::PushStyleColor(ImGuiCol_MenuBarBg, grey5);
-        ImGui::SetNextWindowSizeConstraints(ImVec2(-1, 95), ImVec2(-1, FLT_MAX));
+        ImGui::SetNextWindowSizeConstraints(ImVec2(-1, 35+60.0*screenScale), ImVec2(-1, FLT_MAX));
         ImGui::BeginMainMenuBar();
         ImGui::EndMainMenuBar();
         ImGui::PopStyleColor();
         ImGui::SetNextWindowPos(ImVec2(0, 15));
-        ImGui::SetNextWindowSizeConstraints(ImVec2(-1, 70), ImVec2(-1, FLT_MAX));
+        ImGui::SetNextWindowSizeConstraints(ImVec2(-1, 10*60.0*screenScale), ImVec2(-1, FLT_MAX));
         // add toolbar with button
         ImGui::PushStyleColor(ImGuiCol_MenuBarBg, grey4);
         ImGui::PushStyleColor(ImGuiCol_Button, med_navy);
@@ -975,19 +1025,24 @@ void* mujoco_Update_1KHz( void * arg )
         if (ImGui::BeginMenu(" " ICON_FA_BARS " "))
         {
             ImGui::Separator();
-            ImGui::Checkbox(" " ICON_FA_FILE_CSV "  Enable Data Logging   ", &dummy);
+            ImGui::Checkbox(" " ICON_FA_FILE_CSV "  Enable Data Logging   ", &(sim_conf.en_data_logging));
             ImGui::Separator();
-            ImGui::Checkbox(" " ICON_FA_CAMERA "  Enable HMI Video   ", &dummy);
+            ImGui::Checkbox(" " ICON_FA_CAMERA "  Enable HMI Recording   ", &(sim_conf.en_HMI_recording));
             ImGui::Separator();
-            ImGui::Checkbox(" " ICON_FA_TV "  Enable Mujoco Video   ", &dummy);
+            ImGui::Checkbox(" " ICON_FA_TV "  Enable Mujoco Recording   ", &(sim_conf.en_screen_recording));
             ImGui::Separator();
-            ImGui::Checkbox(" " ICON_FA_CHECK_CIRCLE "  Auto-Record Session   ", &dummy);
+            ImGui::Checkbox(" " ICON_FA_CHECK_CIRCLE "  Auto-Record Sessions   ", &(sim_conf.en_auto_record));
+            ImGui::Separator();
+            ImGui::Checkbox(" " ICON_FA_CHART_LINE "  Display Realtime Plot   ", &(sim_conf.en_realtime_plot));
             ImGui::Separator();
             ImGui::PopStyleColor();
             ImGui::Separator();
             ImGui::PushStyleColor(ImGuiCol_Separator,grey5);  
             ImGui::Separator();
-            if (ImGui::MenuItem(" " ICON_FA_SAVE "  Save Configuration"))  { /* do something */int x = 1; }
+            if (ImGui::MenuItem(" " ICON_FA_SAVE "  Save Configuration"))
+            { 
+                writeSimConfigToFile(sim_conf, "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/sim_config.json");
+            }
             ImGui::Separator();
             ImGui::EndMenu();
         }
@@ -1051,6 +1106,7 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, redActive);
             if (ImGui::Button(" " ICON_FA_VIDEO " ")) {
                 screen_recording = true;
+                usbcam_recording = true;
                 // setenv("DISPLAY", ":1", 1);
                 // const char* command = "taskset -c 0 ffmpeg -f x11grab -video_size 3840x2160 -framerate 30 -i :1 -c:v h264_nvenc -qp 0 output.mp4";
                 // screen_record_pipe = popen(command, "w");
@@ -1072,8 +1128,11 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, redActive);
             if (ImGui::Button(" " ICON_FA_VIDEO_SLASH " ")) {
                 screen_recording = false;
+                usbcam_recording = false;
                 system("killall -2 ffmpeg");
+                
                 recording_in_progress = false;
+                usb_recording_in_progress = false;
                 // pid_t pid = fileno(screen_record_pipe);
                 // cout << "pid: " << pid << endl;
                 // if (pid != -1) {
@@ -1116,7 +1175,7 @@ void* mujoco_Update_1KHz( void * arg )
             }
             ImGui::PopStyleColor(3);
         ImGui::Separator();
-        ImGui::SetNextItemWidth(250.0f);
+        ImGui::SetNextItemWidth(250.0f*screenScale);
         ImGui::PushStyleColor(ImGuiCol_FrameBg,grey2);
         ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,grey2);
         ImGui::PushStyleColor(ImGuiCol_SliderGrab,black);
@@ -1127,6 +1186,10 @@ void* mujoco_Update_1KHz( void * arg )
         ImGui::EndMainMenuBar();
         ImGui::PopFont();
         ImGui::PopStyleColor(4);
+
+        if(sim_conf.en_realtime_plot)
+            DrawPlot();
+
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -1190,7 +1253,10 @@ void* mujoco_Update_1KHz( void * arg )
 		handle_end_of_periodic_task(next,period);
         
 	}
+    ImPlot::DestroyContext();
+    ImGui::DestroyContext();
     system("killall -2 ffmpeg");
+    tcsetattr(STDIN_FILENO, TCSANOW, &originalSettings);
 	//free visualization storage
     mjv_freeScene(&scn);
     mjr_freeContext(&con);
@@ -1400,7 +1466,8 @@ void* logging( void * arg )
 	int period = std::get<2>(*arg_tuple_ptr);
 
 	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
-   
+    usleep(1000000);
+
     struct timespec next;
     clock_gettime(CLOCK_MONOTONIC, &next);
     while(true)
@@ -1464,11 +1531,14 @@ void* screenRecord( void * arg )
         std::cout << "win_pos: " << win_pos << std::endl;
     }
 
+    if(sim_conf.en_auto_record)
+        screen_recording = true;
+
     // screen_rec_pid = fork();
     while(1)
     {
 
-        while(!screen_recording || recording_in_progress) usleep (1000);
+        while(!screen_recording || recording_in_progress || !(sim_conf.en_screen_recording)) usleep (1000);
         // screen_rec_pid = fork();
         if (!recording_in_progress) {
 
@@ -1530,7 +1600,7 @@ void* screenRecord( void * arg )
             cnt_str = to_string(recording_cnt);
             //execl("/usr/bin/ffmpeg", "ffmpeg", "-f", "x11grab", "-video_size", "3840x2160", /*"-loglevel", "quiet",*/ "-framerate", "30", "-i", ":1+eDP-1-1", "-c:v", "h264_nvenc", "-qp", "0", "ScreenCapture.mp4", NULL);
             //cout << "recording to: " << log_folder+"ScreenCapture_"+cnt_str+".mp4" << endl;
-            system(("ffmpeg -f x11grab -video_size "+window_size+" -loglevel fatal -framerate 30 -i $DISPLAY+"+window_pos+" -c:v h264_nvenc -qp 0 " + log_folder+"ScreenCapture_"+cnt_str+".mp4").c_str());
+            system(("ffmpeg -f x11grab -video_size "+window_size+" -loglevel quiet -framerate 30 -i $DISPLAY+"+window_pos+" -c:v h264_nvenc -qp 0 " + log_folder+"ScreenCapture_"+cnt_str+".mp4").c_str());
             recording_cnt++;
         }
         usleep(10000);
@@ -1548,16 +1618,19 @@ void* usbCamRecord( void * arg )
 	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
     std::string cnt_str;
     // screen_rec_pid = fork();
+    usleep(1000000);
+    if(sim_conf.en_auto_record)
+        usbcam_recording = true;
     while(1)
     {
 
-        while(!screen_recording || recording_in_progress) usleep (1000);
+        while(!usbcam_recording || usb_recording_in_progress || !(sim_conf.en_HMI_recording)) usleep (1000);
         // screen_rec_pid = fork();
-        if (!recording_in_progress) {
-            recording_in_progress = true;
+        if (!usb_recording_in_progress) {
+            usb_recording_in_progress = true;
             // Child process - execute FFmpeg command
             cnt_str = to_string(usb_recording_cnt);
-            system(("ffmpeg -f v4l2 -loglevel fatal -framerate 30 -video_size 800x600 -input_format mjpeg -i /dev/video4 -c:v copy " + log_folder+"usb_camera_"+cnt_str+".mp4").c_str());
+            system(("ffmpeg -f v4l2 -loglevel quiet -framerate 30 -video_size 800x600 -input_format mjpeg -i /dev/video4 -c:v copy " + log_folder+"usb_camera_"+cnt_str+".mp4").c_str());
             usb_recording_cnt++;
         }
         usleep(10000);

@@ -13,3 +13,5 @@ VectorXd mux_and_smooth(VectorXd initialOutput, VectorXd finalOutput, double sta
 double smoothData(const Eigen::VectorXd& vel, double smoothingFactor);
 double firstOrderFilter(const Eigen::VectorXd& x, double alpha);
 std::string executeCommand(const std::string& command);
+simConfig readSimConfigFromFile(const std::string& filename);
+void writeSimConfigToFile(const simConfig& config, const std::string& filename);

@@ -103,7 +103,7 @@
 				
 				  <inertial pos="0.0027627 0.12311 0.57017" quat="0.999973 0.00562277 0.00469994 -0.000348412" mass="0.15" diaginertia="0.00007 0.00014 0.00007"/>
 				  <joint name="right_ankle" pos="0 0 0" axis="0 -1 0" limited = "true" range = "-0.785398 0.785398" armature=" 0.006" damping="1"/>
-				  <geom type="mesh" rgba="0.7 0 0 1" mesh="right_foot" euler="0 0 3.14159265359" contype='0'/>
+				  <geom name = "rfoot" type="mesh" rgba="0.7 0 0 1" mesh="right_foot" euler="0 0 3.14159265359" contype='0'/>
  				  <geom name = "right_foot_heel" pos = "-0.06 0 0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
 				  <geom name = "right_foot_toe" pos = "0.06 0 0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
 
@@ -151,7 +151,7 @@
 				
 				  <inertial pos="0.0027627 -0.12889 0.57017" quat="0.999973 0.00562277 0.00469994 -0.000348412" mass="0.15" diaginertia="0.00007 0.00014 0.00007"/>
 				  <joint name="left_ankle" pos="0 0 0" axis="0 -1 0" limited = "true" range = "-0.785398 0.785398" armature=" 0.006" damping="1"/>
-				  <geom type="mesh" rgba="0.7 0 0 1" mesh="left_foot" euler="0 0 3.14159265359" contype='0'/>
+				  <geom name= "lfoot" type="mesh" rgba="0.7 0 0 1" mesh="left_foot" euler="0 0 3.14159265359" contype='0'/>
  				  <geom name = "left_foot_heel" pos = "-0.06 0 0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>
 				  <geom name = "left_foot_toe" pos = "0.06 0 0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>	
 

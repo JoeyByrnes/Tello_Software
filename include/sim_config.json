@@ -3,5 +3,6 @@
     "en_auto_record": false,
     "en_data_logging": true,
     "en_realtime_plot": false,
-    "en_screen_recording": true
+    "en_screen_recording": true,
+    "en_playback_mode": true
 }

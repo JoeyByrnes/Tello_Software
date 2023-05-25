@@ -1,4 +1,5 @@
 #include "comms.h"
+#include "mujoco_main.h"
 
 extern uint16_t encoders[10];
 
@@ -24,6 +25,8 @@ double initial_yaw = 0;
 bool yaw_offset_recorded = false;
 
 long long print_index = 0;
+
+extern simConfig sim_conf;
 
 void* rx_CAN( void * arg ){
     
@@ -310,10 +313,10 @@ void* rx_UDP( void * arg ){
     //    //dash_utils::start_timer();
 	// 	xHval = dash_utils::smoothData(xHvec,2);
 	// 	dxHval = dash_utils::smoothData(dxHvec,0.5);
-	// 	pxHval = dash_utils::smoothData(pxHvec,0.5);
+	// 	pxHval = dash_utils::smoothData(pxHvec,0);
 	// 	yHval = dash_utils::smoothData(yHvec,2);
 	// 	dyHval = dash_utils::smoothData(dyHvec,0.5);
-	// 	pyHval = dash_utils::smoothData(pyHvec,0.5);
+	// 	pyHval = dash_utils::smoothData(pyHvec,0);
 	// 	//dash_utils::print_timer();
     //     human_dyn_data.xH  =  xHval;
 	// 	human_dyn_data.dxH = dxHval;
@@ -322,8 +325,10 @@ void* rx_UDP( void * arg ){
 	// 	human_dyn_data.dyH = dyHval;
 	// 	human_dyn_data.pyH = pyHval;
 
-
-		tello->controller->set_human_dyn_data(human_dyn_data);
+		if(!(sim_conf.en_playback_mode))
+		{
+			tello->controller->set_human_dyn_data(human_dyn_data);
+		}
 		//dash_utils::print_human_dyn_data(human_dyn_data);
 
 		// udp_data_ready = 0;

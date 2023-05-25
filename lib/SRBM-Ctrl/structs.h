@@ -126,7 +126,8 @@ struct Traj_planner_dyn_data
     double x_HWRM;
     double dx_HWRM;
     Vector2d x_plus_HWRM; 
-    double uk_HWRM;         
+    double uk_HWRM;      
+    Vector3d st_beg_step;   
 };
 
 struct Teleop_Ref {

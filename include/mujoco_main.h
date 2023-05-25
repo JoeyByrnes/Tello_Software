@@ -70,6 +70,7 @@ struct simConfig {
     bool en_HMI_recording;
     bool en_screen_recording;
     bool en_realtime_plot;
+    bool en_playback_mode;
 };
 
 #endif

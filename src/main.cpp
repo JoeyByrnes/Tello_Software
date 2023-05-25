@@ -1029,7 +1029,7 @@ int main(int argc, char *argv[]) {
 		tello->addPeriodicTask(&sim_step_task, SCHED_FIFO, 99, 10, (void*)(NULL),"sim_step_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 98, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 2000);
 		// tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 2000);
-		// tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
+		tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 		tello->addPeriodicTask(&Human_Playback, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"human_playback_task",TASK_CONSTANT_PERIOD, 2000);
 		tello->addPeriodicTask(&logging, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"logging_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&screenRecord, SCHED_FIFO, 10, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
@@ -1051,7 +1051,7 @@ int main(int argc, char *argv[]) {
 		tello->addPeriodicTask(&sim_step_task, SCHED_FIFO, 99, 10, (void*)(NULL),"sim_step_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 98, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 2000);
 		// tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 2000);
-		// tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
+		tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 		tello->addPeriodicTask(&Human_Playback, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"human_playback_task",TASK_CONSTANT_PERIOD, 2000);
 		tello->addPeriodicTask(&logging, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"logging_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&screenRecord, SCHED_FIFO, 10, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);

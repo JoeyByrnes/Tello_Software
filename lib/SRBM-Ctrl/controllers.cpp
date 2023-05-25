@@ -37,6 +37,11 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
     double swx0 = traj_planner_dyn_data.sw_beg_step[0];
     double swy0 = traj_planner_dyn_data.sw_beg_step[1];
     double swz0 = traj_planner_dyn_data.sw_beg_step[2];
+
+    double stx0 = traj_planner_dyn_data.st_beg_step[0];
+    double sty0 = traj_planner_dyn_data.st_beg_step[1];
+    double stz0 = traj_planner_dyn_data.st_beg_step[2];
+
     double fyH0 = traj_planner_dyn_data.human_leg_joystick_pos_beg_step[1];
     double fzH0 = traj_planner_dyn_data.human_leg_joystick_pos_beg_step[2];
 
@@ -80,7 +85,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
     ks = mH * wH * wH;
 
     // Human (frontal) and robot (sagittal) LIPs
-    xR_LIP = xR - swx0;
+    xR_LIP = xR - stx0;
     yH_LIP = yH - pyH;
 
     // DCM calculations
@@ -125,6 +130,9 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
     //cout << "xDCMH_ref: " << xDCMH_ref << "   xH: " << xH << endl;
     double xH_ref, dxH_ref;
     dash_utils::LIP_dyn_ref(t_step, wH, xH0_ref, dxH0_ref, xH_ref, dxH_ref);
+
+    traj_planner_dyn_data.x_HWRM = xH_ref;
+    traj_planner_dyn_data.dx_HWRM = dxH_ref;
 
     // human force profile for desired P1 orbit
     double FxH_ref = mH * wH * wH * xH_ref; // feedforward force to track human reference trajectory

@@ -1,8 +1,8 @@
 {
     "srb_params": {
-      "Kp_xR": 10000,
+      "Kp_xR": 20000,
       "Kd_xR": 500,
-      "Kp_yR": 10000,
+      "Kp_yR": 20000,
       "Kd_yR": 500,
       "Kp_zR": 50000, 
       "Kd_zR": 500,
@@ -18,10 +18,10 @@
     },
     
     "Posture_Control": {
-      "Hip_Yaw_Kp": 5000,
-      "Hip_Yaw_Kd": 50,
+      "Hip_Yaw_Kp": 8000,
+      "Hip_Yaw_Kd": 10,
       
-      "Hip_Roll_Kp": 1000,
+      "Hip_Roll_Kp": 5000,
       "Hip_Roll_Kd": 0,
       
       "Hip_Pitch_Kp": 0,

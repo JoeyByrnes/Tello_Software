@@ -972,6 +972,19 @@ void dash_utils::pack_data_to_hmi(uint8_t* buffer, Human_dyn_data data)
     }
 }
 
+void dash_utils::pack_data_to_hmi_with_ctrls(uint8_t* buffer, Human_dyn_data data,bool ff,bool tare,float gain)
+{
+    float* float_buffer = reinterpret_cast<float*>(buffer);
+    float_buffer[0] = data.FxH_hmi;
+    float_buffer[1] = data.FyH_hmi;
+    float_buffer[2] = data.FxH_spring;
+    float_buffer[3] = (((int)ff) << 1) | ((int) tare);
+    float_buffer[4] = gain;
+    for (int i = 0; i < 20; i++) {
+        buffer[20] += buffer[i];
+    }
+}
+
 std::chrono::high_resolution_clock::time_point last_comms_print_time;
 
 void dash_utils::print_human_dyn_data(const Human_dyn_data& data)

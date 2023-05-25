@@ -60,6 +60,7 @@ namespace  dash_utils
     double measure_sim_timer();
 
     void pack_data_to_hmi(uint8_t* buffer, Human_dyn_data data);
+    void pack_data_to_hmi_with_ctrls(uint8_t* buffer, Human_dyn_data data,bool ff,bool tare,float gain);
     void unpack_data_from_hmi(Human_dyn_data& data, uint8_t* buffer);
     void print_human_dyn_data(const Human_dyn_data& data);
 

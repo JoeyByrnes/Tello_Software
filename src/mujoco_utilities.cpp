@@ -361,6 +361,7 @@ simConfig readSimConfigFromFile(const std::string& filename) {
         config.en_HMI_recording = jsonData["en_HMI_recording"];
         config.en_screen_recording = jsonData["en_screen_recording"];
         config.en_realtime_plot = jsonData["en_realtime_plot"];
+        config.en_playback_mode = jsonData["en_playback_mode"];
     } catch (json::exception& e) {
         std::cerr << "Error parsing JSON: " << e.what() << std::endl;
     }
@@ -376,6 +377,7 @@ void writeSimConfigToFile(const simConfig& config, const std::string& filename) 
     jsonData["en_HMI_recording"] = config.en_HMI_recording;
     jsonData["en_screen_recording"] = config.en_screen_recording;
     jsonData["en_realtime_plot"] = config.en_realtime_plot;
+    jsonData["en_playback_mode"] = config.en_playback_mode;
 
 
     std::ofstream file(filename);

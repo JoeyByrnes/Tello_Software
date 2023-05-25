@@ -1,4 +1,5 @@
 #define WITHOUT_NUMPY
+#define GL_GLEXT_PROTOTYPES
 #include "mujoco_main.h"
 #include "mujoco_utilities.h"
 #include "state_estimator.h"
@@ -8,6 +9,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include "IconsFontAwesome5.h"
+#include "ImFileDialog.h"
 
 pthread_mutex_t plotting_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t sim_step_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -666,7 +668,7 @@ double sin_cnt = 0;
 double sin_val = 0;
 int video_pulse_indicator_cnt = 0;
 
-static float xH[5001], yH[5001], t[5001];
+static float xH[5001], yH[5001], t[5001], dxH[5001], dyH[5001], pxH[5001], pyH[5001], u1z[5001],u2z[5001],u3z[5001],u4z[5001],FSM_[5001];
 
 void DrawPlot()
 {
@@ -680,22 +682,61 @@ void DrawPlot()
     static float xs1[5001], ys1[5001];
     for (int i = 0; i <5000; i++) {
         if(!pause_sim){
-            xH[i] = xH[i+1];
-            yH[i] = yH[i+1];
+            FSM_[i] = FSM_[i+1];
+            // xH[i] = xH[i+1];
+            // yH[i] = yH[i+1];
+            // dxH[i] = dxH[i+1];
+            // dyH[i] = dyH[i+1];
+            // pxH[i] = pxH[i+1];
+            // pyH[i] = pyH[i+1];
+            
+            // u1z[i] = u1z[i+1];
+            // u2z[i] = u2z[i+1];
+            // u3z[i] = u3z[i+1];
+            // u4z[i] = u4z[i+1];
         }
         t[i] = i;
     }
     if(!pause_sim){
         xH[5000] = tello->controller->get_human_dyn_data().xH;
         yH[5000] = tello->controller->get_human_dyn_data().yH;
+        dxH[5000] = tello->controller->get_human_dyn_data().dxH;
+        dyH[5000] = tello->controller->get_human_dyn_data().dyH;
+        pxH[5000] = tello->controller->get_human_dyn_data().pxH;
+        pyH[5000] = tello->controller->get_human_dyn_data().pyH;
+        u1z[5000] = tello->controller->get_GRFs()(2);
+        u2z[5000] = tello->controller->get_GRFs()(5);
+        u3z[5000] = tello->controller->get_GRFs()(8);
+        u4z[5000] = tello->controller->get_GRFs()(11);
     }
         t[5000] = 5000;
-    if (ImPlot::BeginPlot("Tello Real-Time Data",ImVec2((double)windowWidth/4.0-15,windowHeight-115),ImPlotFlags_NoMouseText)) {
+    if (ImPlot::BeginPlot("Tello Real-Time Data",ImVec2((double)windowWidth/4.0-15,windowHeight-115))) {
         ImPlot::SetupAxes("x","y",ImPlotAxisFlags_NoDecorations,ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_AutoFit);
+
+        // ImPlot::SetNextLineStyle(ImVec4(0.5, 0, 0, 1), 3.0f);
+        // ImPlot::PlotLine("xH", t, xH, 5001,ImPlotLineFlags_None);
+        // ImPlot::SetNextLineStyle(ImVec4(0, 0, 0.5, 1), 3.0f);
+        // ImPlot::PlotLine("yH", t, yH, 5001,ImPlotLineFlags_None);
+
+        // ImPlot::SetNextLineStyle(ImVec4(0.5, 0.5, 0, 1), 3.0f);
+        // ImPlot::PlotLine("dxH", t, dxH, 5001,ImPlotLineFlags_None);
+        // ImPlot::SetNextLineStyle(ImVec4(0, 0.5, 0.5, 1), 3.0f);
+        // ImPlot::PlotLine("dyH", t, dyH, 5001,ImPlotLineFlags_None);
+
+        // ImPlot::SetNextLineStyle(ImVec4(0.5, 0, 0.5, 1), 3.0f);
+        // ImPlot::PlotLine("pxH", t, pxH, 5001,ImPlotLineFlags_None);
+        // ImPlot::SetNextLineStyle(ImVec4(0.3, 0.3, 0.3, 1), 3.0f);
+        // ImPlot::PlotLine("pyH", t, pyH, 5001,ImPlotLineFlags_None);
+
         ImPlot::SetNextLineStyle(ImVec4(0.5, 0, 0, 1), 3.0f);
-        ImPlot::PlotLine("xH", t, xH, 5001,ImPlotLineFlags_None);
+        ImPlot::PlotLine("u1z", t, u1z, 5001,ImPlotLineFlags_None);
+        ImPlot::SetNextLineStyle(ImVec4(0.3, 0.3, 0.3, 1), 3.0f);
+        ImPlot::PlotLine("u2z", t, u2z, 5001,ImPlotLineFlags_None);
         ImPlot::SetNextLineStyle(ImVec4(0, 0, 0.5, 1), 3.0f);
-        ImPlot::PlotLine("yH", t, yH, 5001,ImPlotLineFlags_None);
+        ImPlot::PlotLine("u3z", t, u3z, 5001,ImPlotLineFlags_None);
+        ImPlot::SetNextLineStyle(ImVec4(0.3, 0, 0.3, 1), 3.0f);
+        ImPlot::PlotLine("u4z", t, u4z, 5001,ImPlotLineFlags_None);
+
         ImPlot::EndPlot();
     }
     ImGui::End();
@@ -842,6 +883,7 @@ void* mujoco_Update_1KHz( void * arg )
     ImGui_ImplOpenGL3_Init("#version 330");
     ImGui::StyleColorsDark();
 
+
     float baseFontSize = 60.0f; // 13.0f is the size of the default font. Change to the font size you use.
     float iconFontSize = baseFontSize * 2.25f / 3.0f; // FontAwesome fonts need to have their sizes reduced by 2.0f/3.0f in order to align correctly
 
@@ -965,7 +1007,6 @@ void* mujoco_Update_1KHz( void * arg )
         mjrRect viewport = { 0, 0, 0, 0 };
         glfwGetFramebufferSize(window, &viewport.width, &viewport.height);
 
-
         cam.lookat[0] = d->qpos[torso_x_idx];
         cam.lookat[1] = d->qpos[torso_y_idx];
         // set the background color to white
@@ -1026,6 +1067,8 @@ void* mujoco_Update_1KHz( void * arg )
         {
             ImGui::Separator();
             ImGui::Checkbox(" " ICON_FA_FILE_CSV "  Enable Data Logging   ", &(sim_conf.en_data_logging));
+            ImGui::Separator();
+            ImGui::Checkbox(" " ICON_FA_PLAY "  Enable Playback Mode   ", &(sim_conf.en_playback_mode));
             ImGui::Separator();
             ImGui::Checkbox(" " ICON_FA_CAMERA "  Enable HMI Recording   ", &(sim_conf.en_HMI_recording));
             ImGui::Separator();
@@ -1161,7 +1204,10 @@ void* mujoco_Update_1KHz( void * arg )
         ImGui::PushStyleColor(ImGuiCol_FrameBgActive,grey2);
         ImGui::Separator();
         ImGui::Separator();
-        ImGui::Checkbox(" Human-Ctrl   ", &tello->controller->enable_human_dyn_data);
+        std::string human_label;
+        if(sim_conf.en_playback_mode) human_label = " Human-Playback   ";
+        else human_label = " Human-Control   ";
+        ImGui::Checkbox(human_label.c_str(), &tello->controller->enable_human_dyn_data);
         ImGui::Separator();
         ImGui::Checkbox(" Real-Time   ", &realtime_enabled);
         ImGui::Separator();
@@ -1171,7 +1217,10 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
             if (ImGui::Button(" " ICON_FA_WEIGHT " Tare CoM  ")) {
-                // add tare com code here
+                zero_human = true;
+            }
+            else{
+                zero_human = false;
             }
             ImGui::PopStyleColor(3);
         ImGui::Separator();
@@ -1204,9 +1253,9 @@ void* mujoco_Update_1KHz( void * arg )
         //handle UDP transmit here:
 		Human_dyn_data hdd = tello->controller->get_human_dyn_data();
 
-        if( (fabs(hdd.FxH_hmi - last_Xf) > 1000) || (fabs(hdd.FyH_hmi - last_Yf) > 1000) || (fabs(hdd.FxH_spring - last_springf) > 1000)){
-            controller_unstable = true;
-        }
+        // if( (fabs(hdd.FxH_hmi - last_Xf) > 100) || (fabs(hdd.FyH_hmi - last_Yf) > 100) || (fabs(hdd.FxH_spring - last_springf) > 100)){
+        //     controller_unstable = true;
+        // }
         // if( (fabs(hdd.FyH_hmi - last_Yf) > 100) ){
         //     controller_unstable = true;
         // }
@@ -1236,7 +1285,7 @@ void* mujoco_Update_1KHz( void * arg )
 		if(tello->controller->is_human_ctrl_enabled() && !controller_unstable)
 		{
 			hdd.FxH_hmi = 0;
-            hdd.FxH_spring = 0;
+            // hdd.FxH_spring = 0;
 		}
 		else
 		{
@@ -1245,6 +1294,10 @@ void* mujoco_Update_1KHz( void * arg )
 			hdd.FxH_spring = 0;
 		}
 		// cout << "Fx: " << hdd.FxH_hmi << "  Fy: " << hdd.FyH_hmi << endl;
+        // dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,enable_human_ff,zero_human,master_gain);
+		// int n = sendto(sockfd_tx, hmi_tx_buffer, 20,MSG_CONFIRM, 
+		// 	   (const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
+
 		dash_utils::pack_data_to_hmi((uint8_t*)hmi_tx_buffer,hdd);
 		int n = sendto(sockfd_tx, hmi_tx_buffer, 12,MSG_CONFIRM, 
 			   (const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
@@ -1383,8 +1436,8 @@ void* Human_Playback( void * arg )
 
 	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
 
-    std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Desktop/tello_outputs/Logs/05-17-23__14-41-29/human_dyn_data.csv");
-    // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Desktop/tello_outputs/teleop/5-15_to_16/5-16-23-stepping-with-no-sim/human_dyn_data.csv");
+    // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Desktop/tello_outputs/Logs/05-24-23__03-01-30/human_dyn_data.csv");
+    std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Desktop/tello_outputs/teleop/5-15_to_16/5-16-23-stepping-with-no-sim/human_dyn_data.csv");
     // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Documents/hdd-tuning.csv");
 
     hdd_cnt=0;
@@ -1405,13 +1458,12 @@ void* Human_Playback( void * arg )
         while(hdd_cnt < hdd_vec.size())
         {
             handle_start_of_periodic_task(next);
-            if(tello->controller->is_human_ctrl_enabled() && (!pause_sim))
+            if(tello->controller->is_human_ctrl_enabled() && (!pause_sim) && (sim_conf.en_playback_mode) )
             {
                 //dash_utils::print_human_dyn_data(hdd_vec[hdd_cnt]);
                 if(PS4_connected) hdd_vec[hdd_cnt].xH = xH_Commanded;
                 Human_dyn_data human_dyn_data = hdd_vec[hdd_cnt];
                 hdd_cnt += 1;
-                
                 //smooth data here
                 // xHvec.tail(99) = xHvec.head(99).eval();
                 // xHvec[0] = human_dyn_data.xH;
@@ -1453,7 +1505,7 @@ void* Human_Playback( void * arg )
         hdd_cnt = 0;
         tello->controller->disable_human_ctrl();
         cout << "Human Playback Complete" << endl;
-
+        usleep(10000);
     }
    
     return  0;

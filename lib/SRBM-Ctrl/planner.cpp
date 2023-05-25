@@ -153,7 +153,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     // From SSP_L can switch to DSP based on right foot z-position
     // From SSP_R can switch to DSP based on left foot z-position
 
-    //cout << "next_SSP: " << next_SSP << "   u1z: " << u1z  << "   u2z: " << u2z  << endl;
+    // cout << "next_SSP: " << next_SSP << "   u1z: " << u1z  << "   u2z: " << u2z << "   u3z: " << u3z  << "   u4z: " << u4z  << endl;
     
     int FSM_next;
     // cout << FSM_prev << "\t u1z:" << u1z << "\t u2z" << u3z << "\t t_dsp" << t_dsp << endl;
@@ -462,7 +462,9 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
                 // update
                 traj_planner_dyn_data.next_SSP = next_SSP;
                 traj_planner_dyn_data.sw_beg_step = lfv.row(sw_idx_R);
+                traj_planner_dyn_data.st_beg_step = lfv.row(st_idx_R);
                 traj_planner_dyn_data.sw_beg_step(0) = traj_planner_dyn_data.sw_beg_step(0) - (1.0/2.0)*ft_l;
+                traj_planner_dyn_data.st_beg_step(0) = traj_planner_dyn_data.st_beg_step(0) - (1.0/2.0)*ft_l;
                 traj_planner_dyn_data.human_leg_joystick_pos_beg_step = human_leg_joystick_data.segment<3>(sw_idx_H);
                 traj_planner_dyn_data.sigma1H = wH*(1.0/(tanh((T_step/2.0)*wH)));
                 traj_planner_dyn_data.x_plus_HWRM = x_plus_HWRM;

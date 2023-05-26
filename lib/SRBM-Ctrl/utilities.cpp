@@ -568,7 +568,10 @@ void dash_utils::writeTrajPlannerDataToCsv(const Traj_planner_dyn_data& data, co
          << data.dx_HWRM << delimiter
          << data.x_plus_HWRM.x() << delimiter
          << data.x_plus_HWRM.y() << delimiter
-         << data.uk_HWRM << newline;
+         << data.uk_HWRM << delimiter
+         << data.st_beg_step.x() << delimiter
+         << data.st_beg_step.y() << delimiter
+         << data.st_beg_step.z() << newline;
 
     file.close();
 }
@@ -823,6 +826,10 @@ void dash_utils::parse_json_to_srb_params(const std::string& json_file_path, SRB
     params.Kd_thetaR = json_data["srb_params"]["Kd_thetaR"].get<double>();
     params.Kp_psiR = json_data["srb_params"]["Kp_psiR"].get<double>();
     params.Kd_psiR = json_data["srb_params"]["Kd_psiR"].get<double>();
+
+    params.Kx_DCM_mult = json_data["srb_params"]["Kx_DCM_mult"].get<double>();
+    params.Ky_DCM_mult = json_data["srb_params"]["Ky_DCM_mult"].get<double>();
+
   } catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << "\n";
     return;

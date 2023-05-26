@@ -14,7 +14,9 @@
       "Kd_psiR": 50.00,
       "Step_Period": 0.25,
       "Step_Height": 0.03,
-      "Walking_Speed": 0.6
+      "Walking_Speed": 0.6,
+      "Kx_DCM_mult": 2.0,
+      "Ky_DCM_mult": 2.0
     },
     
     "Posture_Control": {

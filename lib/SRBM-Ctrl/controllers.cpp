@@ -108,6 +108,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
         // scale human DCM command
         xDCMH = KxDCMH*xH;     
     }
+    
 
     // if step takes longer than assumed duration then update the orbital slope
     // -- since we are extending the reference trajectory
@@ -115,7 +116,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
         // update orbital line slope
         sigma1H = wH*(1.0/(tanh((t_step/2.0)*wH)));
     }
-
+    
     // end of step calculations for human reference trajectory based on assumed step frequency and actual human DCM -- assuming stable P1 orbit
     double xHf_ref = xDCMH/(1.0 + (sigma1H/wH)); // final human CoM position of reference trajectory
     double dxHf_ref = wH*(xDCMH - xHf_ref); // final human CoM velocity of reference trajectory
@@ -295,6 +296,11 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
     double swx0 = traj_planner_dyn_data.sw_beg_step[0];
     double swy0 = traj_planner_dyn_data.sw_beg_step[1];
     double swz0 = traj_planner_dyn_data.sw_beg_step[2];
+
+    double stx0 = traj_planner_dyn_data.st_beg_step[0];
+    double sty0 = traj_planner_dyn_data.st_beg_step[1];
+    double stz0 = traj_planner_dyn_data.st_beg_step[2];
+
     double fyH0 = traj_planner_dyn_data.human_leg_joystick_pos_beg_step[1];
     double fzH0 = traj_planner_dyn_data.human_leg_joystick_pos_beg_step[2];
     Vector2d x_plus_HWRM = traj_planner_dyn_data.x_plus_HWRM;
@@ -356,7 +362,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
     ks = mH * wH * wH;
 
     // Human (frontal) and robot (sagittal) LIPs
-    xR_LIP = xR - swx0;
+    xR_LIP = xR - stx0;
     yH_LIP = yH - pyH;
 
     // DCM calculations

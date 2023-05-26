@@ -164,7 +164,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
 
         // SRB specific
         srb_params.m = 23; // robot mass in kg // was 23 for mujoco
-        srb_params.hLIP = 0.57; // nominal robot LIP height // was 0.66 for mujoco
+        srb_params.hLIP = 0.54; // nominal robot LIP height // was 0.66 for mujoco
         srb_params.Ib = Matrix3d::Identity();
         srb_params.Ib(0,0) = 0.4874;
         srb_params.Ib(1,1) = 0.3081;
@@ -263,7 +263,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
 
         // SRB specific
         srb_params.m = 20.2; // robot mass in kg // was 23 for mujoco
-        srb_params.hLIP = 0.57; // nominal robot LIP height // was 0.66 for mujoco
+        srb_params.hLIP = 0.54; // nominal robot LIP height // was 0.66 for mujoco
         srb_params.Ib = Matrix3d::Identity();
         srb_params.Ib(0,0) = 0.4874;
         srb_params.Ib(1,1) = 0.3081;

@@ -1253,9 +1253,9 @@ void* mujoco_Update_1KHz( void * arg )
         //handle UDP transmit here:
 		Human_dyn_data hdd = tello->controller->get_human_dyn_data();
 
-        // if( (fabs(hdd.FxH_hmi - last_Xf) > 100) || (fabs(hdd.FyH_hmi - last_Yf) > 100) || (fabs(hdd.FxH_spring - last_springf) > 100)){
-        //     controller_unstable = true;
-        // }
+        if( (fabs(hdd.FxH_hmi - last_Xf) > 100) || (fabs(hdd.FyH_hmi - last_Yf) > 100) || (fabs(hdd.FxH_spring - last_springf) > 100)){
+            controller_unstable = true;
+        }
         // if( (fabs(hdd.FyH_hmi - last_Yf) > 100) ){
         //     controller_unstable = true;
         // }
@@ -1436,8 +1436,8 @@ void* Human_Playback( void * arg )
 
 	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
 
-    // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Desktop/tello_outputs/Logs/05-24-23__03-01-30/human_dyn_data.csv");
-    std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Desktop/tello_outputs/teleop/5-15_to_16/5-16-23-stepping-with-no-sim/human_dyn_data.csv");
+    std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Desktop/tello_outputs/Logs/05-24-23__02-48-48/human_dyn_data.csv");
+    // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Desktop/tello_outputs/teleop/5-15_to_16/5-16-23-stepping-with-no-sim/human_dyn_data.csv");
     // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Documents/hdd-tuning.csv");
 
     hdd_cnt=0;
@@ -1652,7 +1652,7 @@ void* screenRecord( void * arg )
             cnt_str = to_string(recording_cnt);
             //execl("/usr/bin/ffmpeg", "ffmpeg", "-f", "x11grab", "-video_size", "3840x2160", /*"-loglevel", "quiet",*/ "-framerate", "30", "-i", ":1+eDP-1-1", "-c:v", "h264_nvenc", "-qp", "0", "ScreenCapture.mp4", NULL);
             //cout << "recording to: " << log_folder+"ScreenCapture_"+cnt_str+".mp4" << endl;
-            system(("ffmpeg -f x11grab -video_size "+window_size+" -loglevel quiet -framerate 30 -i $DISPLAY+"+window_pos+" -c:v h264_nvenc -qp 0 " + log_folder+"ScreenCapture_"+cnt_str+".mp4").c_str());
+            system(("taskset -c 1 ffmpeg -f x11grab -video_size "+window_size+" -loglevel quiet -framerate 30 -i $DISPLAY+"+window_pos+" -c:v h264_nvenc -qp 0 " + log_folder+"ScreenCapture_"+cnt_str+".mp4").c_str());
             recording_cnt++;
         }
         usleep(10000);
@@ -1682,7 +1682,7 @@ void* usbCamRecord( void * arg )
             usb_recording_in_progress = true;
             // Child process - execute FFmpeg command
             cnt_str = to_string(usb_recording_cnt);
-            system(("ffmpeg -f v4l2 -loglevel quiet -framerate 30 -video_size 800x600 -input_format mjpeg -i /dev/video4 -c:v copy " + log_folder+"usb_camera_"+cnt_str+".mp4").c_str());
+            system(("taskset -c 0 ffmpeg -f v4l2 -loglevel quiet -framerate 30 -video_size 800x600 -input_format mjpeg -i /dev/video4 -c:v copy " + log_folder+"usb_camera_"+cnt_str+".mp4").c_str());
             usb_recording_cnt++;
         }
         usleep(10000);

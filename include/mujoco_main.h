@@ -71,6 +71,97 @@ struct simConfig {
     bool en_screen_recording;
     bool en_realtime_plot;
     bool en_playback_mode;
+    bool en_v2_controller;
+    bool en_autonomous_mode;
+};
+
+struct ctrlData {
+    double t;
+    double xR;
+    double xdR;
+    double yR;
+    double ydR;
+    double zR;
+    double zdR;
+    double phiR;
+    double phidR;
+    double thetaR;
+    double thetadR;
+    double psiR;
+    double psidR; 
+    double q1l;
+    double q2l;
+    double q3l;         
+    double q4l;
+    double q5l;  
+    double q1r;
+    double q2r;
+    double q3r;         
+    double q4r;
+    double q5r;
+    double qd1l;
+    double qd2l;
+    double qd3l;      
+    double qd4l;
+    double qd5l;
+    double qd1r;
+    double qd2r;
+    double qd3r;      
+    double qd4r;
+    double qd5r;
+    // MatrixXd mujoco_lfv = MatrixXd(4,3);
+    mjtNum acceleration[3];
+    mjtNum angular_velocity[3];
+
+    // Default constructor
+    ctrlData() {
+    }
+
+    // Copy constructor
+    ctrlData(const ctrlData& other) {
+        *this = other;
+    }
+
+    // Assignment operator
+    ctrlData& operator=(const ctrlData& other) {
+        t = other.t;
+        xR = other.xR;
+        xdR = other.xdR;
+        yR = other.yR;
+        ydR = other.ydR;
+        zR = other.zR;
+        zdR = other.zdR;
+        phiR = other.phiR;
+        phidR = other.phidR;
+        thetaR = other.thetaR;
+        thetadR = other.thetadR;
+        psiR = other.psiR;
+        psidR = other.psidR;
+        q1l = other.q1l;
+        q2l = other.q2l;
+        q3l = other.q3l;
+        q4l = other.q4l;
+        q5l = other.q5l;
+        q1r = other.q1r;
+        q2r = other.q2r;
+        q3r = other.q3r;
+        q4r = other.q4r;
+        q5r = other.q5r;
+        qd1l = other.qd1l;
+        qd2l = other.qd2l;
+        qd3l = other.qd3l;
+        qd4l = other.qd4l;
+        qd5l = other.qd5l;
+        qd1r = other.qd1r;
+        qd2r = other.qd2r;
+        qd3r = other.qd3r;
+        qd4r = other.qd4r;
+        qd5r = other.qd5r;
+        // mujoco_lfv = other.mujoco_lfv;
+        std::memcpy(acceleration, other.acceleration, sizeof(acceleration));
+        std::memcpy(angular_velocity, other.angular_velocity, sizeof(angular_velocity));
+        return *this;
+    }
 };
 
 #endif

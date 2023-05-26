@@ -404,7 +404,7 @@ initial to its desired in the x-y plane
 */
 Vector2d dash_utils::sw_leg_ref_xy(double s, double init, double final) {
     // position and velocity reference trajectories
-    double p_ref = (0.5) * ((1 + cos(M_PI * s)) * init + (1 - cos(M_PI * s)) * final);
+    double p_ref = (0.5) * ((1.0 + cos(M_PI * s)) * init + (1.0 - cos(M_PI * s)) * final);
     double v_ref = (0.5) * M_PI * sin(M_PI * s) * (final - init);
 
     // create vector
@@ -420,7 +420,7 @@ initial to its desired in the z (vertical) direction
 Vector2d dash_utils::sw_leg_ref_z(double s, double zcl, double H) {
     // position and velocity reference trajectories
     double p_ref = 4 * zcl * pow(s - (0.5), 2) + H - zcl;
-    double v_ref = 4 * zcl * (2 * s - 1);
+    double v_ref = 4 * zcl * (2.0 * s - 1.0);
 
     // create vector
     Vector2d ref;

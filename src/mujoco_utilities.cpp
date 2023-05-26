@@ -1,6 +1,7 @@
 #include "mujoco_utilities.h"
 
 extern simConfig sim_conf;
+extern bool en_v2_ctrl;
 extern int plot_width;
 
 // MuJoCo data structures
@@ -362,6 +363,9 @@ simConfig readSimConfigFromFile(const std::string& filename) {
         config.en_screen_recording = jsonData["en_screen_recording"];
         config.en_realtime_plot = jsonData["en_realtime_plot"];
         config.en_playback_mode = jsonData["en_playback_mode"];
+        config.en_autonomous_mode = jsonData["en_autonomous_mode"];
+        config.en_v2_controller = jsonData["en_v2_controller"];
+        en_v2_ctrl = config.en_v2_controller;
     } catch (json::exception& e) {
         std::cerr << "Error parsing JSON: " << e.what() << std::endl;
     }
@@ -378,6 +382,8 @@ void writeSimConfigToFile(const simConfig& config, const std::string& filename) 
     jsonData["en_screen_recording"] = config.en_screen_recording;
     jsonData["en_realtime_plot"] = config.en_realtime_plot;
     jsonData["en_playback_mode"] = config.en_playback_mode;
+    jsonData["en_autonomous_mode"] = config.en_autonomous_mode;
+    jsonData["en_v2_controller"] = config.en_v2_controller;
 
 
     std::ofstream file(filename);

@@ -12,7 +12,9 @@
 #include "ImFileDialog.h"
 
 pthread_mutex_t plotting_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t sim_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t sim_step_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t tau_share_mutex = PTHREAD_MUTEX_INITIALIZER;
 extern pthread_mutex_t EKF_mutex;
 
 namespace plt = matplotlibcpp;
@@ -37,6 +39,7 @@ bool zero_human = false;
 float master_gain = 0;
 bool screen_recording = false;
 bool usbcam_recording = false;
+bool en_v2_ctrl = false;
 int hdd_cnt=0; // human_playback counter
 
 //logging
@@ -129,6 +132,12 @@ mjvOption opt;                      // visualization options
 mjvScene scn;                       // abstract scene
 mjrContext con;                     // custom GPU context
 
+// mjModel* m_shared = NULL;                  // MuJoCo model
+// mjData* d_shared = NULL;                   // MuJoCo data
+VectorXd tau_shared = VectorXd::Zero(10);
+bool tau_ready = false;
+ctrlData cd_shared;
+
 double push_force_x = 0;
 double push_force_y = 0;
 double push_force_z = 0;
@@ -201,52 +210,163 @@ void set_mujoco_state(VectorXd x)
 void dummy_callback(const mjModel* m, mjData* d)
 {
 }
+// double t;
+// double xR;
+// double xdR;
+// double yR;
+// double ydR; 
+// double zR;
+// double zdR; 
+// double phiR;
+// double phidR;
+// double thetaR;
+// double thetadR;
+// double psiR;
+// double psidR;
+// double q1l;
+// double q2l;
+// double q3l;
+// double q4l;
+// double q5l;
+// double q1r;
+// double q2r;
+// double q3r;
+// double q4r;
+// double q5r;
+// double qd1l;
+// double qd2l;
+// double qd3l;
+// double qd4l;
+// double qd5l;
+// double qd1r;
+// double qd2r;
+// double qd3r;
+// double qd4r;
+// double qd5r;
+// double t_end_stepping;
+// mjtNum left_foot_toe[3];
+// mjtNum left_foot_heel[3];
+// mjtNum right_foot_toe[3];
+// mjtNum right_foot_heel[3];
+// mjtNum acceleration[3];
+// mjtNum angular_velocity[3];
+// VectorXd tau_LR_muxed(10);
+// void mujoco_control_callback(const mjModel* m, mjData* d)
+// {
+//     // cout << "callback called" << endl;
+//     // pthread_mutex_lock(&sim_step_mutex);
+//     t = d->time;
+//     controller->set_time(t);
+//     // Get robot states
+//     xR = d->qpos[torso_x_idx];
+//     xdR = d->qvel[torso_x_idx];    
+//     yR = d->qpos[torso_y_idx];
+//     ydR = d->qvel[torso_y_idx];
+//     zR = d->qpos[torso_z_idx];
+//     zdR = d->qvel[torso_z_idx];
+//     phiR = d->qpos[torso_roll_idx];
+//     phidR = d->qvel[torso_roll_idx];   
+//     thetaR = d->qpos[torso_pitch_idx];
+//     thetadR = d->qvel[torso_pitch_idx];
+//     psiR = d->qpos[torso_yaw_idx];
+//     psidR = d->qvel[torso_yaw_idx];  
+//     q1l = d->qpos[hip_yaw_l_idx];
+//     q2l = d->qpos[hip_roll_l_idx];
+//     q3l = d->qpos[hip_pitch_l_idx];             
+//     q4l = d->qpos[knee_pitch_l_idx];   
+//     q5l = d->qpos[ankle_pitch_l_idx];    
+//     q1r = d->qpos[hip_yaw_r_idx];
+//     q2r = d->qpos[hip_roll_r_idx];
+//     q3r = d->qpos[hip_pitch_r_idx];             
+//     q4r = d->qpos[knee_pitch_r_idx];   
+//     q5r = d->qpos[ankle_pitch_r_idx];  
 
-void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
+//     qd1l = d->qvel[hip_yaw_l_idx];
+//     qd2l = d->qvel[hip_roll_l_idx];
+//     qd3l = d->qvel[hip_pitch_l_idx];             
+//     qd4l = d->qvel[knee_pitch_l_idx];   
+//     qd5l = d->qvel[ankle_pitch_l_idx];    
+//     qd1r = d->qvel[hip_yaw_r_idx];
+//     qd2r = d->qvel[hip_roll_r_idx];
+//     qd3r = d->qvel[hip_pitch_r_idx];             
+//     qd4r = d->qvel[knee_pitch_r_idx];   
+//     qd5r = d->qvel[ankle_pitch_r_idx];  
+
+//     double t_end_stepping;
+
+//     const char* lft = "lft";
+//     const char* lfh = "lfh";
+//     const char* rft = "rft";
+//     const char* rfh = "rfh";
+//     int geom_id = mj_name2id(m, mjOBJ_GEOM, lft);
+//     memcpy(left_foot_toe, &d->geom_xpos[3*geom_id], 3*sizeof(mjtNum));
+//     geom_id = mj_name2id(m, mjOBJ_GEOM, lfh);
+//     memcpy(left_foot_heel, &d->geom_xpos[3*geom_id], 3*sizeof(mjtNum));
+//     geom_id = mj_name2id(m, mjOBJ_GEOM, rft);
+//     memcpy(right_foot_toe, &d->geom_xpos[3*geom_id], 3*sizeof(mjtNum));
+//     geom_id = mj_name2id(m, mjOBJ_GEOM, rfh);
+//     memcpy(right_foot_heel, &d->geom_xpos[3*geom_id], 3*sizeof(mjtNum));
+
+//     mujoco_lfv.row(0) = Vector3d(right_foot_toe[0],right_foot_toe[1],right_foot_toe[2]);
+//     mujoco_lfv.row(1) = Vector3d(right_foot_heel[0],right_foot_heel[1],right_foot_heel[2]);
+//     mujoco_lfv.row(2) = Vector3d(left_foot_toe[0],left_foot_toe[1],left_foot_toe[2]);
+//     mujoco_lfv.row(3) = Vector3d(left_foot_heel[0],left_foot_heel[1],left_foot_heel[2]);   
+
+//     VectorXd mujoco_lfv_vector = dash_utils::flatten(mujoco_lfv);
+//     VectorXd lfv_comm_vector = dash_utils::flatten(controller->get_lfv_comm_world());
+    
+//     // contactforce(m,d, controller->get_FSM()); 
+    
+//     // Access the acceleration and angular velocity data from the sensors
+
+
+//     int accel_sensor_id = mj_name2id(m, mjOBJ_SENSOR, "torso-linear-acceleration");
+//     int gyro_sensor_id = mj_name2id(m, mjOBJ_SENSOR, "toso-angular-velocity");
+
+//     mju_copy3(acceleration, &d->sensordata[accel_sensor_id]);
+//     mju_copy3(angular_velocity, &d->sensordata[gyro_sensor_id]);
+
+//     // here is where controller runs async
+//     applyJointTorquesMujoco(tau_LR_muxed);
+//     // pthread_mutex_unlock(&sim_step_mutex);
+// }
+
+ctrlData copyMjData(const mjModel* m, mjData*d)
 {
-    // Net wrench based PD controller with optimization-based force distribution
-    // Simulation time
-    // dash_utils::end_timer();
-    // dash_utils::start_timer();
-    pthread_mutex_lock(&sim_step_mutex);
-    double t = d->time;
-    controller->set_time(t);
-    // Get robot states
-    double xR = d->qpos[torso_x_idx];
-    double xdR = d->qvel[torso_x_idx];    
-    double yR = d->qpos[torso_y_idx];
-    double ydR = d->qvel[torso_y_idx];
-    double zR = d->qpos[torso_z_idx];
-    double zdR = d->qvel[torso_z_idx];
-    double phiR = d->qpos[torso_roll_idx];
-    double phidR = d->qvel[torso_roll_idx];   
-    double thetaR = d->qpos[torso_pitch_idx];
-    double thetadR = d->qvel[torso_pitch_idx];
-    double psiR = d->qpos[torso_yaw_idx];
-    double psidR = d->qvel[torso_yaw_idx];  
-    double q1l = d->qpos[hip_yaw_l_idx];
-    double q2l = d->qpos[hip_roll_l_idx];
-    double q3l = d->qpos[hip_pitch_l_idx];             
-    double q4l = d->qpos[knee_pitch_l_idx];   
-    double q5l = d->qpos[ankle_pitch_l_idx];    
-    double q1r = d->qpos[hip_yaw_r_idx];
-    double q2r = d->qpos[hip_roll_r_idx];
-    double q3r = d->qpos[hip_pitch_r_idx];             
-    double q4r = d->qpos[knee_pitch_r_idx];   
-    double q5r = d->qpos[ankle_pitch_r_idx];  
-
-    double qd1l = d->qvel[hip_yaw_l_idx];
-    double qd2l = d->qvel[hip_roll_l_idx];
-    double qd3l = d->qvel[hip_pitch_l_idx];             
-    double qd4l = d->qvel[knee_pitch_l_idx];   
-    double qd5l = d->qvel[ankle_pitch_l_idx];    
-    double qd1r = d->qvel[hip_yaw_r_idx];
-    double qd2r = d->qvel[hip_roll_r_idx];
-    double qd3r = d->qvel[hip_pitch_r_idx];             
-    double qd4r = d->qvel[knee_pitch_r_idx];   
-    double qd5r = d->qvel[ankle_pitch_r_idx];  
-
-    double t_end_stepping;
+    ctrlData cd;
+    cd.t = d->time;
+    cd.xR = d->qpos[torso_x_idx];
+    cd.xdR = d->qvel[torso_x_idx];    
+    cd.yR = d->qpos[torso_y_idx];
+    cd.ydR = d->qvel[torso_y_idx];
+    cd.zR = d->qpos[torso_z_idx];
+    cd.zdR = d->qvel[torso_z_idx];
+    cd.phiR = d->qpos[torso_roll_idx];
+    cd.phidR = d->qvel[torso_roll_idx];   
+    cd.thetaR = d->qpos[torso_pitch_idx];
+    cd.thetadR = d->qvel[torso_pitch_idx];
+    cd.psiR = d->qpos[torso_yaw_idx];
+    cd.psidR = d->qvel[torso_yaw_idx];  
+    cd.q1l = d->qpos[hip_yaw_l_idx];
+    cd.q2l = d->qpos[hip_roll_l_idx];
+    cd.q3l = d->qpos[hip_pitch_l_idx];             
+    cd.q4l = d->qpos[knee_pitch_l_idx];   
+    cd.q5l = d->qpos[ankle_pitch_l_idx];    
+    cd.q1r = d->qpos[hip_yaw_r_idx];
+    cd.q2r = d->qpos[hip_roll_r_idx];
+    cd.q3r = d->qpos[hip_pitch_r_idx];             
+    cd.q4r = d->qpos[knee_pitch_r_idx];   
+    cd.q5r = d->qpos[ankle_pitch_r_idx];  
+    cd.qd1l = d->qvel[hip_yaw_l_idx];
+    cd.qd2l = d->qvel[hip_roll_l_idx];
+    cd.qd3l = d->qvel[hip_pitch_l_idx];             
+    cd.qd4l = d->qvel[knee_pitch_l_idx];   
+    cd.qd5l = d->qvel[ankle_pitch_l_idx];    
+    cd.qd1r = d->qvel[hip_yaw_r_idx];
+    cd.qd2r = d->qvel[hip_roll_r_idx];
+    cd.qd3r = d->qvel[hip_pitch_r_idx];             
+    cd.qd4r = d->qvel[knee_pitch_r_idx];   
+    cd.qd5r = d->qvel[ankle_pitch_r_idx];
 
     mjtNum left_foot_toe[3];
     mjtNum left_foot_heel[3];
@@ -265,32 +385,110 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     geom_id = mj_name2id(m, mjOBJ_GEOM, rfh);
     memcpy(right_foot_heel, &d->geom_xpos[3*geom_id], 3*sizeof(mjtNum));
 
-    mujoco_lfv.row(0) = Vector3d(right_foot_toe[0],right_foot_toe[1],right_foot_toe[2]);
-    mujoco_lfv.row(1) = Vector3d(right_foot_heel[0],right_foot_heel[1],right_foot_heel[2]);
-    mujoco_lfv.row(2) = Vector3d(left_foot_toe[0],left_foot_toe[1],left_foot_toe[2]);
-    mujoco_lfv.row(3) = Vector3d(left_foot_heel[0],left_foot_heel[1],left_foot_heel[2]);   
+    // cd.mujoco_lfv.row(0) = Vector3d(right_foot_toe[0],right_foot_toe[1],right_foot_toe[2]);
+    // cd.mujoco_lfv.row(1) = Vector3d(right_foot_heel[0],right_foot_heel[1],right_foot_heel[2]);
+    // cd.mujoco_lfv.row(2) = Vector3d(left_foot_toe[0],left_foot_toe[1],left_foot_toe[2]);
+    // cd.mujoco_lfv.row(3) = Vector3d(left_foot_heel[0],left_foot_heel[1],left_foot_heel[2]);
 
-    VectorXd mujoco_lfv_vector = dash_utils::flatten(mujoco_lfv);
+    int accel_sensor_id = mj_name2id(m, mjOBJ_SENSOR, "torso-linear-acceleration");
+    int gyro_sensor_id = mj_name2id(m, mjOBJ_SENSOR, "toso-angular-velocity");
+
+    mju_copy3(cd.acceleration, &d->sensordata[accel_sensor_id]);
+    mju_copy3(cd.angular_velocity, &d->sensordata[gyro_sensor_id]);
+
+    return cd;
+}
+
+// void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
+void TELLO_locomotion_ctrl(ctrlData cd)
+{
+    // Net wrench based PD controller with optimization-based force distribution
+    // Simulation time
+    // dash_utils::end_timer();
+    // dash_utils::start_timer();
+    // pthread_mutex_lock(&sim_step_mutex);
+    // double t = d->time;
+    // controller->set_time(t);
+    // // Get robot states
+    // double xR = d->qpos[torso_x_idx];
+    // double xdR = d->qvel[torso_x_idx];    
+    // double yR = d->qpos[torso_y_idx];
+    // double ydR = d->qvel[torso_y_idx];
+    // double zR = d->qpos[torso_z_idx];
+    // double zdR = d->qvel[torso_z_idx];
+    // double phiR = d->qpos[torso_roll_idx];
+    // double phidR = d->qvel[torso_roll_idx];   
+    // double thetaR = d->qpos[torso_pitch_idx];
+    // double thetadR = d->qvel[torso_pitch_idx];
+    // double psiR = d->qpos[torso_yaw_idx];
+    // double psidR = d->qvel[torso_yaw_idx];  
+    // double q1l = d->qpos[hip_yaw_l_idx];
+    // double q2l = d->qpos[hip_roll_l_idx];
+    // double q3l = d->qpos[hip_pitch_l_idx];             
+    // double q4l = d->qpos[knee_pitch_l_idx];   
+    // double q5l = d->qpos[ankle_pitch_l_idx];    
+    // double q1r = d->qpos[hip_yaw_r_idx];
+    // double q2r = d->qpos[hip_roll_r_idx];
+    // double q3r = d->qpos[hip_pitch_r_idx];             
+    // double q4r = d->qpos[knee_pitch_r_idx];   
+    // double q5r = d->qpos[ankle_pitch_r_idx];  
+
+    // double qd1l = d->qvel[hip_yaw_l_idx];
+    // double qd2l = d->qvel[hip_roll_l_idx];
+    // double qd3l = d->qvel[hip_pitch_l_idx];             
+    // double qd4l = d->qvel[knee_pitch_l_idx];   
+    // double qd5l = d->qvel[ankle_pitch_l_idx];    
+    // double qd1r = d->qvel[hip_yaw_r_idx];
+    // double qd2r = d->qvel[hip_roll_r_idx];
+    // double qd3r = d->qvel[hip_pitch_r_idx];             
+    // double qd4r = d->qvel[knee_pitch_r_idx];   
+    // double qd5r = d->qvel[ankle_pitch_r_idx];  
+
+    double t_end_stepping;
+
+    // mjtNum left_foot_toe[3];
+    // mjtNum left_foot_heel[3];
+    // mjtNum right_foot_toe[3];
+    // mjtNum right_foot_heel[3];
+    // const char* lft = "lft";
+    // const char* lfh = "lfh";
+    // const char* rft = "rft";
+    // const char* rfh = "rfh";
+    // int geom_id = mj_name2id(m, mjOBJ_GEOM, lft);
+    // memcpy(left_foot_toe, &d->geom_xpos[3*geom_id], 3*sizeof(mjtNum));
+    // geom_id = mj_name2id(m, mjOBJ_GEOM, lfh);
+    // memcpy(left_foot_heel, &d->geom_xpos[3*geom_id], 3*sizeof(mjtNum));
+    // geom_id = mj_name2id(m, mjOBJ_GEOM, rft);
+    // memcpy(right_foot_toe, &d->geom_xpos[3*geom_id], 3*sizeof(mjtNum));
+    // geom_id = mj_name2id(m, mjOBJ_GEOM, rfh);
+    // memcpy(right_foot_heel, &d->geom_xpos[3*geom_id], 3*sizeof(mjtNum));
+
+    // mujoco_lfv.row(0) = Vector3d(right_foot_toe[0],right_foot_toe[1],right_foot_toe[2]);
+    // mujoco_lfv.row(1) = Vector3d(right_foot_heel[0],right_foot_heel[1],right_foot_heel[2]);
+    // mujoco_lfv.row(2) = Vector3d(left_foot_toe[0],left_foot_toe[1],left_foot_toe[2]);
+    // mujoco_lfv.row(3) = Vector3d(left_foot_heel[0],left_foot_heel[1],left_foot_heel[2]);   
+
+    // VectorXd mujoco_lfv_vector = dash_utils::flatten(cd.mujoco_lfv);
     VectorXd lfv_comm_vector = dash_utils::flatten(controller->get_lfv_comm_world());
     //dash_utils::setOutputFolder("/home/joey/Desktop/tello_outputs/");
     //dash_utils::writeVectorToCsv(mujoco_lfv_vector,"mujoco_lfv.csv");
     //dash_utils::writeVectorToCsv(lfv_comm_vector,"lfv_comm.csv");
     
-    contactforce(m,d, controller->get_FSM()); 
+    // contactforce(m,d, controller->get_FSM()); 
     
     // Access the acceleration and angular velocity data from the sensors
-    mjtNum acceleration[3];
-    mjtNum angular_velocity[3];
+    // mjtNum acceleration[3];
+    // mjtNum angular_velocity[3];
 
-    int accel_sensor_id = mj_name2id(m, mjOBJ_SENSOR, "torso-linear-acceleration");
-    int gyro_sensor_id = mj_name2id(m, mjOBJ_SENSOR, "toso-angular-velocity");
+    // int accel_sensor_id = mj_name2id(m, mjOBJ_SENSOR, "torso-linear-acceleration");
+    // int gyro_sensor_id = mj_name2id(m, mjOBJ_SENSOR, "toso-angular-velocity");
 
-    mju_copy3(acceleration, &d->sensordata[accel_sensor_id]);
-    mju_copy3(angular_velocity, &d->sensordata[gyro_sensor_id]);
+    // mju_copy3(acceleration, &d->sensordata[accel_sensor_id]);
+    // mju_copy3(angular_velocity, &d->sensordata[gyro_sensor_id]);
 
     // Vector3d acc_no_g = subtractG(Vector3d(psiR,thetaR,phiR),Vector3d(acceleration[0],acceleration[1],acceleration[2]));
-    Vector3d imu_acc = Vector3d(acceleration[0],acceleration[1],acceleration[2]);
-    Vector3d imu_gyro = Vector3d(angular_velocity[0],angular_velocity[1],angular_velocity[2]);
+    Vector3d imu_acc = Vector3d(cd.acceleration[0],cd.acceleration[1],cd.acceleration[2]);
+    Vector3d imu_gyro = Vector3d(cd.angular_velocity[0],cd.angular_velocity[1],cd.angular_velocity[2]);
 
     // Print the acceleration and angular velocity data
     // printf("Acceleration: (%f, %f, %f)\n", acceleration[0], acceleration[1], acceleration[2]);
@@ -299,8 +497,8 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 	// Torso state vectors
     VectorXd SRB_q(6);
     VectorXd SRB_qd(6);
-    SRB_q << xR, yR, zR, phiR, thetaR, psiR;
-    SRB_qd << xdR, ydR, zdR, phidR, thetadR, psidR;
+    SRB_q << cd.xR, cd.yR, cd.zR, cd.phiR, cd.thetaR, cd.psiR;
+    SRB_qd << cd.xdR, cd.ydR, cd.zdR, cd.phidR, cd.thetadR, cd.psidR;
     //pthread_mutex_lock(&plotting_mutex);
     // CoM vector
     pc_curr = SRB_q.head(3);
@@ -312,20 +510,20 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
     // Leg joints and parameters vectors
     VectorXd qLeg_l(5);
-    qLeg_l << q1l, q2l, q3l, q4l, q5l;
+    qLeg_l << cd.q1l, cd.q2l, cd.q3l, cd.q4l, cd.q5l;
     VectorXd qLeg_r(5);
-    qLeg_r << q1r, q2r, q3r, q4r, q5r;
+    qLeg_r << cd.q1r, cd.q2r, cd.q3r, cd.q4r, cd.q5r;
 
     VectorXd qdLeg_l(5);
-    qdLeg_l << qd1l, qd2l, qd3l, qd4l, qd5l;
+    qdLeg_l << cd.qd1l, cd.qd2l, cd.qd3l, cd.qd4l, cd.qd5l;
     VectorXd qdLeg_r(5);
-    qdLeg_r << qd1r, qd2r, qd3r, qd4r, qd5r;
+    qdLeg_r << cd.qd1r, cd.qd2r, cd.qd3r, cd.qd4r, cd.qd5r;
 
     // Compute rotation matrix from world to body frame
     Matrix3d Rwb;
-    Rwb = AngleAxisd(phiR, Vector3d::UnitX())
-        * AngleAxisd(thetaR, Vector3d::UnitY())
-        * AngleAxisd(psiR, Vector3d::UnitZ());
+    Rwb = AngleAxisd(cd.phiR, Vector3d::UnitX())
+        * AngleAxisd(cd.thetaR, Vector3d::UnitY())
+        * AngleAxisd(cd.psiR, Vector3d::UnitZ());
     rotation_mat = Rwb;
 
     // add gravity to IMU:
@@ -345,8 +543,8 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     qd.row(0) = qdLeg_r;
 	qd.row(1) = qdLeg_l;
 	Eigen::Map<Eigen::VectorXd> R_curr(Rwb.data(), Rwb.size());
-	EA_curr = Vector3d(phiR,thetaR,psiR);
-    dEA_curr = Vector3d(phidR,thetadR,psidR);
+	EA_curr = Vector3d(cd.phiR,cd.thetaR,cd.psiR);
+    dEA_curr = Vector3d(cd.phidR,cd.thetadR,cd.psidR);
     VectorXd wb_curr = dash_utils::calc_wb(dEA_curr,EA_curr);
 
     VectorXd qVec(10), qdVec(10);
@@ -398,7 +596,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 
     // Vector3d estimated_dpc(dx_smoothed,dy_smoothed,dz_smoothed);
     
-    VectorXd tau = controller->update(pc_curr, dpc_curr, EA_curr, dEA_curr,q ,qd ,t);
+    VectorXd tau = controller->update(pc_curr, dpc_curr, EA_curr, dEA_curr,q ,qd ,cd.t);
 
     t_end_stepping = controller->get_SRB_params().t_end_stepping;
     if(tello->controller->get_sim_mode() == 2)
@@ -468,18 +666,22 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
         tau_LR = tau_LR + posture_ctrl_torques;
 
         VectorXd torques_left  = tello->swing_stance_mux(tau_LR.head(5), swing_leg_torques.head(5),
-                                                            0.00,controller->get_isSwingToStanceRight(), 
-                                                            d->time-controller->get_transitionStartRight(), 
+                                                            0.01,controller->get_isSwingToStanceRight(), 
+                                                            cd.t-controller->get_transitionStartRight(), 
                                                             0);
         VectorXd torques_right = tello->swing_stance_mux(tau_LR.tail(5), swing_leg_torques.tail(5),
-                                                            0.00,controller->get_isSwingToStanceLeft(),
-                                                            d->time-controller->get_transitionStartLeft(), 
+                                                            0.01,controller->get_isSwingToStanceLeft(),
+                                                            cd.t-controller->get_transitionStartLeft(), 
                                                             1);
         VectorXd tau_LR_muxed(10);
         tau_LR_muxed << torques_left,torques_right;
-
-
-        applyJointTorquesMujoco(tau_LR_muxed);
+        tau_ready = false;
+        pthread_mutex_lock(&tau_share_mutex);
+        tau_shared = tau_LR_muxed;
+        pthread_mutex_unlock(&tau_share_mutex);
+        tau_ready = true;
+        
+        // applyJointTorquesMujoco(tau_LR_muxed);
 
         // begin update filter states: ------------------------------------------------------
         // RoboDesignLab::IMU_data imu_data;
@@ -516,7 +718,7 @@ void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
     //     stepping_in_progress = false;
     //     pause_sim = true;
     // }
-    pthread_mutex_unlock(&sim_step_mutex);
+    
 }
 VectorXd x0;
 MatrixXd q0;
@@ -600,29 +802,36 @@ void initializeSRBMCtrl()
     //     dash_planner::SRB_6DoF_Test(recording_file_name,sim_time,srb_params,lfv0,DoF,1);
     // }
     // else{
-        // printf("Walking Selected\n\n");
-        // // Option 2: Walking using LIP angular momentum regulation about contact point
-        // // user input (walking speed and step frequency)
-        // double des_walking_speed = srb_params.des_walking_speed;
-        // // double des_walking_step_period = 0.2;<---- CHANGE IN JSON, NOT HERE
-        // // end user input
-        // recording_file_name = "Walking";
-        // srb_params.planner_type = 1; 
-        // // srb_params.T = des_walking_step_period;<---- CHANGE IN JSON, NOT HERE
-        // VectorXd t_traj, v_traj;
-        // double t_beg_stepping_time, t_end_stepping_time;
-        // dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
-        // srb_params.vx_des_t = t_traj;
-        // srb_params.vx_des_vx = v_traj;
-        // srb_params.t_beg_stepping = t_beg_stepping_time;
-        // srb_params.t_end_stepping = t_end_stepping_time;
-        // sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
     // }
-    printf("Telelop Selected\n\n");
-    recording_file_name = "Telelop";
-    srb_params.planner_type = 2; 
-    srb_params.init_type = 1;
-    sim_time = 1e5;
+    if(sim_conf.en_autonomous_mode)
+    {
+        printf("Walking Selected\n\n");
+        // Option 2: Walking using LIP angular momentum regulation about contact point
+        // user input (walking speed and step frequency)
+        double des_walking_speed = srb_params.des_walking_speed;
+        // double des_walking_step_period = 0.2;<---- CHANGE IN JSON, NOT HERE
+        // end user input
+        recording_file_name = "Walking";
+        srb_params.planner_type = 1; 
+        // srb_params.T = des_walking_step_period;<---- CHANGE IN JSON, NOT HERE
+        VectorXd t_traj, v_traj;
+        double t_beg_stepping_time, t_end_stepping_time;
+        dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
+        srb_params.vx_des_t = t_traj;
+        srb_params.vx_des_vx = v_traj;
+        srb_params.t_beg_stepping = t_beg_stepping_time;
+        srb_params.t_end_stepping = t_end_stepping_time;
+        sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
+    }
+    else
+    {
+        printf("Telelop Selected\n\n");
+        recording_file_name = "Telelop";
+        srb_params.planner_type = 2; 
+        srb_params.init_type = 1;
+        sim_time = 1e5;
+    }
+    
 
 	// Initialize trajectory planner data
     dash_planner::SRB_Init_Traj_Planner_Data(traj_planner_dyn_data, srb_params, human_params, x0, lfv0);
@@ -668,78 +877,78 @@ double sin_cnt = 0;
 double sin_val = 0;
 int video_pulse_indicator_cnt = 0;
 
-static float xH[5001], yH[5001], t[5001], dxH[5001], dyH[5001], pxH[5001], pyH[5001], u1z[5001],u2z[5001],u3z[5001],u4z[5001],FSM_[5001];
+// static float xH[5001], yH[5001], t[5001], dxH[5001], dyH[5001], pxH[5001], pyH[5001], u1z[5001],u2z[5001],u3z[5001],u4z[5001],FSM_[5001];
 
 void DrawPlot()
 {
-    glfwGetWindowSize(window, &windowWidth, &windowHeight);
-    ImPlot::StyleColorsLight();
-    ImGui::SetNextWindowSize(ImVec2((double)windowWidth/4.0,windowHeight-95));
-    ImGui::SetNextWindowPos(ImVec2(0,95));
-    plot_width = windowWidth/4.0+5;
-    ImGui::Begin("ImGraph",nullptr,ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize);
+    // glfwGetWindowSize(window, &windowWidth, &windowHeight);
+    // ImPlot::StyleColorsLight();
+    // ImGui::SetNextWindowSize(ImVec2((double)windowWidth/4.0,windowHeight-95));
+    // ImGui::SetNextWindowPos(ImVec2(0,95));
+    // plot_width = windowWidth/4.0+5;
+    // ImGui::Begin("ImGraph",nullptr,ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize);
     
-    static float xs1[5001], ys1[5001];
-    for (int i = 0; i <5000; i++) {
-        if(!pause_sim){
-            FSM_[i] = FSM_[i+1];
-            // xH[i] = xH[i+1];
-            // yH[i] = yH[i+1];
-            // dxH[i] = dxH[i+1];
-            // dyH[i] = dyH[i+1];
-            // pxH[i] = pxH[i+1];
-            // pyH[i] = pyH[i+1];
+    // static float xs1[5001], ys1[5001];
+    // for (int i = 0; i <5000; i++) {
+    //     if(!pause_sim){
+    //         FSM_[i] = FSM_[i+1];
+    //         // xH[i] = xH[i+1];
+    //         // yH[i] = yH[i+1];
+    //         // dxH[i] = dxH[i+1];
+    //         // dyH[i] = dyH[i+1];
+    //         // pxH[i] = pxH[i+1];
+    //         // pyH[i] = pyH[i+1];
             
-            // u1z[i] = u1z[i+1];
-            // u2z[i] = u2z[i+1];
-            // u3z[i] = u3z[i+1];
-            // u4z[i] = u4z[i+1];
-        }
-        t[i] = i;
-    }
-    if(!pause_sim){
-        xH[5000] = tello->controller->get_human_dyn_data().xH;
-        yH[5000] = tello->controller->get_human_dyn_data().yH;
-        dxH[5000] = tello->controller->get_human_dyn_data().dxH;
-        dyH[5000] = tello->controller->get_human_dyn_data().dyH;
-        pxH[5000] = tello->controller->get_human_dyn_data().pxH;
-        pyH[5000] = tello->controller->get_human_dyn_data().pyH;
-        u1z[5000] = tello->controller->get_GRFs()(2);
-        u2z[5000] = tello->controller->get_GRFs()(5);
-        u3z[5000] = tello->controller->get_GRFs()(8);
-        u4z[5000] = tello->controller->get_GRFs()(11);
-    }
-        t[5000] = 5000;
-    if (ImPlot::BeginPlot("Tello Real-Time Data",ImVec2((double)windowWidth/4.0-15,windowHeight-115))) {
-        ImPlot::SetupAxes("x","y",ImPlotAxisFlags_NoDecorations,ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_AutoFit);
+    //         // u1z[i] = u1z[i+1];
+    //         // u2z[i] = u2z[i+1];
+    //         // u3z[i] = u3z[i+1];
+    //         // u4z[i] = u4z[i+1];
+    //     }
+    //     t[i] = i;
+    // }
+    // if(!pause_sim){
+    //     xH[5000] = tello->controller->get_human_dyn_data().xH;
+    //     yH[5000] = tello->controller->get_human_dyn_data().yH;
+    //     dxH[5000] = tello->controller->get_human_dyn_data().dxH;
+    //     dyH[5000] = tello->controller->get_human_dyn_data().dyH;
+    //     pxH[5000] = tello->controller->get_human_dyn_data().pxH;
+    //     pyH[5000] = tello->controller->get_human_dyn_data().pyH;
+    //     u1z[5000] = tello->controller->get_GRFs()(2);
+    //     u2z[5000] = tello->controller->get_GRFs()(5);
+    //     u3z[5000] = tello->controller->get_GRFs()(8);
+    //     u4z[5000] = tello->controller->get_GRFs()(11);
+    // }
+    //     t[5000] = 5000;
+    // if (ImPlot::BeginPlot("Tello Real-Time Data",ImVec2((double)windowWidth/4.0-15,windowHeight-115))) {
+    //     ImPlot::SetupAxes("x","y",ImPlotAxisFlags_NoDecorations,ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_AutoFit);
 
-        // ImPlot::SetNextLineStyle(ImVec4(0.5, 0, 0, 1), 3.0f);
-        // ImPlot::PlotLine("xH", t, xH, 5001,ImPlotLineFlags_None);
-        // ImPlot::SetNextLineStyle(ImVec4(0, 0, 0.5, 1), 3.0f);
-        // ImPlot::PlotLine("yH", t, yH, 5001,ImPlotLineFlags_None);
+    //     // ImPlot::SetNextLineStyle(ImVec4(0.5, 0, 0, 1), 3.0f);
+    //     // ImPlot::PlotLine("xH", t, xH, 5001,ImPlotLineFlags_None);
+    //     // ImPlot::SetNextLineStyle(ImVec4(0, 0, 0.5, 1), 3.0f);
+    //     // ImPlot::PlotLine("yH", t, yH, 5001,ImPlotLineFlags_None);
 
-        // ImPlot::SetNextLineStyle(ImVec4(0.5, 0.5, 0, 1), 3.0f);
-        // ImPlot::PlotLine("dxH", t, dxH, 5001,ImPlotLineFlags_None);
-        // ImPlot::SetNextLineStyle(ImVec4(0, 0.5, 0.5, 1), 3.0f);
-        // ImPlot::PlotLine("dyH", t, dyH, 5001,ImPlotLineFlags_None);
+    //     // ImPlot::SetNextLineStyle(ImVec4(0.5, 0.5, 0, 1), 3.0f);
+    //     // ImPlot::PlotLine("dxH", t, dxH, 5001,ImPlotLineFlags_None);
+    //     // ImPlot::SetNextLineStyle(ImVec4(0, 0.5, 0.5, 1), 3.0f);
+    //     // ImPlot::PlotLine("dyH", t, dyH, 5001,ImPlotLineFlags_None);
 
-        // ImPlot::SetNextLineStyle(ImVec4(0.5, 0, 0.5, 1), 3.0f);
-        // ImPlot::PlotLine("pxH", t, pxH, 5001,ImPlotLineFlags_None);
-        // ImPlot::SetNextLineStyle(ImVec4(0.3, 0.3, 0.3, 1), 3.0f);
-        // ImPlot::PlotLine("pyH", t, pyH, 5001,ImPlotLineFlags_None);
+    //     // ImPlot::SetNextLineStyle(ImVec4(0.5, 0, 0.5, 1), 3.0f);
+    //     // ImPlot::PlotLine("pxH", t, pxH, 5001,ImPlotLineFlags_None);
+    //     // ImPlot::SetNextLineStyle(ImVec4(0.3, 0.3, 0.3, 1), 3.0f);
+    //     // ImPlot::PlotLine("pyH", t, pyH, 5001,ImPlotLineFlags_None);
 
-        ImPlot::SetNextLineStyle(ImVec4(0.5, 0, 0, 1), 3.0f);
-        ImPlot::PlotLine("u1z", t, u1z, 5001,ImPlotLineFlags_None);
-        ImPlot::SetNextLineStyle(ImVec4(0.3, 0.3, 0.3, 1), 3.0f);
-        ImPlot::PlotLine("u2z", t, u2z, 5001,ImPlotLineFlags_None);
-        ImPlot::SetNextLineStyle(ImVec4(0, 0, 0.5, 1), 3.0f);
-        ImPlot::PlotLine("u3z", t, u3z, 5001,ImPlotLineFlags_None);
-        ImPlot::SetNextLineStyle(ImVec4(0.3, 0, 0.3, 1), 3.0f);
-        ImPlot::PlotLine("u4z", t, u4z, 5001,ImPlotLineFlags_None);
+    //     ImPlot::SetNextLineStyle(ImVec4(0.5, 0, 0, 1), 3.0f);
+    //     ImPlot::PlotLine("u1z", t, u1z, 5001,ImPlotLineFlags_None);
+    //     ImPlot::SetNextLineStyle(ImVec4(0.3, 0.3, 0.3, 1), 3.0f);
+    //     ImPlot::PlotLine("u2z", t, u2z, 5001,ImPlotLineFlags_None);
+    //     ImPlot::SetNextLineStyle(ImVec4(0, 0, 0.5, 1), 3.0f);
+    //     ImPlot::PlotLine("u3z", t, u3z, 5001,ImPlotLineFlags_None);
+    //     ImPlot::SetNextLineStyle(ImVec4(0.3, 0, 0.3, 1), 3.0f);
+    //     ImPlot::PlotLine("u4z", t, u4z, 5001,ImPlotLineFlags_None);
 
-        ImPlot::EndPlot();
-    }
-    ImGui::End();
+    //     ImPlot::EndPlot();
+    // }
+    // ImGui::End();
 }
 
 
@@ -780,10 +989,12 @@ void* mujoco_Update_1KHz( void * arg )
         if(simulation_mode == 1)
         {
             m = mj_loadXML("./tello_files/tello-massive-color.xml", NULL, error, 1000);
+            // m_shared = mj_loadXML("./tello_files/tello-massive-color.xml", NULL, error, 1000);
         }
         else
         {
             m = mj_loadXML("./tello_files/tello-massive-blue-grey.xml", NULL, error, 1000);
+            // m_shared = mj_loadXML("./tello_files/tello-massive-blue-grey.xml", NULL, error, 1000);
         }
     }
     else {
@@ -792,10 +1003,12 @@ void* mujoco_Update_1KHz( void * arg )
         if(simulation_mode == 1)
         {
             m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-color.xml", NULL, error, 1000);
+            // m_shared = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-color.xml", NULL, error, 1000);
         }
         else
         {
             m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-blue-grey.xml", NULL, error, 1000);
+            // m_shared = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-blue-grey.xml", NULL, error, 1000);
         }
         
     }
@@ -807,11 +1020,12 @@ void* mujoco_Update_1KHz( void * arg )
     }
 	// make data
     d = mj_makeData(m);
+    // d_shared = mj_makeData(m_shared);
 
     initializeLegs();
 
     // install control callback
-    mjcb_control = dummy_callback;//TELLO_locomotion_ctrl;
+    // mjcb_control = dummy_callback;//TELLO_locomotion_ctrl;
 
 	// init GLFW
     if (!glfwInit())
@@ -872,7 +1086,9 @@ void* mujoco_Update_1KHz( void * arg )
     // Plotting:
 
 	// END SETUP CODE FOR MUJOCO ========================================================================
+    pthread_mutex_lock(&sim_mutex);
     mj_forward(m, d);
+    pthread_mutex_unlock(&sim_mutex);
     simulation_ready_to_run = true;
     // initialize ImGui
     IMGUI_CHECKVERSION();
@@ -929,33 +1145,42 @@ void* mujoco_Update_1KHz( void * arg )
         // dash_utils::print_timer();
         // dash_utils::start_timer();
         // Get body ID
-        int body_id = mj_name2id(m, mjOBJ_BODY, "torso");
+        // int body_id = mj_name2id(m, mjOBJ_BODY, "torso");
 
         // Apply force-torque to body
-        mjtNum force[3] = {push_force_x, push_force_y, -push_force_z}; // x, y, z components of the force
-        mjtNum torque[3] = {0.0, 0.0, 0.0}; // x, y, z components of the torque
-        mjtNum point[3] = {0.0, 0.0, 0.0}; // x, y, z components of the torque
-        mj_applyFT(m, d, force, torque, point, body_id, d->qfrc_applied);
+        // mjtNum force[3] = {push_force_x, push_force_y, -push_force_z}; // x, y, z components of the force
+        // mjtNum torque[3] = {0.0, 0.0, 0.0}; // x, y, z components of the torque
+        // mjtNum point[3] = {0.0, 0.0, 0.0}; // x, y, z components of the torque
+        // pthread_mutex_lock(&sim_mutex);
+        // mj_applyFT(m, d, force, torque, point, body_id, d->qfrc_applied);
+        // pthread_mutex_unlock(&sim_mutex);
 
-        if(push_force_x > 0){
-            printf("Pushed in X\n");
-            push_force_x = 0;
-        }
-        if(push_force_y > 0){
-            printf("Pushed in Y\n");
-            push_force_y = 0;
-        }
-        if(push_force_z > 0){
-            printf("Pushed in Z\n");
-            push_force_z = 0;
-        }
+        // if(push_force_x > 0){
+        //     printf("Pushed in X\n");
+        //     push_force_x = 0;
+        // }
+        // if(push_force_y > 0){
+        //     printf("Pushed in Y\n");
+        //     push_force_y = 0;
+        // }
+        // if(push_force_z > 0){
+        //     printf("Pushed in Z\n");
+        //     push_force_z = 0;
+        // }
+        
+        pthread_mutex_lock(&sim_step_mutex);
+        ctrlData cd_local;
+        cd_local = cd_shared;
+        pthread_mutex_unlock(&sim_step_mutex);
+
         if(simulation_mode == 1)
         {
             if(!pause_sim){
                 //mjtNum simstart = d->time;
                 //while (d->time - simstart < 1.0 / 60.0){
                     //mj_step(m, d);
-                    TELLO_locomotion_ctrl(m,d);
+                    TELLO_locomotion_ctrl(cd_local);
+                    
                 //}  
             } 
         }
@@ -965,8 +1190,8 @@ void* mujoco_Update_1KHz( void * arg )
                 //mjtNum simstart = d->time;
                 //while (d->time - simstart < 1.0 / 60.0){
                     // d->time = d->time + elapsed;
+                    TELLO_locomotion_ctrl(cd_local);
                     
-                    TELLO_locomotion_ctrl(m,d);
                     // dash_utils::start_timer();
 
                     // dash_utils::print_timer();
@@ -977,6 +1202,8 @@ void* mujoco_Update_1KHz( void * arg )
             // cout << "CoM XYZ:" << tello->controller->get_x().head(3).transpose() << endl;
             //cout << "q right:" << tello->controller->get_q().row(0) << endl;
         }
+        //tau_shared is ready to send back to sim thread here:
+
 
         // logging: 
         if(!pause_sim)
@@ -1012,7 +1239,9 @@ void* mujoco_Update_1KHz( void * arg )
         // set the background color to white
         
         // update scene and render
+        pthread_mutex_lock(&sim_mutex);
         mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
+        pthread_mutex_unlock(&sim_mutex);
         mjr_render(viewport, &scn, &con);
         
         // render ImGui GUI
@@ -1070,11 +1299,24 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::Separator();
             ImGui::Checkbox(" " ICON_FA_PLAY "  Enable Playback Mode   ", &(sim_conf.en_playback_mode));
             ImGui::Separator();
+            ImGui::Checkbox(" " ICON_FA_STAR "  Enable V2 Controller   ", &(sim_conf.en_v2_controller));
+            en_v2_ctrl = sim_conf.en_v2_controller;
+            ImGui::Separator();
+            ImGui::Checkbox(" " ICON_FA_USER_ALT_SLASH "  Boot to Autonomous Mode (RR) ", &(sim_conf.en_autonomous_mode));
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+            ImGui::Separator();
+            ImGui::PushStyleColor(ImGuiCol_Separator,grey5);  
+            ImGui::Separator();
             ImGui::Checkbox(" " ICON_FA_CAMERA "  Enable HMI Recording   ", &(sim_conf.en_HMI_recording));
             ImGui::Separator();
             ImGui::Checkbox(" " ICON_FA_TV "  Enable Mujoco Recording   ", &(sim_conf.en_screen_recording));
             ImGui::Separator();
-            ImGui::Checkbox(" " ICON_FA_CHECK_CIRCLE "  Auto-Record Sessions   ", &(sim_conf.en_auto_record));
+            ImGui::Checkbox(" " ICON_FA_VIDEO "  Auto-Record Sessions   ", &(sim_conf.en_auto_record));
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+            ImGui::Separator();
+            ImGui::PushStyleColor(ImGuiCol_Separator,grey5);  
             ImGui::Separator();
             ImGui::Checkbox(" " ICON_FA_CHART_LINE "  Display Realtime Plot   ", &(sim_conf.en_realtime_plot));
             ImGui::Separator();
@@ -1113,7 +1355,9 @@ void* mujoco_Update_1KHz( void * arg )
             initializeSRBMCtrl();
             set_mujoco_state(tello->controller->get_x());
             initializeLegs();
+            pthread_mutex_lock(&sim_mutex);
             mj_forward(m, d);
+            pthread_mutex_unlock(&sim_mutex);
         }
         ImGui::PushStyleColor(ImGuiCol_Separator,grey5);
         ImGui::Separator();
@@ -1176,22 +1420,7 @@ void* mujoco_Update_1KHz( void * arg )
                 
                 recording_in_progress = false;
                 usb_recording_in_progress = false;
-                // pid_t pid = fileno(screen_record_pipe);
-                // cout << "pid: " << pid << endl;
-                // if (pid != -1) {
-                // kill(pid, SIGINT); // You can change SIGINT to SIGTERM if needed
-                //      cout << "Killing process" << endl;
-                // }
-                // // fprintf(screen_record_pipe, "%c", 3);
-                // int exitCode = pclose(screen_record_pipe);
-                // exitCode = pclose(screen_record_pipe);
-                // exitCode = pclose(screen_record_pipe);
-                // exitCode = pclose(screen_record_pipe);
-                // if (exitCode == -1) {
-                //     std::cerr << "Error stopping ffmpeg process!" << std::endl;
-                // }
-                //kill(screen_rec_pid, SIGINT);  // Send SIGTERM signal to child process
-                //screen_rec_pid = -1;
+                
                 usleep(2000);
             }
             ImGui::PopStyleColor(3);
@@ -1204,34 +1433,44 @@ void* mujoco_Update_1KHz( void * arg )
         ImGui::PushStyleColor(ImGuiCol_FrameBgActive,grey2);
         ImGui::Separator();
         ImGui::Separator();
-        std::string human_label;
-        if(sim_conf.en_playback_mode) human_label = " Human-Playback   ";
-        else human_label = " Human-Control   ";
-        ImGui::Checkbox(human_label.c_str(), &tello->controller->enable_human_dyn_data);
-        ImGui::Separator();
-        ImGui::Checkbox(" Real-Time   ", &realtime_enabled);
-        ImGui::Separator();
-        ImGui::Checkbox(" Force-Fdbk   ", &enable_human_ff);      // Edit bools storing our window open/close state
-        ImGui::Separator();
-            ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
-            if (ImGui::Button(" " ICON_FA_WEIGHT " Tare CoM  ")) {
-                zero_human = true;
-            }
-            else{
-                zero_human = false;
-            }
-            ImGui::PopStyleColor(3);
-        ImGui::Separator();
-        ImGui::SetNextItemWidth(250.0f*screenScale);
-        ImGui::PushStyleColor(ImGuiCol_FrameBg,grey2);
-        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,grey2);
-        ImGui::PushStyleColor(ImGuiCol_SliderGrab,black);
-        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive,black);
-        ImGui::SliderFloat(" HMI Gain", &master_gain, 0.0f, 1.0f);
-        ImGui::Separator();
-        ImGui::PopStyleColor(9);
+        if(!(sim_conf.en_autonomous_mode))
+        {
+            std::string human_label;
+            if(sim_conf.en_playback_mode) human_label = " Human-Playback   ";
+            else human_label = " Human-Control   ";
+            ImGui::Checkbox(human_label.c_str(), &tello->controller->enable_human_dyn_data);
+            ImGui::Separator();
+            ImGui::Checkbox(" Real-Time   ", &realtime_enabled);
+            ImGui::Separator();
+            ImGui::Checkbox(" Force-Fdbk   ", &enable_human_ff);      // Edit bools storing our window open/close state
+            ImGui::Separator();
+                ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
+                if (ImGui::Button(" " ICON_FA_WEIGHT " Tare CoM  ")) {
+                    zero_human = true;
+                }
+                else{
+                    zero_human = false;
+                }
+                ImGui::PopStyleColor(3);
+            ImGui::Separator();
+            ImGui::SetNextItemWidth(250.0f*screenScale);
+            ImGui::PushStyleColor(ImGuiCol_FrameBg,grey2);
+            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,grey2);
+            ImGui::PushStyleColor(ImGuiCol_SliderGrab,black);
+            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive,black);
+            ImGui::SliderFloat(" HMI Gain", &master_gain, 0.0f, 1.0f);
+            ImGui::Separator();
+            ImGui::PopStyleColor(4);
+        }
+        else{
+            ImGui::Separator();
+            ImGui::Checkbox(" Real-Time   ", &realtime_enabled);
+            ImGui::Separator();
+        }
+        
+        ImGui::PopStyleColor(5);
         ImGui::EndMainMenuBar();
         ImGui::PopFont();
         ImGui::PopStyleColor(4);
@@ -1253,9 +1492,9 @@ void* mujoco_Update_1KHz( void * arg )
         //handle UDP transmit here:
 		Human_dyn_data hdd = tello->controller->get_human_dyn_data();
 
-        if( (fabs(hdd.FxH_hmi - last_Xf) > 100) || (fabs(hdd.FyH_hmi - last_Yf) > 100) || (fabs(hdd.FxH_spring - last_springf) > 100)){
-            controller_unstable = true;
-        }
+        // if( (fabs(hdd.FxH_hmi - last_Xf) > 100) || (fabs(hdd.FyH_hmi - last_Yf) > 100) || (fabs(hdd.FxH_spring - last_springf) > 100)){
+        //     controller_unstable = true;
+        // }
         // if( (fabs(hdd.FyH_hmi - last_Yf) > 100) ){
         //     controller_unstable = true;
         // }
@@ -1310,14 +1549,14 @@ void* mujoco_Update_1KHz( void * arg )
     ImGui::DestroyContext();
     system("killall -2 ffmpeg");
     tcsetattr(STDIN_FILENO, TCSANOW, &originalSettings);
-	//free visualization storage
-    mjv_freeScene(&scn);
-    mjr_freeContext(&con);
+	// //free visualization storage
+    // mjv_freeScene(&scn);
+    // mjr_freeContext(&con);
 
-    // free MuJoCo model and data, deactivate
-    mj_deleteData(d);
-    mj_deleteModel(m);
-    mj_deactivate();
+    // // free MuJoCo model and data, deactivate
+    // mj_deleteData(d);
+    // mj_deleteModel(m);
+    // mj_deactivate();
 
     exit(0);
     return NULL;
@@ -1385,7 +1624,7 @@ void* sim_step_task( void * arg )
         if(realtime_enabled)
         {
             if(elapsed < 0.005)
-                m->opt.timestep = elapsed;
+                m->opt.timestep = 0.001;//elapsed;
             else
                 m->opt.timestep = 0.001;
         }
@@ -1393,14 +1632,22 @@ void* sim_step_task( void * arg )
             m->opt.timestep = 0.001;
         }
         dash_utils::start_sim_timer();
-        pthread_mutex_lock(&sim_step_mutex);
+        // pthread_mutex_lock(&sim_step_mutex);
         
         if(!pause_sim)
         {
             if(simulation_mode == 1)
             {
-                
+                dash_utils::print_timer();
+                dash_utils::start_timer();
+                VectorXd tau_local;
+                pthread_mutex_lock(&tau_share_mutex);
+                tau_local = tau_shared;
+                pthread_mutex_unlock(&tau_share_mutex);
+                applyJointTorquesMujoco(tau_local);
+                pthread_mutex_lock(&sim_mutex);
                 mj_step(m, d);
+                pthread_mutex_unlock(&sim_mutex);
                 
                 
             }
@@ -1409,20 +1656,24 @@ void* sim_step_task( void * arg )
                 d->time = d->time + elapsed;
                 mj_kinematics(m,d);
             }
-            
+            pthread_mutex_lock(&sim_step_mutex);
+            cd_shared = copyMjData(m,d);
+            pthread_mutex_unlock(&sim_step_mutex);
         }
-        pthread_mutex_unlock(&sim_step_mutex);
+        // pthread_mutex_unlock(&sim_step_mutex);
 
 		handle_end_of_periodic_task(next,period);
 	}
     //free visualization storage
-    mjv_freeScene(&scn);
-    mjr_freeContext(&con);
+    // mjv_freeScene(&scn);
+    // mjr_freeContext(&con);
 
-    // free MuJoCo model and data, deactivate
-    mj_deleteData(d);
-    mj_deleteModel(m);
-    mj_deactivate();
+    // // free MuJoCo model and data, deactivate
+    // mj_deleteData(d);
+    // mj_deleteModel(m);
+    // // mj_deleteData(d_shared);
+    // // mj_deleteModel(m_shared);
+    // mj_deactivate();
 
     exit(0);
     return  0;

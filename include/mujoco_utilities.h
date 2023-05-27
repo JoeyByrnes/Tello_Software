@@ -1,5 +1,6 @@
 #include "mujoco_main.h"
 #include <random>
+#include <filesystem>
 
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods);
 void window_close_callback(GLFWwindow* window);
@@ -15,3 +16,4 @@ double firstOrderFilter(const Eigen::VectorXd& x, double alpha);
 std::string executeCommand(const std::string& command);
 simConfig readSimConfigFromFile(const std::string& filename);
 void writeSimConfigToFile(const simConfig& config, const std::string& filename);
+bool copyFile(const std::string& sourcePath, const std::string& destinationPath);

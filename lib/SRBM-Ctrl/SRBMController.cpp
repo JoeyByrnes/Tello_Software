@@ -1,6 +1,7 @@
 #include "SRBMController.h"
 extern Vector4d z_plotting;
-
+extern bool first_time_planner;
+extern bool first_time_running_qp;
 
 SRBMController::SRBMController()
 {
@@ -388,6 +389,9 @@ void SRBMController::reset()
     _dEA.setZero();
     _pc.setZero();
     _dpc.setZero();
+
+    first_time_running_qp = true;
+    first_time_planner = true;
 
 
     // Load Tello parameters

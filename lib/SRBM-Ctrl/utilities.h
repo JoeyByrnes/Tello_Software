@@ -45,6 +45,9 @@ namespace  dash_utils
     void setOutputFolder(const std::string& foldername);
 
     void writeSRBParamsToTxt(const SRB_Params& params, const std::string& filename);
+    void writeHumanParamsToTxt(const Human_params& params, const std::string& filename);
+    void writeStringToFile(const std::string& str, const std::string& filename);
+    void deleteLogFile(const std::string& filename);
 
     Vector3d worldToHip(Vector3d foot_pos_world, Vector3d hip_pos_world, Vector3d hip_orient_world);
     Vector3d hipToWorld(Vector3d vector_hip, Vector3d hip_pos_world, Vector3d hip_orient_world);

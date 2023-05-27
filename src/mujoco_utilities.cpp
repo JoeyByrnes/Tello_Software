@@ -401,3 +401,38 @@ void writeSimConfigToFile(const simConfig& config, const std::string& filename) 
 
     file.close();
 }
+
+namespace fs = std::filesystem;
+
+bool copyFile(const std::string& sourcePath, const std::string& destinationDir) {
+    fs::path sourceFile(sourcePath);
+
+    if (!fs::exists(sourceFile) || !fs::is_regular_file(sourceFile)) {
+        std::cerr << "The source file does not exist or is not a regular file." << std::endl;
+        return false;
+    }
+
+    fs::path destinationPath = fs::path(destinationDir) / sourceFile.filename();
+
+    std::ifstream sourceFileStream(sourcePath);
+    if (!sourceFileStream) {
+        std::cerr << "Failed to open the source file." << std::endl;
+        return false;
+    }
+
+    std::ofstream destinationFile(destinationPath.string());
+    if (!destinationFile) {
+        std::cerr << "Failed to open/create the destination file." << std::endl;
+        return false;
+    }
+
+    destinationFile << sourceFileStream.rdbuf();
+
+    if (sourceFileStream.bad() || destinationFile.bad()) {
+        std::cerr << "An error occurred while copying the file." << std::endl;
+        return false;
+    }
+
+    std::cout << "File copied successfully to: " << destinationPath << std::endl;
+    return true;
+}

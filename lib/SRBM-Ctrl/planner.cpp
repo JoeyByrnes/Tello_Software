@@ -349,7 +349,7 @@ void dash_planner::SRB_Traj_Planner(
 
 }
 
-bool first_time = true;
+bool first_time_planner = true;
 void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_params& human_params, Traj_planner_dyn_data& traj_planner_dyn_data, Human_dyn_data human_dyn_data,double t,int FSM_prev,int FSM, VectorXd x, MatrixXd lfv)
 {
     // Parameters
@@ -395,11 +395,11 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
     if (planner_type == 2) {
         traj_planner_dyn_data.stepping_flg = true;
         t_end_stepping = 1e6;
-        if(first_time)
+        if(first_time_planner)
         {
             traj_planner_dyn_data.next_SSP = 1;
             lfv_dsp_start = lfv;
-            first_time = false;
+            first_time_planner = false;
         }
     }
 

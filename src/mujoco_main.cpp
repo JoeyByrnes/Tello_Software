@@ -20,6 +20,7 @@ extern pthread_mutex_t EKF_mutex;
 namespace plt = matplotlibcpp;
 GLFWwindow* window;
 int windowWidth, windowHeight;
+extern float separator_thickness;
 
 FILE* screen_record_pipe;
 pid_t screen_rec_pid = -1;
@@ -40,6 +41,8 @@ float master_gain = 0;
 bool screen_recording = false;
 bool usbcam_recording = false;
 bool en_v2_ctrl = false;
+bool bookmarked = false;
+bool showCopyErrorPopup = false;
 int hdd_cnt=0; // human_playback counter
 
 //logging
@@ -445,6 +448,7 @@ void TELLO_locomotion_ctrl(ctrlData cd)
     // double qd5r = d->qvel[ankle_pitch_r_idx];  
 
     double t_end_stepping;
+    controller->set_time(cd.t);
 
     // mjtNum left_foot_toe[3];
     // mjtNum left_foot_heel[3];
@@ -756,11 +760,13 @@ void initializeSRBMCtrl()
         {
             dash_utils::parse_json_to_srb_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",srb_params);
             dash_utils::parse_json_to_pd_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",swing_conf,posture_conf);
+            copyFile("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",log_folder);
         }
         if(simulation_mode == 2)
         {
             dash_utils::parse_json_to_srb_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config_SRBsim.json",srb_params);
             dash_utils::parse_json_to_pd_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config_SRBsim.json",swing_conf,posture_conf);
+            copyFile("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config_SRBsim.json",log_folder);
         }
             
     }
@@ -951,7 +957,7 @@ void DrawPlot()
     // ImGui::End();
 }
 
-
+char notes[100]; // String variable to store the entered notes
 void* mujoco_Update_1KHz( void * arg )
 {
 	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
@@ -971,12 +977,18 @@ void* mujoco_Update_1KHz( void * arg )
     struct timespec next;
     clock_gettime(CLOCK_MONOTONIC, &next);
 
+    log_folder = createLogFolder("/home/joey/Desktop/tello_outputs/Logs/");
+    dash_utils::setOutputFolder(log_folder);
+
     sim_conf = readSimConfigFromFile("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/sim_config.json");
 
 
     // INITIALIZE SRBM CONTROLLER ========================================================
 
     initializeSRBMCtrl();
+
+    dash_utils::writeSRBParamsToTxt(tello->controller->get_SRB_params(),"srb_params.csv");
+    dash_utils::writeHumanParamsToTxt(tello->controller->get_human_params(),"human_params.csv");
 
     // BEGIN SETUP CODE FOR MUJOCO ======================================================================
     
@@ -1126,8 +1138,7 @@ void* mujoco_Update_1KHz( void * arg )
 
     dash_utils::start_sim_timer();
 
-    log_folder = createLogFolder("/home/joey/Desktop/tello_outputs/Logs/");
-    dash_utils::setOutputFolder(log_folder);
+    
     
 	while(!glfwWindowShouldClose(window))
     {
@@ -1268,6 +1279,7 @@ void* mujoco_Update_1KHz( void * arg )
         double screenScale = ((double)windowWidth/3840.0)*1.2;
         if(screenScale > 1.0) screenScale = 1.0;
         io.FontGlobalScale = screenScale;
+        separator_thickness = 15.0*screenScale;
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
@@ -1299,7 +1311,7 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::Separator();
             ImGui::Checkbox(" " ICON_FA_PLAY "  Enable Playback Mode   ", &(sim_conf.en_playback_mode));
             ImGui::Separator();
-            ImGui::Checkbox(" " ICON_FA_STAR "  Enable V2 Controller   ", &(sim_conf.en_v2_controller));
+            ImGui::Checkbox(" " ICON_FA_DICE_TWO "  Enable V2 Controller   ", &(sim_conf.en_v2_controller));
             en_v2_ctrl = sim_conf.en_v2_controller;
             ImGui::Separator();
             ImGui::Checkbox(" " ICON_FA_USER_ALT_SLASH "  Boot to Autonomous Mode (RR) ", &(sim_conf.en_autonomous_mode));
@@ -1328,6 +1340,91 @@ void* mujoco_Update_1KHz( void * arg )
             { 
                 writeSimConfigToFile(sim_conf, "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/sim_config.json");
             }
+            ImGui::Separator();
+            ImGui::EndMenu();
+        }
+        ImGui::PushStyleColor(ImGuiCol_Separator,grey5);
+        ImGui::Separator();
+        ImGui::PopStyleColor();
+        char notes[1001]; // String variable to store the entered notes
+        if(bookmarked)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.84f, 0.0f, 1.0f)); // Set text color to gold
+        }
+        if (ImGui::BeginMenu(" " ICON_FA_STAR " "))
+        {
+            if(bookmarked) ImGui::PopStyleColor();
+            ImGui::Separator();
+            if(!pause_sim || screen_recording || usbcam_recording)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0.4f, 1.0f)); // Set button color to grey
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.4f, 0.4f, 1.0f)); // Set button color to grey
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0.4f, 1.0f)); // Set button color to grey
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f); // Dim the button
+                ImGui::Button(" " ICON_FA_COPY " Copy log folder to favorites ");
+                ImGui::PopStyleVar();
+                ImGui::PopStyleColor(3);
+                if (ImGui::IsItemHovered())
+                {
+                    ImGui::SetTooltip("Please stop simulation and recording to copy"); // Display tooltip on hover
+                }
+            }
+            else
+            {
+                if (ImGui::Button(" " ICON_FA_COPY " Copy log folder to favorites ")) // Submit button
+                {
+                    if(pause_sim && !screen_recording && !usbcam_recording)
+                    {
+                        std::string command = "cp -R " + log_folder + " /home/joey/Desktop/tello_outputs/Favorite_Logs/";
+                        system(command.c_str());
+                    }
+                    else
+                    {
+                        showCopyErrorPopup = true;
+                    }
+                }
+            }
+            ImGui::Separator();
+            if(bookmarked)
+            {
+                if (ImGui::Button(" " ICON_FA_TIMES " Undo Bookmark                    ")) // Submit button
+                {
+                    bookmarked = false;
+                    dash_utils::deleteLogFile("bookmarked.txt");
+                }
+            }
+            else
+            {
+                if (ImGui::Button(" " ICON_FA_BOOKMARK " Bookmark log folder             ")) // Submit button
+                {
+                    bookmarked = true;
+                    dash_utils::writeStringToFile("","bookmarked.txt");
+                }
+            }
+            ImGui::Separator();
+            ImGui::EndMenu();
+        }
+        else if(bookmarked) ImGui::PopStyleColor();
+
+        ImGui::Separator();
+        if (ImGui::BeginMenu(" " ICON_FA_PENCIL_ALT " "))
+        {
+            ImGui::Separator();
+            ImGui::Separator();
+            ImGui::AlignTextToFramePadding(); // Align label to top
+            ImGui::Text("  Notes  "); // Label text
+            ImGui::SameLine(); // Place the text entry box next to the label
+            ImGui::InputText("  ", notes,1000); // Text entry box for notes                                                                   ");
+            ImGui::SameLine();
+            if (ImGui::Button(" Save ")) // Submit button
+            {
+                std::string submittedNotes = notes;
+                dash_utils::writeStringToFile(submittedNotes+"\n\n","notes.txt");
+                notes[0] = '\0';
+            }
+            ImGui::SameLine();
+            ImGui::Text("  ");
+            ImGui::Separator();
             ImGui::Separator();
             ImGui::EndMenu();
         }

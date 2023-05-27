@@ -419,8 +419,8 @@ initial to its desired in the z (vertical) direction
 */
 Vector2d dash_utils::sw_leg_ref_z(double s, double zcl, double H) {
     // position and velocity reference trajectories
-    double p_ref = 4 * zcl * pow(s - (0.5), 2) + H - zcl;
-    double v_ref = 4 * zcl * (2.0 * s - 1.0);
+    double p_ref = 4.0 * zcl * pow(s - (0.5), 2) + H - zcl;
+    double v_ref = 4.0 * zcl * (2.0 * s - 1.0);
 
     // create vector
     Vector2d ref;
@@ -491,7 +491,8 @@ void dash_utils::writeMatrixToCsv(const MatrixXd& mat, const std::string& filena
 
     file.close();
 }
-
+bool first_log_run_hdd = true;
+bool first_log_run_tpdd = true;
 void dash_utils::writeHumanDynDataToCsv(const Human_dyn_data& data, const std::string& filename) {
     std::ofstream file(_foldername + filename, std::ios::app);
 
@@ -502,6 +503,13 @@ void dash_utils::writeHumanDynDataToCsv(const Human_dyn_data& data, const std::s
 
     const char* delimiter = ",";
     const char* newline = "\n";
+
+    if(first_log_run_hdd)
+    {
+        file << "xH,dxH,pxH,yH,dyH,pyH,fxH_R,fyH_R,fzH_R,fxH_L,fyH_L,fzH_L,";
+        file << "fdxH_R,fdyH_R,fdzH_R,fdxH_L,fdyH_L,fdzH_L,FxH_hmi,FyH_hmi,FxH_spring" << newline;
+        first_log_run_hdd = false;
+    }
 
     file << data.xH << delimiter
          << data.dxH << delimiter
@@ -539,6 +547,19 @@ void dash_utils::writeTrajPlannerDataToCsv(const Traj_planner_dyn_data& data, co
     const char* delimiter = ",";
     const char* newline = "\n";
 
+    if(first_log_run_tpdd)
+    {
+        file << "stepping_flg,T_step,t_sw_start,t_dsp_start,next_SSP,step_width,";
+        file << "st2CoM_beg_step_x,st2CoM_beg_step_y,st2CoM_beg_step_z,";
+        file << "sw2CoM_beg_step_x,sw2CoM_beg_step_y,sw2CoM_beg_step_z,";
+        file << "xLIP_init_x,xLIP_init_y,";
+        file << "sw_beg_step_x,sw_beg_step_y,sw_beg_step_z,";
+        file << "human_leg_joystick_pos_beg_step_x,human_leg_joystick_pos_beg_step_y,human_leg_joystick_pos_beg_step_z,";
+        file << "sigma1H,left_in_contact,right_in_contact,left_off_gnd_cnt,right_off_gnd_cnt,";
+        file << "x_HWRM,dx_HWRM,x_plus_HWRM_x,x_plus_HWRM_y,uk_HWRM,";
+        file << "st_beg_step_x,st_beg_step_y,st_beg_step_z" << newline;
+        first_log_run_tpdd = false;
+    }
     file << (data.stepping_flg ? 1 : 0) << delimiter
          << data.T_step << delimiter
          << data.t_sw_start << delimiter
@@ -581,78 +602,117 @@ void dash_utils::writeSRBParamsToTxt(const SRB_Params& params, const std::string
     std::ofstream file(_foldername + filename);
     if (file.is_open())
     {
-        file << params.dt << std::endl;
-        file << params.init_type << std::endl;
-        file << params.g << std::endl;
-        file << params.mu << std::endl;
-        file << params.m << std::endl;
-        file << params.hLIP << std::endl;
-        file << params.Ib(0, 0) << "," << params.Ib(0, 1) << "," << params.Ib(0, 2) << ",";
+        file << "dt, " <<  params.dt << std::endl;
+        file << "init_type, " <<  params.init_type << std::endl;
+        file << "g, " <<  params.g << std::endl;
+        file << "mu, " <<  params.mu << std::endl;
+        file << "m, " <<  params.m << std::endl;
+        file << "hLIP, " << params.hLIP << std::endl;
+        file << "Ib, " << params.Ib(0, 0) << "," << params.Ib(0, 1) << "," << params.Ib(0, 2) << ",";
         file << params.Ib(1, 0) << "," << params.Ib(1, 1) << "," << params.Ib(1, 2) << ",";
         file << params.Ib(2, 0) << "," << params.Ib(2, 1) << "," << params.Ib(2, 2) << std::endl;
-        file << params.W << std::endl;
-        file << params.L << std::endl;
-        file << params.H << std::endl;
-        file << params.thigh_length << std::endl;
-        file << params.calf_length << std::endl;
-        file << params.foot_length << std::endl;
-        file << params.heel_length << std::endl;
-        file << params.CoM2H_z_dist << std::endl;
-        file << params.planner_type << std::endl;
-        file << params.T << std::endl;
-        file << params.x_sinu_traj_params(0) << "," << params.x_sinu_traj_params(1) << "," << params.x_sinu_traj_params(2) << std::endl;
-        file << params.y_sinu_traj_params(0) << "," << params.y_sinu_traj_params(1) << "," << params.y_sinu_traj_params(2) << std::endl;
-        file << params.z_sinu_traj_params(0) << "," << params.z_sinu_traj_params(1) << "," << params.z_sinu_traj_params(2) << std::endl;
-        file << params.roll_sinu_traj_params(0) << "," << params.roll_sinu_traj_params(1) << "," << params.roll_sinu_traj_params(2) << std::endl;
-        file << params.pitch_sinu_traj_params(0) << "," << params.pitch_sinu_traj_params(1) << "," << params.pitch_sinu_traj_params(2) << std::endl;
-        file << params.yaw_sinu_traj_params(0) << "," << params.yaw_sinu_traj_params(1) << "," << params.yaw_sinu_traj_params(2) << std::endl;
+        file << "W, " <<  params.W << std::endl;
+        file << "L, " <<  params.L << std::endl;
+        file << "H, " <<  params.H << std::endl;
+        file << "thigh_length, " <<  params.thigh_length << std::endl;
+        file << "calf_length, " <<  params.calf_length << std::endl;
+        file << "foot_length, " <<  params.foot_length << std::endl;
+        file << "heel_length, " <<  params.heel_length << std::endl;
+        file << "CoM2H_z_dist, " <<  params.CoM2H_z_dist << std::endl;
+        file << "planner_type, " <<  params.planner_type << std::endl;
+        file << "T, " <<  params.T << std::endl;
+        file << "x_sinu_traj_params, " <<  params.x_sinu_traj_params(0) << "," << params.x_sinu_traj_params(1) << "," << params.x_sinu_traj_params(2) << std::endl;
+        file << "y_sinu_traj_params, " <<  params.y_sinu_traj_params(0) << "," << params.y_sinu_traj_params(1) << "," << params.y_sinu_traj_params(2) << std::endl;
+        file << "z_sinu_traj_params, " <<  params.z_sinu_traj_params(0) << "," << params.z_sinu_traj_params(1) << "," << params.z_sinu_traj_params(2) << std::endl;
+        file << "roll_sinu_traj_params, " <<  params.roll_sinu_traj_params(0) << "," << params.roll_sinu_traj_params(1) << "," << params.roll_sinu_traj_params(2) << std::endl;
+        file << "pitch_sinu_traj_params, " <<  params.pitch_sinu_traj_params(0) << "," << params.pitch_sinu_traj_params(1) << "," << params.pitch_sinu_traj_params(2) << std::endl;
+        file << "yaw_sinu_traj_params, " <<  params.yaw_sinu_traj_params(0) << "," << params.yaw_sinu_traj_params(1) << "," << params.yaw_sinu_traj_params(2) << std::endl;
+        file << "vx_des_t, ";
         for (int i = 0; i < params.vx_des_t.size(); i++) {
             file << params.vx_des_t(i) << ",";
         }
         file << std::endl;
+        file << "vx_des_vx, ";
         for (int i = 0; i < params.vx_des_vx.size(); i++) {
             file << params.vx_des_vx(i) << ",";
         }
         file << std::endl;
-        file << params.t_beg_stepping << std::endl;
-        file << params.t_end_stepping << std::endl;
-        file << params.zcl << std::endl;
-        file << params.xDCMH_deadband << std::endl;
-        file << params.KxDCMH << std::endl;
-        file << params.Kx_DCM_mult << std::endl;
-        file << params.Ky_DCM_mult << std::endl;
-        file << params.T_DSP << std::endl;
-        file << params.lmaxR << std::endl;
-        file << params.Kp_xR << std::endl;
-        file << params.Kd_xR << std::endl;
-        file << params.Kp_yR << std::endl;
-        file << params.Kd_yR << std::endl;
-        file << params.Kp_zR << std::endl;
-        file << params.Kd_zR << std::endl;
-        file << params.Kp_phiR << std::endl;
-        file << params.Kd_phiR << std::endl;
-        file << params.Kp_thetaR << std::endl;
-        file << params.Kd_thetaR << std::endl;
-        file << params.Kp_psiR << std::endl;
-        file << params.Kd_psiR << std::endl;
-        file << params.QP_opt_sol_type << std::endl;
-        file << params.W_wrench << std::endl;
-        file << params.W_u_minus_u0_norm << std::endl;
-        file << params.Act_const_type << std::endl;
-        file << params.tau_m_max << std::endl;
-        file << params.tau_m_stall << std::endl;
-        file << params.alpha_m << std::endl;
-        file << params.beta_trans << std::endl;
-        file << params.gamma_trans << std::endl;
-        file << params.Fz_min_QP << std::endl;
-        file << params.Fz_min_FSM << std::endl;
-        file << params.q1_lim(0) << "," << params.q1_lim(1) << std::endl;
-        file << params.q2_lim(0) << "," << params.q2_lim(1) << std::endl;
+        
+        file << "t_beg_stepping, " <<  params.t_beg_stepping << std::endl;
+        file << "t_end_stepping, " <<  params.t_end_stepping << std::endl;
+        file << "zcl, " <<  params.zcl << std::endl;
+        file << "xDCMH_deadband, " <<  params.xDCMH_deadband << std::endl;
+        file << "KxDCMH, " <<  params.KxDCMH << std::endl;
+        file << "Kx_DCM_mult, " <<  params.Kx_DCM_mult << std::endl;
+        file << "Ky_DCM_mult, " <<  params.Ky_DCM_mult << std::endl;
+        file << "T_DSP, " <<  params.T_DSP << std::endl;
+        file << "lmaxR, " <<  params.lmaxR << std::endl;
+        file << "Kp_xR, " <<  params.Kp_xR << std::endl;
+        file << "Kd_xR, " <<  params.Kd_xR << std::endl;
+        file << "Kp_yR, " <<  params.Kp_yR << std::endl;
+        file << "Kd_yR, " <<  params.Kd_yR << std::endl;
+        file << "Kp_zR, " <<  params.Kp_zR << std::endl;
+        file << "Kd_zR, " <<  params.Kd_zR << std::endl;
+        file << "Kp_phiR, " <<  params.Kp_phiR << std::endl;
+        file << "Kd_phiR, " <<  params.Kd_phiR << std::endl;
+        file << "Kp_thetaR, " <<  params.Kp_thetaR << std::endl;
+        file << "Kd_thetaR, " <<  params.Kd_thetaR << std::endl;
+        file << "Kp_psiR, " <<  params.Kp_psiR << std::endl;
+        file << "Kd_psiR, " <<  params.Kd_psiR << std::endl;
+        file << "QP_opt_sol_type, " <<  params.QP_opt_sol_type << std::endl;
+        file << "W_wrench, " <<  params.W_wrench << std::endl;
+        file << "W_u_minus_u0_norm, " <<  params.W_u_minus_u0_norm << std::endl;
+        file << "Act_const_type, " <<  params.Act_const_type << std::endl;
+        file << "tau_m_max, " <<  params.tau_m_max << std::endl;
+        file << "tau_m_stall, " <<  params.tau_m_stall << std::endl;
+        file << "alpha_m, " <<  params.alpha_m << std::endl;
+        file << "beta_trans, " <<  params.beta_trans << std::endl;
+        file << "gamma_trans, " <<  params.gamma_trans << std::endl;
+        file << "Fz_min_QP, " <<  params.Fz_min_QP << std::endl;
+        file << "Fz_min_FSM, " <<  params.Fz_min_FSM << std::endl;
+        file << "q1_lim, " <<  params.q1_lim(0) << "," << params.q1_lim(1) << std::endl;
+        file << "q2_lim, " << params.q2_lim(0) << "," << params.q2_lim(1) << std::endl;
+        file << "des_walking_speed, " << params.des_walking_speed << std::endl; 
         file.close();
 
     }
     else{
         std::cerr << "Error writing SRB_Params" << std::endl;
+    }
+}
+void dash_utils::writeHumanParamsToTxt(const Human_params& params, const std::string& filename) {
+    std::ofstream file(_foldername + filename);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open the file: " << filename << std::endl;
+        return;
+    }
+
+    file << "m," << params.m << std::endl;
+    file << "hLIP," << params.hLIP << std::endl;
+    file << "human_nom_ft_width," << params.human_nom_ft_width << std::endl;
+
+    file.close();
+    std::cout << "Human_params written to file: " << filename << std::endl;
+}
+
+void dash_utils::writeStringToFile(const std::string& str, const std::string& filename) {
+    std::ofstream file(_foldername + filename, std::ios::app); // Open the file in append mode
+    if (!file.is_open()) {
+        std::cerr << "Failed to open the file: " << filename << std::endl;
+        return;
+    }
+
+    file << str; // Append the string to the file
+    file.close();
+    std::cout << "String appended to file: " << filename << std::endl;
+}
+
+void dash_utils::deleteLogFile(const std::string& filename) {
+    const std::string filePath = _foldername + filename;
+    if (std::remove(filePath.c_str()) != 0) {
+        std::perror("Error deleting file");
+    } else {
+        std::cout << "File deleted: " << filePath << std::endl;
     }
 }
 

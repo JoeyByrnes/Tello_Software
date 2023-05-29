@@ -72,6 +72,7 @@ struct simConfig {
     bool en_realtime_plot;
     bool en_playback_mode;
     bool en_v2_controller;
+    bool en_autonomous_mode_on_boot;
     bool en_autonomous_mode;
 };
 

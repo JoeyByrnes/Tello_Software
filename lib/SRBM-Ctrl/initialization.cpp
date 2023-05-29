@@ -6,9 +6,15 @@ extern int simulation_mode;
 
 void dash_init::Human_Init(Human_params &Human_params, Human_dyn_data &Human_dyn_data) {
     // Human Parameters
+    double joystick_base_separation = 1.525;
+    double foot_center_to_joystick = 0.0635;
+
     Human_params.m = 75; // human weight in kg
     Human_params.hLIP = 1.2; // nominal human LIP height
-    Human_params.human_nom_ft_width = 0.175; // nominal human feet width //was 0.175
+    Human_params.human_nom_ft_width = 0.220; // nominal human feet width //was 0.175
+    Human_params.fyH_home = (joystick_base_separation/2.0) - Human_params.human_nom_ft_width - foot_center_to_joystick; // joystick y width
+    // Note: HMI joystick bases are 1.465m apart
+    //       distance from center of foot to joystick end is 0.0635
 
     // HMI data
 
@@ -148,6 +154,33 @@ void dash_init::SRB_Init(VectorXd& x0, MatrixXd& q0, MatrixXd& qd0, MatrixXd& lf
     
     // initialize GRFs
     u0 = VectorXd::Zero(12);
+}
+
+void dash_init::init_foot_width(double width, Human_params human_params, SRB_Params srb_params, MatrixXd& lfv0, MatrixXd& q0)
+{
+    // teleoperation set up matches normalized feet position of human
+    // use IK to generate initial joint angles
+    double foot_length = srb_params.foot_length;    // foot length in m (L3)
+    double hH = human_params.hLIP; 
+    double hR = srb_params.hLIP; 
+
+    double pyH_lim_des = human_params.human_nom_ft_width;
+    Vector3d lf1R(foot_length/2.0, -1.0*(width/2.0), -1.0*hR);
+    Vector3d lf2R(-1.0*(foot_length/2.0), -1.0*(width/2.0), -1.0*hR);
+    Vector3d lf1L(foot_length/2.0, (width/2.0), -1.0*hR);
+    Vector3d lf2L(-1.0*(foot_length/2.0), (width/2.0), -1.0*hR);
+
+    lfv0.row(0) = lf1R.transpose(); 
+    lfv0.row(1) = lf2R.transpose(); 
+    lfv0.row(2) = lf1L.transpose();
+    lfv0.row(3) = lf2L.transpose();
+
+    cout << "Initializing foot width to: " << width << "m "<< endl;
+
+    Vector3d pc_init = MatrixXd::Zero(3, 1);
+    Matrix3d R_init_mat = Matrix3d::Identity();
+    
+    q0 = dash_kin::SRB_IK(srb_params, pc_init, R_init_mat, lfv0);  
 }
 
 void dash_init::SRB_params_tello(SRB_Params& srb_params)

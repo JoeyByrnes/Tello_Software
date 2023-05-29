@@ -727,6 +727,8 @@ std::vector<Human_dyn_data> dash_utils::readHumanDynDataFromFile(const std::stri
     }
 
     std::string line;
+    std::getline(file, line); // throw away first line
+
     while (std::getline(file, line)) {
         std::stringstream ss(line);
         Human_dyn_data data;

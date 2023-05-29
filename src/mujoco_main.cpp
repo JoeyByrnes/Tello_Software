@@ -43,7 +43,13 @@ bool usbcam_recording = false;
 bool en_v2_ctrl = false;
 bool bookmarked = false;
 bool showCopyErrorPopup = false;
+bool init_foot_width = false;
 int hdd_cnt=0; // human_playback counter
+std::string active_playback_log;
+std::string active_playback_log_png;
+int active_playback_log_index = 0;
+std::vector<std::string> hddFiles;
+bool showPlotMenu = false;
 
 //logging
 bool log_data_ready = false;
@@ -151,6 +157,8 @@ extern int simulation_mode;
 extern int sockfd_tx;
 extern char hmi_tx_buffer[100];
 extern struct sockaddr_in servaddr_tx;
+
+extern double robot_init_foot_width;
 
 // begin SRBM-Ctrl Variables here ================================================================
 
@@ -670,11 +678,11 @@ void TELLO_locomotion_ctrl(ctrlData cd)
         tau_LR = tau_LR + posture_ctrl_torques;
 
         VectorXd torques_left  = tello->swing_stance_mux(tau_LR.head(5), swing_leg_torques.head(5),
-                                                            0.01,controller->get_isSwingToStanceRight(), 
+                                                            0.00,controller->get_isSwingToStanceRight(), 
                                                             cd.t-controller->get_transitionStartRight(), 
                                                             0);
         VectorXd torques_right = tello->swing_stance_mux(tau_LR.tail(5), swing_leg_torques.tail(5),
-                                                            0.01,controller->get_isSwingToStanceLeft(),
+                                                            0.00,controller->get_isSwingToStanceLeft(),
                                                             cd.t-controller->get_transitionStartLeft(), 
                                                             1);
         VectorXd tau_LR_muxed(10);
@@ -809,7 +817,7 @@ void initializeSRBMCtrl()
     // }
     // else{
     // }
-    if(sim_conf.en_autonomous_mode)
+    if(sim_conf.en_autonomous_mode_on_boot)
     {
         printf("Walking Selected\n\n");
         // Option 2: Walking using LIP angular momentum regulation about contact point
@@ -1136,6 +1144,31 @@ void* mujoco_Update_1KHz( void * arg )
     io.Fonts->AddFontFromFileTTF( "../../../lib/imGUI/fonts/fa-solid-900.ttf", iconFontSize, &icons_config, icons_ranges );
 
 
+    // create a vector of all the plot pngs for selecting playback option
+    std::string plotfolderPath = "/home/joey/Desktop/tello_outputs/Favorite_Logs/Plots";
+    std::vector<std::string> pngFiles;
+    std::vector<GLuint> image_textures;
+    GLuint active_texture;
+    int im_width = 888;
+    int im_height = 500;
+
+    for (const auto& entry : std::filesystem::directory_iterator(plotfolderPath)) {
+        if (entry.path().extension() == ".png") {
+            std::string name = entry.path().filename().string();
+            pngFiles.push_back((plotfolderPath+"/"+name));
+            GLuint tex = 0;
+            LoadTextureFromFile((plotfolderPath+"/"+name).c_str(), &tex, &im_width, &im_height);
+            image_textures.push_back(tex);
+            hddFiles.push_back("/home/joey/Desktop/tello_outputs/Favorite_Logs/"+name.substr(0, name.length() - 4)+"/human_dyn_data.csv");
+        }
+    }
+
+    // Print the filenames
+    for (const auto& filename : hddFiles) {
+        std::cout << filename << std::endl;
+    }
+
+
     dash_utils::start_sim_timer();
 
     
@@ -1314,7 +1347,7 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::Checkbox(" " ICON_FA_DICE_TWO "  Enable V2 Controller   ", &(sim_conf.en_v2_controller));
             en_v2_ctrl = sim_conf.en_v2_controller;
             ImGui::Separator();
-            ImGui::Checkbox(" " ICON_FA_USER_ALT_SLASH "  Boot to Autonomous Mode (RR) ", &(sim_conf.en_autonomous_mode));
+            ImGui::Checkbox(" " ICON_FA_USER_ALT_SLASH "  Boot to Autonomous Mode (RR) ", &(sim_conf.en_autonomous_mode_on_boot));
             ImGui::Separator();
             ImGui::PopStyleColor();
             ImGui::Separator();
@@ -1447,6 +1480,7 @@ void* mujoco_Update_1KHz( void * arg )
             tello->controller->disable_human_ctrl();
             hdd_cnt = 0;
             mj_resetData(m, d);
+            d = mj_makeData(m);
             //tello->resetController();
             tello->controller->reset();
             initializeSRBMCtrl();
@@ -1530,17 +1564,19 @@ void* mujoco_Update_1KHz( void * arg )
         ImGui::PushStyleColor(ImGuiCol_FrameBgActive,grey2);
         ImGui::Separator();
         ImGui::Separator();
-        if(!(sim_conf.en_autonomous_mode))
+        if(!(sim_conf.en_autonomous_mode_on_boot))
         {
             std::string human_label;
             if(sim_conf.en_playback_mode) human_label = " Human-Playback   ";
             else human_label = " Human-Control   ";
             ImGui::Checkbox(human_label.c_str(), &tello->controller->enable_human_dyn_data);
-            ImGui::Separator();
-            ImGui::Checkbox(" Real-Time   ", &realtime_enabled);
-            ImGui::Separator();
-            ImGui::Checkbox(" Force-Fdbk   ", &enable_human_ff);      // Edit bools storing our window open/close state
-            ImGui::Separator();
+            // ImGui::Separator();
+            // ImGui::Checkbox(" Real-Time   ", &realtime_enabled);
+            if(!(sim_conf.en_playback_mode))
+            {
+                ImGui::Separator();
+                ImGui::Checkbox(" Force-Fdbk   ", &enable_human_ff);      // Edit bools storing our window open/close state
+                ImGui::Separator();//init_foot_width
                 ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
@@ -1551,20 +1587,71 @@ void* mujoco_Update_1KHz( void * arg )
                     zero_human = false;
                 }
                 ImGui::PopStyleColor(3);
+            }
+            
+            ImGui::Separator();//init_foot_width
+            ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
+            if (ImGui::Button(" " ICON_FA_RULER " Init Foot Width  ")) {
+                init_foot_width = true;
+                MatrixXd new_lfv0(4,3);
+                MatrixXd new_q0(2,5);
+                dash_init::init_foot_width(robot_init_foot_width,tello->controller->get_human_params(),
+                                            tello->controller->get_SRB_params(),new_lfv0,q0);
+                tello->controller->set_lfv0(new_lfv0);
+                tello->controller->set_q0(q0);
+                Human_params hp = tello->controller->get_human_params();
+                hp.human_nom_ft_width = robot_init_foot_width;
+                // double joystick_base_separation = 1.465;
+                // double foot_center_to_joystick = 0.0635;
+                // hp.fyH_home = (joystick_base_separation/2.0) - hp.human_nom_ft_width - foot_center_to_joystick; // joystick y width
+                // cout << "FyH Home: " << hp.fyH_home << endl;
+                tello->controller->set_human_params(hp);
+                initializeLegs();
+                if(pause_sim)
+                    mj_forward(m,d);
+            }
+            else{
+                init_foot_width = false;
+            }
+            
+            ImGui::PopStyleColor(3);
             ImGui::Separator();
-            ImGui::SetNextItemWidth(250.0f*screenScale);
-            ImGui::PushStyleColor(ImGuiCol_FrameBg,grey2);
-            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,grey2);
-            ImGui::PushStyleColor(ImGuiCol_SliderGrab,black);
-            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive,black);
-            ImGui::SliderFloat(" HMI Gain", &master_gain, 0.0f, 1.0f);
-            ImGui::Separator();
-            ImGui::PopStyleColor(4);
+            if(!(sim_conf.en_playback_mode))
+            {
+                ImGui::SetNextItemWidth(250.0f*screenScale);
+                ImGui::PushStyleColor(ImGuiCol_FrameBg,grey2);
+                ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,grey2);
+                ImGui::PushStyleColor(ImGuiCol_SliderGrab,black);
+                ImGui::PushStyleColor(ImGuiCol_SliderGrabActive,black);
+                ImGui::SliderFloat(" HMI Gain", &master_gain, 0.0f, 1.0f);
+                ImGui::Separator();
+                ImGui::PopStyleColor(4);
+            }
+            if(sim_conf.en_playback_mode)
+            {
+                if(!showPlotMenu)
+                {
+                    if (ImGui::Button(" " ICON_FA_PLAY " Show Playback Menu  ")) 
+                    {
+                        showPlotMenu = true;
+                    }
+                }
+                else
+                {
+                    if (ImGui::Button(" " ICON_FA_PLAY " Hide Playback Menu  ")) 
+                    {
+                        showPlotMenu = false;
+                    }
+                }
+            }
         }
         else{
+            // ImGui::Separator();
+            // ImGui::Checkbox(" Real-Time   ", &realtime_enabled);
             ImGui::Separator();
-            ImGui::Checkbox(" Real-Time   ", &realtime_enabled);
-            ImGui::Separator();
+            ImGui::Text("Autonomous Mode");
         }
         
         ImGui::PopStyleColor(5);
@@ -1572,8 +1659,62 @@ void* mujoco_Update_1KHz( void * arg )
         ImGui::PopFont();
         ImGui::PopStyleColor(4);
 
-        if(sim_conf.en_realtime_plot)
-            DrawPlot();
+        // if(sim_conf.en_realtime_plot)
+        //     DrawPlot();
+        // Load images
+        // ImPlot::StyleColorsLight();
+        if(showPlotMenu)
+        {
+            
+            double plot_width = (double)windowWidth/5.0;
+            double plot_height = plot_width*(9.0/16.0);
+            double headerHeight = plot_height+120*screenScale+150*screenScale;
+            ImGui::SetNextWindowSize(ImVec2((double)windowWidth/5.0,headerHeight));
+            ImGui::SetNextWindowPos(ImVec2( (windowWidth - (double)windowWidth/5.0), (35+60*screenScale)) );
+            ImGui::Begin("plotHeader",nullptr,ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize);
+
+            if(ImGui::Button(" " ICON_FA_TIMES_CIRCLE " "))
+            {
+                showPlotMenu = false;
+            }
+            ImGui::SameLine();
+            ImGui::Text("  Selected Log:");
+            ImGui::PushStyleColor(ImGuiCol_Separator,grey5);
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+            ImGui::Image((void*)(intptr_t)(image_textures[active_playback_log_index]), ImVec2(plot_width, plot_height));
+            ImGui::PushStyleColor(ImGuiCol_Separator,grey5);
+            ImGui::Separator();
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+            ImGui::Separator();
+            ImGui::PushStyleColor(ImGuiCol_Separator,grey5);
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+            ImGui::Text("  Available Logs:");
+            ImGui::PushStyleColor(ImGuiCol_Separator,grey5);
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+            ImGui::End();
+
+            ImGui::SetNextWindowSize(ImVec2((double)windowWidth/5.0,windowHeight-headerHeight-(35+60*screenScale)));
+            ImGui::SetNextWindowPos(ImVec2( (windowWidth - (double)windowWidth/5.0), (35+60*screenScale+headerHeight)) );
+            ImGui::Begin("plotSelect",nullptr,ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize);
+            for(int i=0;i<pngFiles.size();i++)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Separator,grey5);
+                ImGui::Separator();
+                ImGui::PopStyleColor();
+                if (ImGui::ImageButton((void*)(intptr_t)(image_textures[i]), ImVec2(plot_width, plot_height)))
+                {
+                    active_playback_log_png = pngFiles[i];
+                    active_playback_log_index = i;
+                    writeActivePlaybackLog(hddFiles[i],"/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/active_playback_log.json");
+                }
+            }
+            ImGui::End();
+        }
+        
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -1589,9 +1730,9 @@ void* mujoco_Update_1KHz( void * arg )
         //handle UDP transmit here:
 		Human_dyn_data hdd = tello->controller->get_human_dyn_data();
 
-        // if( (fabs(hdd.FxH_hmi - last_Xf) > 100) || (fabs(hdd.FyH_hmi - last_Yf) > 100) || (fabs(hdd.FxH_spring - last_springf) > 100)){
-        //     controller_unstable = true;
-        // }
+        if( (fabs(hdd.FxH_hmi - last_Xf) > 100) || (fabs(hdd.FyH_hmi - last_Yf) > 100) || (fabs(hdd.FxH_spring - last_springf) > 100)){
+            controller_unstable = true;
+        }
         // if( (fabs(hdd.FyH_hmi - last_Yf) > 100) ){
         //     controller_unstable = true;
         // }
@@ -1717,18 +1858,20 @@ void* sim_step_task( void * arg )
     while(true)
     {
         handle_start_of_periodic_task(next);
+        // dash_utils::start_timer();
         double elapsed = dash_utils::measure_sim_timer();
-        if(realtime_enabled)
-        {
-            if(elapsed < 0.005)
-                m->opt.timestep = 0.001;//elapsed;
-            else
-                m->opt.timestep = 0.001;
-        }
-        else{
-            m->opt.timestep = 0.001;
-        }
-        dash_utils::start_sim_timer();
+        double sim_dt = ((double)period+2.0)/1000000.0;
+        // if(realtime_enabled)
+        // {
+        //     if(elapsed < 0.005)
+        //         m->opt.timestep = sim_dt;//elapsed;
+        //     else
+        //         m->opt.timestep = 0.0005;
+        // }
+        // else{
+        //     m->opt.timestep = 0.0005;
+        // }
+        m->opt.timestep = sim_dt;
         // pthread_mutex_lock(&sim_step_mutex);
         
         if(!pause_sim)
@@ -1758,7 +1901,7 @@ void* sim_step_task( void * arg )
             pthread_mutex_unlock(&sim_step_mutex);
         }
         // pthread_mutex_unlock(&sim_step_mutex);
-
+        // dash_utils::print_timer();
 		handle_end_of_periodic_task(next,period);
 	}
     //free visualization storage
@@ -1784,9 +1927,12 @@ void* Human_Playback( void * arg )
 
 	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
 
-    std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Desktop/tello_outputs/Logs/05-24-23__02-48-48/human_dyn_data.csv");
+    std::string active_log = readActivePlaybackLog("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/active_playback_log.json");
+    // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Desktop/tello_outputs/Logs/05-28-23__23-26-37/human_dyn_data.csv");
     // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Desktop/tello_outputs/teleop/5-15_to_16/5-16-23-stepping-with-no-sim/human_dyn_data.csv");
     // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Documents/hdd-tuning.csv");
+
+    std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile(active_log);
 
     hdd_cnt=0;
 
@@ -1846,6 +1992,12 @@ void* Human_Playback( void * arg )
 
                 tello->controller->set_human_dyn_data(human_dyn_data);
                 //cout << "applying HDD struct # " << hdd_cnt << endl;
+            }
+            else
+            {
+                active_log = readActivePlaybackLog("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/active_playback_log.json");
+                hdd_vec = dash_utils::readHumanDynDataFromFile(active_log);
+                hdd_cnt = 0;
             }
 
             handle_end_of_periodic_task(next,period);
@@ -2438,95 +2590,4 @@ void* plotting( void * arg )
     return  0;
 }
 
-void* plot_human_data( void * arg )
-{
-	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
-	void* dynamic_robot_ptr = std::get<0>(*arg_tuple_ptr);
-	int period = std::get<2>(*arg_tuple_ptr);
-
-	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
-
-    struct timespec next;
-    clock_gettime(CLOCK_MONOTONIC, &next);
-
-    std::vector<double> x, y1,y2,y3,y4,y5,y6,y7,y8,y9,y10,y11,y12;
-    while(tello->controller->get_time() < 0.01){ usleep(1000); }
-
-    int plotting_history = 50;
-    double last_plot_time = 0;
-
-    // Initialize the plot
-    plt::backend("TkAgg");
-    // plt::figure_size(1200, 800);
-    // plt::rcparams({{"font.size", "20"}});
-    // plt::rcparams({{"lines.linewidth", "2"}});
-    // plt::subplots_adjust({{"wspace", 0.5}, {"hspace", 0.5}});
-    // plt::ion();
-    std::vector<double> x_1(2), y_1(2), z_1(2);
-    x_1[0] = 0;
-    x_1[1] = 0;
-
-    y_1[0] = -0.494;
-    y_1[1] = 0.494;
-
-    z_1[0] = 0;
-    z_1[1] = 0;
-    
-    plt::scatter(x_1, y_1, z_1);
-    plt::xlim(-1,1);
-    plt::ylim(-1,1);
-    // Enable legend.
-    plt::legend();
-    plt::show();
-
-    x.push_back(0);
-    y1.push_back(0);
-    y2.push_back(0);
-    y3.push_back(0);
-    y4.push_back(0);
-    y5.push_back(0);
-    y6.push_back(0);
-    y7.push_back(0);
-    y8.push_back(0);
-    y9.push_back(0);
-    y10.push_back(0);
-    y11.push_back(0);
-    y12.push_back(0);
-
-    while(1)
-    {
-        handle_start_of_periodic_task(next);
-    	// PLOTTING CODE HERE
-        // Update the plot with new data
-        
-        if(tello->controller->get_time() > x[x.size()-1])
-        {
-
-            // TELEOP DATA ====================================================================================
-
-            Human_dyn_data hdd = tello->controller->get_human_dyn_data();
-
-            x_1[0] = hdd.fxH_R;
-            y_1[0] = hdd.fyH_R-0.494;
-            z_1[0] = hdd.fzH_R;
-
-            x_1[1] = hdd.fxH_L;
-            y_1[1] = hdd.fyH_L+0.494;
-            z_1[1] = hdd.fzH_L;
-
-            if(tello->controller->get_time() - last_plot_time > 0.1){
-                last_plot_time = tello->controller->get_time();
-                plt::rcparams({{"legend.loc","lower left"}});
-                plt::clf();
-                // Clear the plot and redraw it with the updated data
-                plt::scatter(x_1, y_1, z_1);
-                plt::pause(0.001);
-            }
-            
-
-        }
-        usleep(100);
-		//handle_end_of_periodic_task(next,period);
-	}
-    return  0;
-}
+void nothing(){}

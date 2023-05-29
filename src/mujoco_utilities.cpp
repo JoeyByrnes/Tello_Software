@@ -3,6 +3,7 @@
 extern simConfig sim_conf;
 extern bool en_v2_ctrl;
 extern int plot_width;
+extern bool showPlotMenu;
 
 // MuJoCo data structures
 extern mjModel* m;                  // MuJoCo model
@@ -108,10 +109,17 @@ double last_ypos = 0;
 // mouse move callback
 void mouse_move(GLFWwindow* window, double xpos, double ypos)
 {
+     // get current window size
+    int width, height;
+    glfwGetWindowSize(window, &width, &height);
+
     last_xpos = xpos;
     last_ypos = ypos;
     if(ypos < 100) return;
     if(sim_conf.en_realtime_plot && xpos < plot_width) return;
+
+    if(showPlotMenu && xpos > (width-900)) return;
+
     // no buttons down: nothing to do
     if (!button_left && !button_middle && !button_right)
         return;
@@ -121,10 +129,6 @@ void mouse_move(GLFWwindow* window, double xpos, double ypos)
     double dy = ypos - lasty;
     lastx = xpos;
     lasty = ypos;
-
-    // get current window size
-    int width, height;
-    glfwGetWindowSize(window, &width, &height);
 
     // get shift key state
     bool mod_shift = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ||
@@ -146,8 +150,12 @@ void mouse_move(GLFWwindow* window, double xpos, double ypos)
 // scroll callback
 void scroll(GLFWwindow* window, double xoffset, double yoffset)
 {
+    int width, height;
+    glfwGetWindowSize(window, &width, &height);
+
     if(last_ypos < 100) return;
     if(sim_conf.en_realtime_plot && last_xpos < plot_width) return;
+    if(showPlotMenu && last_xpos > (width-900)) return;
     // emulate vertical mouse motion = 5% of window height
     mjv_moveCamera(m, mjMOUSE_ZOOM, 0, -0.05 * yoffset, &scn, &cam);
 }
@@ -363,7 +371,7 @@ simConfig readSimConfigFromFile(const std::string& filename) {
         config.en_screen_recording = jsonData["en_screen_recording"];
         config.en_realtime_plot = jsonData["en_realtime_plot"];
         config.en_playback_mode = jsonData["en_playback_mode"];
-        config.en_autonomous_mode = jsonData["en_autonomous_mode"];
+        config.en_autonomous_mode_on_boot = jsonData["en_autonomous_mode_on_boot"];
         config.en_v2_controller = jsonData["en_v2_controller"];
         en_v2_ctrl = config.en_v2_controller;
     } catch (json::exception& e) {
@@ -382,7 +390,7 @@ void writeSimConfigToFile(const simConfig& config, const std::string& filename) 
     jsonData["en_screen_recording"] = config.en_screen_recording;
     jsonData["en_realtime_plot"] = config.en_realtime_plot;
     jsonData["en_playback_mode"] = config.en_playback_mode;
-    jsonData["en_autonomous_mode"] = config.en_autonomous_mode;
+    jsonData["en_autonomous_mode_on_boot"] = config.en_autonomous_mode_on_boot;
     jsonData["en_v2_controller"] = config.en_v2_controller;
 
 
@@ -435,4 +443,79 @@ bool copyFile(const std::string& sourcePath, const std::string& destinationDir) 
 
     std::cout << "File copied successfully to: " << destinationPath << std::endl;
     return true;
+}
+
+bool LoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_width, int* out_height)
+{
+    // Load from file
+    int image_width = 0;
+    int image_height = 0;
+    unsigned char* image_data = stbi_load(filename, &image_width, &image_height, NULL, 4);
+    if (image_data == NULL)
+        return false;
+
+    // Create a OpenGL texture identifier
+    GLuint image_texture;
+    glGenTextures(1, &image_texture);
+    glBindTexture(GL_TEXTURE_2D, image_texture);
+
+    // Setup filtering parameters for display
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // This is required on WebGL for non power-of-two textures
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Same
+
+    // Upload pixels into texture
+#if defined(GL_UNPACK_ROW_LENGTH) && !defined(__EMSCRIPTEN__)
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+#endif
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image_width, image_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
+    stbi_image_free(image_data);
+
+    *out_texture = image_texture;
+    *out_width = image_width;
+    *out_height = image_height;
+
+    return true;
+}
+
+std::string readActivePlaybackLog(const std::string& filename) {
+
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return "";
+    }
+    std::string active_pb_log;
+    try {
+        json jsonData;
+        file >> jsonData;
+
+        active_pb_log = jsonData["active_playback_log"];
+    } catch (json::exception& e) {
+        std::cerr << "Error parsing JSON: " << e.what() << std::endl;
+    }
+
+    file.close();
+    return active_pb_log;
+}
+
+void writeActivePlaybackLog(const std::string log, const std::string& filename) {
+    json jsonData;
+    jsonData["active_playback_log"] = log;
+
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return;
+    }
+
+    try {
+        file << std::setw(4) << jsonData << std::endl;
+        std::cout << "Config successfully written to file: " << filename << std::endl;
+    } catch (json::exception& e) {
+        std::cerr << "Error writing JSON: " << e.what() << std::endl;
+    }
+
+    file.close();
 }

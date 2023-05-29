@@ -1,6 +1,7 @@
 #include "mujoco_main.h"
 #include <random>
 #include <filesystem>
+#include <stb_image.h>
 
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods);
 void window_close_callback(GLFWwindow* window);
@@ -17,3 +18,6 @@ std::string executeCommand(const std::string& command);
 simConfig readSimConfigFromFile(const std::string& filename);
 void writeSimConfigToFile(const simConfig& config, const std::string& filename);
 bool copyFile(const std::string& sourcePath, const std::string& destinationPath);
+bool LoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_width, int* out_height);
+std::string readActivePlaybackLog(const std::string& filename);
+void writeActivePlaybackLog(const std::string log, const std::string& filename);

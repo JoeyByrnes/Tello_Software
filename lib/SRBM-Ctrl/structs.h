@@ -79,6 +79,7 @@ struct Human_params {
     double m;
     double hLIP;
     double human_nom_ft_width;
+    double fyH_home;
 };
 
 struct Human_dyn_data {

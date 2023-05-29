@@ -29,6 +29,8 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
     // Get human parameters
     double mH = human_params.m; 
     double hH = human_params.hLIP; 
+    double human_nom_ft_width = human_params.human_nom_ft_width;
+    double fyH_home = human_params.fyH_home;
 
     // Get trajectory planner data
     double t_sw_start = traj_planner_dyn_data.t_sw_start;
@@ -237,6 +239,16 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
             swx_traj[1] = 0.0;
         }
 
+        // make robot feet width track normalized human feet width
+        // Human y-CoP lower and upper limits
+        double pyH_lim_lb = -1 * human_nom_ft_width + (fyH_R - fyH_home);
+        double pyH_lim_ub = human_nom_ft_width - (fyH_L - fyH_home);
+        // double human_foot_width = pyH_lim_ub - pyH_lim_lb;
+        double joystick_base_separation = 1.525;
+    	double foot_center_to_joystick = 0.0635;
+        double human_foot_width = joystick_base_separation - 2*foot_center_to_joystick - fyH_R - fyH_L;
+        // cout << "human foot width: " << human_foot_width << endl;
+        double robot_target_foot_width = human_foot_width*(hR/hH);
         // update commanded task space trajectories
 
         // set desired end-effector positions based on desired x-direction step
@@ -246,7 +258,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
             lfv_comm(0,0) = swx_traj[0] + (1.0/2.0)*ft_l; lfv_comm(1,0) = swx_traj[0] - (1.0/2.0)*ft_l;
             lfdv_comm(0,0) = swx_traj[1]; lfdv_comm(1,0) = lfdv_comm(0,0);
             // y-position trajectories
-            lfv_comm(0,1) = swy0 + (hR/hH)*(fyH_R - fyH0); lfv_comm(1,1) = lfv_comm(0,1);
+            lfv_comm(0,1) = sty0 - (robot_target_foot_width); lfv_comm(1,1) = lfv_comm(0,1);
             lfdv_comm(0,1) = (wR/wH)*fdyH_R; lfdv_comm(1,1) = lfdv_comm(0,1);
             // z-position trajectories
             lfv_comm(0,2) = swz0 + (hR/hH)*(std::max(0.0,(fzH_R - fzH0))); lfv_comm(1,2) = lfv_comm(0,2);
@@ -257,7 +269,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
             lfv_comm(2,0) = swx_traj(0) + 0.5*ft_l; lfv_comm(3,0) = swx_traj(0) - 0.5*ft_l;
             lfdv_comm(2,0) = swx_traj(1); lfdv_comm(3,0) = lfdv_comm(2,0);
             // y-position trajectories
-            lfv_comm(2,1) = swy0 - (hR/hH)*(fyH_L - fyH0); lfv_comm(3,1) = lfv_comm(2,1);
+            lfv_comm(2,1) = sty0 + (robot_target_foot_width); lfv_comm(3,1) = lfv_comm(2,1);
             lfdv_comm(2,1) = (wR/wH)*fdyH_L; lfdv_comm(3,1) = lfdv_comm(2,1);
             // z-position trajectories
             lfv_comm(2,2) = swz0 + (hR/hH)*(std::max(0.0,(fzH_L - fzH0))); lfv_comm(3,2) = lfv_comm(2,2);

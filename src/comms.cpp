@@ -273,6 +273,8 @@ void* rx_UDP( void * arg ){
 	while(1)
 	{
 		socklen_t * len1;
+		// dash_utils::print_timer();
+		// dash_utils::start_timer();
 		n = recvfrom(sockfd, (char *)rx_buffer, 100,
 			MSG_WAITALL, ( struct sockaddr *) &cliaddr,
 			len1);

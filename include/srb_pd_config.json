@@ -23,7 +23,7 @@
       "Hip_Yaw_Kp": 50,
       "Hip_Yaw_Kd": 0,
       
-      "Hip_Roll_Kp": 200,
+      "Hip_Roll_Kp": 1000,
       "Hip_Roll_Kd": 0,
       
       "Hip_Pitch_Kp": 0,
@@ -37,19 +37,19 @@
     },
     
     "Swing_Control": {
-      "Hip_Yaw_Kp": 6000,
-      "Hip_Yaw_Kd": 50,
+      "Hip_Yaw_Kp": 3000,
+      "Hip_Yaw_Kd": 10,
       
-      "Hip_Roll_Kp": 5000,
-      "Hip_Roll_Kd": 50,
+      "Hip_Roll_Kp": 1000,
+      "Hip_Roll_Kd": 10,
       
-      "Hip_Pitch_Kp": 1000,
-      "Hip_Pitch_Kd": 5,
+      "Hip_Pitch_Kp": 1100,
+      "Hip_Pitch_Kd": 4,
       
-      "Knee_Kp": 1000,
-      "Knee_Kd": 5,
+      "Knee_Kp": 1100,
+      "Knee_Kd": 4,
       
-      "Ankle_Kp": 1000,
-      "Ankle_Kd": 5
+      "Ankle_Kp": 1100,
+      "Ankle_Kd": 4
     }
   }

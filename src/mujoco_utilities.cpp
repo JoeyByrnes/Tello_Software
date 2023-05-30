@@ -373,6 +373,7 @@ simConfig readSimConfigFromFile(const std::string& filename) {
         config.en_playback_mode = jsonData["en_playback_mode"];
         config.en_autonomous_mode_on_boot = jsonData["en_autonomous_mode_on_boot"];
         config.en_v2_controller = jsonData["en_v2_controller"];
+        config.en_safety_monitor = jsonData["en_safety_monitor"];
         en_v2_ctrl = config.en_v2_controller;
     } catch (json::exception& e) {
         std::cerr << "Error parsing JSON: " << e.what() << std::endl;
@@ -392,6 +393,7 @@ void writeSimConfigToFile(const simConfig& config, const std::string& filename) 
     jsonData["en_playback_mode"] = config.en_playback_mode;
     jsonData["en_autonomous_mode_on_boot"] = config.en_autonomous_mode_on_boot;
     jsonData["en_v2_controller"] = config.en_v2_controller;
+    jsonData["en_safety_monitor"] = config.en_safety_monitor;
 
 
     std::ofstream file(filename);

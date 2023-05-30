@@ -137,6 +137,8 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
     traj_planner_dyn_data.x_HWRM = xH_ref;
     traj_planner_dyn_data.dx_HWRM = dxH_ref;
 
+    // cout << "xH_ref: " << traj_planner_dyn_data.x_HWRM << "   dxH_ref: " << traj_planner_dyn_data.dx_HWRM << endl;
+
     // human force profile for desired P1 orbit
     double FxH_ref = mH * wH * wH * xH_ref; // feedforward force to track human reference trajectory
 

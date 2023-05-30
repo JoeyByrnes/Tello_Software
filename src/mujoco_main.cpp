@@ -41,6 +41,7 @@ float master_gain = 0;
 bool screen_recording = false;
 bool usbcam_recording = false;
 bool en_v2_ctrl = false;
+bool en_safety_monitor = false;
 bool bookmarked = false;
 bool showCopyErrorPopup = false;
 bool init_foot_width = false;
@@ -54,7 +55,7 @@ bool showPlotMenu = false;
 //logging
 bool log_data_ready = false;
 std::string log_folder;
-VectorXd x_out, u_out, q_out, qd_out, tau_out, tau_ext_out, lfv_out, lfdv_out, t_n_FSM_out;
+VectorXd x_out, u_out, q_out, qd_out, tau_out, tau_ext_out, lfv_out, lfdv_out,lfv_comm_out,lfdv_comm_out, t_n_FSM_out;
 Human_dyn_data hdd_out;
 Traj_planner_dyn_data tpdd_out;
 
@@ -1263,10 +1264,14 @@ void* mujoco_Update_1KHz( void * arg )
             lfv_out = dash_utils::flatten(tello->controller->get_lfv_world());
             lfdv_out = dash_utils::flatten(tello->controller->get_lfdv_world());
 
+            lfv_comm_out = dash_utils::flatten(tello->controller->get_lfv_comm_world());
+            lfdv_comm_out = dash_utils::flatten(tello->controller->get_lfdv_comm_world());
+
             t_n_FSM_out = Eigen::Vector2d(tello->controller->get_time(),tello->controller->get_FSM());
 
             hdd_out = tello->controller->get_human_dyn_data();
             tpdd_out = tello->controller->get_traj_planner_dyn_data();
+            cout << "xH_ref: " << tpdd_out.x_HWRM << "   dxH_ref: " << tpdd_out.dx_HWRM << endl;
             log_data_ready = true;
         }
         // end logging
@@ -1577,6 +1582,8 @@ void* mujoco_Update_1KHz( void * arg )
                 ImGui::Separator();
                 ImGui::Checkbox(" Force-Fdbk   ", &enable_human_ff);      // Edit bools storing our window open/close state
                 ImGui::Separator();//init_foot_width
+                ImGui::Checkbox(" Safety-Monitor   ", &sim_conf.en_safety_monitor);      // Edit bools storing our window open/close state
+                ImGui::Separator();//init_foot_width
                 ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
@@ -1729,9 +1736,11 @@ void* mujoco_Update_1KHz( void * arg )
 
         //handle UDP transmit here:
 		Human_dyn_data hdd = tello->controller->get_human_dyn_data();
-
-        if( (fabs(hdd.FxH_hmi - last_Xf) > 100) || (fabs(hdd.FyH_hmi - last_Yf) > 100) || (fabs(hdd.FxH_spring - last_springf) > 100)){
-            controller_unstable = true;
+        if(sim_conf.en_safety_monitor)
+        {
+            if( (fabs(hdd.FxH_hmi - last_Xf) > 100) || (fabs(hdd.FyH_hmi - last_Yf) > 100) || (fabs(hdd.FxH_spring - last_springf) > 100)){
+                controller_unstable = true;
+            }
         }
         // if( (fabs(hdd.FyH_hmi - last_Yf) > 100) ){
         //     controller_unstable = true;
@@ -1878,8 +1887,8 @@ void* sim_step_task( void * arg )
         {
             if(simulation_mode == 1)
             {
-                dash_utils::print_timer();
-                dash_utils::start_timer();
+                // dash_utils::print_timer();
+                // dash_utils::start_timer();
                 VectorXd tau_local;
                 pthread_mutex_lock(&tau_share_mutex);
                 tau_local = tau_shared;
@@ -2010,7 +2019,7 @@ void* Human_Playback( void * arg )
    
     return  0;
 }
-
+double fY = 0;
 void* logging( void * arg )
 {
 	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
@@ -2038,6 +2047,9 @@ void* logging( void * arg )
 
         dash_utils::writeVectorToCsv(lfv_out,"lfv.csv");
         dash_utils::writeVectorToCsv(lfdv_out,"lfdv.csv");
+
+        dash_utils::writeVectorToCsv(lfv_comm_out,"lfv_comm.csv");
+        dash_utils::writeVectorToCsv(lfdv_comm_out,"lfdv_comm.csv");
 
         dash_utils::writeVectorToCsv(t_n_FSM_out,"t_and_FSM.csv");
 
@@ -2252,23 +2264,23 @@ void* plotting( void * arg )
             y3.push_back(hdd.FxH_spring);
 
             y4.push_back(x_force);
-            y5.push_back(y_force);
+            y5.push_back(fY);
             y6.push_back(s_force);
 
             if(tello->controller->get_time() - last_plot_time > 0.1){
                 last_plot_time = tello->controller->get_time();
                 plt::rcparams({{"legend.loc","lower left"}});
                 plt::clf();
-                plt::title("CoM X Position True vs EKF");
-                plt::subplot(3, 1, 1);
-                plt::named_plot("X", x, y1, "r-");
-                plt::named_plot("Y", x, y4, "b-");
-                plt::subplot(3, 1, 2);
+                plt::title("HMI Force");
+                //plt::subplot(3, 1, 1);
+                //plt::named_plot("X", x, y1, "r-");
+                //plt::named_plot("Y", x, y4, "b-");
+                //plt::subplot(3, 1, 2);
                 plt::named_plot("Y", x, y2, "r-");
-                plt::named_plot("Y", x, y5, "b-");
-                plt::subplot(3, 1, 3);
-                plt::named_plot("S", x, y3, "r-");
-                plt::named_plot("Y", x, y6, "b-");
+                plt::named_plot("Log Y", x, y5, "b-");
+                //plt::subplot(3, 1, 3);
+                //plt::named_plot("S", x, y3, "r-");
+                //plt::named_plot("Y", x, y6, "b-");
                 plt::legend();
                 plt::pause(0.001);
                 

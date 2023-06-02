@@ -9,6 +9,9 @@ extern double rbz;
 extern double lfz;
 extern double lbz;
 
+extern double fzH0_min_L;
+extern double fzH0_min_R;
+
 MatrixXd lfv_dsp_start(4,3);
 
 void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_time, SRB_Params& srb_params, MatrixXd lfv, char DoF, int num_tests)
@@ -381,6 +384,9 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
     double fzH_L = human_dyn_data.fzH_L;
     VectorXd human_leg_joystick_data(6);
     human_leg_joystick_data << fxH_R, fyH_R, fzH_R, fxH_L, fyH_L, fzH_L;
+
+    if(fzH_R < fzH0_min_R && fzH_R != 0) fzH0_min_R = fzH_R;
+    if(fzH_L < fzH0_min_L && fzH_L != 0) fzH0_min_L = fzH_L;
 
     // compute human LIP natural frequency
     double wH = sqrt(g/hH);

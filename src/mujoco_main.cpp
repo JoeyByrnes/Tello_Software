@@ -678,7 +678,7 @@ void TELLO_locomotion_ctrl(ctrlData cd)
             swing_pd_config.task_ff_force = VectorXd::Zero(12);
             swing_pd_config.setTaskPosDesired(target_front_left, target_back_left, target_front_right, target_back_right);
             swing_pd_config.setTaskVelDesired(target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel);
-            swing_pd_config.setTaskKp(0,8000,0);
+            swing_pd_config.setTaskKp(0,10000,0);
             swing_pd_config.setTaskKd(0,80,0);
             swing_pd_config.setJointKp(kp_vec_joint_swing);
             swing_pd_config.setJointKd(kd_vec_joint_swing);
@@ -699,7 +699,7 @@ void TELLO_locomotion_ctrl(ctrlData cd)
         posture_pd_config.task_ff_force = VectorXd::Zero(12);
         posture_pd_config.setTaskPosDesired(target_front_left, target_back_left, target_front_right, target_back_right);
         posture_pd_config.setTaskVelDesired(target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel);
-        posture_pd_config.setTaskKp(8000,8000,0);
+        posture_pd_config.setTaskKp(10000,10000,0);
         posture_pd_config.setTaskKd(80,80,0);
         posture_pd_config.setJointKp(kp_vec_joint_posture);
         posture_pd_config.setJointKd(kd_vec_joint_posture);
@@ -998,7 +998,7 @@ void DrawPlot()
     // }
     // ImGui::End();
 }
-
+bool sim_ready_for_control = false;
 void* tello_controller( void * arg )
 {
 	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
@@ -1013,11 +1013,11 @@ void* tello_controller( void * arg )
     pthread_t current_thread = pthread_self();
     int result = pthread_getschedparam(current_thread, &policy, &param);
 	int priority = param.sched_priority;
-	printf("Mujoco thread running on core %d, with priority %d\n", core, priority);
+	printf("Controller thread running on core %d, with priority %d\n", core, priority);
 
     struct timespec next;
     clock_gettime(CLOCK_MONOTONIC, &next);
-
+    while(!sim_ready_for_control) usleep(100);
     while(1)
     {
         handle_start_of_periodic_task(next);
@@ -1266,7 +1266,7 @@ void* mujoco_Update_1KHz( void * arg )
     }
 
 
-    dash_utils::start_sim_timer();
+    // dash_utils::start_sim_timer();
 
     
     
@@ -1308,7 +1308,7 @@ void* mujoco_Update_1KHz( void * arg )
         //     printf("Pushed in Z\n");
         //     push_force_z = 0;
         // }
-        
+
         pthread_mutex_lock(&sim_step_mutex);
         ctrlData cd_local;
         cd_local = cd_shared;
@@ -1322,8 +1322,8 @@ void* mujoco_Update_1KHz( void * arg )
                     //mj_step(m, d);
                     
                     dash_utils::print_timer();
-                    TELLO_locomotion_ctrl(cd_local);
                     dash_utils::start_timer();
+                    TELLO_locomotion_ctrl(cd_local);
                     
                 //}  
             } 
@@ -1335,8 +1335,9 @@ void* mujoco_Update_1KHz( void * arg )
                 //while (d->time - simstart < 1.0 / 60.0){
                     // d->time = d->time + elapsed;
                     dash_utils::print_timer();
-                    TELLO_locomotion_ctrl(cd_local);
                     dash_utils::start_timer();
+                    TELLO_locomotion_ctrl(cd_local);
+                    
                     
                     // dash_utils::start_timer();
 

@@ -1034,7 +1034,7 @@ int main(int argc, char *argv[]) {
 		\r\033[1;38;5;208mIf this is a mistake, run without the \033[1;33m-s 1;38;5;208mflag or comment the following line in platformio.ini:\n\
 		\r\033[34mupload_command \033[39m= pio run -t exec -a \"-s\"\n\n");
 		tello->addPeriodicTask(&sim_step_task, SCHED_FIFO, 99, 11, (void*)(NULL),"sim_step_task",TASK_CONSTANT_PERIOD, 998);
-		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 98, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 1000);
+		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 98, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 2000);
 		// tello->addPeriodicTask(&tello_controller, SCHED_FIFO, 98, 12, (void*)(NULL),"tello_ctrl",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 2000);
 		tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
@@ -1057,7 +1057,7 @@ int main(int argc, char *argv[]) {
 		\r\033[1;38;5;208mIf this is a mistake, run without the \033[1;33m-s 1;38;5;208mflag or comment the following line in platformio.ini:\n\
 		\r\033[34mupload_command \033[39m= pio run -t exec -a \"-s\"\n\n");
 		tello->addPeriodicTask(&sim_step_task, SCHED_FIFO, 99, 11, (void*)(NULL),"sim_step_task",TASK_CONSTANT_PERIOD, 998);
-		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 98, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 1000);
+		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 98, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 2000);
 		// tello->addPeriodicTask(&tello_controller, SCHED_FIFO, 98, 12, (void*)(NULL),"tello_ctrl",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 2000);
 		tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);

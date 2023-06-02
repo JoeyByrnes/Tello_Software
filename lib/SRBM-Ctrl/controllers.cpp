@@ -10,6 +10,9 @@ extern double vx_desired_ps4;
 extern double vy_desired_ps4;
 extern double yaw_desired_ps4;
 
+double fzH0_min_L = 1000;
+double fzH0_min_R = 1000;
+
 void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm, Human_dyn_data& human_dyn_data, 
                                         SRB_Params srb_params, Human_params human_params, Traj_planner_dyn_data traj_planner_dyn_data, 
                                         int FSM, double t, VectorXd x, MatrixXd lfv, MatrixXd lfdv, VectorXd tau_ext)
@@ -46,6 +49,14 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
 
     double fyH0 = traj_planner_dyn_data.human_leg_joystick_pos_beg_step[1];
     double fzH0 = traj_planner_dyn_data.human_leg_joystick_pos_beg_step[2];
+    // if(FSM == 1)
+    // {
+    //     fzH0 = fzH0_min_R;
+    // }
+    // else
+    // {
+    //     fzH0 = fzH0_min_L;
+    // }
 
     // Get human dynamic data
     double xH = human_dyn_data.xH; 

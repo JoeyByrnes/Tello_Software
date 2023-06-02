@@ -494,6 +494,7 @@ std::string readActivePlaybackLog(const std::string& filename) {
         file >> jsonData;
 
         active_pb_log = jsonData["active_playback_log"];
+        // cout << "Active PB Log: " << active_pb_log << endl;
     } catch (json::exception& e) {
         std::cerr << "Error parsing JSON: " << e.what() << std::endl;
     }

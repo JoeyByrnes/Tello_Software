@@ -655,8 +655,8 @@ void TELLO_locomotion_ctrl(ctrlData cd)
         swing_pd_config.task_ff_force = VectorXd::Zero(12);
         swing_pd_config.setTaskPosDesired(target_front_left, target_back_left, target_front_right, target_back_right);
         swing_pd_config.setTaskVelDesired(target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel);
-        swing_pd_config.setTaskKp(0,0,0);
-        swing_pd_config.setTaskKd(0,0,0);
+        swing_pd_config.setTaskKp(0,8000,0);
+        swing_pd_config.setTaskKd(0,80,0);
         swing_pd_config.setJointKp(kp_vec_joint_swing);
         swing_pd_config.setJointKd(kd_vec_joint_swing);
         swing_pd_config.motor_kp = VectorXd::Zero(10);
@@ -666,8 +666,8 @@ void TELLO_locomotion_ctrl(ctrlData cd)
 
         // Re-using
         posture_pd_config = swing_pd_config;
-        posture_pd_config.setTaskKp(0,0,0);
-        posture_pd_config.setTaskKd(0,0,0);
+        posture_pd_config.setTaskKp(8000,8000,0);
+        posture_pd_config.setTaskKd(80,80,0);
         posture_pd_config.setJointKp(kp_vec_joint_posture);
         posture_pd_config.setJointKd(kd_vec_joint_posture);
 
@@ -1271,7 +1271,7 @@ void* mujoco_Update_1KHz( void * arg )
 
             hdd_out = tello->controller->get_human_dyn_data();
             tpdd_out = tello->controller->get_traj_planner_dyn_data();
-            cout << "xH_ref: " << tpdd_out.x_HWRM << "   dxH_ref: " << tpdd_out.dx_HWRM << endl;
+            // cout << "xH_ref: " << tpdd_out.x_HWRM << "   dxH_ref: " << tpdd_out.dx_HWRM << endl;
             log_data_ready = true;
         }
         // end logging
@@ -1965,6 +1965,7 @@ void* Human_Playback( void * arg )
             {
                 //dash_utils::print_human_dyn_data(hdd_vec[hdd_cnt]);
                 if(PS4_connected) hdd_vec[hdd_cnt].xH = xH_Commanded;
+                cout << "xH: " << xH_Commanded << endl;
                 Human_dyn_data human_dyn_data = hdd_vec[hdd_cnt];
                 hdd_cnt += 1;
                 //smooth data here
@@ -1998,22 +1999,33 @@ void* Human_Playback( void * arg )
                 // human_dyn_data.dyH = dyHval;
                 // human_dyn_data.pyH = pyHval;
 
+                // human_dyn_data.xH = 0;
+
 
                 tello->controller->set_human_dyn_data(human_dyn_data);
+                // if(hdd_cnt == hdd_vec.size()-1) hdd_cnt--;
                 //cout << "applying HDD struct # " << hdd_cnt << endl;
             }
-            else
+            else if(sim_conf.en_playback_mode)
             {
                 active_log = readActivePlaybackLog("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/active_playback_log.json");
                 hdd_vec = dash_utils::readHumanDynDataFromFile(active_log);
                 hdd_cnt = 0;
             }
-
-            handle_end_of_periodic_task(next,period);
+            double g = tello->controller->get_SRB_params().g;
+            double hR = tello->controller->get_SRB_params().hLIP;
+            double hH = tello->controller->get_human_params().hLIP;
+            double wR = std::sqrt(g / hR);
+            double wH = std::sqrt(g / hH);
+            int periodScaled = (int)(((double)period)*(wH/wR));
+            handle_end_of_periodic_task(next,periodScaled);
         }
         hdd_cnt = 0;
         tello->controller->disable_human_ctrl();
         cout << "Human Playback Complete" << endl;
+        Traj_planner_dyn_data tpdd = tello->controller->get_traj_planner_dyn_data();
+        tpdd.stepping_flg = false;
+        tello->controller->set_traj_planner_dyn_data(tpdd);
         usleep(10000);
     }
    

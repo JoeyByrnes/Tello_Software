@@ -1,0 +1,1568 @@
+==7921== Memcheck, a memory error detector
+==7921== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==7921== Using Valgrind-3.15.0-608cb11914-20190413 and LibVEX; rerun with -h for copyright info
+==7921== Command: ./program -s
+==7921== Parent PID: 3160
+==7921== 
+--7921-- 
+--7921-- Valgrind options:
+--7921--    --leak-check=full
+--7921--    --show-leak-kinds=all
+--7921--    --track-origins=yes
+--7921--    --verbose
+--7921--    --log-file=valgrind-out.txt
+--7921-- Contents of /proc/version:
+--7921--   Linux version 6.1.27-rt9 (joey@joey-zorin) (gcc (Ubuntu 9.4.0-1ubuntu1~20.04.1) 9.4.0, GNU ld (GNU Binutils for Ubuntu) 2.34) #1 SMP PREEMPT_RT Mon May 15 01:43:56 EDT 2023
+--7921-- 
+--7921-- Arch and hwcaps: AMD64, LittleEndian, amd64-cx16-lzcnt-rdtscp-sse3-ssse3-avx-avx2-bmi-f16c-rdrand
+--7921-- Page sizes: currently 4096, max supported 4096
+--7921-- Valgrind library directory: /usr/lib/x86_64-linux-gnu/valgrind
+--7921-- Reading syms from /home/joey/Documents/PlatformIO/Projects/Tello_Software/.pio/build/native/program
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/ld-2.31.so
+--7921--   Considering /usr/lib/debug/.build-id/45/87364908de169dec62ffa538170118c1c3a078.debug ..
+--7921--   .. build-id is valid
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/valgrind/memcheck-amd64-linux
+--7921--    object doesn't have a symbol table
+--7921--    object doesn't have a dynamic symbol table
+--7921-- Scheduler: using generic scheduler lock implementation.
+--7921-- Reading suppressions file: /usr/lib/x86_64-linux-gnu/valgrind/default.supp
+==7921== embedded gdbserver: reading from /tmp/vgdb-pipe-from-vgdb-to-7921-by-joey-on-???
+==7921== embedded gdbserver: writing to   /tmp/vgdb-pipe-to-vgdb-from-7921-by-joey-on-???
+==7921== embedded gdbserver: shared mem   /tmp/vgdb-pipe-shared-mem-vgdb-7921-by-joey-on-???
+==7921== 
+==7921== TO CONTROL THIS PROCESS USING vgdb (which you probably
+==7921== don't want to do, unless you know exactly what you're doing,
+==7921== or are doing some strange experiment):
+==7921==   /usr/lib/x86_64-linux-gnu/valgrind/../../bin/vgdb --pid=7921 ...command...
+==7921== 
+==7921== TO DEBUG THIS PROCESS USING GDB: start GDB like this
+==7921==   /path/to/gdb ./program
+==7921== and then give GDB the following command
+==7921==   target remote | /usr/lib/x86_64-linux-gnu/valgrind/../../bin/vgdb --pid=7921
+==7921== --pid is optional if only one valgrind process is running
+==7921== 
+--7921-- REDIR: 0x4022e20 (ld-linux-x86-64.so.2:strlen) redirected to 0x580c9ce2 (???)
+--7921-- REDIR: 0x4022bf0 (ld-linux-x86-64.so.2:index) redirected to 0x580c9cfc (???)
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_core-amd64-linux.so
+--7921--    object doesn't have a symbol table
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so
+--7921--    object doesn't have a symbol table
+==7921== WARNING: new redirection conflicts with existing -- ignoring it
+--7921--     old: 0x04022e20 (strlen              ) R-> (0000.0) 0x580c9ce2 ???
+--7921--     new: 0x04022e20 (strlen              ) R-> (2007.0) 0x0483f060 strlen
+--7921-- REDIR: 0x401f600 (ld-linux-x86-64.so.2:strcmp) redirected to 0x483ffd0 (strcmp)
+--7921-- REDIR: 0x4023380 (ld-linux-x86-64.so.2:mempcpy) redirected to 0x4843a20 (mempcpy)
+--7921-- Reading syms from /usr/lib/libpcanbasic.so.4.6.2
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libpthread-2.31.so
+--7921--   Considering /usr/lib/debug/.build-id/7b/4536f41cdaa5888408e82d0836e33dcf436466.debug ..
+--7921--   .. build-id is valid
+--7921-- Reading syms from /usr/local/lib/libmujoco.so.2.3.3
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libglfw.so.3.3
+--7921--    object doesn't have a symbol table
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libGL.so.1.7.0
+--7921--    object doesn't have a symbol table
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libdl-2.31.so
+--7921--   Considering /usr/lib/debug/.build-id/c0/f40155b3f8bf8c494fa800f9ab197ebe20ed6e.debug ..
+--7921--   .. build-id is valid
+--7921-- Reading syms from /usr/local/lib/libqpOASES.so
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0
+--7921--    object doesn't have a symbol table
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libhidapi-hidraw.so.0.0.0
+--7921--    object doesn't have a symbol table
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28
+--7921--    object doesn't have a symbol table
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libm-2.31.so
+--7921--   Considering /usr/lib/debug/.build-id/fe/91b4090ea04c1559ff71dd9290062776618891.debug ..
+--7921--   .. build-id is valid
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libgcc_s.so.1
+--7921--    object doesn't have a symbol table
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libc-2.31.so
+--7921--   Considering /usr/lib/debug/.build-id/18/78e6b475720c7c51969e69ab2d276fae6d1dee.debug ..
+--7921--   .. build-id is valid
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0
+--7921--    object doesn't have a symbol table
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libGLdispatch.so.0.0.0
+--7921--    object doesn't have a symbol table
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libGLX.so.0.0.0
+--7921--    object doesn't have a symbol table
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libz.so.1.2.11
+--7921--    object doesn't have a symbol table
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libutil-2.31.so
+--7921--   Considering /usr/lib/debug/.build-id/4f/3ee75c38f09d6346de1e8eca0f8d8a41071d9f.debug ..
+--7921--   .. build-id is valid
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libudev.so.1.6.17
+--7921--    object doesn't have a symbol table
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0
+--7921--    object doesn't have a symbol table
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libXau.so.6.0.0
+--7921--   Considering /usr/lib/x86_64-linux-gnu/libXau.so.6.0.0 ..
+--7921--   .. CRC mismatch (computed 7de9b6ad wanted e8a17129)
+--7921--   Considering /lib/x86_64-linux-gnu/libXau.so.6.0.0 ..
+--7921--   .. CRC mismatch (computed 7de9b6ad wanted e8a17129)
+--7921--    object doesn't have a symbol table
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libXdmcp.so.6.0.0
+--7921--    object doesn't have a symbol table
+--7921-- Reading syms from /usr/lib/x86_64-linux-gnu/libbsd.so.0.10.0
+--7921--    object doesn't have a symbol table
+--7921-- REDIR: 0x5436480 (libc.so.6:memmove) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5435780 (libc.so.6:strncpy) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x54367b0 (libc.so.6:strcasecmp) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x54350a0 (libc.so.6:strcat) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x54357e0 (libc.so.6:rindex) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5437c50 (libc.so.6:rawmemchr) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5452ce0 (libc.so.6:wmemchr) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5452820 (libc.so.6:wcscmp) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x54365e0 (libc.so.6:mempcpy) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5436410 (libc.so.6:bcmp) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5435710 (libc.so.6:strncmp) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5435150 (libc.so.6:strcmp) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5436540 (libc.so.6:memset) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x54527e0 (libc.so.6:wcschr) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5435670 (libc.so.6:strnlen) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5435230 (libc.so.6:strcspn) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5436800 (libc.so.6:strncasecmp) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x54351d0 (libc.so.6:strcpy) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5436950 (libc.so.6:memcpy@@GLIBC_2.14) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5453f50 (libc.so.6:wcsnlen) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5452860 (libc.so.6:wcscpy) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5435820 (libc.so.6:strpbrk) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5435100 (libc.so.6:index) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5435630 (libc.so.6:strlen) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x543ebb0 (libc.so.6:memrchr) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5436850 (libc.so.6:strcasecmp_l) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x54363d0 (libc.so.6:memchr) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5452930 (libc.so.6:wcslen) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5435ae0 (libc.so.6:strspn) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5436750 (libc.so.6:stpncpy) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x54366f0 (libc.so.6:stpcpy) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x5437c90 (libc.so.6:strchrnul) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x54368a0 (libc.so.6:strncasecmp_l) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x54362f0 (libc.so.6:strstr) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x54c3850 (libc.so.6:__memcpy_chk) redirected to 0x48331d0 (_vgnU_ifunc_wrapper)
+--7921-- REDIR: 0x551e500 (libc.so.6:__strrchr_avx2) redirected to 0x483ea10 (rindex)
+--7921-- REDIR: 0x551e6d0 (libc.so.6:__strlen_avx2) redirected to 0x483ef40 (strlen)
+--7921-- REDIR: 0x5431b10 (libc.so.6:calloc) redirected to 0x483dce0 (calloc)
+--7921-- REDIR: 0x54300e0 (libc.so.6:malloc) redirected to 0x483b780 (malloc)
+--7921-- REDIR: 0x5430e80 (libc.so.6:realloc) redirected to 0x483df30 (realloc)
+--7921-- REDIR: 0x55216e0 (libc.so.6:__memcpy_avx_unaligned_erms) redirected to 0x48429f0 (memmove)
+--7921-- REDIR: 0x5519bd0 (libc.so.6:__strcmp_avx2) redirected to 0x483fed0 (strcmp)
+--7921-- REDIR: 0x551acc0 (libc.so.6:__memcmp_avx2_movbe) redirected to 0x48421e0 (bcmp)
+--7921-- REDIR: 0x551e870 (libc.so.6:__strnlen_avx2) redirected to 0x483eee0 (strnlen)
+--7921-- REDIR: 0x551ffa0 (libc.so.6:__strncpy_avx2) redirected to 0x483f230 (strncpy)
+--7921-- REDIR: 0x551e310 (libc.so.6:__strchrnul_avx2) redirected to 0x4843540 (strchrnul)
+--7921-- REDIR: 0x54306d0 (libc.so.6:free) redirected to 0x483c9d0 (free)
+--7921-- REDIR: 0x5435fa0 (libc.so.6:__GI_strstr) redirected to 0x4843ca0 (__strstr_sse2)
+--7921-- REDIR: 0x5521b60 (libc.so.6:__memset_avx2_unaligned_erms) redirected to 0x48428e0 (memset)
+--7921-- REDIR: 0x55216c0 (libc.so.6:__mempcpy_avx_unaligned_erms) redirected to 0x4843660 (mempcpy)
+--7921-- REDIR: 0x50f2b20 (libstdc++.so.6:operator new(unsigned long)) redirected to 0x483bdf0 (operator new(unsigned long))
+--7921-- REDIR: 0x50f0d70 (libstdc++.so.6:operator delete(void*)) redirected to 0x483cf50 (operator delete(void*))
+--7921-- REDIR: 0x50f2b80 (libstdc++.so.6:operator new[](unsigned long)) redirected to 0x483c510 (operator new[](unsigned long))
+--7921-- REDIR: 0x50f0da0 (libstdc++.so.6:operator delete[](void*)) redirected to 0x483d6e0 (operator delete[](void*))
+--7921-- REDIR: 0x551a530 (libc.so.6:__memchr_avx2) redirected to 0x4840050 (memchr)
+==7921== Thread 4:
+==7921== Syscall param recvfrom(fromlen) contains uninitialised byte(s)
+==7921==    at 0x48C2722: recvfrom (recvfrom.c:27)
+==7921==    by 0x11C382: rx_UDP(void*) (comms.cpp:278)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921==  Uninitialised value was created by a stack allocation
+==7921==    at 0x11C19E: rx_UDP(void*) (comms.cpp:227)
+==7921== 
+==7921== Syscall param socketcall.recvfrom(fromlen_in) points to unaddressable byte(s)
+==7921==    at 0x48C2722: recvfrom (recvfrom.c:27)
+==7921==    by 0x11C382: rx_UDP(void*) (comms.cpp:278)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921==  Address 0x0 is not stack'd, malloc'd or (recently) free'd
+==7921== 
+--7921-- REDIR: 0x50f0d80 (libstdc++.so.6:operator delete(void*, unsigned long)) redirected to 0x483d160 (operator delete(void*, unsigned long))
+--7921-- REDIR: 0x551e0e0 (libc.so.6:__strchr_avx2) redirected to 0x483ebf0 (index)
+--7921-- REDIR: 0x5520cb0 (libc.so.6:__stpncpy_avx2) redirected to 0x48427e0 (stpncpy)
+--7921-- REDIR: 0x551a010 (libc.so.6:__strncmp_avx2) redirected to 0x483f670 (strncmp)
+--7921-- REDIR: 0x551b0a0 (libc.so.6:__strcasecmp_avx) redirected to 0x483f830 (strcasecmp)
+--7921-- REDIR: 0x551a800 (libc.so.6:__rawmemchr_avx2) redirected to 0x4843580 (rawmemchr)
+--7921-- REDIR: 0x5432830 (libc.so.6:posix_memalign) redirected to 0x483e1e0 (posix_memalign)
+--7921-- REDIR: 0x54c3c00 (libc.so.6:__strcpy_chk) redirected to 0x48435c0 (__strcpy_chk)
+==7921== 
+==7921== HEAP SUMMARY:
+==7921==     in use at exit: 47,852,785 bytes in 138 blocks
+==7921==   total heap usage: 96,378 allocs, 96,240 frees, 198,678,049 bytes allocated
+==7921== 
+==7921== Searching for pointers to 138 not-freed blocks
+==7921== Checked 124,383,360 bytes
+==7921== 
+==7921== Thread 1:
+==7921== 3 bytes in 1 blocks are still reachable in loss record 1 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x543538E: strdup (strdup.c:42)
+==7921==    by 0x55B6385: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 16 bytes in 1 blocks are still reachable in loss record 2 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x1AB32D: __gnu_cxx::new_allocator<unsigned long>::allocate(unsigned long, void const*) (new_allocator.h:114)
+==7921==    by 0x1A7BCC: std::allocator_traits<std::allocator<unsigned long> >::allocate(std::allocator<unsigned long>&, unsigned long) (alloc_traits.h:443)
+==7921==    by 0x1B1A51: std::_Vector_base<unsigned long, std::allocator<unsigned long> >::_M_allocate(unsigned long) (stl_vector.h:343)
+==7921==    by 0x1AD87C: void std::vector<unsigned long, std::allocator<unsigned long> >::_M_realloc_insert<unsigned long const&>(__gnu_cxx::__normal_iterator<unsigned long*, std::vector<unsigned long, std::allocator<unsigned long> > >, unsigned long const&) (vector.tcc:440)
+==7921==    by 0x1A98E5: std::vector<unsigned long, std::allocator<unsigned long> >::push_back(unsigned long const&) (stl_vector.h:1195)
+==7921==    by 0x1A65B1: std::__detail::_NFA<std::__cxx11::regex_traits<char> >::_M_insert_subexpr_begin() (regex_automaton.h:279)
+==7921==    by 0x1B2341: std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_M_atom() (regex_compiler.tcc:342)
+==7921==    by 0x1ADAA6: std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_M_term() (regex_compiler.tcc:141)
+==7921==    by 0x1A9B3D: std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_M_alternative() (regex_compiler.tcc:123)
+==7921==    by 0x1A9B60: std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_M_alternative() (regex_compiler.tcc:126)
+==7921==    by 0x1A66F7: std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_M_disjunction() (regex_compiler.tcc:99)
+==7921== 
+==7921== 16 bytes in 1 blocks are still reachable in loss record 3 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x1AB32D: __gnu_cxx::new_allocator<unsigned long>::allocate(unsigned long, void const*) (new_allocator.h:114)
+==7921==    by 0x1A7BCC: std::allocator_traits<std::allocator<unsigned long> >::allocate(std::allocator<unsigned long>&, unsigned long) (alloc_traits.h:443)
+==7921==    by 0x1B1A51: std::_Vector_base<unsigned long, std::allocator<unsigned long> >::_M_allocate(unsigned long) (stl_vector.h:343)
+==7921==    by 0x1AD87C: void std::vector<unsigned long, std::allocator<unsigned long> >::_M_realloc_insert<unsigned long const&>(__gnu_cxx::__normal_iterator<unsigned long*, std::vector<unsigned long, std::allocator<unsigned long> > >, unsigned long const&) (vector.tcc:440)
+==7921==    by 0x1A98E5: std::vector<unsigned long, std::allocator<unsigned long> >::push_back(unsigned long const&) (stl_vector.h:1195)
+==7921==    by 0x1A65B1: std::__detail::_NFA<std::__cxx11::regex_traits<char> >::_M_insert_subexpr_begin() (regex_automaton.h:279)
+==7921==    by 0x1B2341: std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_M_atom() (regex_compiler.tcc:342)
+==7921==    by 0x1ADAA6: std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_M_term() (regex_compiler.tcc:141)
+==7921==    by 0x1A9B3D: std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_M_alternative() (regex_compiler.tcc:123)
+==7921==    by 0x1A9B60: std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_M_alternative() (regex_compiler.tcc:126)
+==7921==    by 0x1A9B60: std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_M_alternative() (regex_compiler.tcc:126)
+==7921== 
+==7921== 16 bytes in 1 blocks are still reachable in loss record 4 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x580FF81: ??? (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==7921==    by 0x580E3FB: ??? (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==7921==    by 0x580C8F5: xcb_connect_to_fd (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==7921==    by 0x5810B72: xcb_connect_to_display_with_auth_info (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==7921==    by 0x55C5D29: _XConnectXCB (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55B63A8: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 16 bytes in 1 blocks are still reachable in loss record 5 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55B3F0A: ??? (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55B665F: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 21 bytes in 1 blocks are still reachable in loss record 6 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55B683C: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 24 bytes in 1 blocks are still reachable in loss record 7 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x35F3A9: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:268)
+==7921==    by 0x14B417: main (main.cpp:1036)
+==7921== 
+==7921== 24 bytes in 1 blocks are still reachable in loss record 8 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x35F3A9: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:268)
+==7921==    by 0x14B49E: main (main.cpp:1037)
+==7921== 
+==7921== 24 bytes in 1 blocks are still reachable in loss record 9 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x35F3A9: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:268)
+==7921==    by 0x14B522: main (main.cpp:1039)
+==7921== 
+==7921== 24 bytes in 1 blocks are still reachable in loss record 10 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x35F3A9: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:268)
+==7921==    by 0x14B5A9: main (main.cpp:1040)
+==7921== 
+==7921== 24 bytes in 1 blocks are still reachable in loss record 11 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x35F3A9: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:268)
+==7921==    by 0x14B630: main (main.cpp:1041)
+==7921== 
+==7921== 24 bytes in 1 blocks are still reachable in loss record 12 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x35F3A9: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:268)
+==7921==    by 0x14B6B7: main (main.cpp:1042)
+==7921== 
+==7921== 24 bytes in 1 blocks are still reachable in loss record 13 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x35F3A9: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:268)
+==7921==    by 0x14B73E: main (main.cpp:1043)
+==7921== 
+==7921== 24 bytes in 1 blocks are still reachable in loss record 14 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55C62B5: ??? (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55C6E89: _XReply (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55B6DE4: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 24 bytes in 1 blocks are still reachable in loss record 15 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55C62B5: ??? (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55C6E89: _XReply (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55BCC3B: XQueryExtension (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55B0226: XInitExtension (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x561CC43: XkbUseExtension (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55B6E19: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 32 bytes in 1 blocks are still reachable in loss record 16 of 124
+==7921==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x4C53C04: _dlerror_run (dlerror.c:148)
+==7921==    by 0x4C53524: dlsym (dlsym.c:70)
+==7921==    by 0x5706E6D: ??? (in /usr/lib/x86_64-linux-gnu/libGLdispatch.so.0.0.0)
+==7921==    by 0x570525C: ??? (in /usr/lib/x86_64-linux-gnu/libGLdispatch.so.0.0.0)
+==7921==    by 0x4011B99: call_init.part.0 (dl-init.c:72)
+==7921==    by 0x4011CA0: call_init (dl-init.c:30)
+==7921==    by 0x4011CA0: _dl_init (dl-init.c:119)
+==7921==    by 0x4001139: ??? (in /usr/lib/x86_64-linux-gnu/ld-2.31.so)
+==7921==    by 0x1: ???
+==7921==    by 0x1FFF00002A: ???
+==7921==    by 0x1FFF000034: ???
+==7921== 
+==7921== 32 bytes in 1 blocks are still reachable in loss record 17 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x124806: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long) (PlainObjectBase.h:319)
+==7921==    by 0x122295: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::_init1<int>(long, Eigen::internal::enable_if<((((Eigen::DenseBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::{unnamed type#1})-1)!=(1))||(!Eigen::internal::is_convertible<int, double>::value))&&((!((Eigen::internal::is_same<Eigen::MatrixXpr, Eigen::ArrayXpr>::{unnamed type#1})0))||((({unnamed type#1})-1)==Eigen::Dynamic)), Eigen::internal::is_convertible>::type*) (PlainObjectBase.h:776)
+==7921==    by 0x1203E2: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<int>(int const&) (Matrix.h:296)
+==7921==    by 0x35AEA7: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:11)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 32 bytes in 1 blocks are still reachable in loss record 18 of 124
+==7921==    at 0x483B723: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x483E017: realloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x580FB9E: ??? (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==7921==    by 0x580FC2B: xcb_get_extension_data (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==7921==    by 0x580D13E: xcb_prefetch_maximum_request_length (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==7921==    by 0x580D1B4: xcb_get_maximum_request_length (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==7921==    by 0x55B6CD8: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 32 bytes in 1 blocks are still reachable in loss record 19 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x580F0C5: ??? (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==7921==    by 0x580CE9E: ??? (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==7921==    by 0x580E61E: ??? (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==7921==    by 0x580E734: xcb_wait_for_reply (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==7921==    by 0x580FC82: xcb_get_extension_data (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==7921==    by 0x580D13E: xcb_prefetch_maximum_request_length (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==7921==    by 0x580D1B4: xcb_get_maximum_request_length (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==7921==    by 0x55B6CD8: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921== 
+==7921== 40 bytes in 1 blocks are still reachable in loss record 20 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x238848: vn::xplat::CriticalSection::CriticalSection() (criticalsection.cpp:34)
+==7921==    by 0x22D3E6: vn::sensors::VnSensor::Impl::Impl(vn::sensors::VnSensor*) (sensors.cpp:129)
+==7921==    by 0x22063E: vn::sensors::VnSensor::VnSensor() (sensors.cpp:569)
+==7921==    by 0x35ABC3: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:11)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 40 bytes in 1 blocks are still reachable in loss record 21 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55B44D1: XInitThreads (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFEC: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 40 bytes in 1 blocks are still reachable in loss record 22 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55B44EE: XInitThreads (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFEC: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 40 bytes in 1 blocks are still reachable in loss record 23 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55B3F52: ??? (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55B665F: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 40 bytes in 1 blocks are still reachable in loss record 24 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55C7DD1: _XPollfdCacheInit (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55B666F: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 48 bytes in 1 blocks are still reachable in loss record 25 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x1265F0: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x151EFA: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resizeLike<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > >(Eigen::EigenBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > > const&) (PlainObjectBase.h:375)
+==7921==    by 0x14FCB2: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::PlainObjectBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > >(Eigen::DenseBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > > const&) (PlainObjectBase.h:536)
+==7921==    by 0x14E23D: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > >(Eigen::EigenBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > > const&) (Matrix.h:379)
+==7921==    by 0x23D34A: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 48 bytes in 1 blocks are still reachable in loss record 26 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x1265F0: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x151EFA: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resizeLike<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > >(Eigen::EigenBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > > const&) (PlainObjectBase.h:375)
+==7921==    by 0x14FCB2: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::PlainObjectBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > >(Eigen::DenseBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > > const&) (PlainObjectBase.h:536)
+==7921==    by 0x14E23D: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > >(Eigen::EigenBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > > const&) (Matrix.h:379)
+==7921==    by 0x23D751: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 48 bytes in 1 blocks are still reachable in loss record 27 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x124806: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long) (PlainObjectBase.h:319)
+==7921==    by 0x122295: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::_init1<int>(long, Eigen::internal::enable_if<((((Eigen::DenseBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::{unnamed type#1})-1)!=(1))||(!Eigen::internal::is_convertible<int, double>::value))&&((!((Eigen::internal::is_same<Eigen::MatrixXpr, Eigen::ArrayXpr>::{unnamed type#1})0))||((({unnamed type#1})-1)==Eigen::Dynamic)), Eigen::internal::is_convertible>::type*) (PlainObjectBase.h:776)
+==7921==    by 0x1203E2: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<int>(int const&) (Matrix.h:296)
+==7921==    by 0x23D7CE: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 48 bytes in 1 blocks are still reachable in loss record 28 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55C5CB1: _XConnectXCB (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55B63A8: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 48 bytes in 1 blocks are still reachable in loss record 29 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55C5CC7: _XConnectXCB (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55B63A8: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 48 bytes in 1 blocks are still reachable in loss record 30 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55B3F41: ??? (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55B665F: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 48 bytes in 1 blocks are still reachable in loss record 31 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55B3F62: ??? (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55B665F: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 64 bytes in 1 blocks are still reachable in loss record 32 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x2305B9: __gnu_cxx::new_allocator<vn::protocol::uart::Packet*>::allocate(unsigned long, void const*) (new_allocator.h:114)
+==7921==    by 0x230386: std::allocator_traits<std::allocator<vn::protocol::uart::Packet*> >::allocate(std::allocator<vn::protocol::uart::Packet*>&, unsigned long) (alloc_traits.h:443)
+==7921==    by 0x22FBFB: std::_Deque_base<vn::protocol::uart::Packet, std::allocator<vn::protocol::uart::Packet> >::_M_allocate_map(unsigned long) (stl_deque.h:634)
+==7921==    by 0x22F607: std::_Deque_base<vn::protocol::uart::Packet, std::allocator<vn::protocol::uart::Packet> >::_M_initialize_map(unsigned long) (stl_deque.h:707)
+==7921==    by 0x22EEFB: std::_Deque_base<vn::protocol::uart::Packet, std::allocator<vn::protocol::uart::Packet> >::_Deque_base() (stl_deque.h:510)
+==7921==    by 0x22EA1F: std::deque<vn::protocol::uart::Packet, std::allocator<vn::protocol::uart::Packet> >::deque() (stl_deque.h:915)
+==7921==    by 0x22E7CD: std::queue<vn::protocol::uart::Packet, std::deque<vn::protocol::uart::Packet, std::allocator<vn::protocol::uart::Packet> > >::queue<std::deque<vn::protocol::uart::Packet, std::allocator<vn::protocol::uart::Packet> >, void>() (stl_queue.h:161)
+==7921==    by 0x22D3D4: vn::sensors::VnSensor::Impl::Impl(vn::sensors::VnSensor*) (sensors.cpp:129)
+==7921==    by 0x22063E: vn::sensors::VnSensor::VnSensor() (sensors.cpp:569)
+==7921==    by 0x35ABC3: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:11)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 64 bytes in 1 blocks are still reachable in loss record 33 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55BC26B: _XrmInternalStringToQuark (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55CE3B3: XrmInitialize (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF1: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 72 bytes in 1 blocks are still reachable in loss record 34 of 124
+==7921==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55B6721: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 80 bytes in 1 blocks are still reachable in loss record 35 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x1265F0: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x151EFA: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resizeLike<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > >(Eigen::EigenBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > > const&) (PlainObjectBase.h:375)
+==7921==    by 0x14FCB2: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::PlainObjectBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > >(Eigen::DenseBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > > const&) (PlainObjectBase.h:536)
+==7921==    by 0x14E23D: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > >(Eigen::EigenBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > > const&) (Matrix.h:379)
+==7921==    by 0x35AD56: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:11)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 80 bytes in 1 blocks are still reachable in loss record 36 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x1265F0: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x151EFA: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resizeLike<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > >(Eigen::EigenBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > > const&) (PlainObjectBase.h:375)
+==7921==    by 0x14FCB2: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::PlainObjectBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > >(Eigen::DenseBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > > const&) (PlainObjectBase.h:536)
+==7921==    by 0x14E23D: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > >(Eigen::EigenBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > > const&) (Matrix.h:379)
+==7921==    by 0x35AD8A: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:11)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 80 bytes in 1 blocks are still reachable in loss record 37 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x1265F0: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x151EFA: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resizeLike<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > >(Eigen::EigenBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > > const&) (PlainObjectBase.h:375)
+==7921==    by 0x14FCB2: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::PlainObjectBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > >(Eigen::DenseBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > > const&) (PlainObjectBase.h:536)
+==7921==    by 0x14E23D: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > >(Eigen::EigenBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > > const&) (Matrix.h:379)
+==7921==    by 0x35ADBE: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:11)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 80 bytes in 1 blocks are still reachable in loss record 38 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x1266F3: Eigen::DenseStorage<double, -1, -1, -1, 0>::resize(long, long, long) (DenseStorage.h:408)
+==7921==    by 0x124917: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x122316: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::_init2<int, int>(long, long, Eigen::internal::enable_if<true, int>::type*) (PlainObjectBase.h:739)
+==7921==    by 0x120456: Eigen::Matrix<double, -1, -1, 0, -1, -1>::Matrix<int, int>(int const&, int const&) (Matrix.h:304)
+==7921==    by 0x35AF21: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:11)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 80 bytes in 1 blocks are still reachable in loss record 39 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x1266F3: Eigen::DenseStorage<double, -1, -1, -1, 0>::resize(long, long, long) (DenseStorage.h:408)
+==7921==    by 0x124917: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x122316: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::_init2<int, int>(long, long, Eigen::internal::enable_if<true, int>::type*) (PlainObjectBase.h:739)
+==7921==    by 0x120456: Eigen::Matrix<double, -1, -1, 0, -1, -1>::Matrix<int, int>(int const&, int const&) (Matrix.h:304)
+==7921==    by 0x23D43A: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 80 bytes in 1 blocks are still reachable in loss record 40 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x1266F3: Eigen::DenseStorage<double, -1, -1, -1, 0>::resize(long, long, long) (DenseStorage.h:408)
+==7921==    by 0x124917: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x122316: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::_init2<int, int>(long, long, Eigen::internal::enable_if<true, int>::type*) (PlainObjectBase.h:739)
+==7921==    by 0x120456: Eigen::Matrix<double, -1, -1, 0, -1, -1>::Matrix<int, int>(int const&, int const&) (Matrix.h:304)
+==7921==    by 0x23D477: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 80 bytes in 1 blocks are still reachable in loss record 41 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x1266F3: Eigen::DenseStorage<double, -1, -1, -1, 0>::resize(long, long, long) (DenseStorage.h:408)
+==7921==    by 0x124917: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x122316: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::_init2<int, int>(long, long, Eigen::internal::enable_if<true, int>::type*) (PlainObjectBase.h:739)
+==7921==    by 0x120456: Eigen::Matrix<double, -1, -1, 0, -1, -1>::Matrix<int, int>(int const&, int const&) (Matrix.h:304)
+==7921==    by 0x23D6C7: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 80 bytes in 1 blocks are still reachable in loss record 42 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x1266F3: Eigen::DenseStorage<double, -1, -1, -1, 0>::resize(long, long, long) (DenseStorage.h:408)
+==7921==    by 0x124917: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x122316: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::_init2<int, int>(long, long, Eigen::internal::enable_if<true, int>::type*) (PlainObjectBase.h:739)
+==7921==    by 0x120456: Eigen::Matrix<double, -1, -1, 0, -1, -1>::Matrix<int, int>(int const&, int const&) (Matrix.h:304)
+==7921==    by 0x2C9946: dash_kin::SRB_IK(SRB_Params, Eigen::Matrix<double, -1, 1, 0, -1, 1>, Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<double, -1, -1, 0, -1, -1>) (kinematics.cpp:1822)
+==7921==    by 0x2A9DC0: dash_init::SRB_Init(Eigen::Matrix<double, -1, 1, 0, -1, 1>&, Eigen::Matrix<double, -1, -1, 0, -1, -1>&, Eigen::Matrix<double, -1, -1, 0, -1, -1>&, Eigen::Matrix<double, -1, -1, 0, -1, -1>&, Eigen::Matrix<double, -1, -1, 0, -1, -1>&, Eigen::Matrix<double, -1, 1, 0, -1, 1>&, SRB_Params, Human_params) (initialization.cpp:131)
+==7921==    by 0x23D9F8: SRBMController::SRBMController() (SRBMController.cpp:14)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921== 
+==7921== 80 bytes in 1 blocks are still reachable in loss record 43 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x124806: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long) (PlainObjectBase.h:319)
+==7921==    by 0x122295: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::_init1<int>(long, Eigen::internal::enable_if<((((Eigen::DenseBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::{unnamed type#1})-1)!=(1))||(!Eigen::internal::is_convertible<int, double>::value))&&((!((Eigen::internal::is_same<Eigen::MatrixXpr, Eigen::ArrayXpr>::{unnamed type#1})0))||((({unnamed type#1})-1)==Eigen::Dynamic)), Eigen::internal::is_convertible>::type*) (PlainObjectBase.h:776)
+==7921==    by 0x1203E2: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<int>(int const&) (Matrix.h:296)
+==7921==    by 0x14B05A: main (main.cpp:1002)
+==7921== 
+==7921== 85 bytes in 1 blocks are still reachable in loss record 44 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x518B29E: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_assign(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) (in /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28)
+==7921==    by 0x518B5FD: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::operator=(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) (in /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28)
+==7921==    by 0x1F4A10: void nlohmann::json_abi_v3_11_2::detail::from_json<nlohmann::json_abi_v3_11_2::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_2::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void> >(nlohmann::json_abi_v3_11_2::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_2::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void> const&, nlohmann::json_abi_v3_11_2::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_2::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void>::string_t&) (json.hpp:4660)
+==7921==    by 0x1F0ECB: decltype (from_json({parm#1}, (forward<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&>)({parm#2}))) nlohmann::json_abi_v3_11_2::detail::from_json_fn::operator()<nlohmann::json_abi_v3_11_2::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_2::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&>(nlohmann::json_abi_v3_11_2::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_2::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void> const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) const (json.hpp:5038)
+==7921==    by 0x1E941D: decltype ((nlohmann::json_abi_v3_11_2::from_json((forward<nlohmann::json_abi_v3_11_2::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_2::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void> const&>)({parm#1}), {parm#2})),((void)())) nlohmann::json_abi_v3_11_2::adl_serializer<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, void>::from_json<nlohmann::json_abi_v3_11_2::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_2::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void> const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >(nlohmann::json_abi_v3_11_2::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_2::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void> const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) (json.hpp:5774)
+==7921==    by 0x1E4DA0: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > nlohmann::json_abi_v3_11_2::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_2::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void>::get_impl<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, 0>(nlohmann::json_abi_v3_11_2::detail::priority_tag<0u>) const (json.hpp:20819)
+==7921==    by 0x1DE5AB: _ZNK8nlohmann16json_abi_v3_11_210basic_jsonISt3mapSt6vectorNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEblmdSaNS0_14adl_serializerES3_IhSaIhEEvE3getIS9_S9_EEDTcldtcl7declvalIRKSD_EE8get_implIT0_EtlNS0_6detail12priority_tagILj4EEEEEEv (json.hpp:20962)
+==7921==    by 0x1DB385: nlohmann::json_abi_v3_11_2::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_2::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void>::operator std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> ><std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, 0>() const (json.hpp:21108)
+==7921==    by 0x1D7BEF: readActivePlaybackLog(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) (mujoco_utilities.cpp:496)
+==7921==    by 0x18D0F4: Human_Playback(void*) (mujoco_main.cpp:2007)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921== 
+==7921== 96 bytes in 1 blocks are still reachable in loss record 45 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x238AC2: vn::xplat::Event::Event() (event.cpp:73)
+==7921==    by 0x22D446: vn::sensors::VnSensor::Impl::Impl(vn::sensors::VnSensor*) (sensors.cpp:129)
+==7921==    by 0x22063E: vn::sensors::VnSensor::VnSensor() (sensors.cpp:569)
+==7921==    by 0x35ABC3: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:11)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 96 bytes in 1 blocks are still reachable in loss record 46 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x1266F3: Eigen::DenseStorage<double, -1, -1, -1, 0>::resize(long, long, long) (DenseStorage.h:408)
+==7921==    by 0x124917: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x122316: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::_init2<int, int>(long, long, Eigen::internal::enable_if<true, int>::type*) (PlainObjectBase.h:739)
+==7921==    by 0x120456: Eigen::Matrix<double, -1, -1, 0, -1, -1>::Matrix<int, int>(int const&, int const&) (Matrix.h:304)
+==7921==    by 0x35AEE4: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:11)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 96 bytes in 1 blocks are still reachable in loss record 47 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x1266F3: Eigen::DenseStorage<double, -1, -1, -1, 0>::resize(long, long, long) (DenseStorage.h:408)
+==7921==    by 0x124917: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x122316: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::_init2<int, int>(long, long, Eigen::internal::enable_if<true, int>::type*) (PlainObjectBase.h:739)
+==7921==    by 0x120456: Eigen::Matrix<double, -1, -1, 0, -1, -1>::Matrix<int, int>(int const&, int const&) (Matrix.h:304)
+==7921==    by 0x23D4B4: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 96 bytes in 1 blocks are still reachable in loss record 48 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x1266F3: Eigen::DenseStorage<double, -1, -1, -1, 0>::resize(long, long, long) (DenseStorage.h:408)
+==7921==    by 0x124917: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x122316: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::_init2<int, int>(long, long, Eigen::internal::enable_if<true, int>::type*) (PlainObjectBase.h:739)
+==7921==    by 0x120456: Eigen::Matrix<double, -1, -1, 0, -1, -1>::Matrix<int, int>(int const&, int const&) (Matrix.h:304)
+==7921==    by 0x23D4F1: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 96 bytes in 1 blocks are still reachable in loss record 49 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x1266F3: Eigen::DenseStorage<double, -1, -1, -1, 0>::resize(long, long, long) (DenseStorage.h:408)
+==7921==    by 0x124917: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x122316: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::_init2<int, int>(long, long, Eigen::internal::enable_if<true, int>::type*) (PlainObjectBase.h:739)
+==7921==    by 0x120456: Eigen::Matrix<double, -1, -1, 0, -1, -1>::Matrix<int, int>(int const&, int const&) (Matrix.h:304)
+==7921==    by 0x23D52E: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 96 bytes in 1 blocks are still reachable in loss record 50 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x1266F3: Eigen::DenseStorage<double, -1, -1, -1, 0>::resize(long, long, long) (DenseStorage.h:408)
+==7921==    by 0x124917: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x122316: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::_init2<int, int>(long, long, Eigen::internal::enable_if<true, int>::type*) (PlainObjectBase.h:739)
+==7921==    by 0x120456: Eigen::Matrix<double, -1, -1, 0, -1, -1>::Matrix<int, int>(int const&, int const&) (Matrix.h:304)
+==7921==    by 0x23D56B: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 96 bytes in 1 blocks are still reachable in loss record 51 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x1266F3: Eigen::DenseStorage<double, -1, -1, -1, 0>::resize(long, long, long) (DenseStorage.h:408)
+==7921==    by 0x124917: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x122316: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::_init2<int, int>(long, long, Eigen::internal::enable_if<true, int>::type*) (PlainObjectBase.h:739)
+==7921==    by 0x120456: Eigen::Matrix<double, -1, -1, 0, -1, -1>::Matrix<int, int>(int const&, int const&) (Matrix.h:304)
+==7921==    by 0x23D5A8: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 96 bytes in 1 blocks are still reachable in loss record 52 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x124806: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long) (PlainObjectBase.h:319)
+==7921==    by 0x122295: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::_init1<int>(long, Eigen::internal::enable_if<((((Eigen::DenseBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::{unnamed type#1})-1)!=(1))||(!Eigen::internal::is_convertible<int, double>::value))&&((!((Eigen::internal::is_same<Eigen::MatrixXpr, Eigen::ArrayXpr>::{unnamed type#1})0))||((({unnamed type#1})-1)==Eigen::Dynamic)), Eigen::internal::is_convertible>::type*) (PlainObjectBase.h:776)
+==7921==    by 0x1203E2: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<int>(int const&) (Matrix.h:296)
+==7921==    by 0x23D5D3: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 96 bytes in 1 blocks are still reachable in loss record 53 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x1266F3: Eigen::DenseStorage<double, -1, -1, -1, 0>::resize(long, long, long) (DenseStorage.h:408)
+==7921==    by 0x124917: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x122316: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::_init2<int, int>(long, long, Eigen::internal::enable_if<true, int>::type*) (PlainObjectBase.h:739)
+==7921==    by 0x120456: Eigen::Matrix<double, -1, -1, 0, -1, -1>::Matrix<int, int>(int const&, int const&) (Matrix.h:304)
+==7921==    by 0x23D610: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 96 bytes in 1 blocks are still reachable in loss record 54 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x1266F3: Eigen::DenseStorage<double, -1, -1, -1, 0>::resize(long, long, long) (DenseStorage.h:408)
+==7921==    by 0x124917: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x122316: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::_init2<int, int>(long, long, Eigen::internal::enable_if<true, int>::type*) (PlainObjectBase.h:739)
+==7921==    by 0x120456: Eigen::Matrix<double, -1, -1, 0, -1, -1>::Matrix<int, int>(int const&, int const&) (Matrix.h:304)
+==7921==    by 0x23D64D: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 96 bytes in 1 blocks are still reachable in loss record 55 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x124806: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long) (PlainObjectBase.h:319)
+==7921==    by 0x122295: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::_init1<int>(long, Eigen::internal::enable_if<((((Eigen::DenseBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::{unnamed type#1})-1)!=(1))||(!Eigen::internal::is_convertible<int, double>::value))&&((!((Eigen::internal::is_same<Eigen::MatrixXpr, Eigen::ArrayXpr>::{unnamed type#1})0))||((({unnamed type#1})-1)==Eigen::Dynamic)), Eigen::internal::is_convertible>::type*) (PlainObjectBase.h:776)
+==7921==    by 0x1203E2: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<int>(int const&) (Matrix.h:296)
+==7921==    by 0x23D6F2: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 96 bytes in 1 blocks are still reachable in loss record 56 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x1266F3: Eigen::DenseStorage<double, -1, -1, -1, 0>::resize(long, long, long) (DenseStorage.h:408)
+==7921==    by 0x124917: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x122316: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::_init2<int, int>(long, long, Eigen::internal::enable_if<true, int>::type*) (PlainObjectBase.h:739)
+==7921==    by 0x120456: Eigen::Matrix<double, -1, -1, 0, -1, -1>::Matrix<int, int>(int const&, int const&) (Matrix.h:304)
+==7921==    by 0x23D7A3: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 96 bytes in 2 blocks are still reachable in loss record 57 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x1265F0: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x353AA2: void Eigen::internal::resize_if_allowed<Eigen::Matrix<double, -1, 1, 0, -1, 1>, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >, double, double>(Eigen::Matrix<double, -1, 1, 0, -1, 1>&, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::internal::assign_op<double, double> const&) (AssignEvaluator.h:720)
+==7921==    by 0x352DB9: void Eigen::internal::call_dense_assignment_loop<Eigen::Matrix<double, -1, 1, 0, -1, 1>, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >, Eigen::internal::assign_op<double, double> >(Eigen::Matrix<double, -1, 1, 0, -1, 1>&, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::internal::assign_op<double, double> const&) (AssignEvaluator.h:734)
+==7921==    by 0x3528F8: Eigen::internal::Assignment<Eigen::Matrix<double, -1, 1, 0, -1, 1>, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >, Eigen::internal::assign_op<double, double>, Eigen::internal::Dense2Dense, void>::run(Eigen::Matrix<double, -1, 1, 0, -1, 1>&, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::internal::assign_op<double, double> const&) (AssignEvaluator.h:879)
+==7921==    by 0x352323: void Eigen::internal::call_assignment_no_alias<Eigen::Matrix<double, -1, 1, 0, -1, 1>, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >, Eigen::internal::assign_op<double, double> >(Eigen::Matrix<double, -1, 1, 0, -1, 1>&, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::internal::assign_op<double, double> const&) (AssignEvaluator.h:836)
+==7921==    by 0x3517A3: Eigen::Matrix<double, -1, 1, 0, -1, 1>& Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::_set_noalias<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > >(Eigen::DenseBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > > const&) (PlainObjectBase.h:728)
+==7921==    by 0x34FE88: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::_init1<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > >(Eigen::DenseBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > > const&) (PlainObjectBase.h:812)
+==7921== 
+==7921== 104 bytes in 1 blocks are still reachable in loss record 58 of 124
+==7921==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55C5BB2: _XConnectXCB (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55B63A8: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 112 bytes in 1 blocks are still reachable in loss record 59 of 124
+==7921==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55B69A0: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 120 bytes in 1 blocks are still reachable in loss record 60 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x1266F3: Eigen::DenseStorage<double, -1, -1, -1, 0>::resize(long, long, long) (DenseStorage.h:408)
+==7921==    by 0x124917: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x122316: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::_init2<int, int>(long, long, Eigen::internal::enable_if<true, int>::type*) (PlainObjectBase.h:739)
+==7921==    by 0x120456: Eigen::Matrix<double, -1, -1, 0, -1, -1>::Matrix<int, int>(int const&, int const&) (Matrix.h:304)
+==7921==    by 0x23D839: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 120 bytes in 1 blocks are still reachable in loss record 61 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x1266F3: Eigen::DenseStorage<double, -1, -1, -1, 0>::resize(long, long, long) (DenseStorage.h:408)
+==7921==    by 0x124917: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x122316: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::_init2<int, int>(long, long, Eigen::internal::enable_if<true, int>::type*) (PlainObjectBase.h:739)
+==7921==    by 0x120456: Eigen::Matrix<double, -1, -1, 0, -1, -1>::Matrix<int, int>(int const&, int const&) (Matrix.h:304)
+==7921==    by 0x23D876: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 120 bytes in 1 blocks are still reachable in loss record 62 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x1B30B0: __gnu_cxx::new_allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > >::allocate(unsigned long, void const*) (new_allocator.h:114)
+==7921==    by 0x1ADE82: std::allocator_traits<std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > >::allocate(std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > >&, unsigned long) (alloc_traits.h:443)
+==7921==    by 0x1AA375: std::_Vector_base<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > >::_M_allocate(unsigned long) (stl_vector.h:343)
+==7921==    by 0x1A6FA6: std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > >::_M_default_append(unsigned long) (vector.tcc:635)
+==7921==    by 0x1A4658: std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > >::resize(unsigned long) (stl_vector.h:937)
+==7921==    by 0x1A1E21: std::__cxx11::match_results<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > >::_M_resize(unsigned int) (regex.h:1947)
+==7921==    by 0x19F654: bool std::__detail::__regex_algo_impl<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > >, char, std::__cxx11::regex_traits<char>, (std::__detail::_RegexExecutorPolicy)0, false>(__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, __gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::__cxx11::match_results<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > >&, std::__cxx11::basic_regex<char, std::__cxx11::regex_traits<char> > const&, std::regex_constants::match_flag_type) (regex.tcc:59)
+==7921==    by 0x19C95D: bool std::regex_search<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > >, char, std::__cxx11::regex_traits<char> >(__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, __gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::__cxx11::match_results<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > >&, std::__cxx11::basic_regex<char, std::__cxx11::regex_traits<char> > const&, std::regex_constants::match_flag_type) (regex.h:2225)
+==7921==    by 0x19A27D: bool std::regex_search<std::char_traits<char>, std::allocator<char>, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > >, char, std::__cxx11::regex_traits<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::match_results<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::const_iterator, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > >&, std::__cxx11::basic_regex<char, std::__cxx11::regex_traits<char> > const&, std::regex_constants::match_flag_type) (regex.h:2331)
+==7921==    by 0x18DDAB: screenRecord(void*) (mujoco_main.cpp:2093)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921== 
+==7921== 128 bytes in 1 blocks are still reachable in loss record 63 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x238EA8: vn::protocol::uart::PacketFinder::PacketFinder() (packetfinder.cpp:469)
+==7921==    by 0x22D378: vn::sensors::VnSensor::Impl::Impl(vn::sensors::VnSensor*) (sensors.cpp:129)
+==7921==    by 0x22063E: vn::sensors::VnSensor::VnSensor() (sensors.cpp:569)
+==7921==    by 0x35ABC3: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:11)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 128 bytes in 1 blocks are still reachable in loss record 64 of 124
+==7921==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55B68D0: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 128 bytes in 1 blocks are definitely lost in loss record 65 of 124
+==7921==    at 0x483B723: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x483E017: realloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x48C3899: pthread_attr_setaffinity_np@@GLIBC_2.3.4 (pthread_attr_setaffinity.c:45)
+==7921==    by 0x35F38A: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:265)
+==7921==    by 0x14B417: main (main.cpp:1036)
+==7921== 
+==7921== 128 bytes in 1 blocks are definitely lost in loss record 66 of 124
+==7921==    at 0x483B723: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x483E017: realloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x48C3899: pthread_attr_setaffinity_np@@GLIBC_2.3.4 (pthread_attr_setaffinity.c:45)
+==7921==    by 0x35F38A: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:265)
+==7921==    by 0x14B49E: main (main.cpp:1037)
+==7921== 
+==7921== 128 bytes in 1 blocks are definitely lost in loss record 67 of 124
+==7921==    at 0x483B723: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x483E017: realloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x48C3899: pthread_attr_setaffinity_np@@GLIBC_2.3.4 (pthread_attr_setaffinity.c:45)
+==7921==    by 0x35F38A: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:265)
+==7921==    by 0x14B522: main (main.cpp:1039)
+==7921== 
+==7921== 128 bytes in 1 blocks are definitely lost in loss record 68 of 124
+==7921==    at 0x483B723: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x483E017: realloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x48C3899: pthread_attr_setaffinity_np@@GLIBC_2.3.4 (pthread_attr_setaffinity.c:45)
+==7921==    by 0x35F38A: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:265)
+==7921==    by 0x14B5A9: main (main.cpp:1040)
+==7921== 
+==7921== 128 bytes in 1 blocks are definitely lost in loss record 69 of 124
+==7921==    at 0x483B723: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x483E017: realloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x48C3899: pthread_attr_setaffinity_np@@GLIBC_2.3.4 (pthread_attr_setaffinity.c:45)
+==7921==    by 0x35F38A: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:265)
+==7921==    by 0x14B630: main (main.cpp:1041)
+==7921== 
+==7921== 128 bytes in 1 blocks are definitely lost in loss record 70 of 124
+==7921==    at 0x483B723: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x483E017: realloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x48C3899: pthread_attr_setaffinity_np@@GLIBC_2.3.4 (pthread_attr_setaffinity.c:45)
+==7921==    by 0x35F38A: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:265)
+==7921==    by 0x14B6B7: main (main.cpp:1042)
+==7921== 
+==7921== 128 bytes in 1 blocks are definitely lost in loss record 71 of 124
+==7921==    at 0x483B723: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x483E017: realloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x48C3899: pthread_attr_setaffinity_np@@GLIBC_2.3.4 (pthread_attr_setaffinity.c:45)
+==7921==    by 0x35F38A: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:265)
+==7921==    by 0x14B73E: main (main.cpp:1043)
+==7921== 
+==7921== 144 bytes in 1 blocks are still reachable in loss record 72 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x1B30B0: __gnu_cxx::new_allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > >::allocate(unsigned long, void const*) (new_allocator.h:114)
+==7921==    by 0x1ADE82: std::allocator_traits<std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > >::allocate(std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > >&, unsigned long) (alloc_traits.h:443)
+==7921==    by 0x1AA375: std::_Vector_base<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > >::_M_allocate(unsigned long) (stl_vector.h:343)
+==7921==    by 0x1A6FA6: std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > >::_M_default_append(unsigned long) (vector.tcc:635)
+==7921==    by 0x1A4658: std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > >::resize(unsigned long) (stl_vector.h:937)
+==7921==    by 0x1A1E21: std::__cxx11::match_results<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > >::_M_resize(unsigned int) (regex.h:1947)
+==7921==    by 0x19F654: bool std::__detail::__regex_algo_impl<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > >, char, std::__cxx11::regex_traits<char>, (std::__detail::_RegexExecutorPolicy)0, false>(__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, __gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::__cxx11::match_results<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > >&, std::__cxx11::basic_regex<char, std::__cxx11::regex_traits<char> > const&, std::regex_constants::match_flag_type) (regex.tcc:59)
+==7921==    by 0x19C95D: bool std::regex_search<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > >, char, std::__cxx11::regex_traits<char> >(__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, __gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::__cxx11::match_results<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > >&, std::__cxx11::basic_regex<char, std::__cxx11::regex_traits<char> > const&, std::regex_constants::match_flag_type) (regex.h:2225)
+==7921==    by 0x19A27D: bool std::regex_search<std::char_traits<char>, std::allocator<char>, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > >, char, std::__cxx11::regex_traits<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::match_results<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::const_iterator, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > >&, std::__cxx11::basic_regex<char, std::__cxx11::regex_traits<char> > const&, std::regex_constants::match_flag_type) (regex.h:2331)
+==7921==    by 0x18DE63: screenRecord(void*) (mujoco_main.cpp:2098)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921== 
+==7921== 150 bytes in 1 blocks are still reachable in loss record 73 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55B6E81: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 152 bytes in 1 blocks are still reachable in loss record 74 of 124
+==7921==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x561CE3E: XkbUseExtension (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55B6E19: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 160 bytes in 1 blocks are still reachable in loss record 75 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x124806: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long) (PlainObjectBase.h:319)
+==7921==    by 0x122295: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::_init1<int>(long, Eigen::internal::enable_if<((((Eigen::DenseBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::{unnamed type#1})-1)!=(1))||(!Eigen::internal::is_convertible<int, double>::value))&&((!((Eigen::internal::is_same<Eigen::MatrixXpr, Eigen::ArrayXpr>::{unnamed type#1})0))||((({unnamed type#1})-1)==Eigen::Dynamic)), Eigen::internal::is_convertible>::type*) (PlainObjectBase.h:776)
+==7921==    by 0x1203E2: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<int>(int const&) (Matrix.h:296)
+==7921==    by 0x35ADE9: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:11)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 160 bytes in 1 blocks are still reachable in loss record 76 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55A482F: XCreateGC (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55B6D48: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 168 bytes in 1 blocks are still reachable in loss record 77 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x1265F0: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x151EFA: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resizeLike<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > >(Eigen::EigenBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > > const&) (PlainObjectBase.h:375)
+==7921==    by 0x14FCB2: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::PlainObjectBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > >(Eigen::DenseBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > > const&) (PlainObjectBase.h:536)
+==7921==    by 0x14E23D: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > >(Eigen::EigenBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, 1, 0, -1, 1> > > const&) (Matrix.h:379)
+==7921==    by 0x23D37E: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 168 bytes in 1 blocks are still reachable in loss record 78 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x124806: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long) (PlainObjectBase.h:319)
+==7921==    by 0x122295: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::_init1<int>(long, Eigen::internal::enable_if<((((Eigen::DenseBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::{unnamed type#1})-1)!=(1))||(!Eigen::internal::is_convertible<int, double>::value))&&((!((Eigen::internal::is_same<Eigen::MatrixXpr, Eigen::ArrayXpr>::{unnamed type#1})0))||((({unnamed type#1})-1)==Eigen::Dynamic)), Eigen::internal::is_convertible>::type*) (PlainObjectBase.h:776)
+==7921==    by 0x1203E2: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<int>(int const&) (Matrix.h:296)
+==7921==    by 0x23D3FD: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 168 bytes in 1 blocks are still reachable in loss record 79 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x124806: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long) (PlainObjectBase.h:319)
+==7921==    by 0x122295: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::_init1<int>(long, Eigen::internal::enable_if<((((Eigen::DenseBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::{unnamed type#1})-1)!=(1))||(!Eigen::internal::is_convertible<int, double>::value))&&((!((Eigen::internal::is_same<Eigen::MatrixXpr, Eigen::ArrayXpr>::{unnamed type#1})0))||((({unnamed type#1})-1)==Eigen::Dynamic)), Eigen::internal::is_convertible>::type*) (PlainObjectBase.h:776)
+==7921==    by 0x1203E2: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<int>(int const&) (Matrix.h:296)
+==7921==    by 0x23D71D: SRBMController::SRBMController() (SRBMController.cpp:6)
+==7921==    by 0x35B650: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 168 bytes in 1 blocks are still reachable in loss record 80 of 124
+==7921==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55B6C37: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 173 bytes in 1 blocks are still reachable in loss record 81 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x51850CF: std::__cxx11::basic_stringstream<char, std::char_traits<char>, std::allocator<char> >::basic_stringstream(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::_Ios_Openmode) (in /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28)
+==7921==    by 0x33CA7D: dash_utils::readHumanDynDataFromFile(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) (utilities.cpp:733)
+==7921==    by 0x18D153: Human_Playback(void*) (mujoco_main.cpp:2008)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 192 bytes in 1 blocks are still reachable in loss record 82 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55B3F24: ??? (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55B665F: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 208 bytes in 2 blocks are still reachable in loss record 83 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x1C4C2D: __gnu_cxx::new_allocator<std::_Sp_counted_ptr_inplace<std::__detail::_NFA<std::__cxx11::regex_traits<char> >, std::allocator<std::__detail::_NFA<std::__cxx11::regex_traits<char> > >, (__gnu_cxx::_Lock_policy)2> >::allocate(unsigned long, void const*) (new_allocator.h:114)
+==7921==    by 0x1BF6FE: std::allocator_traits<std::allocator<std::_Sp_counted_ptr_inplace<std::__detail::_NFA<std::__cxx11::regex_traits<char> >, std::allocator<std::__detail::_NFA<std::__cxx11::regex_traits<char> > >, (__gnu_cxx::_Lock_policy)2> > >::allocate(std::allocator<std::_Sp_counted_ptr_inplace<std::__detail::_NFA<std::__cxx11::regex_traits<char> >, std::allocator<std::__detail::_NFA<std::__cxx11::regex_traits<char> > >, (__gnu_cxx::_Lock_policy)2> >&, unsigned long) (alloc_traits.h:443)
+==7921==    by 0x1BADA5: std::__allocated_ptr<std::allocator<std::_Sp_counted_ptr_inplace<std::__detail::_NFA<std::__cxx11::regex_traits<char> >, std::allocator<std::__detail::_NFA<std::__cxx11::regex_traits<char> > >, (__gnu_cxx::_Lock_policy)2> > > std::__allocate_guarded<std::allocator<std::_Sp_counted_ptr_inplace<std::__detail::_NFA<std::__cxx11::regex_traits<char> >, std::allocator<std::__detail::_NFA<std::__cxx11::regex_traits<char> > >, (__gnu_cxx::_Lock_policy)2> > >(std::allocator<std::_Sp_counted_ptr_inplace<std::__detail::_NFA<std::__cxx11::regex_traits<char> >, std::allocator<std::__detail::_NFA<std::__cxx11::regex_traits<char> > >, (__gnu_cxx::_Lock_policy)2> >&) (allocated_ptr.h:97)
+==7921==    by 0x1B5DC3: std::__shared_count<(__gnu_cxx::_Lock_policy)2>::__shared_count<std::__detail::_NFA<std::__cxx11::regex_traits<char> >, std::allocator<std::__detail::_NFA<std::__cxx11::regex_traits<char> > >, std::locale const&, std::regex_constants::syntax_option_type&>(std::__detail::_NFA<std::__cxx11::regex_traits<char> >*&, std::_Sp_alloc_shared_tag<std::allocator<std::__detail::_NFA<std::__cxx11::regex_traits<char> > > >, std::locale const&, std::regex_constants::syntax_option_type&) (shared_ptr_base.h:677)
+==7921==    by 0x1B1491: std::__shared_ptr<std::__detail::_NFA<std::__cxx11::regex_traits<char> >, (__gnu_cxx::_Lock_policy)2>::__shared_ptr<std::allocator<std::__detail::_NFA<std::__cxx11::regex_traits<char> > >, std::locale const&, std::regex_constants::syntax_option_type&>(std::_Sp_alloc_shared_tag<std::allocator<std::__detail::_NFA<std::__cxx11::regex_traits<char> > > >, std::locale const&, std::regex_constants::syntax_option_type&) (shared_ptr_base.h:1344)
+==7921==    by 0x1ACACC: std::shared_ptr<std::__detail::_NFA<std::__cxx11::regex_traits<char> > >::shared_ptr<std::allocator<std::__detail::_NFA<std::__cxx11::regex_traits<char> > >, std::locale const&, std::regex_constants::syntax_option_type&>(std::_Sp_alloc_shared_tag<std::allocator<std::__detail::_NFA<std::__cxx11::regex_traits<char> > > >, std::locale const&, std::regex_constants::syntax_option_type&) (shared_ptr.h:359)
+==7921==    by 0x1A911C: std::shared_ptr<std::__detail::_NFA<std::__cxx11::regex_traits<char> > > std::allocate_shared<std::__detail::_NFA<std::__cxx11::regex_traits<char> >, std::allocator<std::__detail::_NFA<std::__cxx11::regex_traits<char> > >, std::locale const&, std::regex_constants::syntax_option_type&>(std::allocator<std::__detail::_NFA<std::__cxx11::regex_traits<char> > > const&, std::locale const&, std::regex_constants::syntax_option_type&) (shared_ptr.h:702)
+==7921==    by 0x1A6367: std::shared_ptr<std::__detail::_NFA<std::__cxx11::regex_traits<char> > > std::make_shared<std::__detail::_NFA<std::__cxx11::regex_traits<char> >, std::locale const&, std::regex_constants::syntax_option_type&>(std::locale const&, std::regex_constants::syntax_option_type&) (shared_ptr.h:718)
+==7921==    by 0x1A4269: std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_Compiler(char const*, char const*, std::locale const&, std::regex_constants::syntax_option_type) (regex_compiler.tcc:80)
+==7921==    by 0x1A1CFF: std::enable_if<std::__detail::__is_contiguous_iter<char const*>::value, std::shared_ptr<std::__detail::_NFA<std::__cxx11::regex_traits<char> > const> >::type std::__detail::__compile_nfa<std::__cxx11::regex_traits<char>, char const*>(char const*, char const*, std::__cxx11::regex_traits<char>::locale_type const&, std::regex_constants::syntax_option_type) (regex_compiler.h:183)
+==7921==    by 0x19F3F3: std::__cxx11::basic_regex<char, std::__cxx11::regex_traits<char> >::basic_regex<char const*>(char const*, char const*, std::locale, std::regex_constants::syntax_option_type) (regex.h:760)
+==7921== 
+==7921== 253 bytes in 1 blocks are still reachable in loss record 84 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x518B35D: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_mutate(unsigned long, unsigned long, char const*, unsigned long) (in /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28)
+==7921==    by 0x518CB52: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_append(char const*, unsigned long) (in /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28)
+==7921==    by 0x510C2FA: std::basic_istream<char, std::char_traits<char> >& std::getline<char, std::char_traits<char>, std::allocator<char> >(std::basic_istream<char, std::char_traits<char> >&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, char) (in /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28)
+==7921==    by 0x33CA36: dash_utils::readHumanDynDataFromFile(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) (utilities.cpp:732)
+==7921==    by 0x18D153: Human_Playback(void*) (mujoco_main.cpp:2008)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 352 bytes in 1 blocks are possibly lost in loss record 85 of 124
+==7921==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x40149DA: allocate_dtv (dl-tls.c:286)
+==7921==    by 0x40149DA: _dl_allocate_tls (dl-tls.c:532)
+==7921==    by 0x48B8322: allocate_stack (allocatestack.c:622)
+==7921==    by 0x48B8322: pthread_create@@GLIBC_2.2.5 (pthread_create.c:660)
+==7921==    by 0x35F3FA: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:270)
+==7921==    by 0x14B417: main (main.cpp:1036)
+==7921== 
+==7921== 352 bytes in 1 blocks are possibly lost in loss record 86 of 124
+==7921==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x40149DA: allocate_dtv (dl-tls.c:286)
+==7921==    by 0x40149DA: _dl_allocate_tls (dl-tls.c:532)
+==7921==    by 0x48B8322: allocate_stack (allocatestack.c:622)
+==7921==    by 0x48B8322: pthread_create@@GLIBC_2.2.5 (pthread_create.c:660)
+==7921==    by 0x35F3FA: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:270)
+==7921==    by 0x14B49E: main (main.cpp:1037)
+==7921== 
+==7921== 352 bytes in 1 blocks are possibly lost in loss record 87 of 124
+==7921==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x40149DA: allocate_dtv (dl-tls.c:286)
+==7921==    by 0x40149DA: _dl_allocate_tls (dl-tls.c:532)
+==7921==    by 0x48B8322: allocate_stack (allocatestack.c:622)
+==7921==    by 0x48B8322: pthread_create@@GLIBC_2.2.5 (pthread_create.c:660)
+==7921==    by 0x35F3FA: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:270)
+==7921==    by 0x14B522: main (main.cpp:1039)
+==7921== 
+==7921== 352 bytes in 1 blocks are possibly lost in loss record 88 of 124
+==7921==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x40149DA: allocate_dtv (dl-tls.c:286)
+==7921==    by 0x40149DA: _dl_allocate_tls (dl-tls.c:532)
+==7921==    by 0x48B8322: allocate_stack (allocatestack.c:622)
+==7921==    by 0x48B8322: pthread_create@@GLIBC_2.2.5 (pthread_create.c:660)
+==7921==    by 0x35F3FA: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:270)
+==7921==    by 0x14B5A9: main (main.cpp:1040)
+==7921== 
+==7921== 352 bytes in 1 blocks are possibly lost in loss record 89 of 124
+==7921==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x40149DA: allocate_dtv (dl-tls.c:286)
+==7921==    by 0x40149DA: _dl_allocate_tls (dl-tls.c:532)
+==7921==    by 0x48B8322: allocate_stack (allocatestack.c:622)
+==7921==    by 0x48B8322: pthread_create@@GLIBC_2.2.5 (pthread_create.c:660)
+==7921==    by 0x35F3FA: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:270)
+==7921==    by 0x14B630: main (main.cpp:1041)
+==7921== 
+==7921== 352 bytes in 1 blocks are possibly lost in loss record 90 of 124
+==7921==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x40149DA: allocate_dtv (dl-tls.c:286)
+==7921==    by 0x40149DA: _dl_allocate_tls (dl-tls.c:532)
+==7921==    by 0x48B8322: allocate_stack (allocatestack.c:622)
+==7921==    by 0x48B8322: pthread_create@@GLIBC_2.2.5 (pthread_create.c:660)
+==7921==    by 0x35F3FA: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:270)
+==7921==    by 0x14B6B7: main (main.cpp:1042)
+==7921== 
+==7921== 352 bytes in 1 blocks are possibly lost in loss record 91 of 124
+==7921==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x40149DA: allocate_dtv (dl-tls.c:286)
+==7921==    by 0x40149DA: _dl_allocate_tls (dl-tls.c:532)
+==7921==    by 0x48B8322: allocate_stack (allocatestack.c:622)
+==7921==    by 0x48B8322: pthread_create@@GLIBC_2.2.5 (pthread_create.c:660)
+==7921==    by 0x35F3FA: RoboDesignLab::DynamicRobot::addPeriodicTask(void* (*)(void*), int, int, int, void*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, int, int) (dynamic_robot.cpp:270)
+==7921==    by 0x14B73E: main (main.cpp:1043)
+==7921== 
+==7921== 472 bytes in 1 blocks are still reachable in loss record 92 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x541892D: __fopen_internal (iofopen.c:65)
+==7921==    by 0x541892D: fopen@@GLIBC_2.2.5 (iofopen.c:86)
+==7921==    by 0x5114633: std::__basic_file<char>::open(char const*, std::_Ios_Openmode, int) (in /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28)
+==7921==    by 0x5157F4E: std::basic_filebuf<char, std::char_traits<char> >::open(char const*, std::_Ios_Openmode) (in /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28)
+==7921==    by 0x5158B2F: std::basic_ifstream<char, std::char_traits<char> >::basic_ifstream(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::_Ios_Openmode) (in /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28)
+==7921==    by 0x33C98E: dash_utils::readHumanDynDataFromFile(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) (utilities.cpp:721)
+==7921==    by 0x18D153: Human_Playback(void*) (mujoco_main.cpp:2008)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 480 bytes in 4 blocks are still reachable in loss record 93 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x1266F3: Eigen::DenseStorage<double, -1, -1, -1, 0>::resize(long, long, long) (DenseStorage.h:408)
+==7921==    by 0x124917: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x1575ED: void Eigen::internal::resize_if_allowed<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >, double, double>(Eigen::Matrix<double, -1, -1, 0, -1, -1>&, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::internal::assign_op<double, double> const&) (AssignEvaluator.h:720)
+==7921==    by 0x155A5C: void Eigen::internal::call_dense_assignment_loop<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >, Eigen::internal::assign_op<double, double> >(Eigen::Matrix<double, -1, -1, 0, -1, -1>&, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::internal::assign_op<double, double> const&) (AssignEvaluator.h:734)
+==7921==    by 0x154B1A: Eigen::internal::Assignment<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >, Eigen::internal::assign_op<double, double>, Eigen::internal::Dense2Dense, void>::run(Eigen::Matrix<double, -1, -1, 0, -1, -1>&, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::internal::assign_op<double, double> const&) (AssignEvaluator.h:879)
+==7921==    by 0x153F8C: void Eigen::internal::call_assignment_no_alias<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >, Eigen::internal::assign_op<double, double> >(Eigen::Matrix<double, -1, -1, 0, -1, -1>&, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::internal::assign_op<double, double> const&) (AssignEvaluator.h:836)
+==7921==    by 0x15E565: void Eigen::internal::call_assignment<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >, Eigen::internal::assign_op<double, double> >(Eigen::Matrix<double, -1, -1, 0, -1, -1>&, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::internal::assign_op<double, double> const&, Eigen::internal::enable_if<!Eigen::internal::evaluator_assume_aliasing<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >, Eigen::internal::evaluator_traits<Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > >::Shape>::value, void*>::type) (AssignEvaluator.h:804)
+==7921==    by 0x15E09A: void Eigen::internal::call_assignment<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > >(Eigen::Matrix<double, -1, -1, 0, -1, -1>&, Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&) (AssignEvaluator.h:782)
+==7921== 
+==7921== 488 bytes in 1 blocks are still reachable in loss record 94 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x22062C: vn::sensors::VnSensor::VnSensor() (sensors.cpp:569)
+==7921==    by 0x35ABC3: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:11)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 512 bytes in 1 blocks are still reachable in loss record 95 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x2304FD: __gnu_cxx::new_allocator<vn::protocol::uart::Packet>::allocate(unsigned long, void const*) (new_allocator.h:114)
+==7921==    by 0x2300D3: std::allocator_traits<std::allocator<vn::protocol::uart::Packet> >::allocate(std::allocator<vn::protocol::uart::Packet>&, unsigned long) (alloc_traits.h:443)
+==7921==    by 0x22F9D1: std::_Deque_base<vn::protocol::uart::Packet, std::allocator<vn::protocol::uart::Packet> >::_M_allocate_node() (stl_deque.h:620)
+==7921==    by 0x22FC80: std::_Deque_base<vn::protocol::uart::Packet, std::allocator<vn::protocol::uart::Packet> >::_M_create_nodes(vn::protocol::uart::Packet**, vn::protocol::uart::Packet**) (stl_deque.h:745)
+==7921==    by 0x22F65D: std::_Deque_base<vn::protocol::uart::Packet, std::allocator<vn::protocol::uart::Packet> >::_M_initialize_map(unsigned long) (stl_deque.h:719)
+==7921==    by 0x22EEFB: std::_Deque_base<vn::protocol::uart::Packet, std::allocator<vn::protocol::uart::Packet> >::_Deque_base() (stl_deque.h:510)
+==7921==    by 0x22EA1F: std::deque<vn::protocol::uart::Packet, std::allocator<vn::protocol::uart::Packet> >::deque() (stl_deque.h:915)
+==7921==    by 0x22E7CD: std::queue<vn::protocol::uart::Packet, std::deque<vn::protocol::uart::Packet, std::allocator<vn::protocol::uart::Packet> > >::queue<std::deque<vn::protocol::uart::Packet, std::allocator<vn::protocol::uart::Packet> >, void>() (stl_queue.h:161)
+==7921==    by 0x22D3D4: vn::sensors::VnSensor::Impl::Impl(vn::sensors::VnSensor*) (sensors.cpp:129)
+==7921==    by 0x22063E: vn::sensors::VnSensor::VnSensor() (sensors.cpp:569)
+==7921==    by 0x35ABC3: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:11)
+==7921== 
+==7921== 608 bytes in 4 blocks are still reachable in loss record 96 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x1C6EA6: std::_Function_base::_Base_manager<std::__detail::_BracketMatcher<std::__cxx11::regex_traits<char>, false, false> >::_M_clone(std::_Any_data&, std::_Any_data const&, std::integral_constant<bool, false>) (std_function.h:176)
+==7921==    by 0x1C160A: std::_Function_base::_Base_manager<std::__detail::_BracketMatcher<std::__cxx11::regex_traits<char>, false, false> >::_M_manager(std::_Any_data&, std::_Any_data const&, std::_Manager_operation) (std_function.h:211)
+==7921==    by 0x1C3368: std::function<bool (char)>::function(std::function<bool (char)> const&) (std_function.h:659)
+==7921==    by 0x1BDF4D: std::__detail::_State<char>::_State(std::__detail::_State<char> const&) (regex_automaton.h:142)
+==7921==    by 0x1CDE22: void std::_Construct<std::__detail::_State<char>, std::__detail::_State<char> const&>(std::__detail::_State<char>*, std::__detail::_State<char> const&) (stl_construct.h:75)
+==7921==    by 0x1CA91E: std::__detail::_State<char>* std::__uninitialized_copy<false>::__uninit_copy<std::__detail::_State<char> const*, std::__detail::_State<char>*>(std::__detail::_State<char> const*, std::__detail::_State<char> const*, std::__detail::_State<char>*) (stl_uninitialized.h:83)
+==7921==    by 0x1C4E9C: std::__detail::_State<char>* std::uninitialized_copy<std::__detail::_State<char> const*, std::__detail::_State<char>*>(std::__detail::_State<char> const*, std::__detail::_State<char> const*, std::__detail::_State<char>*) (stl_uninitialized.h:140)
+==7921==    by 0x1BF9A6: std::__detail::_State<char>* std::__uninitialized_copy_a<std::__detail::_State<char> const*, std::__detail::_State<char>*, std::__detail::_State<char> >(std::__detail::_State<char> const*, std::__detail::_State<char> const*, std::__detail::_State<char>*, std::allocator<std::__detail::_State<char> >&) (stl_uninitialized.h:307)
+==7921==    by 0x1BB36C: std::__detail::_State<char>* std::__uninitialized_move_if_noexcept_a<std::__detail::_State<char>*, std::__detail::_State<char>*, std::allocator<std::__detail::_State<char> > >(std::__detail::_State<char>*, std::__detail::_State<char>*, std::__detail::_State<char>*, std::allocator<std::__detail::_State<char> >&) (stl_uninitialized.h:329)
+==7921==    by 0x1B62E2: void std::vector<std::__detail::_State<char>, std::allocator<std::__detail::_State<char> > >::_M_realloc_insert<std::__detail::_State<char> >(__gnu_cxx::__normal_iterator<std::__detail::_State<char>*, std::vector<std::__detail::_State<char>, std::allocator<std::__detail::_State<char> > > >, std::__detail::_State<char>&&) (vector.tcc:474)
+==7921==    by 0x1B1B5B: std::__detail::_State<char>& std::vector<std::__detail::_State<char>, std::allocator<std::__detail::_State<char> > >::emplace_back<std::__detail::_State<char> >(std::__detail::_State<char>&&) (vector.tcc:121)
+==7921== 
+==7921== 768 bytes in 1 blocks are still reachable in loss record 97 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x1C4E66: __gnu_cxx::new_allocator<std::__detail::_State<char> >::allocate(unsigned long, void const*) (new_allocator.h:114)
+==7921==    by 0x1BF95F: std::allocator_traits<std::allocator<std::__detail::_State<char> > >::allocate(std::allocator<std::__detail::_State<char> >&, unsigned long) (alloc_traits.h:443)
+==7921==    by 0x1BB2FF: std::_Vector_base<std::__detail::_State<char>, std::allocator<std::__detail::_State<char> > >::_M_allocate(unsigned long) (stl_vector.h:343)
+==7921==    by 0x1B6260: void std::vector<std::__detail::_State<char>, std::allocator<std::__detail::_State<char> > >::_M_realloc_insert<std::__detail::_State<char> >(__gnu_cxx::__normal_iterator<std::__detail::_State<char>*, std::vector<std::__detail::_State<char>, std::allocator<std::__detail::_State<char> > > >, std::__detail::_State<char>&&) (vector.tcc:440)
+==7921==    by 0x1B1B5B: std::__detail::_State<char>& std::vector<std::__detail::_State<char>, std::allocator<std::__detail::_State<char> > >::emplace_back<std::__detail::_State<char> >(std::__detail::_State<char>&&) (vector.tcc:121)
+==7921==    by 0x1ADA27: std::vector<std::__detail::_State<char>, std::allocator<std::__detail::_State<char> > >::push_back(std::__detail::_State<char>&&) (stl_vector.h:1201)
+==7921==    by 0x1A99DD: std::__detail::_NFA<std::__cxx11::regex_traits<char> >::_M_insert_state(std::__detail::_State<char>) (regex_automaton.h:329)
+==7921==    by 0x1A9C63: std::__detail::_NFA<std::__cxx11::regex_traits<char> >::_M_insert_dummy() (regex_automaton.h:324)
+==7921==    by 0x1A9BC7: std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_M_alternative() (regex_compiler.tcc:131)
+==7921==    by 0x1A9B60: std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_M_alternative() (regex_compiler.tcc:126)
+==7921==    by 0x1A9B60: std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_M_alternative() (regex_compiler.tcc:126)
+==7921== 
+==7921== 800 bytes in 1 blocks are still reachable in loss record 98 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x1266F3: Eigen::DenseStorage<double, -1, -1, -1, 0>::resize(long, long, long) (DenseStorage.h:408)
+==7921==    by 0x124917: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x152C01: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resizeLike<Eigen::DiagonalWrapper<Eigen::Matrix<double, -1, 1, 0, -1, 1> const> >(Eigen::EigenBase<Eigen::DiagonalWrapper<Eigen::Matrix<double, -1, 1, 0, -1, 1> const> > const&) (PlainObjectBase.h:377)
+==7921==    by 0x15211A: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::_resize_to_match<Eigen::DiagonalWrapper<Eigen::Matrix<double, -1, 1, 0, -1, 1> const> >(Eigen::EigenBase<Eigen::DiagonalWrapper<Eigen::Matrix<double, -1, 1, 0, -1, 1> const> > const&) (PlainObjectBase.h:686)
+==7921==    by 0x14FECA: Eigen::Matrix<double, -1, -1, 0, -1, -1>& Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::operator=<Eigen::DiagonalWrapper<Eigen::Matrix<double, -1, 1, 0, -1, 1> const> >(Eigen::EigenBase<Eigen::DiagonalWrapper<Eigen::Matrix<double, -1, 1, 0, -1, 1> const> > const&) (PlainObjectBase.h:570)
+==7921==    by 0x14E3C0: Eigen::Matrix<double, -1, -1, 0, -1, -1>& Eigen::Matrix<double, -1, -1, 0, -1, -1>::operator=<Eigen::DiagonalWrapper<Eigen::Matrix<double, -1, 1, 0, -1, 1> const> >(Eigen::EigenBase<Eigen::DiagonalWrapper<Eigen::Matrix<double, -1, 1, 0, -1, 1> const> > const&) (Matrix.h:238)
+==7921==    by 0x14B231: main (main.cpp:1007)
+==7921== 
+==7921== 800 bytes in 1 blocks are still reachable in loss record 99 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x124806: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long) (PlainObjectBase.h:319)
+==7921==    by 0x122295: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::_init1<int>(long, Eigen::internal::enable_if<((((Eigen::DenseBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::{unnamed type#1})-1)!=(1))||(!Eigen::internal::is_convertible<int, double>::value))&&((!((Eigen::internal::is_same<Eigen::MatrixXpr, Eigen::ArrayXpr>::{unnamed type#1})0))||((({unnamed type#1})-1)==Eigen::Dynamic)), Eigen::internal::is_convertible>::type*) (PlainObjectBase.h:776)
+==7921==    by 0x1203E2: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<int>(int const&) (Matrix.h:296)
+==7921==    by 0x18CE4C: Human_Playback(void*) (mujoco_main.cpp:1948)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 800 bytes in 1 blocks are still reachable in loss record 100 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x124806: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long) (PlainObjectBase.h:319)
+==7921==    by 0x122295: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::_init1<int>(long, Eigen::internal::enable_if<((((Eigen::DenseBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::{unnamed type#1})-1)!=(1))||(!Eigen::internal::is_convertible<int, double>::value))&&((!((Eigen::internal::is_same<Eigen::MatrixXpr, Eigen::ArrayXpr>::{unnamed type#1})0))||((({unnamed type#1})-1)==Eigen::Dynamic)), Eigen::internal::is_convertible>::type*) (PlainObjectBase.h:776)
+==7921==    by 0x1203E2: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<int>(int const&) (Matrix.h:296)
+==7921==    by 0x18CE6F: Human_Playback(void*) (mujoco_main.cpp:1949)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 800 bytes in 1 blocks are still reachable in loss record 101 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x124806: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long) (PlainObjectBase.h:319)
+==7921==    by 0x122295: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::_init1<int>(long, Eigen::internal::enable_if<((((Eigen::DenseBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::{unnamed type#1})-1)!=(1))||(!Eigen::internal::is_convertible<int, double>::value))&&((!((Eigen::internal::is_same<Eigen::MatrixXpr, Eigen::ArrayXpr>::{unnamed type#1})0))||((({unnamed type#1})-1)==Eigen::Dynamic)), Eigen::internal::is_convertible>::type*) (PlainObjectBase.h:776)
+==7921==    by 0x1203E2: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<int>(int const&) (Matrix.h:296)
+==7921==    by 0x18CE92: Human_Playback(void*) (mujoco_main.cpp:1950)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 800 bytes in 1 blocks are still reachable in loss record 102 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x124806: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long) (PlainObjectBase.h:319)
+==7921==    by 0x122295: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::_init1<int>(long, Eigen::internal::enable_if<((((Eigen::DenseBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::{unnamed type#1})-1)!=(1))||(!Eigen::internal::is_convertible<int, double>::value))&&((!((Eigen::internal::is_same<Eigen::MatrixXpr, Eigen::ArrayXpr>::{unnamed type#1})0))||((({unnamed type#1})-1)==Eigen::Dynamic)), Eigen::internal::is_convertible>::type*) (PlainObjectBase.h:776)
+==7921==    by 0x1203E2: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<int>(int const&) (Matrix.h:296)
+==7921==    by 0x18CEB5: Human_Playback(void*) (mujoco_main.cpp:1951)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 800 bytes in 1 blocks are still reachable in loss record 103 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x124806: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long) (PlainObjectBase.h:319)
+==7921==    by 0x122295: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::_init1<int>(long, Eigen::internal::enable_if<((((Eigen::DenseBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::{unnamed type#1})-1)!=(1))||(!Eigen::internal::is_convertible<int, double>::value))&&((!((Eigen::internal::is_same<Eigen::MatrixXpr, Eigen::ArrayXpr>::{unnamed type#1})0))||((({unnamed type#1})-1)==Eigen::Dynamic)), Eigen::internal::is_convertible>::type*) (PlainObjectBase.h:776)
+==7921==    by 0x1203E2: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<int>(int const&) (Matrix.h:296)
+==7921==    by 0x18CED8: Human_Playback(void*) (mujoco_main.cpp:1952)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 800 bytes in 1 blocks are still reachable in loss record 104 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x124806: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long) (PlainObjectBase.h:319)
+==7921==    by 0x122295: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::_init1<int>(long, Eigen::internal::enable_if<((((Eigen::DenseBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::{unnamed type#1})-1)!=(1))||(!Eigen::internal::is_convertible<int, double>::value))&&((!((Eigen::internal::is_same<Eigen::MatrixXpr, Eigen::ArrayXpr>::{unnamed type#1})0))||((({unnamed type#1})-1)==Eigen::Dynamic)), Eigen::internal::is_convertible>::type*) (PlainObjectBase.h:776)
+==7921==    by 0x1203E2: Eigen::Matrix<double, -1, 1, 0, -1, 1>::Matrix<int>(int const&) (Matrix.h:296)
+==7921==    by 0x18CEFB: Human_Playback(void*) (mujoco_main.cpp:1953)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 816 bytes in 2 blocks are still reachable in loss record 105 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x12664D: Eigen::DenseStorage<double, -1, -1, 1, 0>::resize(long, long, long) (DenseStorage.h:557)
+==7921==    by 0x1265F0: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x1583F1: void Eigen::internal::resize_if_allowed<Eigen::Matrix<double, -1, 1, 0, -1, 1>, Eigen::Matrix<double, -1, 1, 0, -1, 1>, double, double>(Eigen::Matrix<double, -1, 1, 0, -1, 1>&, Eigen::Matrix<double, -1, 1, 0, -1, 1> const&, Eigen::internal::assign_op<double, double> const&) (AssignEvaluator.h:720)
+==7921==    by 0x15646F: void Eigen::internal::call_dense_assignment_loop<Eigen::Matrix<double, -1, 1, 0, -1, 1>, Eigen::Matrix<double, -1, 1, 0, -1, 1>, Eigen::internal::assign_op<double, double> >(Eigen::Matrix<double, -1, 1, 0, -1, 1>&, Eigen::Matrix<double, -1, 1, 0, -1, 1> const&, Eigen::internal::assign_op<double, double> const&) (AssignEvaluator.h:734)
+==7921==    by 0x154F5A: Eigen::internal::Assignment<Eigen::Matrix<double, -1, 1, 0, -1, 1>, Eigen::Matrix<double, -1, 1, 0, -1, 1>, Eigen::internal::assign_op<double, double>, Eigen::internal::Dense2Dense, void>::run(Eigen::Matrix<double, -1, 1, 0, -1, 1>&, Eigen::Matrix<double, -1, 1, 0, -1, 1> const&, Eigen::internal::assign_op<double, double> const&) (AssignEvaluator.h:879)
+==7921==    by 0x154480: void Eigen::internal::call_assignment_no_alias<Eigen::Matrix<double, -1, 1, 0, -1, 1>, Eigen::Matrix<double, -1, 1, 0, -1, 1>, Eigen::internal::assign_op<double, double> >(Eigen::Matrix<double, -1, 1, 0, -1, 1>&, Eigen::Matrix<double, -1, 1, 0, -1, 1> const&, Eigen::internal::assign_op<double, double> const&) (AssignEvaluator.h:836)
+==7921==    by 0x1537D4: void Eigen::internal::call_assignment<Eigen::Matrix<double, -1, 1, 0, -1, 1>, Eigen::Matrix<double, -1, 1, 0, -1, 1>, Eigen::internal::assign_op<double, double> >(Eigen::Matrix<double, -1, 1, 0, -1, 1>&, Eigen::Matrix<double, -1, 1, 0, -1, 1> const&, Eigen::internal::assign_op<double, double> const&, Eigen::internal::enable_if<!Eigen::internal::evaluator_assume_aliasing<Eigen::Matrix<double, -1, 1, 0, -1, 1>, Eigen::internal::evaluator_traits<Eigen::Matrix<double, -1, 1, 0, -1, 1> >::Shape>::value, void*>::type) (AssignEvaluator.h:804)
+==7921==    by 0x151FD2: void Eigen::internal::call_assignment<Eigen::Matrix<double, -1, 1, 0, -1, 1>, Eigen::Matrix<double, -1, 1, 0, -1, 1> >(Eigen::Matrix<double, -1, 1, 0, -1, 1>&, Eigen::Matrix<double, -1, 1, 0, -1, 1> const&) (AssignEvaluator.h:782)
+==7921== 
+==7921== 1,200 bytes in 1 blocks are still reachable in loss record 106 of 124
+==7921==    at 0x483C583: operator new[](unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x2394E0: vn::protocol::uart::PacketFinder::Impl::Impl(vn::protocol::uart::PacketFinder*) (packetfinder.cpp:108)
+==7921==    by 0x238EBA: vn::protocol::uart::PacketFinder::PacketFinder() (packetfinder.cpp:469)
+==7921==    by 0x22D378: vn::sensors::VnSensor::Impl::Impl(vn::sensors::VnSensor*) (sensors.cpp:129)
+==7921==    by 0x22063E: vn::sensors::VnSensor::VnSensor() (sensors.cpp:569)
+==7921==    by 0x35ABC3: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:11)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 1,536 bytes in 1 blocks are still reachable in loss record 107 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x1C4E66: __gnu_cxx::new_allocator<std::__detail::_State<char> >::allocate(unsigned long, void const*) (new_allocator.h:114)
+==7921==    by 0x1BF95F: std::allocator_traits<std::allocator<std::__detail::_State<char> > >::allocate(std::allocator<std::__detail::_State<char> >&, unsigned long) (alloc_traits.h:443)
+==7921==    by 0x1BB2FF: std::_Vector_base<std::__detail::_State<char>, std::allocator<std::__detail::_State<char> > >::_M_allocate(unsigned long) (stl_vector.h:343)
+==7921==    by 0x1B6260: void std::vector<std::__detail::_State<char>, std::allocator<std::__detail::_State<char> > >::_M_realloc_insert<std::__detail::_State<char> >(__gnu_cxx::__normal_iterator<std::__detail::_State<char>*, std::vector<std::__detail::_State<char>, std::allocator<std::__detail::_State<char> > > >, std::__detail::_State<char>&&) (vector.tcc:440)
+==7921==    by 0x1B1B5B: std::__detail::_State<char>& std::vector<std::__detail::_State<char>, std::allocator<std::__detail::_State<char> > >::emplace_back<std::__detail::_State<char> >(std::__detail::_State<char>&&) (vector.tcc:121)
+==7921==    by 0x1ADA27: std::vector<std::__detail::_State<char>, std::allocator<std::__detail::_State<char> > >::push_back(std::__detail::_State<char>&&) (stl_vector.h:1201)
+==7921==    by 0x1A99DD: std::__detail::_NFA<std::__cxx11::regex_traits<char> >::_M_insert_state(std::__detail::_State<char>) (regex_automaton.h:329)
+==7921==    by 0x1A6AC5: std::__detail::_NFA<std::__cxx11::regex_traits<char> >::_M_insert_accept() (regex_automaton.h:239)
+==7921==    by 0x1A43CF: std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_Compiler(char const*, char const*, std::locale const&, std::regex_constants::syntax_option_type) (regex_compiler.tcc:90)
+==7921==    by 0x1A1CFF: std::enable_if<std::__detail::__is_contiguous_iter<char const*>::value, std::shared_ptr<std::__detail::_NFA<std::__cxx11::regex_traits<char> > const> >::type std::__detail::__compile_nfa<std::__cxx11::regex_traits<char>, char const*>(char const*, char const*, std::__cxx11::regex_traits<char>::locale_type const&, std::regex_constants::syntax_option_type) (regex_compiler.h:183)
+==7921==    by 0x19F3F3: std::__cxx11::basic_regex<char, std::__cxx11::regex_traits<char> >::basic_regex<char const*>(char const*, char const*, std::locale, std::regex_constants::syntax_option_type) (regex.h:760)
+==7921== 
+==7921== 1,840 bytes in 1 blocks are still reachable in loss record 108 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x35B645: RoboDesignLab::DynamicRobot::DynamicRobot() (dynamic_robot.cpp:58)
+==7921==    by 0x14AF98: main (main.cpp:996)
+==7921== 
+==7921== 2,256 bytes in 1 blocks are still reachable in loss record 109 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x14AF8D: main (main.cpp:996)
+==7921== 
+==7921== 3,584 bytes in 1 blocks are still reachable in loss record 110 of 124
+==7921==    at 0x483E0F0: memalign (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x483E212: posix_memalign (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x498089D: mju_malloc (in /usr/local/lib/libmujoco.so.2.3.3)
+==7921==    by 0x493413D: mj_makeModel (in /usr/local/lib/libmujoco.so.2.3.3)
+==7921==    by 0x49ECAE7: mjCModel::TryCompile(mjModel_*&, mjData_*&, mjVFS_ const*) (in /usr/local/lib/libmujoco.so.2.3.3)
+==7921==    by 0x49EDBD9: mjCModel::Compile(mjVFS_ const*) (in /usr/local/lib/libmujoco.so.2.3.3)
+==7921==    by 0x4A06ACB: mj_loadXML (in /usr/local/lib/libmujoco.so.2.3.3)
+==7921==    by 0x188A53: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1026)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 4,000 bytes in 4 blocks are still reachable in loss record 111 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x11F1D2: Eigen::internal::aligned_malloc(unsigned long) (Memory.h:159)
+==7921==    by 0x1202FA: void* Eigen::internal::conditional_aligned_malloc<true>(unsigned long) (Memory.h:214)
+==7921==    by 0x12676E: double* Eigen::internal::conditional_aligned_new_auto<double, true>(unsigned long) (Memory.h:374)
+==7921==    by 0x1266F3: Eigen::DenseStorage<double, -1, -1, -1, 0>::resize(long, long, long) (DenseStorage.h:408)
+==7921==    by 0x124917: Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::resize(long, long) (PlainObjectBase.h:293)
+==7921==    by 0x1423E1: void Eigen::internal::resize_if_allowed<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::CwiseNullaryOp<Eigen::internal::scalar_identity_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >, double, double>(Eigen::Matrix<double, -1, -1, 0, -1, -1>&, Eigen::CwiseNullaryOp<Eigen::internal::scalar_identity_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::internal::assign_op<double, double> const&) (AssignEvaluator.h:720)
+==7921==    by 0x141492: void Eigen::internal::call_dense_assignment_loop<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::CwiseNullaryOp<Eigen::internal::scalar_identity_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >, Eigen::internal::assign_op<double, double> >(Eigen::Matrix<double, -1, -1, 0, -1, -1>&, Eigen::CwiseNullaryOp<Eigen::internal::scalar_identity_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::internal::assign_op<double, double> const&) (AssignEvaluator.h:734)
+==7921==    by 0x1409FA: Eigen::internal::Assignment<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::CwiseNullaryOp<Eigen::internal::scalar_identity_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >, Eigen::internal::assign_op<double, double>, Eigen::internal::Dense2Dense, void>::run(Eigen::Matrix<double, -1, -1, 0, -1, -1>&, Eigen::CwiseNullaryOp<Eigen::internal::scalar_identity_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::internal::assign_op<double, double> const&) (AssignEvaluator.h:879)
+==7921==    by 0x140326: void Eigen::internal::call_assignment_no_alias<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::CwiseNullaryOp<Eigen::internal::scalar_identity_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >, Eigen::internal::assign_op<double, double> >(Eigen::Matrix<double, -1, -1, 0, -1, -1>&, Eigen::CwiseNullaryOp<Eigen::internal::scalar_identity_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::internal::assign_op<double, double> const&) (AssignEvaluator.h:836)
+==7921==    by 0x13F909: Eigen::Matrix<double, -1, -1, 0, -1, -1>& Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::_set_noalias<Eigen::CwiseNullaryOp<Eigen::internal::scalar_identity_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > >(Eigen::DenseBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_identity_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > > const&) (PlainObjectBase.h:728)
+==7921==    by 0x2FFC96: void Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >::_init1<Eigen::CwiseNullaryOp<Eigen::internal::scalar_identity_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >, Eigen::CwiseNullaryOp<Eigen::internal::scalar_identity_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > >(Eigen::DenseBase<Eigen::CwiseNullaryOp<Eigen::internal::scalar_identity_op<double>, Eigen::Matrix<double, -1, -1, 0, -1, -1> > > const&) (PlainObjectBase.h:812)
+==7921== 
+==7921== 4,096 bytes in 1 blocks are still reachable in loss record 112 of 124
+==7921==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55BC0AC: _XrmInternalStringToQuark (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55CE3B3: XrmInitialize (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF1: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 4,532 bytes in 1 blocks are still reachable in loss record 113 of 124
+==7921==    at 0x483DFAF: realloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x580CA62: xcb_connect_to_fd (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==7921==    by 0x5810B72: xcb_connect_to_display_with_auth_info (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==7921==    by 0x55C5D29: _XConnectXCB (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55B63A8: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 4,688 bytes in 1 blocks are still reachable in loss record 114 of 124
+==7921==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55B6371: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 8,176 bytes in 1 blocks are still reachable in loss record 115 of 124
+==7921==    at 0x483B7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55BBE65: ??? (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55BC08C: _XrmInternalStringToQuark (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55CE3B3: XrmInitialize (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF1: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 8,192 bytes in 1 blocks are still reachable in loss record 116 of 124
+==7921==    at 0x483C583: operator new[](unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x5153D03: std::basic_filebuf<char, std::char_traits<char> >::_M_allocate_internal_buffer() (in /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28)
+==7921==    by 0x5157F66: std::basic_filebuf<char, std::char_traits<char> >::open(char const*, std::_Ios_Openmode) (in /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28)
+==7921==    by 0x5158B2F: std::basic_ifstream<char, std::char_traits<char> >::basic_ifstream(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::_Ios_Openmode) (in /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28)
+==7921==    by 0x33C98E: dash_utils::readHumanDynDataFromFile(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) (utilities.cpp:721)
+==7921==    by 0x18D153: Human_Playback(void*) (mujoco_main.cpp:2008)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 10,080 bytes in 2 blocks are still reachable in loss record 117 of 124
+==7921==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55B6A24: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 16,384 bytes in 1 blocks are still reachable in loss record 118 of 124
+==7921==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x55B66BF: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 21,168 bytes in 1 blocks are still reachable in loss record 119 of 124
+==7921==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x580C884: xcb_connect_to_fd (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==7921==    by 0x5810B72: xcb_connect_to_display_with_auth_info (in /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0)
+==7921==    by 0x55C5D29: _XConnectXCB (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x55B63A8: XOpenDisplay (in /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0)
+==7921==    by 0x4B6FFF8: ??? (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x4B699E1: glfwInit (in /usr/lib/x86_64-linux-gnu/libglfw.so.3.3)
+==7921==    by 0x188AD3: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1052)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 25,536 bytes in 1 blocks are still reachable in loss record 120 of 124
+==7921==    at 0x483E0F0: memalign (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x483E212: posix_memalign (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x498089D: mju_malloc (in /usr/local/lib/libmujoco.so.2.3.3)
+==7921==    by 0x4933348: _makeData (in /usr/local/lib/libmujoco.so.2.3.3)
+==7921==    by 0x4949822: mj_makeData (in /usr/local/lib/libmujoco.so.2.3.3)
+==7921==    by 0x188AC2: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1043)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 41,280 bytes in 1 blocks are still reachable in loss record 121 of 124
+==7921==    at 0x483E0F0: memalign (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x483E212: posix_memalign (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x498089D: mju_malloc (in /usr/local/lib/libmujoco.so.2.3.3)
+==7921==    by 0x49326CE: _makeData (in /usr/local/lib/libmujoco.so.2.3.3)
+==7921==    by 0x4949822: mj_makeData (in /usr/local/lib/libmujoco.so.2.3.3)
+==7921==    by 0x188AC2: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1043)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 1,376,256 bytes in 2 blocks are still reachable in loss record 122 of 124
+==7921==    at 0x483BE63: operator new(unsigned long) (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x3455FC: __gnu_cxx::new_allocator<Human_dyn_data>::allocate(unsigned long, void const*) (new_allocator.h:114)
+==7921==    by 0x344C93: std::allocator_traits<std::allocator<Human_dyn_data> >::allocate(std::allocator<Human_dyn_data>&, unsigned long) (alloc_traits.h:443)
+==7921==    by 0x343D95: std::_Vector_base<Human_dyn_data, std::allocator<Human_dyn_data> >::_M_allocate(unsigned long) (stl_vector.h:343)
+==7921==    by 0x34248E: void std::vector<Human_dyn_data, std::allocator<Human_dyn_data> >::_M_realloc_insert<Human_dyn_data const&>(__gnu_cxx::__normal_iterator<Human_dyn_data*, std::vector<Human_dyn_data, std::allocator<Human_dyn_data> > >, Human_dyn_data const&) (vector.tcc:440)
+==7921==    by 0x341313: std::vector<Human_dyn_data, std::allocator<Human_dyn_data> >::push_back(Human_dyn_data const&) (stl_vector.h:1195)
+==7921==    by 0x33CF91: dash_utils::readHumanDynDataFromFile(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) (utilities.cpp:800)
+==7921==    by 0x18D153: Human_Playback(void*) (mujoco_main.cpp:2008)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 14,680,064 bytes in 1 blocks are still reachable in loss record 123 of 124
+==7921==    at 0x483E0F0: memalign (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x483E212: posix_memalign (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x498089D: mju_malloc (in /usr/local/lib/libmujoco.so.2.3.3)
+==7921==    by 0x4933377: _makeData (in /usr/local/lib/libmujoco.so.2.3.3)
+==7921==    by 0x4949822: mj_makeData (in /usr/local/lib/libmujoco.so.2.3.3)
+==7921==    by 0x188AC2: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1043)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== 31,618,496 bytes in 1 blocks are still reachable in loss record 124 of 124
+==7921==    at 0x483E0F0: memalign (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x483E212: posix_memalign (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7921==    by 0x498089D: mju_malloc (in /usr/local/lib/libmujoco.so.2.3.3)
+==7921==    by 0x4937B6D: mj_makeModel (in /usr/local/lib/libmujoco.so.2.3.3)
+==7921==    by 0x49ECAE7: mjCModel::TryCompile(mjModel_*&, mjData_*&, mjVFS_ const*) (in /usr/local/lib/libmujoco.so.2.3.3)
+==7921==    by 0x49EDBD9: mjCModel::Compile(mjVFS_ const*) (in /usr/local/lib/libmujoco.so.2.3.3)
+==7921==    by 0x4A06ACB: mj_loadXML (in /usr/local/lib/libmujoco.so.2.3.3)
+==7921==    by 0x188A53: mujoco_Update_1KHz(void*) (mujoco_main.cpp:1026)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921== 
+==7921== LEAK SUMMARY:
+==7921==    definitely lost: 896 bytes in 7 blocks
+==7921==    indirectly lost: 0 bytes in 0 blocks
+==7921==      possibly lost: 2,464 bytes in 7 blocks
+==7921==    still reachable: 47,849,425 bytes in 124 blocks
+==7921==         suppressed: 0 bytes in 0 blocks
+==7921== 
+==7921== ERROR SUMMARY: 16 errors from 16 contexts (suppressed: 0 from 0)
+==7921== 
+==7921== 1 errors in context 1 of 16:
+==7921== Thread 4:
+==7921== Syscall param socketcall.recvfrom(fromlen_in) points to unaddressable byte(s)
+==7921==    at 0x48C2722: recvfrom (recvfrom.c:27)
+==7921==    by 0x11C382: rx_UDP(void*) (comms.cpp:278)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921==  Address 0x0 is not stack'd, malloc'd or (recently) free'd
+==7921== 
+==7921== 
+==7921== 1 errors in context 2 of 16:
+==7921== Syscall param recvfrom(fromlen) contains uninitialised byte(s)
+==7921==    at 0x48C2722: recvfrom (recvfrom.c:27)
+==7921==    by 0x11C382: rx_UDP(void*) (comms.cpp:278)
+==7921==    by 0x48B7608: start_thread (pthread_create.c:477)
+==7921==    by 0x54B5132: clone (clone.S:95)
+==7921==  Uninitialised value was created by a stack allocation
+==7921==    at 0x11C19E: rx_UDP(void*) (comms.cpp:227)
+==7921== 
+==7921== ERROR SUMMARY: 16 errors from 16 contexts (suppressed: 0 from 0)

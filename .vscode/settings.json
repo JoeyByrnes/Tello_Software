@@ -152,6 +152,8 @@
         "referenced": "cpp",
         "shape": "cpp",
         "view": "cpp",
-        "ref_ptr": "cpp"
+        "ref_ptr": "cpp",
+        "matrix": "cpp",
+        "types": "cpp"
     }
 }

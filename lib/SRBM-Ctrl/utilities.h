@@ -15,6 +15,9 @@ using namespace Eigen;
 
 namespace  dash_utils 
 {
+    typedef Eigen::VectorXd Vector;
+    typedef Eigen::MatrixXd Matrix;
+
     Vector3d calc_EA(Matrix3d R);
     Vector3d calc_dEA(Matrix3d R, Vector3d wb);
     VectorXd calc_wb(Vector3d dEA, VectorXd EA);
@@ -72,4 +75,5 @@ namespace  dash_utils
     double smoothData(const Eigen::VectorXd& vel, double smoothingFactor);
     double EMA(const VectorXd& circularBuffer, int latestSampleIndex, int numPreviousSamples, double smoothingParameter);
 
+    void pseudoInverse(Matrix& matrix, double sigmaThreshold, Matrix& invMatrix, Vector* opt_sigmaOut);
 }

@@ -1975,8 +1975,9 @@ VectorXd dash_kin::calc_joint_vel(VectorXd qd_b, Matrix3d Rwb,Vector3d x_torso, 
     MatrixXd A = transform*J_leg;
     
     // Calculate joint velocities
+    
     MatrixXd A_pinv = A.completeOrthogonalDecomposition().pseudoInverse();
-
+    
     VectorXd qd = A_pinv*(x_dot - J_b*qd_b);
     return qd;
 }

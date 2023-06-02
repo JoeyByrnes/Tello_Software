@@ -117,46 +117,177 @@ Eigen::VectorXd DynamicRobot::joint_vel_to_task_vel(Eigen::VectorXd joint_veloci
     return task_velocities;
 }
 
+struct ThreadData {
+    Eigen::MatrixXd* matrix;
+    Eigen::MatrixXd* result;
+    int coreId;
+};
+
+// Function to be executed by each thread
+void* calculatePseudoInverse(void* threadData) {
+    ThreadData* data = static_cast<ThreadData*>(threadData);
+
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(data->coreId, &cpuset);
+    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+
+    *(data->result) = data->matrix->completeOrthogonalDecomposition().pseudoInverse();
+    pthread_exit(NULL);
+}
+
+Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel_right(Eigen::VectorXd task_velocities, TaskPDConfig task_conf)
+{
+    if(task_conf.use_single_jacoian)
+    {
+        Eigen::VectorXd task_velocites_front_right(3);
+        task_velocites_front_right << task_velocities.segment(6,3);
+
+        Eigen::MatrixXd J_front_right = this->jacobian_task_lf_front(this->getJointPositions().segment(5,5)).topRows(3);
+
+        Eigen::MatrixXd J_front_right_inverse = J_front_right.completeOrthogonalDecomposition().pseudoInverse();
+
+        Eigen::VectorXd joint_vels = (J_front_right_inverse*task_velocites_front_right)*2;
+
+        return joint_vels;
+    }
+    else // use separate jacobians only if task velocities are different
+    {
+        Eigen::VectorXd task_velocites_front_right(3);
+        task_velocites_front_right << task_velocities.segment(6,3);
+        Eigen::VectorXd task_velocites_back_right(3);
+        task_velocites_back_right << task_velocities.segment(9,3);
+
+        Eigen::MatrixXd J_front_right = this->jacobian_task_lf_front(this->getJointPositions().segment(5,5)).topRows(3);
+        Eigen::MatrixXd J_back_right = this->jacobian_task_lf_back(this->getJointPositions().segment(5,5)).topRows(3);
+
+        Eigen::MatrixXd J_front_right_inverse = J_front_right.completeOrthogonalDecomposition().pseudoInverse();
+        Eigen::MatrixXd J_back_right_inverse = J_back_right.completeOrthogonalDecomposition().pseudoInverse();
+
+        Eigen::VectorXd joint_vels_from_front_right = J_front_right_inverse*task_velocites_front_right;
+        Eigen::VectorXd joint_vels_from_back_right = J_back_right_inverse*task_velocites_back_right;
+
+        Eigen::VectorXd joint_velocities(5);
+        joint_velocities << joint_vels_from_front_right + joint_vels_from_back_right;
+        return joint_velocities;
+    }
+}
+
+Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel_left(Eigen::VectorXd task_velocities, TaskPDConfig task_conf)
+{
+    if(task_conf.use_single_jacoian)
+    {
+        Eigen::VectorXd task_velocites_front_left(3);
+        task_velocites_front_left << task_velocities.segment(0,3);
+
+        Eigen::MatrixXd J_front_left = this->jacobian_task_lf_front(this->getJointPositions().segment(0,5)).topRows(3);
+
+        Eigen::MatrixXd J_front_left_inverse = J_front_left.completeOrthogonalDecomposition().pseudoInverse();
+
+        Eigen::VectorXd joint_vels = (J_front_left_inverse*task_velocites_front_left)*2;
+
+        return joint_vels;
+    }
+    else // use separate jacobians only if task velocities are different
+    {
+        Eigen::VectorXd task_velocites_front_left(3);
+        task_velocites_front_left << task_velocities.segment(0,3);
+        Eigen::VectorXd task_velocites_back_left(3);
+        task_velocites_back_left << task_velocities.segment(3,3);
+
+        Eigen::MatrixXd J_front_left = this->jacobian_task_lf_front(this->getJointPositions().segment(0,5)).topRows(3);
+        Eigen::MatrixXd J_back_left = this->jacobian_task_lf_back(this->getJointPositions().segment(0,5)).topRows(3);
+
+        Eigen::MatrixXd J_front_left_inverse = J_front_left.completeOrthogonalDecomposition().pseudoInverse();
+        Eigen::MatrixXd J_back_left_inverse = J_back_left.completeOrthogonalDecomposition().pseudoInverse();
+
+        Eigen::VectorXd joint_vels_from_front_left = J_front_left_inverse*task_velocites_front_left;
+        Eigen::VectorXd joint_vels_from_back_left = J_back_left_inverse*task_velocites_back_left;
+
+        Eigen::VectorXd joint_velocities(5);
+        joint_velocities << joint_vels_from_front_left + joint_vels_from_back_left;
+        return joint_velocities;
+    }
+}
+
+Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel(Eigen::VectorXd task_velocities,TaskPDConfig task_conf)
+{
+    if(task_conf.side == BOTH_LEGS)
+    {
+        return task_vel_to_joint_vel(task_velocities);
+    }
+    else if(task_conf.side == RIGHT_LEG)
+    {
+        Eigen::VectorXd joint_velocities = VectorXd::Zero(10);
+        joint_velocities.head(5) = task_vel_to_joint_vel_right(task_velocities,task_conf);
+        return joint_velocities;
+    }
+    else//if(task_conf.side == LEFT_LEG)
+    { 
+        Eigen::VectorXd joint_velocities = VectorXd::Zero(10);
+        joint_velocities.tail(5) = task_vel_to_joint_vel_left(task_velocities,task_conf);
+        return joint_velocities;
+    }
+}
+
 Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel(Eigen::VectorXd task_velocities)
 {
-    Eigen::VectorXd task_velocites_front_left(6);
-    task_velocites_front_left << task_velocities.segment(0,3), 0, 0, 0;
-    Eigen::VectorXd task_velocites_back_left(6);
-    task_velocites_back_left << task_velocities.segment(3,3), 0, 0, 0;
-    Eigen::VectorXd task_velocites_front_right(6);
-    task_velocites_front_right << task_velocities.segment(6,3), 0, 0, 0;
-    Eigen::VectorXd task_velocites_back_right(6);
-    task_velocites_back_right << task_velocities.segment(9,3), 0, 0, 0;
+    Eigen::VectorXd task_velocites_front_left(3);
+    task_velocites_front_left << task_velocities.segment(0,3);
+    Eigen::VectorXd task_velocites_back_left(3);
+    task_velocites_back_left << task_velocities.segment(3,3);
+    Eigen::VectorXd task_velocites_front_right(3);
+    task_velocites_front_right << task_velocities.segment(6,3);
+    Eigen::VectorXd task_velocites_back_right(3);
+    task_velocites_back_right << task_velocities.segment(9,3);
 
-    // return this->jacobian_task_inverse(this->getJointPositions())*task_velocites;
-    Eigen::MatrixXd J_front_left = this->jacobian_task_lf_front(this->getJointPositions().segment(0,5));
-    Eigen::MatrixXd J_back_left = this->jacobian_task_lf_back(this->getJointPositions().segment(0,5));
+    Eigen::MatrixXd J_front_left = this->jacobian_task_lf_front(this->getJointPositions().segment(0,5)).topRows(3);
+    Eigen::MatrixXd J_back_left = this->jacobian_task_lf_back(this->getJointPositions().segment(0,5)).topRows(3);
 
-    Eigen::MatrixXd J_front_right = this->jacobian_task_lf_front(this->getJointPositions().segment(5,5));
-    Eigen::MatrixXd J_back_right = this->jacobian_task_lf_back(this->getJointPositions().segment(5,5));
+    Eigen::MatrixXd J_front_right = this->jacobian_task_lf_front(this->getJointPositions().segment(5,5)).topRows(3);
+    Eigen::MatrixXd J_back_right = this->jacobian_task_lf_back(this->getJointPositions().segment(5,5)).topRows(3);
 
-    Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> cod_front_left(J_front_left);
-    Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> cod_back_left(J_back_left);
-    Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> cod_front_right(J_front_right);
-    Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> cod_back_right(J_back_right);
+    // pthread_t threads[4];
+    // ThreadData threadData[4];
 
-    Eigen::MatrixXd J_front_left_inverse = cod_front_left.pseudoInverse();
-    Eigen::MatrixXd J_back_left_inverse = cod_back_left.pseudoInverse();
+    // Eigen::MatrixXd J_front_left_inverse(J_front_left.cols(),J_front_left.rows());
+    // Eigen::MatrixXd J_back_left_inverse(J_back_left.cols(),J_back_left.rows());
+    // Eigen::MatrixXd J_front_right_inverse(J_front_right.cols(),J_front_right.rows());
+    // Eigen::MatrixXd J_back_right_inverse(J_back_right.cols(),J_back_right.rows());
 
-    Eigen::MatrixXd J_front_right_inverse = cod_front_right.pseudoInverse();
-    Eigen::MatrixXd J_back_right_inverse = cod_back_right.pseudoInverse();
-    // Eigen::JacobiSVD<Eigen::MatrixXd> svdJLF(J_front_left, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    // Eigen::MatrixXd J_front_left_inverse = svdJLF.matrixV() * svdJLF.singularValues().asDiagonal().inverse() * svdJLF.matrixU().transpose();
+    // // Set up thread data
+    // threadData[0].matrix = &J_front_left;
+    // threadData[0].result = &J_front_left_inverse;
+    // threadData[0].coreId = 12;
 
-    // Eigen::JacobiSVD<Eigen::MatrixXd> svdJLB(J_back_left, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    // Eigen::MatrixXd J_back_left_inverse = svdJLB.matrixV() * svdJLB.singularValues().asDiagonal().inverse() * svdJLB.matrixU().transpose();
+    // threadData[1].matrix = &J_back_left;
+    // threadData[1].result = &J_back_left_inverse;
+    // threadData[1].coreId = 13;
 
-    // Eigen::JacobiSVD<Eigen::MatrixXd> svdJRF(J_front_right, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    // Eigen::MatrixXd J_front_right_inverse = svdJRF.matrixV() * svdJRF.singularValues().asDiagonal().inverse() * svdJRF.matrixU().transpose();
+    // threadData[2].matrix = &J_front_right;
+    // threadData[2].result = &J_front_right_inverse;
+    // threadData[2].coreId = 14;
 
-    // Eigen::JacobiSVD<Eigen::MatrixXd> svdJRB(J_back_right, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    // Eigen::MatrixXd J_back_right_inverse = svdJRB.matrixV() * svdJRB.singularValues().asDiagonal().inverse() * svdJRB.matrixU().transpose();
+    // threadData[3].matrix = &J_back_right;
+    // threadData[3].result = &J_back_right_inverse;
+    // threadData[3].coreId = 15;
 
+    // // Create threads and start calculations
+    // for (int i = 0; i < 4; ++i) {
+    //     pthread_create(&threads[i], NULL, calculatePseudoInverse, static_cast<void*>(&threadData[i]));
+    // }
+
+    // // Wait for threads to finish
+    // for (int i = 0; i < 4; ++i) {
+    //     pthread_join(threads[i], NULL);
+    // }
+
+    Eigen::MatrixXd J_front_left_inverse = J_front_left.completeOrthogonalDecomposition().pseudoInverse();
+    Eigen::MatrixXd J_back_left_inverse = J_back_left.completeOrthogonalDecomposition().pseudoInverse();
+    Eigen::MatrixXd J_front_right_inverse = J_front_right.completeOrthogonalDecomposition().pseudoInverse();
+    Eigen::MatrixXd J_back_right_inverse = J_back_right.completeOrthogonalDecomposition().pseudoInverse();
+
+    
     Eigen::VectorXd joint_vels_from_front_left = J_front_left_inverse*task_velocites_front_left;
     Eigen::VectorXd joint_vels_from_back_left = J_back_left_inverse*task_velocites_back_left;
     Eigen::VectorXd joint_vels_from_front_right = J_front_right_inverse*task_velocites_front_right;
@@ -655,11 +786,21 @@ VectorXd DynamicRobot::taskPD2(TaskPDConfig task_conf)
                                    task_conf.task_vel_desired,task_conf.task_kp,task_conf.task_kd);
 
     // Get joint torques from task forces
+
     VectorXd joint_torques = this->task_force_to_joint_torque(task_forces+ task_conf.task_ff_force);
 
     // Use inverse kinematics to calculate joint pd
     VectorXd joint_pos_desired = this->task_pos_to_joint_pos(task_conf.task_pos_desired);
-    VectorXd joint_vel_desired = VectorXd::Zero(10);//this->task_vel_to_joint_vel(task_conf.task_vel_desired); //VectorXd::Zero(10);
+
+    VectorXd joint_vel_desired;
+    if(task_conf.ignore_joint_velocity)
+    {
+        joint_vel_desired = VectorXd::Zero(10);
+    }
+    else
+    {
+        joint_vel_desired = this->task_vel_to_joint_vel(task_conf.task_vel_desired,task_conf);
+    }
 
     JointPDConfig joint_conf;
     joint_conf.joint_ff_torque = joint_torques;

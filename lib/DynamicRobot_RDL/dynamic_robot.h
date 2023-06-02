@@ -55,6 +55,10 @@ using namespace inekf;
 typedef VectorXd (*VectorXd_function)(const VectorXd&);
 typedef MatrixXd (*MatrixXd_function)(const VectorXd&);
 
+#define BOTH_LEGS 0
+#define RIGHT_LEG 1
+#define LEFT_LEG  2
+
 namespace RoboDesignLab {
 
     struct BipedActuatorTree{
@@ -91,6 +95,9 @@ namespace RoboDesignLab {
         VectorXd motor_kd = VectorXd(10);
         VectorXd task_ff_force = VectorXd::Zero(12);
         VectorXd joint_ff_torque = VectorXd::Zero(10);
+        int side; // both=0, right=1, left=2
+        bool use_single_jacoian;
+        bool ignore_joint_velocity;
 
         void setTaskKp(double x, double y, double z) {
             task_kp = ((Vector3d(x,y,z)).replicate(4, 1)).asDiagonal();
@@ -174,6 +181,9 @@ namespace RoboDesignLab {
         VectorXd joint_vel_to_task_vel(VectorXd joint_velocites);
         VectorXd task_vel_to_joint_vel(VectorXd task_velocites_front, VectorXd task_velocites_back );
         VectorXd task_vel_to_joint_vel(VectorXd task_velocites);
+        VectorXd task_vel_to_joint_vel(VectorXd task_velocites, TaskPDConfig task_conf);
+        VectorXd task_vel_to_joint_vel_right(VectorXd task_velocites, TaskPDConfig task_conf);
+        VectorXd task_vel_to_joint_vel_left(VectorXd task_velocites, TaskPDConfig task_conf);
 
         VectorXd motor_torque_to_joint_torque(VectorXd motor_torques);
         VectorXd joint_torque_to_motor_torque(VectorXd joint_torques);

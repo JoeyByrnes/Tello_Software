@@ -411,6 +411,19 @@ ctrlData copyMjData(const mjModel* m, mjData*d)
     return cd;
 }
 
+struct ThreadArgs {
+    RoboDesignLab::DynamicRobot* tello;
+    RoboDesignLab::TaskPDConfig config;
+    VectorXd* torques;
+};
+
+// Define the thread function
+void* taskPD2Thread(void* arg) {
+    ThreadArgs* args = static_cast<ThreadArgs*>(arg);
+    *(args->torques) = args->tello->taskPD2(args->config);
+    return nullptr;
+}
+
 // void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 void TELLO_locomotion_ctrl(ctrlData cd)
 {
@@ -620,13 +633,13 @@ void TELLO_locomotion_ctrl(ctrlData cd)
     {
         
         // VectorXd tau = controller->update(estimated_pc, estimated_dpc, EA_curr, imu_gyro,q ,qd ,time);
-        MatrixXd lfv_comm = controller->get_lfv_comm_world();
-        MatrixXd lfdv_comm = controller->get_lfdv_comm_world();
+        // MatrixXd lfv_comm = controller->get_lfv_comm_world();
+        // MatrixXd lfdv_comm = controller->get_lfdv_comm_world();
         
         // t_end_stepping = controller->get_SRB_params().t_end_stepping;  
 
         // filter debugging:
-        VectorXd pos_out(11),vel_out(11), EA_out(6), pc_out(9);
+        // VectorXd pos_out(11),vel_out(11), EA_out(6), pc_out(9);
         //pos_out << pc_curr_plot, 0, filter_state.getPosition(), CoM_z, (pc_curr_plot-filter_state.getPosition());
         //dash_utils::writeVectorToCsv(pos_out,"pos_real_vs_filter.csv");
 
@@ -650,22 +663,42 @@ void TELLO_locomotion_ctrl(ctrlData cd)
         VectorXd pos_desired(12);
         pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
 
-        // Set up configuration struct for Task Space Controller
-        
-        swing_pd_config.task_ff_force = VectorXd::Zero(12);
-        swing_pd_config.setTaskPosDesired(target_front_left, target_back_left, target_front_right, target_back_right);
-        swing_pd_config.setTaskVelDesired(target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel);
-        swing_pd_config.setTaskKp(0,8000,0);
-        swing_pd_config.setTaskKd(0,80,0);
-        swing_pd_config.setJointKp(kp_vec_joint_swing);
-        swing_pd_config.setJointKd(kd_vec_joint_swing);
-        swing_pd_config.motor_kp = VectorXd::Zero(10);
-        swing_pd_config.motor_kd = VectorXd::Zero(10);
-        
-        VectorXd swing_leg_torques = tello->taskPD2(swing_pd_config);
+        VectorXd swing_leg_torques = VectorXd::Zero(10);
+        // if(abs(tello->controller->get_FSM()) == 1)
+        // {
+            // Set up configuration struct for Task Space Controller
+            swing_pd_config.use_single_jacoian = false;
+            swing_pd_config.side = BOTH_LEGS;
+            // if(tello->controller->get_FSM() == 1)
+            //     swing_pd_config.side = RIGHT_LEG;
+            // if(tello->controller->get_FSM() == -1)
+            //     swing_pd_config.side = LEFT_LEG;
 
-        // Re-using
+            swing_pd_config.ignore_joint_velocity = true;
+            swing_pd_config.task_ff_force = VectorXd::Zero(12);
+            swing_pd_config.setTaskPosDesired(target_front_left, target_back_left, target_front_right, target_back_right);
+            swing_pd_config.setTaskVelDesired(target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel);
+            swing_pd_config.setTaskKp(0,8000,0);
+            swing_pd_config.setTaskKd(0,80,0);
+            swing_pd_config.setJointKp(kp_vec_joint_swing);
+            swing_pd_config.setJointKd(kd_vec_joint_swing);
+            swing_pd_config.motor_kp = VectorXd::Zero(10);
+            swing_pd_config.motor_kd = VectorXd::Zero(10);
+            
+            swing_leg_torques = tello->taskPD2(swing_pd_config);
+        // }
+
         posture_pd_config = swing_pd_config;
+        posture_pd_config.ignore_joint_velocity = true;
+        posture_pd_config.side = BOTH_LEGS;
+        // if(tello->controller->get_FSM() == -1)
+        //     posture_pd_config.side = RIGHT_LEG;
+        // if(tello->controller->get_FSM() == 1)
+        //     posture_pd_config.side = LEFT_LEG;
+        // Re-using
+        posture_pd_config.task_ff_force = VectorXd::Zero(12);
+        posture_pd_config.setTaskPosDesired(target_front_left, target_back_left, target_front_right, target_back_right);
+        posture_pd_config.setTaskVelDesired(target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel);
         posture_pd_config.setTaskKp(8000,8000,0);
         posture_pd_config.setTaskKd(80,80,0);
         posture_pd_config.setJointKp(kp_vec_joint_posture);
@@ -966,6 +999,69 @@ void DrawPlot()
     // ImGui::End();
 }
 
+void* tello_controller( void * arg )
+{
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	void* dynamic_robot_ptr = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
+
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
+	// Print the core and priority of the thread
+	int core = sched_getcpu();
+	int policy;
+	sched_param param;
+    pthread_t current_thread = pthread_self();
+    int result = pthread_getschedparam(current_thread, &policy, &param);
+	int priority = param.sched_priority;
+	printf("Mujoco thread running on core %d, with priority %d\n", core, priority);
+
+    struct timespec next;
+    clock_gettime(CLOCK_MONOTONIC, &next);
+
+    while(1)
+    {
+        handle_start_of_periodic_task(next);
+
+        pthread_mutex_lock(&sim_step_mutex);
+        ctrlData cd_local;
+        cd_local = cd_shared;
+        pthread_mutex_unlock(&sim_step_mutex);
+
+        if(simulation_mode == 1)
+        {
+            if(!pause_sim){
+                //mjtNum simstart = d->time;
+                //while (d->time - simstart < 1.0 / 60.0){
+                    //mj_step(m, d);
+                    dash_utils::start_timer();
+                    TELLO_locomotion_ctrl(cd_local);
+                    dash_utils::print_timer();
+                //}  
+            } 
+        }
+        if(simulation_mode == 2)
+        {
+            if(!pause_sim){
+                //mjtNum simstart = d->time;
+                //while (d->time - simstart < 1.0 / 60.0){
+                    // d->time = d->time + elapsed;
+                                       
+                    dash_utils::start_timer();
+                    TELLO_locomotion_ctrl(cd_local);
+                    dash_utils::print_timer();
+                    set_mujoco_state(tello->controller->get_x());
+                    // mj_kinematics(m,d);
+                //}
+            } 
+            // cout << "CoM XYZ:" << tello->controller->get_x().head(3).transpose() << endl;
+            //cout << "q right:" << tello->controller->get_q().row(0) << endl;
+        }
+        
+        handle_end_of_periodic_task(next, period);
+    }
+
+}
+
 char notes[100]; // String variable to store the entered notes
 void* mujoco_Update_1KHz( void * arg )
 {
@@ -1224,7 +1320,10 @@ void* mujoco_Update_1KHz( void * arg )
                 //mjtNum simstart = d->time;
                 //while (d->time - simstart < 1.0 / 60.0){
                     //mj_step(m, d);
+                    
+                    dash_utils::print_timer();
                     TELLO_locomotion_ctrl(cd_local);
+                    dash_utils::start_timer();
                     
                 //}  
             } 
@@ -1235,7 +1334,9 @@ void* mujoco_Update_1KHz( void * arg )
                 //mjtNum simstart = d->time;
                 //while (d->time - simstart < 1.0 / 60.0){
                     // d->time = d->time + elapsed;
+                    dash_utils::print_timer();
                     TELLO_locomotion_ctrl(cd_local);
+                    dash_utils::start_timer();
                     
                     // dash_utils::start_timer();
 
@@ -1965,7 +2066,6 @@ void* Human_Playback( void * arg )
             {
                 //dash_utils::print_human_dyn_data(hdd_vec[hdd_cnt]);
                 if(PS4_connected) hdd_vec[hdd_cnt].xH = xH_Commanded;
-                cout << "xH: " << xH_Commanded << endl;
                 Human_dyn_data human_dyn_data = hdd_vec[hdd_cnt];
                 hdd_cnt += 1;
                 //smooth data here

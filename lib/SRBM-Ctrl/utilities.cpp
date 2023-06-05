@@ -402,14 +402,16 @@ Vector2d dash_utils::sinu_ref_traj(double t, Vector3d sinu_traj_params) {
 Swing-leg trajectory that maps the swing-leg to CoM vector from its
 initial to its desired in the x-y plane
 */
-Vector2d dash_utils::sw_leg_ref_xy(double s, double init, double final) {
+Vector3d dash_utils::sw_leg_ref_xy(double s, double init, double final) {
+
     // position and velocity reference trajectories
     double p_ref = (0.5) * ((1.0 + cos(M_PI * s)) * init + (1.0 - cos(M_PI * s)) * final);
     double v_ref = (0.5) * M_PI * sin(M_PI * s) * (final - init);
+    double a_ref = (0.5) * M_PI * M_PI * cos(M_PI * s) * (final - init); 
 
     // create vector
-    Vector2d ref;
-    ref << p_ref, v_ref;
+    Vector3d ref;
+    ref << p_ref, v_ref, a_ref;
     return ref;
 }
 
@@ -417,17 +419,35 @@ Vector2d dash_utils::sw_leg_ref_xy(double s, double init, double final) {
 Swing-leg trajectory that maps the swing-leg to CoM vector from its
 initial to its desired in the z (vertical) direction
 */
-Vector2d dash_utils::sw_leg_ref_z(double s, double zcl, double H) {
-    // position and velocity reference trajectories
+Vector3d dash_utils::sw_leg_ref_z(double s, double zcl, double H) {
+
+    // position, velocity, and acceleration reference trajectories
     double p_ref = 4.0 * zcl * pow(s - (0.5), 2) + H - zcl;
     double v_ref = 4.0 * zcl * (2.0 * s - 1.0);
+    double a_ref = 8.0 * zcl;
 
     // create vector
-    Vector2d ref;
-    ref << p_ref, v_ref;
+    Vector3d ref;
+    ref << p_ref, v_ref, a_ref;
     return ref;
 }
 
+/* 
+Swing-leg trajectory that maps the swing-leg to CoM vector from its
+initial to its desired in the z (vertical) direction
+*/
+Vector3d dash_utils::sw_leg_ref_z_v2(double s, double init, double AH) {
+
+    // position, velocity, and acceleration reference trajectories
+    double p_ref = init - (0.5) * (AH * cos(2* M_PI * s) - 1); 
+    double v_ref = AH * M_PI * sin(2 * M_PI * s); 
+    double a_ref = 2.0 * AH * M_PI * M_PI * cos(2 * M_PI * s); 
+
+    // create vector
+    Vector3d ref;
+    ref << p_ref, v_ref, a_ref;
+    return ref;
+}
 
 VectorXd dash_utils::flatten(MatrixXd matrix) 
 {

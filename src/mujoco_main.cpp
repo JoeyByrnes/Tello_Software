@@ -54,6 +54,7 @@ bool showPlotMenu = false;
 
 //logging
 bool log_data_ready = false;
+bool sim_step_completed = false;
 std::string log_folder;
 VectorXd x_out, u_out, q_out, qd_out, tau_out, tau_ext_out, lfv_out, lfdv_out,lfv_comm_out,lfdv_comm_out, t_n_FSM_out;
 Human_dyn_data hdd_out;
@@ -678,8 +679,8 @@ void TELLO_locomotion_ctrl(ctrlData cd)
             swing_pd_config.task_ff_force = VectorXd::Zero(12);
             swing_pd_config.setTaskPosDesired(target_front_left, target_back_left, target_front_right, target_back_right);
             swing_pd_config.setTaskVelDesired(target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel);
-            swing_pd_config.setTaskKp(0,10000,0);
-            swing_pd_config.setTaskKd(0,80,0);
+            swing_pd_config.setTaskKp(0,1000,0);
+            swing_pd_config.setTaskKd(0,10,0);
             swing_pd_config.setJointKp(kp_vec_joint_swing);
             swing_pd_config.setJointKd(kd_vec_joint_swing);
             swing_pd_config.motor_kp = VectorXd::Zero(10);
@@ -699,8 +700,8 @@ void TELLO_locomotion_ctrl(ctrlData cd)
         posture_pd_config.task_ff_force = VectorXd::Zero(12);
         posture_pd_config.setTaskPosDesired(target_front_left, target_back_left, target_front_right, target_back_right);
         posture_pd_config.setTaskVelDesired(target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel);
-        posture_pd_config.setTaskKp(10000,10000,0);
-        posture_pd_config.setTaskKd(80,80,0);
+        posture_pd_config.setTaskKp(0000,1000,0);
+        posture_pd_config.setTaskKd(00,10,0);
         posture_pd_config.setJointKp(kp_vec_joint_posture);
         posture_pd_config.setJointKd(kd_vec_joint_posture);
 
@@ -1944,7 +1945,7 @@ void* PS4_Controller( void * arg )
             // vx_desired_ps4 = (127-(double)ds4->packet->rightStick_Y)*(0.6/127.0);
             // vy_desired_ps4 = (127-(double)ds4->packet->rightStick_X)*(0.3/127.0);
             //if(ds4->packet->cross) pause_sim = true;
-            xH_Commanded = (127-(double)ds4->packet->rightStick_Y)*(0.1/127.0);
+            xH_Commanded = (127.0-(double)ds4->packet->rightStick_Y)*(0.1/127.0);
         }
         print_cnt++;
 
@@ -1971,6 +1972,7 @@ void* sim_step_task( void * arg )
         handle_start_of_periodic_task(next);
         // dash_utils::start_timer();
         double elapsed = dash_utils::measure_sim_timer();
+        dash_utils::start_sim_timer();
         double sim_dt = ((double)period+2.0)/1000000.0;
         // if(realtime_enabled)
         // {
@@ -1998,6 +2000,7 @@ void* sim_step_task( void * arg )
                 applyJointTorquesMujoco(tau_local);
                 pthread_mutex_lock(&sim_mutex);
                 mj_step(m, d);
+                sim_step_completed = true;
                 pthread_mutex_unlock(&sim_mutex);
                 
                 
@@ -2119,7 +2122,7 @@ void* Human_Playback( void * arg )
             double wR = std::sqrt(g / hR);
             double wH = std::sqrt(g / hH);
             int periodScaled = (int)(((double)period)*(wH/wR));
-            handle_end_of_periodic_task(next,periodScaled);
+            handle_end_of_periodic_task(next,period);
         }
         hdd_cnt = 0;
         tello->controller->disable_human_ctrl();
@@ -2147,8 +2150,9 @@ void* logging( void * arg )
     while(true)
     {
         handle_start_of_periodic_task(next);
-        while(!log_data_ready) usleep(100);
+        while(!log_data_ready || !sim_step_completed) usleep(100);
         log_data_ready = false;
+        sim_step_completed = false;
         // logging:
         dash_utils::writeVectorToCsv(x_out,"x.csv");
         dash_utils::writeVectorToCsv(u_out,"u.csv");
@@ -2715,4 +2719,7 @@ void* plotting( void * arg )
     return  0;
 }
 
-void nothing(){}
+void nothing()
+{
+    
+}

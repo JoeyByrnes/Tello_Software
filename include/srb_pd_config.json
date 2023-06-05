@@ -7,7 +7,7 @@
       "Kp_zR": 50000, 
       "Kd_zR": 5,
       "Kp_phiR": 8000,
-      "Kd_phiR": 5,
+      "Kd_phiR": 50,
       "Kp_thetaR": 100,
       "Kd_thetaR": 5,
       "Kp_psiR": 500,
@@ -40,7 +40,7 @@
       "Hip_Yaw_Kp": 3000,
       "Hip_Yaw_Kd": 20,
       
-      "Hip_Roll_Kp": 500,
+      "Hip_Roll_Kp": 5000,
       "Hip_Roll_Kd": 10,
       
       "Hip_Pitch_Kp": 1100,

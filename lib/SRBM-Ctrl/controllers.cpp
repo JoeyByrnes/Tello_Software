@@ -571,7 +571,7 @@ void dash_ctrl::bilateral_teleop_law(VectorXd LIPR_params, VectorXd LIPH_params,
     FH_hmi = (mH*hH*wH*wH)*((dR/(hR*wR)) - (dH/(hH*wH))) + ((mH*hH*wH*wH)/(mR*hR*wR*wR))*FR_ext_est;
 }
 
-void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm,
+void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm, MatrixXd& lfddv_comm,
                                         SRB_Params srb_params, Traj_planner_dyn_data traj_planner_dyn_data, 
                                         int FSM, double t, VectorXd x, MatrixXd lfv, MatrixXd lfdv)
 {
@@ -732,11 +732,11 @@ void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, 
     
     // desired step placement
     const Vector2d sw2CoM_end_step_des = {sw2CoM_end_step_x, sw2CoM_end_step_y};
-    sw2CoM_end_step_strategy(lfv_comm, lfdv_comm, srb_params, traj_planner_dyn_data, FSM, s, x, lfv, lfdv, sw2CoM_end_step_des);
+    sw2CoM_end_step_strategy(lfv_comm, lfdv_comm, lfddv_comm, srb_params, traj_planner_dyn_data, FSM, s, x, lfv, lfdv, sw2CoM_end_step_des);
 
 }
 
-void dash_ctrl::sw2CoM_end_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm, const SRB_Params srb_params, const Traj_planner_dyn_data& traj_planner_dyn_data, const int FSM, 
+void dash_ctrl::sw2CoM_end_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm, MatrixXd& lfddv_comm, const SRB_Params srb_params, const Traj_planner_dyn_data& traj_planner_dyn_data, const int FSM, 
                                 const double s, const VectorXd& x, MatrixXd& lfv, MatrixXd& lfdv, const Vector2d& sw2CoM_end_step_des)
 {
 
@@ -755,6 +755,7 @@ void dash_ctrl::sw2CoM_end_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm
     // Initialize commanded end-effector positions (DSP)
     lfv_comm = lfv_dsp_start; // lfv;
     lfdv_comm.setZero(); // lfdv;
+    lfddv_comm.setZero();
 
     // Swing-leg trajectories
     if (abs(FSM) == 1) // SSP
@@ -768,25 +769,31 @@ void dash_ctrl::sw2CoM_end_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm
             // x-position trajectories
             lfv_comm(0, 0) = pc(0) - (sw2CoM_traj_x(0) - (1.0/2.0)*ft_l); lfv_comm(1, 0) = pc(0) - (sw2CoM_traj_x(0) + (1.0/2.0)*ft_l);
             lfdv_comm(0, 0) = sw2CoM_traj_x(1); lfdv_comm(1, 0) = lfdv_comm(0, 0);
+            lfddv_comm(0, 0) = sw2CoM_traj_x(2); lfddv_comm(1, 0) = lfddv_comm(0, 0);
             // y-position trajectories
             lfv_comm(0, 1) = pc(1) - sw2CoM_traj_y(0); lfv_comm(1, 1) = lfv_comm(0, 1);
             lfdv_comm(0, 1) = sw2CoM_traj_y(1); lfdv_comm(1, 1) = lfdv_comm(0, 1);
+            lfddv_comm(0, 1) = sw2CoM_traj_y(2); lfddv_comm(1, 1) = lfddv_comm(0, 1);
             // z-position trajectories
             lfv_comm(0, 2) = pc(2) - sw2CoM_traj_z(0); lfv_comm(1, 2) = lfv_comm(0, 2);
             lfdv_comm(0, 2) = sw2CoM_traj_z(1); lfdv_comm(1, 2) = lfdv_comm(0, 2);
+            lfddv_comm(0, 2) = sw2CoM_traj_z(2); lfddv_comm(1, 2) = lfddv_comm(0, 2);
 
         }
         else if (FSM == -1) // SSP_R
         {
             // x-position trajectories
             lfv_comm(2, 0) = pc(0) - (sw2CoM_traj_x(0) - (1.0/2.0)*ft_l); lfv_comm(3, 0) = pc(0) - (sw2CoM_traj_x(0) + (1.0/2.0)*ft_l);
-            lfdv_comm(2, 0) = sw2CoM_traj_x(1); lfdv_comm(3, 0) = lfdv_comm(2, 0);        
+            lfdv_comm(2, 0) = sw2CoM_traj_x(1); lfdv_comm(3, 0) = lfdv_comm(2, 0);   
+            lfddv_comm(2, 0) = sw2CoM_traj_x(2); lfddv_comm(3, 0) = lfddv_comm(2, 0);        
             // y-position trajectories
             lfv_comm(2, 1) = pc(1) - sw2CoM_traj_y(0); lfv_comm(3, 1) = lfv_comm(2, 1);
             lfdv_comm(2, 1) = sw2CoM_traj_y(1); lfdv_comm(3, 1) = lfdv_comm(2, 1);
+            lfddv_comm(2, 1) = sw2CoM_traj_y(2); lfddv_comm(3, 1) = lfddv_comm(2, 1);
             // z-position trajectories
             lfv_comm(2, 2) = pc(2) - sw2CoM_traj_z(0); lfv_comm(3, 2) = lfv_comm(2, 2);
             lfdv_comm(2, 2) = sw2CoM_traj_z(1); lfdv_comm(3, 2) = lfdv_comm(2, 2);
+            lfddv_comm(2, 2) = sw2CoM_traj_z(2); lfddv_comm(3, 2) = lfddv_comm(2, 2);
 
         }
     }

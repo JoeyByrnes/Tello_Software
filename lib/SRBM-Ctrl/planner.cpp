@@ -323,7 +323,7 @@ void dash_planner::SRB_Traj_Planner(
         // LIP-template based planner (s)
         if (planner_type == 1) { // Regulate angular momentum about contact point
             // LIP angular momentum regulation planner (stepping and walking)
-            dash_ctrl::LIP_ang_mom_strat(FxR, FyR, lfv_comm, lfdv_comm, srb_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv);
+            dash_ctrl::LIP_ang_mom_strat(FxR, FyR, lfv_comm, lfdv_comm, lfddv_comm, srb_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv);
         } else if (planner_type == 2) { // Human Whole-Body Dynamic Telelocomotion
             // Human pilot is the planner
             if( en_v2_ctrl )

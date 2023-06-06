@@ -22,11 +22,11 @@ namespace dash_ctrl
     void bilateral_teleop_law(VectorXd LIPR_params, VectorXd LIPH_params, VectorXd LIPR_dyn, VectorXd LIPH_dyn, 
                             double FH, double FR_ext_est, double FB_gain, double& FR, double& FH_hmi);
 
-    void LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm,
+    void LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfddv_comm, MatrixXd& lfdv_comm,
                             SRB_Params srb_params, Traj_planner_dyn_data traj_planner_dyn_data, 
                             int FSM, double t, VectorXd x, MatrixXd lfv, MatrixXd lfdv);
 
-    void sw2CoM_end_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm,const SRB_Params srb_params, const Traj_planner_dyn_data& traj_planner_dyn_data, const int FSM, 
+    void sw2CoM_end_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm, MatrixXd& lfddv_comm, const SRB_Params srb_params, const Traj_planner_dyn_data& traj_planner_dyn_data, const int FSM, 
                                 const double s, const VectorXd& x, MatrixXd& lfv, MatrixXd& lfdv, const Vector2d& sw2CoM_end_step_des);
 
     void sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm, MatrixXd& lfddv_comm, const SRB_Params srb_params, const Human_params human_params, 

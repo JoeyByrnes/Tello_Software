@@ -1,9 +1,9 @@
 {
     "en_HMI_recording": true,
     "en_auto_record": false,
-    "en_autonomous_mode_on_boot": false,
+    "en_autonomous_mode_on_boot": true,
     "en_data_logging": true,
-    "en_playback_mode": true,
+    "en_playback_mode": false,
     "en_realtime_plot": false,
     "en_safety_monitor": true,
     "en_screen_recording": true,

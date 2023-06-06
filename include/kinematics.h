@@ -27,3 +27,5 @@ Eigen::VectorXd fk_joints_to_task(const Eigen::VectorXd& q);
 
 Eigen::VectorXd ik_joints_to_motors(const Eigen::VectorXd& q);
 
+Eigen::MatrixXd fcn_lf1_Jv_dot(const Eigen::VectorXd& eig_q, const Eigen::VectorXd& eig_qd);
+

@@ -422,7 +422,7 @@ initial to its desired in the z (vertical) direction
 Vector3d dash_utils::sw_leg_ref_z(double s, double zcl, double H) {
 
     // position, velocity, and acceleration reference trajectories
-    double p_ref = 4.0 * zcl * pow(s - (0.5), 2) + H - zcl;
+    double p_ref = 4.0 * zcl * std::pow(s - (0.5), 2) + H - zcl;
     double v_ref = 4.0 * zcl * (2.0 * s - 1.0);
     double a_ref = 8.0 * zcl;
 
@@ -439,9 +439,9 @@ initial to its desired in the z (vertical) direction
 Vector3d dash_utils::sw_leg_ref_z_v2(double s, double init, double AH) {
 
     // position, velocity, and acceleration reference trajectories
-    double p_ref = init - (0.5) * (AH * cos(2* M_PI * s) - 1); 
+    double p_ref = init - (0.5) * (AH * (cos(2.0* M_PI * s) - 1.0)); 
     double v_ref = AH * M_PI * sin(2 * M_PI * s); 
-    double a_ref = 2.0 * AH * M_PI * M_PI * cos(2 * M_PI * s); 
+    double a_ref = 2.0 * AH * M_PI * M_PI * cos(2.0 * M_PI * s); 
 
     // create vector
     Vector3d ref;

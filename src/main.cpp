@@ -1015,6 +1015,7 @@ int main(int argc, char *argv[]) {
 	tello->assign_jacobian_joints_to_task_lf_back(fcn_Jaco_dq_2_dT_back);
 	tello->assign_fk_motors_to_joints(fk_motors_to_joints);
 	tello->assign_fk_joints_to_task(fk_joints_to_task);
+	tello->assign_jacobian_accel_task_to_joint(fcn_lf1_Jv_dot);
 
 	//SRB_Params srb_params = tello->controller->get_SRB_params();
 	//dash_utils::parse_json_to_srb_params("./tello_files/srb_pd_config_HW.json",srb_params);

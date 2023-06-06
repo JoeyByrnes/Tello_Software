@@ -89,11 +89,11 @@ VectorXd SRBMController::update(VectorXd srb_state, MatrixXd joint_pos, MatrixXd
 	// SRB trajectory planner
 	dash_planner::SRB_Traj_Planner(srb_params, human_dyn_data, traj_planner_dyn_data,
 								   human_params, FSM, FSM_prev, t, x, lfv, lfdv, u, 
-								   tau_ext, SRB_state_ref, SRB_wrench_ref, lfv_comm, lfdv_comm);
+								   tau_ext, SRB_state_ref, SRB_wrench_ref, lfv_comm, lfdv_comm, lfddv_comm);
     // SRB controller
     
 	dash_ctrl::SRB_Balance_Controller(u, tau, srb_params, FSM, x, lfv, qd, Jv_mat, u, SRB_wrench_ref);
-
+    
     // cout << "Tau: " << tau.transpose() << endl;
     // cout << "GRFs: " << u.transpose() << endl;
     
@@ -160,7 +160,7 @@ VectorXd SRBMController::update_euler_integration(VectorXd srb_state, MatrixXd q
 	// SRB trajectory planner
 	dash_planner::SRB_Traj_Planner(srb_params, human_dyn_data, traj_planner_dyn_data,
 								   human_params, FSM, FSM_prev, t, x, lfv, lfdv, u, 
-								   tau_ext, SRB_state_ref, SRB_wrench_ref, lfv_comm, lfdv_comm);
+								   tau_ext, SRB_state_ref, SRB_wrench_ref, lfv_comm, lfdv_comm, lfddv_comm);
     // SRB controller
     
 	dash_ctrl::SRB_Balance_Controller(u, tau, srb_params, FSM, x, lfv, qd, Jv_mat, u, SRB_wrench_ref);
@@ -283,6 +283,21 @@ void SRBMController::set_lfdv_hip(const MatrixXd& lfdv_hip)
     lfdv.row(2) = dash_utils::hipToWorld(lfdv_hip.row(2), hip_left_pos_world, hip_orientation_world);
     lfdv.row(3) = dash_utils::hipToWorld(lfdv_hip.row(3), hip_left_pos_world, hip_orientation_world);
 
+}
+
+MatrixXd SRBMController::get_lfddv_comm_hip()
+{
+    Vector3d hip_right_pos_world = right_leg_last.col(0);
+    Vector3d hip_left_pos_world = left_leg_last.col(0);
+    Vector3d hip_orientation_world(x(18),x(19),x(20));
+    MatrixXd lfddv_comm_hip(4,3);
+
+    lfddv_comm_hip.row(0) = dash_utils::worldToHip(lfddv_comm.row(0).transpose(), hip_right_pos_world, hip_orientation_world);
+    lfddv_comm_hip.row(1) = dash_utils::worldToHip(lfddv_comm.row(1).transpose(), hip_right_pos_world, hip_orientation_world);
+    lfddv_comm_hip.row(2) = dash_utils::worldToHip(lfddv_comm.row(2).transpose(), hip_left_pos_world, hip_orientation_world);
+    lfddv_comm_hip.row(3) = dash_utils::worldToHip(lfddv_comm.row(3).transpose(), hip_left_pos_world, hip_orientation_world);
+
+    return lfddv_comm_hip;
 }
 
 MatrixXd SRBMController::get_foot_orientation_wrt_body(VectorXd q_leg)

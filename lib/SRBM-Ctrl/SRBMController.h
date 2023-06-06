@@ -92,6 +92,10 @@ class SRBMController {
     MatrixXd get_lfdv_comm_world() const { return lfdv_comm; }
     MatrixXd get_lfdv_comm_hip();
 
+    // Getter functions for lfddv_comm
+    MatrixXd get_lfddv_comm_world() const { return lfddv_comm; }
+    MatrixXd get_lfddv_comm_hip();
+
     // Getter function for GRFs
     VectorXd get_GRFs() const { return u; }
 
@@ -216,6 +220,7 @@ class SRBMController {
     MatrixXd lfdv = MatrixXd(4,3); 
     MatrixXd lfv_comm = MatrixXd(4,3); 
     MatrixXd lfdv_comm = MatrixXd(4,3); 
+    MatrixXd lfddv_comm = MatrixXd(4,3); 
     VectorXd u = VectorXd(12);
 
     // Initial States

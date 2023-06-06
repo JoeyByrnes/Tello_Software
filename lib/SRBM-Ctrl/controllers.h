@@ -11,7 +11,7 @@ using namespace qpOASES;
 namespace dash_ctrl
 {
     
-    void Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm, Human_dyn_data& human_dyn_data, 
+    void Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm, MatrixXd& lfddv_comm, Human_dyn_data& human_dyn_data, 
                                             SRB_Params srb_params, Human_params human_params, Traj_planner_dyn_data& traj_planner_dyn_data, 
                                             int FSM, double t, VectorXd x, MatrixXd lfv, MatrixXd lfdv, VectorXd tau_ext);
 
@@ -29,7 +29,7 @@ namespace dash_ctrl
     void sw2CoM_end_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm,const SRB_Params srb_params, const Traj_planner_dyn_data& traj_planner_dyn_data, const int FSM, 
                                 const double s, const VectorXd& x, MatrixXd& lfv, MatrixXd& lfdv, const Vector2d& sw2CoM_end_step_des);
 
-    void sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm, const SRB_Params srb_params, const Human_params human_params, 
+    void sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm, MatrixXd& lfddv_comm, const SRB_Params srb_params, const Human_params human_params, 
                                 const Traj_planner_dyn_data& traj_planner_dyn_data, const Human_dyn_data& human_dyn_data, 
                                 const int FSM, const double s, const double swxf, MatrixXd& lfv, MatrixXd& lfdv);                                 
     

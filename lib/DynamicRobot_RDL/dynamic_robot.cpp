@@ -380,6 +380,39 @@ Eigen::VectorXd DynamicRobot::task_force_to_joint_torque(Eigen::VectorXd task_fo
     return joint_torques;
 }
 
+// xddot = Jdot(q, qdot)*qdot + J(q)*qddot
+// qddot = J_inv(q)*( xddot - Jdot(q, qdot)*qdot )
+VectorXd DynamicRobot::task_accel_to_joint_accel(Eigen::VectorXd task_accel)
+{
+    Eigen::VectorXd joint_positions = this->getJointPositions();
+    Eigen::VectorXd joint_velocities = this->getJointVelocities();
+
+    Eigen::VectorXd joint_positions_left =  joint_positions.segment(0,5);
+    Eigen::VectorXd joint_positions_right = joint_positions.segment(5,5);
+
+    Eigen::VectorXd joint_velocities_left =  joint_velocities.segment(0,5);
+    Eigen::VectorXd joint_velocities_right = joint_velocities.segment(5,5);
+
+    Eigen::VectorXd task_accel_front_left(3), task_accel_front_right(3), task_accel_back_left(3), task_accel_back_right(3);
+
+    task_accel_front_left << task_accel.segment(0,3);
+    task_accel_back_left << task_accel.segment(3,3);
+    task_accel_front_right << task_accel.segment(6,3);
+    task_accel_back_right << task_accel.segment(9,3);
+
+    Eigen::MatrixXd J_front_left = this->jacobian_task_lf_front(this->getJointPositions().segment(0,5)).topRows(3);
+    Eigen::MatrixXd J_front_left_inverse = J_front_left.completeOrthogonalDecomposition().pseudoInverse();
+
+    Eigen::VectorXd joint_accel_fl = J_front_left_inverse*(task_accel_front_left - this->jacobian_task_accel_lf_front(joint_positions_left,joint_velocities_left)*joint_velocities_left);
+    Eigen::VectorXd joint_accel_bl = joint_accel_fl;
+    Eigen::VectorXd joint_accel_fr = J_front_left_inverse*(task_accel_front_right - this->jacobian_task_accel_lf_front(joint_positions_right,joint_velocities_right)*joint_velocities_right);
+    Eigen::VectorXd joint_accel_br = joint_accel_fr;
+
+    VectorXd joint_accel(10);
+    joint_accel << (joint_accel_fl + joint_accel_bl) , (joint_accel_fr + joint_accel_br);
+    return joint_accel;
+}
+
 void DynamicRobot::addPeriodicTask(void *(*start_routine)(void *), int sched_policy, int priority, int cpu_affinity, void *arg, std::string task_name,int task_type, int period){
     pthread_t thread;
     pthread_attr_t tattr;
@@ -785,6 +818,8 @@ VectorXd DynamicRobot::taskPD2(TaskPDConfig task_conf)
     VectorXd task_forces = calc_pd(task_positions,task_velocities,task_conf.task_pos_desired,
                                    task_conf.task_vel_desired,task_conf.task_kp,task_conf.task_kd);
 
+    VectorXd task_forces_from_accel = task_conf.task_ka*task_conf.task_ff_accel;
+    VectorXd joint_forces_from_accel = this->task_accel_to_joint_accel(task_forces_from_accel);
     // Get joint torques from task forces
 
     VectorXd joint_torques = this->task_force_to_joint_torque(task_forces+ task_conf.task_ff_force);
@@ -803,7 +838,7 @@ VectorXd DynamicRobot::taskPD2(TaskPDConfig task_conf)
     }
 
     JointPDConfig joint_conf;
-    joint_conf.joint_ff_torque = joint_torques;
+    joint_conf.joint_ff_torque = joint_torques + joint_forces_from_accel;
     joint_conf.joint_pos_desired = joint_pos_desired;
     joint_conf.joint_vel_desired = joint_vel_desired;
     joint_conf.joint_kp = task_conf.joint_kp;

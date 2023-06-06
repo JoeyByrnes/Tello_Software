@@ -16,7 +16,7 @@ namespace  dash_planner
 
     void SRB_Traj_Planner(SRB_Params srb_params, Human_dyn_data &human_dyn_data, Traj_planner_dyn_data &traj_planner_dyn_data, Human_params human_params,
                             int &FSM, int FSM_prev, double t, VectorXd x, MatrixXd lfv, MatrixXd lfdv, VectorXd u, VectorXd tau_ext, MatrixXd &SRB_state_ref,
-                            VectorXd &SRB_wrench_ref, MatrixXd &lfv_comm, MatrixXd &lfdv_comm);
+                            VectorXd &SRB_wrench_ref, MatrixXd &lfv_comm, MatrixXd &lfdv_comm, MatrixXd &lfddv_comm);
 
     void traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_params& human_params, Traj_planner_dyn_data& traj_planner_dyn_data, Human_dyn_data human_dyn_data,double t,int FSM_prev,int FSM, VectorXd x, MatrixXd lfv);
 

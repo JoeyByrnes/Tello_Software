@@ -658,6 +658,11 @@ void TELLO_locomotion_ctrl(ctrlData cd)
         Vector3d target_front_right_vel = controller->get_lfdv_comm_hip().row(0);
         Vector3d target_back_right_vel = controller->get_lfdv_comm_hip().row(1);
 
+        Vector3d target_front_left_accel = controller->get_lfddv_comm_hip().row(2);
+        Vector3d target_back_left_accel = controller->get_lfddv_comm_hip().row(3);
+        Vector3d target_front_right_accel = controller->get_lfddv_comm_hip().row(0);
+        Vector3d target_back_right_accel = controller->get_lfddv_comm_hip().row(1);
+
         VectorXd vel_desired(12);
         vel_desired  << target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel;
 
@@ -679,13 +684,14 @@ void TELLO_locomotion_ctrl(ctrlData cd)
             swing_pd_config.task_ff_force = VectorXd::Zero(12);
             swing_pd_config.setTaskPosDesired(target_front_left, target_back_left, target_front_right, target_back_right);
             swing_pd_config.setTaskVelDesired(target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel);
-            swing_pd_config.setTaskKp(0,1000,0);
-            swing_pd_config.setTaskKd(0,10,0);
+            swing_pd_config.setTaskKp(0,0,0);
+            swing_pd_config.setTaskKd(0,0,0);
+            swing_pd_config.setTaskKa(0,0,0);
+            swing_pd_config.setFFAccel(target_front_left_accel,target_back_left_accel,target_front_right_accel,target_back_right_accel);
             swing_pd_config.setJointKp(kp_vec_joint_swing);
             swing_pd_config.setJointKd(kd_vec_joint_swing);
             swing_pd_config.motor_kp = VectorXd::Zero(10);
             swing_pd_config.motor_kd = VectorXd::Zero(10);
-            
             swing_leg_torques = tello->taskPD2(swing_pd_config);
         // }
 
@@ -700,8 +706,9 @@ void TELLO_locomotion_ctrl(ctrlData cd)
         posture_pd_config.task_ff_force = VectorXd::Zero(12);
         posture_pd_config.setTaskPosDesired(target_front_left, target_back_left, target_front_right, target_back_right);
         posture_pd_config.setTaskVelDesired(target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel);
-        posture_pd_config.setTaskKp(0000,1000,0);
-        posture_pd_config.setTaskKd(00,10,0);
+        posture_pd_config.setTaskKp(0,0,0);
+        posture_pd_config.setTaskKd(0,0,0);
+        posture_pd_config.setTaskKa(0,0,0);
         posture_pd_config.setJointKp(kp_vec_joint_posture);
         posture_pd_config.setJointKd(kd_vec_joint_posture);
 

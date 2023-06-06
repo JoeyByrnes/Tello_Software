@@ -55,6 +55,8 @@ using namespace inekf;
 typedef VectorXd (*VectorXd_function)(const VectorXd&);
 typedef MatrixXd (*MatrixXd_function)(const VectorXd&);
 
+typedef MatrixXd (*MatrixXd_function_accel)(const VectorXd&, const VectorXd&);
+
 #define BOTH_LEGS 0
 #define RIGHT_LEG 1
 #define LEFT_LEG  2
@@ -89,11 +91,13 @@ namespace RoboDesignLab {
         VectorXd task_vel_desired = VectorXd(12);
         MatrixXd task_kp;
         MatrixXd task_kd;
+        MatrixXd task_ka;
         MatrixXd joint_kp;
         MatrixXd joint_kd;
         VectorXd motor_kp = VectorXd(10);
         VectorXd motor_kd = VectorXd(10);
         VectorXd task_ff_force = VectorXd::Zero(12);
+        VectorXd task_ff_accel = VectorXd::Zero(12);
         VectorXd joint_ff_torque = VectorXd::Zero(10);
         int side; // both=0, right=1, left=2
         bool use_single_jacoian;
@@ -110,6 +114,13 @@ namespace RoboDesignLab {
         }
         void setTaskKd(Vector3d kd) {
             task_kd = ((kd).replicate(4, 1)).asDiagonal();
+        }
+
+        void setTaskKa(double x, double y, double z) {
+            task_ka = ((Vector3d(x,y,z)).replicate(4, 1)).asDiagonal();
+        }
+        void setTaskKa(Vector3d ka) {
+            task_ka = ((ka).replicate(4, 1)).asDiagonal();
         }
 
         void setJointKp(VectorXd kp) {
@@ -134,6 +145,9 @@ namespace RoboDesignLab {
         }
         void setFF(Vector3d lf, Vector3d lb, Vector3d rf, Vector3d rb) {
             task_ff_force << lf, lb, rf, rb;
+        }
+        void setFFAccel(Vector3d lf, Vector3d lb, Vector3d rf, Vector3d rb) {
+            task_ff_accel << lf, lb, rf, rb;
         }
     };
 
@@ -164,6 +178,8 @@ namespace RoboDesignLab {
         void assign_jacobian_joints_to_task_lf_front(MatrixXd_function fcn)  { _jaco_joint2taskFront = fcn;  }
         void assign_jacobian_joints_to_task_lf_back(MatrixXd_function fcn)  { _jaco_joint2taskBack = fcn;  }
 
+        void assign_jacobian_accel_task_to_joint(MatrixXd_function_accel fcn)  { _jaco_accel_task_to_joint = fcn;  }
+
         void assign_ik_joints_to_motors(VectorXd_function fcn){ _ik_joint2motor = fcn; }
         void assign_fk_motors_to_joints(VectorXd_function fcn){ _fk_motor2joint = fcn; }
         void assign_ik_task_to_joints(VectorXd_function fcn)  { _ik_task2joint = fcn;  }
@@ -175,6 +191,8 @@ namespace RoboDesignLab {
         // This part is specific to a line foot robot:
         MatrixXd jacobian_task_lf_front(VectorXd joint_config){ return (*_jaco_joint2taskFront)(joint_config); }
         MatrixXd jacobian_task_lf_back(VectorXd joint_config) { return (*_jaco_joint2taskBack)(joint_config);  }
+
+        MatrixXd jacobian_task_accel_lf_front(VectorXd joint_config, VectorXd joint_velocites) { return (*_jaco_accel_task_to_joint)(joint_config,joint_velocites);  }
 
         VectorXd motor_vel_to_joint_vel(VectorXd motor_velocites);
         VectorXd joint_vel_to_motor_vel(VectorXd joint_velocites);
@@ -190,6 +208,8 @@ namespace RoboDesignLab {
         VectorXd joint_torque_to_task_force(VectorXd joint_torques);
         VectorXd task_force_to_joint_torque(VectorXd task_forces_front, VectorXd task_forces_back);
         VectorXd task_force_to_joint_torque(VectorXd task_forces);
+
+        VectorXd task_accel_to_joint_accel(Eigen::VectorXd task_accel);
 
         VectorXd motor_pos_to_joint_pos(VectorXd motor_positions){ return (*_fk_motor2joint)(motor_positions); }
         VectorXd joint_pos_to_motor_pos(VectorXd joint_positions){ return (*_ik_joint2motor)(joint_positions); }
@@ -289,6 +309,8 @@ namespace RoboDesignLab {
         MatrixXd_function _jaco_joint2motor;
         MatrixXd_function _jaco_joint2taskFront;
         MatrixXd_function _jaco_joint2taskBack;
+
+        MatrixXd_function_accel _jaco_accel_task_to_joint;
 
         VectorXd_function _ik_joint2motor;
         VectorXd_function _fk_motor2joint;

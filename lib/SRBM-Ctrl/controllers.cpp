@@ -13,7 +13,7 @@ extern double yaw_desired_ps4;
 double fzH0_min_L = 1000;
 double fzH0_min_R = 1000;
 
-void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm, Human_dyn_data& human_dyn_data, 
+void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm, MatrixXd& lfddv_comm, Human_dyn_data& human_dyn_data, 
                                         SRB_Params srb_params, Human_params human_params, Traj_planner_dyn_data& traj_planner_dyn_data, 
                                         int FSM, double t, VectorXd x, MatrixXd lfv, MatrixXd lfdv, VectorXd tau_ext)
 {
@@ -191,6 +191,10 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
     human_dyn_data.FyH_hmi = FyH_hmi;
     // -------------------------------------------------------------------------
 
+     // initialize commanded end-effector positions (DSP)
+    lfv_comm = lfv_dsp_start;
+    lfdv_comm.setZero();
+
     // swing-leg trajectories
     if (abs(FSM) == 1) { // SSP
 
@@ -219,8 +223,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
             swxf = swx0 + l_cl;
 
         // update commanded task space trajectories
-        sw_teleop_step_strategy(lfv_comm, lfdv_comm, srb_params, human_params, traj_planner_dyn_data, human_dyn_data, FSM, s, swxf, lfv, lfdv); 
-
+        sw_teleop_step_strategy(lfv_comm, lfdv_comm, lfddv_comm, srb_params, human_params, traj_planner_dyn_data, human_dyn_data, FSM, s, swxf, lfv, lfdv); 
     }
 
 }
@@ -790,9 +793,9 @@ void dash_ctrl::sw2CoM_end_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm
 
 }
 
-void dash_ctrl::sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm, const SRB_Params srb_params, const Human_params human_params, 
+void dash_ctrl::sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm, MatrixXd& lfddv_comm, const SRB_Params srb_params, const Human_params human_params, 
                             const Traj_planner_dyn_data& traj_planner_dyn_data, const Human_dyn_data& human_dyn_data, 
-                            const int FSM, const double s, const double swxf, MatrixXd& lfv, MatrixXd& lfdv); 
+                            const int FSM, const double s, const double swxf, MatrixXd& lfv, MatrixXd& lfdv) 
 {
 
     // Swing-leg trajectory generation for teleoperation framework
@@ -822,6 +825,8 @@ void dash_ctrl::sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm,
     const double st_beg_step_y = traj_planner_dyn_data.st_beg_step(1);  
     const double fzH0 = traj_planner_dyn_data.human_leg_joystick_pos_beg_step(2);
 
+    // cout << "x: " << sw_beg_step_x << "   y: " << sw_beg_step_y << "   z: " << sw_beg_step_z << endl;
+
     // Human info (leg-joystick data)
     const double fyH_R = human_dyn_data.fyH_R;
     const double fzH_R = human_dyn_data.fzH_R;
@@ -830,7 +835,11 @@ void dash_ctrl::sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm,
 
     // Initialize commanded end-effector positions (DSP)
     lfv_comm = lfv_dsp_start; // lfv;
-    lfdv_comm.setZero(); // lfdv    
+    lfdv_comm.setZero(); // lfdv   
+    lfddv_comm.setZero();  
+
+    VectorXd sw_traj_x(3); VectorXd sw_traj_y(3); VectorXd sw_traj_z(3);
+    double swyf, AH;
 
     // Swing-leg trajectories
     if (abs(FSM) == 1) // SSP
@@ -841,8 +850,7 @@ void dash_ctrl::sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm,
         double robot_target_foot_width = human_foot_width * (hR / hH);
 
         // initialize swing-leg trajectories
-        VectorXd sw_traj_x(3); VectorXd sw_traj_y(3); VectorXd sw_traj_z(3);
-        double swyf, AH;
+        // VectorXd sw_traj_x(3); VectorXd sw_traj_y(3); VectorXd sw_traj_z(3);
         
         // compute swing-leg trajectories
         if (FSM == 1) // SSP_L
@@ -851,18 +859,21 @@ void dash_ctrl::sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm,
             sw_traj_x = dash_utils::sw_leg_ref_xy(s, sw_beg_step_x, swxf);
             lfv_comm(0, 0) = sw_traj_x(0) + (1.0/2.0) * ft_l; lfv_comm(1, 0) = sw_traj_x(0) - (1.0/2.0) * ft_l;
             lfdv_comm(0, 0) = sw_traj_x(1); lfdv_comm(1, 0) = lfdv_comm(0, 0);
+            lfddv_comm(0, 0) = sw_traj_x(2); lfddv_comm(1, 0) = lfddv_comm(0, 0);
 
             // y-position trajectories
             swyf = st_beg_step_y - robot_target_foot_width;
             sw_traj_y = dash_utils::sw_leg_ref_xy(s, sw_beg_step_y, swyf);
             lfv_comm(0, 1) = sw_traj_y(0); lfv_comm(1, 1) = lfv_comm(0, 1);
             lfdv_comm(0, 1) = sw_traj_y(1); lfdv_comm(1, 1) = lfdv_comm(0, 1);
+            lfddv_comm(0, 1) = sw_traj_y(2); lfddv_comm(1, 1) = lfddv_comm(0, 1);
 
             // z-position trajectories
             AH = (hR / hH) * (std::max(0.0, (fzH_R - fzH0)));
             sw_traj_z = dash_utils::sw_leg_ref_z_v2(s, sw_beg_step_z, AH);
             lfv_comm(0, 2) = sw_traj_z(0); lfv_comm(1, 2) = lfv_comm(0, 2);
             lfdv_comm(0, 2) = sw_traj_z(1); lfdv_comm(1, 2) = lfdv_comm(0, 2);
+            lfddv_comm(0, 2) = sw_traj_z(2); lfddv_comm(1, 2) = lfddv_comm(0, 2);
 
         }
         else if (FSM == -1) // SSP_R
@@ -870,22 +881,27 @@ void dash_ctrl::sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm,
             // x-position trajectories
             sw_traj_x = dash_utils::sw_leg_ref_xy(s, sw_beg_step_x, swxf);
             lfv_comm(2, 0) = sw_traj_x(0) + (1.0/2.0) * ft_l; lfv_comm(3, 0) = sw_traj_x(0) - (1.0/2.0) * ft_l;
-            lfdv_comm(2, 0) = sw_traj_x(1); lfdv_comm(3, 0) = lfdv_comm(2, 0);    
+            lfdv_comm(2, 0) = sw_traj_x(1); lfdv_comm(3, 0) = lfdv_comm(2, 0);
+            lfddv_comm(2, 0) = sw_traj_x(2); lfddv_comm(3, 0) = lfddv_comm(2, 0);       
                
             // y-position trajectories
             swyf = st_beg_step_y + robot_target_foot_width;
             sw_traj_y = dash_utils::sw_leg_ref_xy(s, sw_beg_step_y, swyf);
             lfv_comm(2, 1) = sw_traj_y(0); lfv_comm(3, 1) = lfv_comm(2, 1);
             lfdv_comm(2, 1) = sw_traj_y(1); lfdv_comm(3, 1) = lfdv_comm(2, 1);
+            lfddv_comm(2, 1) = sw_traj_y(2); lfddv_comm(3, 1) = lfddv_comm(2, 1);
 
             // z-position trajectories
             AH = (hR / hH) * (std::max(0.0, (fzH_L - fzH0)));
             sw_traj_z = dash_utils::sw_leg_ref_z_v2(s, sw_beg_step_z, AH);
             lfv_comm(2, 2) = sw_traj_z(0); lfv_comm(3, 2) = lfv_comm(2, 2);
             lfdv_comm(2, 2) = sw_traj_z(1); lfdv_comm(3, 2) = lfdv_comm(2, 2);
+            lfddv_comm(2, 2) = sw_traj_z(2); lfddv_comm(3, 2) = lfddv_comm(2, 2);
 
         }
+        
     }
+    // cout << "s: " << s << "   AH: " << AH << "   (fzH_R - fzH0): " << (fzH_R - fzH0) << "   fzH_R: " << fzH_R << "   fzH0: " << fzH0 << "   (fzH_L - fzH0): " << (fzH_L - fzH0) << "   fzH_L: " << fzH_L << endl;
 
 }                             
 

@@ -36,7 +36,7 @@ namespace  dash_utils
     Vector2d sinu_ref_traj(double t, Vector3d sinu_traj_params);
     Vector3d sw_leg_ref_xy(double s, double init, double final);
     Vector3d sw_leg_ref_z(double s, double zcl, double H);
-    Vector3d sw_leg_ref_z_v2(double s, double zcl, double H);
+    Vector3d sw_leg_ref_z_v2(double s, double init, double AH);
 
     VectorXd flatten(MatrixXd matrix); 
     void writeVectorToCsv(const VectorXd& vec, const std::string& filename);

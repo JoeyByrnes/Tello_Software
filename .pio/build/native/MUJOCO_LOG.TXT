@@ -220,3 +220,39 @@ WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstabl
 Fri Jun  2 16:44:29 2023
 WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 14.4080.
 
+Mon Jun  5 17:10:27 2023
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 0.0020.
+
+Mon Jun  5 17:15:06 2023
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 0.0020.
+
+Mon Jun  5 17:16:09 2023
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 1.5460.
+
+Mon Jun  5 17:24:11 2023
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 0.0020.
+
+Mon Jun  5 17:25:23 2023
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 0.0020.
+
+Mon Jun  5 17:31:56 2023
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 0.0020.
+
+Mon Jun  5 17:36:00 2023
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 5.6650.
+
+Mon Jun  5 17:37:21 2023
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 3.3010.
+
+Tue Jun  6 13:01:45 2023
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 0.1640.
+
+Tue Jun  6 13:03:22 2023
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 0.3650.
+
+Tue Jun  6 13:04:41 2023
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 1.5930.
+
+Tue Jun  6 13:09:31 2023
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 0.5170.
+

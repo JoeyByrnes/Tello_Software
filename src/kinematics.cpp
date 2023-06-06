@@ -565,7 +565,1273 @@ Eigen::MatrixXd fcn_Jaco_dp_2_dq(const Eigen::VectorXd& eig_q)
 
 
 // MATLAB CODER INVERSE TASK JACOBIAN: ================================================================================================
+MatrixXd fcn_lf1_Jv_dot(const VectorXd& eig_q, const VectorXd& eig_qd)
+{
 
+  double q[5];
+  for(int i = 0; i<5; i++){
+    q[i] = eig_q(i);
+  }
+  double qd[5];
+  for(int i = 0; i<5; i++){
+    qd[i] = eig_qd(i);
+  }
+  double p[4];
+  p[0] = 0.2286;
+  p[1] = 0.260;
+  p[2] = 0.0485;
+  p[3] = 0.060;
+
+  double lf1_Jv_dot[15];
+
+  double ab_lf1_Jv_dot_tmp_tmp;
+  double b_lf1_Jv_dot_tmp;
+  double b_lf1_Jv_dot_tmp_tmp;
+  double b_lf1_Jv_dot_tmp_tmp_tmp;
+  double bb_lf1_Jv_dot_tmp_tmp;
+  double c_lf1_Jv_dot_tmp;
+  double c_lf1_Jv_dot_tmp_tmp;
+  double c_lf1_Jv_dot_tmp_tmp_tmp;
+  double cb_lf1_Jv_dot_tmp_tmp;
+  double d_lf1_Jv_dot_tmp;
+  double d_lf1_Jv_dot_tmp_tmp;
+  double d_lf1_Jv_dot_tmp_tmp_tmp;
+  double db_lf1_Jv_dot_tmp_tmp;
+  double e_lf1_Jv_dot_tmp;
+  double e_lf1_Jv_dot_tmp_tmp;
+  double e_lf1_Jv_dot_tmp_tmp_tmp;
+  double eb_lf1_Jv_dot_tmp_tmp;
+  double f_lf1_Jv_dot_tmp;
+  double f_lf1_Jv_dot_tmp_tmp;
+  double fb_lf1_Jv_dot_tmp_tmp;
+  double g_lf1_Jv_dot_tmp;
+  double g_lf1_Jv_dot_tmp_tmp;
+  double gb_lf1_Jv_dot_tmp_tmp;
+  double h_lf1_Jv_dot_tmp;
+  double h_lf1_Jv_dot_tmp_tmp;
+  double hb_lf1_Jv_dot_tmp_tmp;
+  double i_lf1_Jv_dot_tmp;
+  double i_lf1_Jv_dot_tmp_tmp;
+  double ib_lf1_Jv_dot_tmp_tmp;
+  double j_lf1_Jv_dot_tmp;
+  double j_lf1_Jv_dot_tmp_tmp;
+  double jb_lf1_Jv_dot_tmp_tmp;
+  double k_lf1_Jv_dot_tmp_tmp;
+  double kb_lf1_Jv_dot_tmp_tmp;
+  double l_lf1_Jv_dot_tmp_tmp;
+  double lf1_Jv_dot_tmp;
+  double lf1_Jv_dot_tmp_tmp;
+  double lf1_Jv_dot_tmp_tmp_tmp;
+  double lf1_Jv_dot_tmp_tmp_tmp_tmp;
+  double m_lf1_Jv_dot_tmp_tmp;
+  double n_lf1_Jv_dot_tmp_tmp;
+  double o_lf1_Jv_dot_tmp_tmp;
+  double p_lf1_Jv_dot_tmp_tmp;
+  double q_lf1_Jv_dot_tmp_tmp;
+  double r_lf1_Jv_dot_tmp_tmp;
+  double s_lf1_Jv_dot_tmp_tmp;
+  double t_lf1_Jv_dot_tmp_tmp;
+  double u_lf1_Jv_dot_tmp_tmp;
+  double v_lf1_Jv_dot_tmp_tmp;
+  double w_lf1_Jv_dot_tmp_tmp;
+  double x_lf1_Jv_dot_tmp_tmp;
+  double y_lf1_Jv_dot_tmp_tmp;
+  lf1_Jv_dot_tmp_tmp = std::cos(q[0]);
+  b_lf1_Jv_dot_tmp_tmp = std::cos(q[2]);
+  c_lf1_Jv_dot_tmp_tmp = std::sin(q[0]);
+  d_lf1_Jv_dot_tmp_tmp = std::sin(q[1]);
+  e_lf1_Jv_dot_tmp_tmp = std::sin(q[2]);
+  f_lf1_Jv_dot_tmp_tmp = std::cos(q[3]);
+  g_lf1_Jv_dot_tmp_tmp = std::sin(q[3]);
+  h_lf1_Jv_dot_tmp_tmp = std::cos(q[4]);
+  i_lf1_Jv_dot_tmp_tmp = std::sin(q[4]);
+  j_lf1_Jv_dot_tmp_tmp = std::cos(q[1]);
+  lf1_Jv_dot_tmp_tmp_tmp = lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp;
+  k_lf1_Jv_dot_tmp_tmp = c_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp -
+                         lf1_Jv_dot_tmp_tmp_tmp * d_lf1_Jv_dot_tmp_tmp;
+  b_lf1_Jv_dot_tmp_tmp_tmp = b_lf1_Jv_dot_tmp_tmp * c_lf1_Jv_dot_tmp_tmp;
+  l_lf1_Jv_dot_tmp_tmp = b_lf1_Jv_dot_tmp_tmp_tmp + lf1_Jv_dot_tmp_tmp *
+                                                        d_lf1_Jv_dot_tmp_tmp *
+                                                        e_lf1_Jv_dot_tmp_tmp;
+  m_lf1_Jv_dot_tmp_tmp = qd[0] * lf1_Jv_dot_tmp_tmp;
+  c_lf1_Jv_dot_tmp_tmp_tmp = qd[1] * lf1_Jv_dot_tmp_tmp;
+  n_lf1_Jv_dot_tmp_tmp = c_lf1_Jv_dot_tmp_tmp_tmp * j_lf1_Jv_dot_tmp_tmp;
+  o_lf1_Jv_dot_tmp_tmp = qd[2] * lf1_Jv_dot_tmp_tmp;
+  d_lf1_Jv_dot_tmp_tmp_tmp =
+      qd[0] * b_lf1_Jv_dot_tmp_tmp * c_lf1_Jv_dot_tmp_tmp;
+  lf1_Jv_dot_tmp_tmp_tmp_tmp = qd[2] * b_lf1_Jv_dot_tmp_tmp;
+  e_lf1_Jv_dot_tmp_tmp_tmp = lf1_Jv_dot_tmp_tmp_tmp_tmp * c_lf1_Jv_dot_tmp_tmp;
+  p_lf1_Jv_dot_tmp_tmp =
+      (((m_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp +
+         e_lf1_Jv_dot_tmp_tmp_tmp) -
+        n_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp) +
+       d_lf1_Jv_dot_tmp_tmp_tmp * d_lf1_Jv_dot_tmp_tmp) +
+      o_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp;
+  q_lf1_Jv_dot_tmp_tmp = qd[0] * c_lf1_Jv_dot_tmp_tmp;
+  r_lf1_Jv_dot_tmp_tmp = o_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp;
+  s_lf1_Jv_dot_tmp_tmp = m_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp;
+  t_lf1_Jv_dot_tmp_tmp = qd[2] * c_lf1_Jv_dot_tmp_tmp;
+  lf1_Jv_dot_tmp =
+      (((s_lf1_Jv_dot_tmp_tmp - t_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp) +
+        n_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp) +
+       r_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp) -
+      q_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp;
+  n_lf1_Jv_dot_tmp_tmp = p[1] * qd[3];
+  u_lf1_Jv_dot_tmp_tmp = qd[4] * h_lf1_Jv_dot_tmp_tmp;
+  v_lf1_Jv_dot_tmp_tmp = qd[4] * i_lf1_Jv_dot_tmp_tmp;
+  w_lf1_Jv_dot_tmp_tmp = qd[3] * f_lf1_Jv_dot_tmp_tmp;
+  x_lf1_Jv_dot_tmp_tmp = qd[3] * g_lf1_Jv_dot_tmp_tmp;
+  lf1_Jv_dot[0] =
+      (((((p[2] *
+               (((h_lf1_Jv_dot_tmp_tmp *
+                      (((g_lf1_Jv_dot_tmp_tmp * p_lf1_Jv_dot_tmp_tmp -
+                         f_lf1_Jv_dot_tmp_tmp *
+                             ((((m_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp -
+                                 qd[2] * c_lf1_Jv_dot_tmp_tmp *
+                                     e_lf1_Jv_dot_tmp_tmp) +
+                                qd[1] * std::cos(q[0]) * std::cos(q[1]) *
+                                    e_lf1_Jv_dot_tmp_tmp) +
+                               o_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp *
+                                   d_lf1_Jv_dot_tmp_tmp) -
+                              qd[0] * c_lf1_Jv_dot_tmp_tmp *
+                                  d_lf1_Jv_dot_tmp_tmp *
+                                  e_lf1_Jv_dot_tmp_tmp)) +
+                        w_lf1_Jv_dot_tmp_tmp * k_lf1_Jv_dot_tmp_tmp) +
+                       x_lf1_Jv_dot_tmp_tmp * l_lf1_Jv_dot_tmp_tmp) +
+                  i_lf1_Jv_dot_tmp_tmp *
+                      (((f_lf1_Jv_dot_tmp_tmp * p_lf1_Jv_dot_tmp_tmp +
+                         g_lf1_Jv_dot_tmp_tmp * lf1_Jv_dot_tmp) +
+                        w_lf1_Jv_dot_tmp_tmp * l_lf1_Jv_dot_tmp_tmp) -
+                       x_lf1_Jv_dot_tmp_tmp * k_lf1_Jv_dot_tmp_tmp)) +
+                 u_lf1_Jv_dot_tmp_tmp *
+                     (f_lf1_Jv_dot_tmp_tmp * k_lf1_Jv_dot_tmp_tmp +
+                      g_lf1_Jv_dot_tmp_tmp * l_lf1_Jv_dot_tmp_tmp)) +
+                v_lf1_Jv_dot_tmp_tmp *
+                    (f_lf1_Jv_dot_tmp_tmp * l_lf1_Jv_dot_tmp_tmp -
+                     g_lf1_Jv_dot_tmp_tmp * k_lf1_Jv_dot_tmp_tmp)) /
+               2.0 +
+           p[3] *
+               (((h_lf1_Jv_dot_tmp_tmp *
+                      (((std::cos(q[3]) *
+                             ((((qd[0] * std::cos(q[0]) * std::sin(q[2]) +
+                                 qd[2] * std::cos(q[2]) * std::sin(q[0])) -
+                                qd[1] * std::cos(q[0]) * std::cos(q[1]) *
+                                    std::cos(q[2])) +
+                               qd[0] * std::cos(q[2]) * std::sin(q[0]) *
+                                   std::sin(q[1])) +
+                              qd[2] * std::cos(q[0]) * std::sin(q[1]) *
+                                  std::sin(q[2])) +
+                         std::sin(q[3]) *
+                             ((((qd[0] * std::cos(q[0]) * std::cos(q[2]) -
+                                 qd[2] * std::sin(q[0]) * std::sin(q[2])) +
+                                qd[1] * std::cos(q[0]) * std::cos(q[1]) *
+                                    std::sin(q[2])) +
+                               qd[2] * std::cos(q[0]) * std::cos(q[2]) *
+                                   std::sin(q[1])) -
+                              qd[0] * std::sin(q[0]) * std::sin(q[1]) *
+                                  std::sin(q[2]))) +
+                        qd[3] * std::cos(q[3]) *
+                            (std::cos(q[2]) * std::sin(q[0]) +
+                             std::cos(q[0]) * std::sin(q[1]) *
+                                 std::sin(q[2]))) -
+                       qd[3] * std::sin(q[3]) *
+                           (std::sin(q[0]) * std::sin(q[2]) -
+                            std::cos(q[0]) * std::cos(q[2]) * std::sin(q[1]))) -
+                  i_lf1_Jv_dot_tmp_tmp *
+                      (((std::sin(q[3]) *
+                             ((((qd[0] * std::cos(q[0]) * std::sin(q[2]) +
+                                 qd[2] * std::cos(q[2]) * std::sin(q[0])) -
+                                qd[1] * std::cos(q[0]) * std::cos(q[1]) *
+                                    std::cos(q[2])) +
+                               qd[0] * std::cos(q[2]) * std::sin(q[0]) *
+                                   std::sin(q[1])) +
+                              qd[2] * std::cos(q[0]) * std::sin(q[1]) *
+                                  std::sin(q[2])) -
+                         std::cos(q[3]) *
+                             ((((qd[0] * std::cos(q[0]) * std::cos(q[2]) -
+                                 qd[2] * std::sin(q[0]) * std::sin(q[2])) +
+                                qd[1] * std::cos(q[0]) * std::cos(q[1]) *
+                                    std::sin(q[2])) +
+                               qd[2] * std::cos(q[0]) * std::cos(q[2]) *
+                                   std::sin(q[1])) -
+                              qd[0] * std::sin(q[0]) * std::sin(q[1]) *
+                                  std::sin(q[2]))) +
+                        qd[3] * std::cos(q[3]) *
+                            (std::sin(q[0]) * std::sin(q[2]) -
+                             std::cos(q[0]) * std::cos(q[2]) *
+                                 std::sin(q[1]))) +
+                       qd[3] * std::sin(q[3]) *
+                           (std::cos(q[2]) * std::sin(q[0]) +
+                            std::cos(q[0]) * std::sin(q[1]) *
+                                std::sin(q[2])))) +
+                 u_lf1_Jv_dot_tmp_tmp *
+                     (std::cos(q[3]) *
+                          (std::cos(q[2]) * std::sin(q[0]) +
+                           std::cos(q[0]) * std::sin(q[1]) * std::sin(q[2])) -
+                      std::sin(q[3]) *
+                          (std::sin(q[0]) * std::sin(q[2]) -
+                           std::cos(q[0]) * std::cos(q[2]) * std::sin(q[1])))) -
+                v_lf1_Jv_dot_tmp_tmp *
+                    (std::cos(q[3]) *
+                         (std::sin(q[0]) * std::sin(q[2]) -
+                          std::cos(q[0]) * std::cos(q[2]) * std::sin(q[1])) +
+                     std::sin(q[3]) *
+                         (std::cos(q[2]) * std::sin(q[0]) +
+                          std::cos(q[0]) * std::sin(q[1]) * std::sin(q[2]))))) +
+          p[0] * p_lf1_Jv_dot_tmp_tmp) +
+         p[1] * f_lf1_Jv_dot_tmp_tmp * p_lf1_Jv_dot_tmp_tmp) +
+        p[1] * g_lf1_Jv_dot_tmp_tmp * lf1_Jv_dot_tmp) +
+       n_lf1_Jv_dot_tmp_tmp * f_lf1_Jv_dot_tmp_tmp * l_lf1_Jv_dot_tmp_tmp) -
+      n_lf1_Jv_dot_tmp_tmp * g_lf1_Jv_dot_tmp_tmp * k_lf1_Jv_dot_tmp_tmp;
+  b_lf1_Jv_dot_tmp = m_lf1_Jv_dot_tmp_tmp * j_lf1_Jv_dot_tmp_tmp;
+  y_lf1_Jv_dot_tmp_tmp = qd[2] * j_lf1_Jv_dot_tmp_tmp;
+  ab_lf1_Jv_dot_tmp_tmp = qd[3] * j_lf1_Jv_dot_tmp_tmp;
+  c_lf1_Jv_dot_tmp = p[1] * qd[1];
+  d_lf1_Jv_dot_tmp = qd[0] * p[1];
+  e_lf1_Jv_dot_tmp = p[0] * qd[0];
+  f_lf1_Jv_dot_tmp = p[0] * qd[1];
+  g_lf1_Jv_dot_tmp = p[0] * qd[2];
+  bb_lf1_Jv_dot_tmp_tmp = p[1] * qd[2];
+  cb_lf1_Jv_dot_tmp_tmp = y_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp;
+  db_lf1_Jv_dot_tmp_tmp = ab_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp;
+  eb_lf1_Jv_dot_tmp_tmp = qd[1] * b_lf1_Jv_dot_tmp_tmp;
+  fb_lf1_Jv_dot_tmp_tmp = j_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp;
+  gb_lf1_Jv_dot_tmp_tmp = bb_lf1_Jv_dot_tmp_tmp * j_lf1_Jv_dot_tmp_tmp;
+  hb_lf1_Jv_dot_tmp_tmp = n_lf1_Jv_dot_tmp_tmp * j_lf1_Jv_dot_tmp_tmp;
+  lf1_Jv_dot[3] =
+      (((((((((((p[3] *
+                     (((h_lf1_Jv_dot_tmp_tmp *
+                            (((((((m_lf1_Jv_dot_tmp_tmp * j_lf1_Jv_dot_tmp_tmp *
+                                       e_lf1_Jv_dot_tmp_tmp *
+                                       g_lf1_Jv_dot_tmp_tmp -
+                                   b_lf1_Jv_dot_tmp * b_lf1_Jv_dot_tmp_tmp *
+                                       f_lf1_Jv_dot_tmp_tmp) +
+                                  eb_lf1_Jv_dot_tmp_tmp * f_lf1_Jv_dot_tmp_tmp *
+                                      c_lf1_Jv_dot_tmp_tmp *
+                                      d_lf1_Jv_dot_tmp_tmp) +
+                                 cb_lf1_Jv_dot_tmp_tmp * c_lf1_Jv_dot_tmp_tmp *
+                                     g_lf1_Jv_dot_tmp_tmp) +
+                                y_lf1_Jv_dot_tmp_tmp * f_lf1_Jv_dot_tmp_tmp *
+                                    c_lf1_Jv_dot_tmp_tmp *
+                                    e_lf1_Jv_dot_tmp_tmp) +
+                               db_lf1_Jv_dot_tmp_tmp * c_lf1_Jv_dot_tmp_tmp *
+                                   g_lf1_Jv_dot_tmp_tmp) +
+                              ab_lf1_Jv_dot_tmp_tmp * f_lf1_Jv_dot_tmp_tmp *
+                                  c_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp) -
+                             qd[1] * c_lf1_Jv_dot_tmp_tmp *
+                                 d_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp *
+                                 g_lf1_Jv_dot_tmp_tmp) +
+                        i_lf1_Jv_dot_tmp_tmp *
+                            (((((((qd[0] * std::cos(q[0]) * std::cos(q[1]) *
+                                       std::cos(q[2]) * g_lf1_Jv_dot_tmp_tmp +
+                                   b_lf1_Jv_dot_tmp * f_lf1_Jv_dot_tmp_tmp *
+                                       e_lf1_Jv_dot_tmp_tmp) +
+                                  cb_lf1_Jv_dot_tmp_tmp * f_lf1_Jv_dot_tmp_tmp *
+                                      c_lf1_Jv_dot_tmp_tmp) +
+                                 db_lf1_Jv_dot_tmp_tmp * f_lf1_Jv_dot_tmp_tmp *
+                                     c_lf1_Jv_dot_tmp_tmp) -
+                                eb_lf1_Jv_dot_tmp_tmp * c_lf1_Jv_dot_tmp_tmp *
+                                    d_lf1_Jv_dot_tmp_tmp *
+                                    g_lf1_Jv_dot_tmp_tmp) -
+                               qd[1] * f_lf1_Jv_dot_tmp_tmp *
+                                   c_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp *
+                                   e_lf1_Jv_dot_tmp_tmp) -
+                              y_lf1_Jv_dot_tmp_tmp * c_lf1_Jv_dot_tmp_tmp *
+                                  e_lf1_Jv_dot_tmp_tmp * g_lf1_Jv_dot_tmp_tmp) -
+                             ab_lf1_Jv_dot_tmp_tmp * c_lf1_Jv_dot_tmp_tmp *
+                                 e_lf1_Jv_dot_tmp_tmp * g_lf1_Jv_dot_tmp_tmp)) +
+                       u_lf1_Jv_dot_tmp_tmp *
+                           (fb_lf1_Jv_dot_tmp_tmp * c_lf1_Jv_dot_tmp_tmp *
+                                g_lf1_Jv_dot_tmp_tmp +
+                            j_lf1_Jv_dot_tmp_tmp * f_lf1_Jv_dot_tmp_tmp *
+                                c_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp)) +
+                      v_lf1_Jv_dot_tmp_tmp *
+                          (fb_lf1_Jv_dot_tmp_tmp * f_lf1_Jv_dot_tmp_tmp *
+                               c_lf1_Jv_dot_tmp_tmp -
+                           j_lf1_Jv_dot_tmp_tmp * c_lf1_Jv_dot_tmp_tmp *
+                               e_lf1_Jv_dot_tmp_tmp * g_lf1_Jv_dot_tmp_tmp)) -
+                 p[2] *
+                     (((h_lf1_Jv_dot_tmp_tmp *
+                            (((((((qd[0] * std::cos(q[0]) * std::cos(q[1]) *
+                                       std::cos(q[2]) * std::sin(q[3]) +
+                                   qd[0] * std::cos(q[0]) * std::cos(q[1]) *
+                                       std::cos(q[3]) * std::sin(q[2])) +
+                                  qd[2] * std::cos(q[1]) * std::cos(q[2]) *
+                                      std::cos(q[3]) * std::sin(q[0])) +
+                                 qd[3] * std::cos(q[1]) * std::cos(q[2]) *
+                                     std::cos(q[3]) * std::sin(q[0])) -
+                                qd[1] * std::cos(q[2]) * std::sin(q[0]) *
+                                    std::sin(q[1]) * std::sin(q[3])) -
+                               qd[1] * std::cos(q[3]) * std::sin(q[0]) *
+                                   std::sin(q[1]) * std::sin(q[2])) -
+                              qd[2] * std::cos(q[1]) * std::sin(q[0]) *
+                                  std::sin(q[2]) * std::sin(q[3])) -
+                             qd[3] * std::cos(q[1]) * std::sin(q[0]) *
+                                 std::sin(q[2]) * std::sin(q[3])) -
+                        i_lf1_Jv_dot_tmp_tmp *
+                            (((((((qd[0] * std::cos(q[0]) * std::cos(q[1]) *
+                                       std::sin(q[2]) * std::sin(q[3]) -
+                                   qd[0] * std::cos(q[0]) * std::cos(q[1]) *
+                                       std::cos(q[2]) * std::cos(q[3])) +
+                                  qd[1] * std::cos(q[2]) * std::cos(q[3]) *
+                                      std::sin(q[0]) * std::sin(q[1])) +
+                                 qd[2] * std::cos(q[1]) * std::cos(q[2]) *
+                                     std::sin(q[0]) * std::sin(q[3])) +
+                                qd[2] * std::cos(q[1]) * std::cos(q[3]) *
+                                    std::sin(q[0]) * std::sin(q[2])) +
+                               qd[3] * std::cos(q[1]) * std::cos(q[2]) *
+                                   std::sin(q[0]) * std::sin(q[3])) +
+                              qd[3] * std::cos(q[1]) * std::cos(q[3]) *
+                                  std::sin(q[0]) * std::sin(q[2])) -
+                             qd[1] * std::sin(q[0]) * std::sin(q[1]) *
+                                 std::sin(q[2]) * std::sin(q[3]))) +
+                       u_lf1_Jv_dot_tmp_tmp *
+                           (std::cos(q[1]) * std::cos(q[2]) * std::cos(q[3]) *
+                                std::sin(q[0]) -
+                            std::cos(q[1]) * std::sin(q[0]) * std::sin(q[2]) *
+                                std::sin(q[3]))) -
+                      v_lf1_Jv_dot_tmp_tmp *
+                          (std::cos(q[1]) * std::cos(q[2]) * std::sin(q[0]) *
+                               std::sin(q[3]) +
+                           std::cos(q[1]) * std::cos(q[3]) * std::sin(q[0]) *
+                               std::sin(q[2]))) /
+                     2.0) -
+                e_lf1_Jv_dot_tmp * lf1_Jv_dot_tmp_tmp * j_lf1_Jv_dot_tmp_tmp *
+                    b_lf1_Jv_dot_tmp_tmp) +
+               f_lf1_Jv_dot_tmp * b_lf1_Jv_dot_tmp_tmp * c_lf1_Jv_dot_tmp_tmp *
+                   d_lf1_Jv_dot_tmp_tmp) +
+              g_lf1_Jv_dot_tmp * j_lf1_Jv_dot_tmp_tmp * c_lf1_Jv_dot_tmp_tmp *
+                  e_lf1_Jv_dot_tmp_tmp) -
+             d_lf1_Jv_dot_tmp * lf1_Jv_dot_tmp_tmp * j_lf1_Jv_dot_tmp_tmp *
+                 b_lf1_Jv_dot_tmp_tmp * f_lf1_Jv_dot_tmp_tmp) +
+            qd[0] * p[1] * std::cos(q[0]) * std::cos(q[1]) *
+                e_lf1_Jv_dot_tmp_tmp * g_lf1_Jv_dot_tmp_tmp) +
+           c_lf1_Jv_dot_tmp * b_lf1_Jv_dot_tmp_tmp * f_lf1_Jv_dot_tmp_tmp *
+               c_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp) +
+          gb_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp * c_lf1_Jv_dot_tmp_tmp *
+              g_lf1_Jv_dot_tmp_tmp) +
+         gb_lf1_Jv_dot_tmp_tmp * f_lf1_Jv_dot_tmp_tmp * c_lf1_Jv_dot_tmp_tmp *
+             e_lf1_Jv_dot_tmp_tmp) +
+        hb_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp * c_lf1_Jv_dot_tmp_tmp *
+            g_lf1_Jv_dot_tmp_tmp) +
+       hb_lf1_Jv_dot_tmp_tmp * f_lf1_Jv_dot_tmp_tmp * c_lf1_Jv_dot_tmp_tmp *
+           e_lf1_Jv_dot_tmp_tmp) -
+      c_lf1_Jv_dot_tmp * c_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp *
+          e_lf1_Jv_dot_tmp_tmp * g_lf1_Jv_dot_tmp_tmp;
+  ib_lf1_Jv_dot_tmp_tmp = lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp +
+                          b_lf1_Jv_dot_tmp_tmp_tmp * d_lf1_Jv_dot_tmp_tmp;
+  jb_lf1_Jv_dot_tmp_tmp = lf1_Jv_dot_tmp_tmp_tmp - c_lf1_Jv_dot_tmp_tmp *
+                                                       d_lf1_Jv_dot_tmp_tmp *
+                                                       e_lf1_Jv_dot_tmp_tmp;
+  kb_lf1_Jv_dot_tmp_tmp = qd[1] * j_lf1_Jv_dot_tmp_tmp;
+  b_lf1_Jv_dot_tmp =
+      (((d_lf1_Jv_dot_tmp_tmp_tmp +
+         o_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp) +
+        m_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp) +
+       kb_lf1_Jv_dot_tmp_tmp * c_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp) +
+      e_lf1_Jv_dot_tmp_tmp_tmp * d_lf1_Jv_dot_tmp_tmp;
+  lf1_Jv_dot_tmp_tmp_tmp = kb_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp;
+  d_lf1_Jv_dot_tmp_tmp_tmp =
+      (((r_lf1_Jv_dot_tmp_tmp - q_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp) +
+        s_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp) +
+       lf1_Jv_dot_tmp_tmp_tmp * c_lf1_Jv_dot_tmp_tmp) -
+      t_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp;
+  q_lf1_Jv_dot_tmp_tmp = p[1] * std::cos(q[3]);
+  e_lf1_Jv_dot_tmp_tmp_tmp = q_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp;
+  r_lf1_Jv_dot_tmp_tmp = p[1] * std::sin(q[3]);
+  h_lf1_Jv_dot_tmp = r_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp_tmp;
+  s_lf1_Jv_dot_tmp_tmp = p[1] * qd[3] * std::cos(q[3]);
+  i_lf1_Jv_dot_tmp = s_lf1_Jv_dot_tmp_tmp * ib_lf1_Jv_dot_tmp_tmp;
+  t_lf1_Jv_dot_tmp_tmp = p[1] * qd[3] * std::sin(q[3]);
+  j_lf1_Jv_dot_tmp = t_lf1_Jv_dot_tmp_tmp * jb_lf1_Jv_dot_tmp_tmp;
+  lf1_Jv_dot[6] =
+      (((((p[3] *
+               (((h_lf1_Jv_dot_tmp_tmp *
+                      (((f_lf1_Jv_dot_tmp_tmp *
+                             ((((qd[0] * std::cos(q[2]) * std::sin(q[0]) +
+                                 o_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp) +
+                                m_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp *
+                                    e_lf1_Jv_dot_tmp_tmp) +
+                               qd[1] * j_lf1_Jv_dot_tmp_tmp *
+                                   c_lf1_Jv_dot_tmp_tmp *
+                                   e_lf1_Jv_dot_tmp_tmp) +
+                              qd[2] * std::cos(q[2]) * std::sin(q[0]) *
+                                  d_lf1_Jv_dot_tmp_tmp) +
+                         g_lf1_Jv_dot_tmp_tmp *
+                             ((((qd[2] * std::cos(q[0]) * std::cos(q[2]) -
+                                 qd[0] * std::sin(q[0]) *
+                                     e_lf1_Jv_dot_tmp_tmp) +
+                                qd[0] * std::cos(q[0]) * std::cos(q[2]) *
+                                    d_lf1_Jv_dot_tmp_tmp) +
+                               kb_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp *
+                                   c_lf1_Jv_dot_tmp_tmp) -
+                              qd[2] * std::sin(q[0]) * d_lf1_Jv_dot_tmp_tmp *
+                                  e_lf1_Jv_dot_tmp_tmp)) +
+                        w_lf1_Jv_dot_tmp_tmp * ib_lf1_Jv_dot_tmp_tmp) +
+                       x_lf1_Jv_dot_tmp_tmp * jb_lf1_Jv_dot_tmp_tmp) +
+                  i_lf1_Jv_dot_tmp_tmp *
+                      (((f_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp_tmp -
+                         g_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp) +
+                        w_lf1_Jv_dot_tmp_tmp * jb_lf1_Jv_dot_tmp_tmp) -
+                       x_lf1_Jv_dot_tmp_tmp * ib_lf1_Jv_dot_tmp_tmp)) +
+                 u_lf1_Jv_dot_tmp_tmp *
+                     (f_lf1_Jv_dot_tmp_tmp * ib_lf1_Jv_dot_tmp_tmp +
+                      g_lf1_Jv_dot_tmp_tmp * jb_lf1_Jv_dot_tmp_tmp)) +
+                v_lf1_Jv_dot_tmp_tmp *
+                    (f_lf1_Jv_dot_tmp_tmp * jb_lf1_Jv_dot_tmp_tmp -
+                     g_lf1_Jv_dot_tmp_tmp * ib_lf1_Jv_dot_tmp_tmp)) -
+           p[2] *
+               (((h_lf1_Jv_dot_tmp_tmp *
+                      (((std::cos(q[3]) *
+                             ((((qd[2] * std::cos(q[0]) * std::cos(q[2]) -
+                                 qd[0] * std::sin(q[0]) * std::sin(q[2])) +
+                                qd[0] * std::cos(q[0]) * std::cos(q[2]) *
+                                    std::sin(q[1])) +
+                               qd[1] * std::cos(q[1]) * std::cos(q[2]) *
+                                   std::sin(q[0])) -
+                              qd[2] * std::sin(q[0]) * std::sin(q[1]) *
+                                  std::sin(q[2])) -
+                         std::sin(q[3]) *
+                             ((((qd[0] * std::cos(q[2]) * std::sin(q[0]) +
+                                 qd[2] * std::cos(q[0]) * std::sin(q[2])) +
+                                qd[0] * std::cos(q[0]) * std::sin(q[1]) *
+                                    std::sin(q[2])) +
+                               qd[1] * std::cos(q[1]) * std::sin(q[0]) *
+                                   std::sin(q[2])) +
+                              qd[2] * std::cos(q[2]) * std::sin(q[0]) *
+                                  std::sin(q[1]))) +
+                        qd[3] * std::cos(q[3]) *
+                            (std::cos(q[0]) * std::cos(q[2]) -
+                             std::sin(q[0]) * std::sin(q[1]) *
+                                 std::sin(q[2]))) -
+                       qd[3] * std::sin(q[3]) *
+                           (std::cos(q[0]) * std::sin(q[2]) +
+                            std::cos(q[2]) * std::sin(q[0]) * std::sin(q[1]))) -
+                  i_lf1_Jv_dot_tmp_tmp *
+                      (((std::cos(q[3]) *
+                             ((((qd[0] * std::cos(q[2]) * std::sin(q[0]) +
+                                 qd[2] * std::cos(q[0]) * std::sin(q[2])) +
+                                qd[0] * std::cos(q[0]) * std::sin(q[1]) *
+                                    std::sin(q[2])) +
+                               qd[1] * std::cos(q[1]) * std::sin(q[0]) *
+                                   std::sin(q[2])) +
+                              qd[2] * std::cos(q[2]) * std::sin(q[0]) *
+                                  std::sin(q[1])) +
+                         std::sin(q[3]) *
+                             ((((qd[2] * std::cos(q[0]) * std::cos(q[2]) -
+                                 qd[0] * std::sin(q[0]) * std::sin(q[2])) +
+                                qd[0] * std::cos(q[0]) * std::cos(q[2]) *
+                                    std::sin(q[1])) +
+                               qd[1] * std::cos(q[1]) * std::cos(q[2]) *
+                                   std::sin(q[0])) -
+                              qd[2] * std::sin(q[0]) * std::sin(q[1]) *
+                                  std::sin(q[2]))) +
+                        qd[3] * std::cos(q[3]) *
+                            (std::cos(q[0]) * std::sin(q[2]) +
+                             std::cos(q[2]) * std::sin(q[0]) *
+                                 std::sin(q[1]))) +
+                       qd[3] * std::sin(q[3]) *
+                           (std::cos(q[0]) * std::cos(q[2]) -
+                            std::sin(q[0]) * std::sin(q[1]) *
+                                std::sin(q[2])))) +
+                 u_lf1_Jv_dot_tmp_tmp *
+                     (std::cos(q[3]) *
+                          (std::cos(q[0]) * std::cos(q[2]) -
+                           std::sin(q[0]) * std::sin(q[1]) * std::sin(q[2])) -
+                      std::sin(q[3]) *
+                          (std::cos(q[0]) * std::sin(q[2]) +
+                           std::cos(q[2]) * std::sin(q[0]) * std::sin(q[1])))) -
+                v_lf1_Jv_dot_tmp_tmp *
+                    (std::cos(q[3]) *
+                         (std::cos(q[0]) * std::sin(q[2]) +
+                          std::cos(q[2]) * std::sin(q[0]) * std::sin(q[1])) +
+                     std::sin(q[3]) *
+                         (std::cos(q[0]) * std::cos(q[2]) -
+                          std::sin(q[0]) * std::sin(q[1]) * std::sin(q[2])))) /
+               2.0) +
+          p[0] * b_lf1_Jv_dot_tmp) +
+         e_lf1_Jv_dot_tmp_tmp_tmp) +
+        h_lf1_Jv_dot_tmp) +
+       i_lf1_Jv_dot_tmp) +
+      j_lf1_Jv_dot_tmp;
+  b_lf1_Jv_dot_tmp_tmp_tmp =
+      p[3] * (((std::cos(q[4]) *
+                    (((std::cos(q[3]) *
+                           ((((qd[0] * std::cos(q[2]) * std::sin(q[0]) +
+                               qd[2] * std::cos(q[0]) * std::sin(q[2])) +
+                              qd[0] * std::cos(q[0]) * std::sin(q[1]) *
+                                  std::sin(q[2])) +
+                             qd[1] * std::cos(q[1]) * std::sin(q[0]) *
+                                 std::sin(q[2])) +
+                            qd[2] * std::cos(q[2]) * std::sin(q[0]) *
+                                std::sin(q[1])) +
+                       std::sin(q[3]) *
+                           ((((qd[2] * std::cos(q[0]) * std::cos(q[2]) -
+                               qd[0] * std::sin(q[0]) * std::sin(q[2])) +
+                              qd[0] * std::cos(q[0]) * std::cos(q[2]) *
+                                  std::sin(q[1])) +
+                             qd[1] * std::cos(q[1]) * std::cos(q[2]) *
+                                 std::sin(q[0])) -
+                            qd[2] * std::sin(q[0]) * std::sin(q[1]) *
+                                std::sin(q[2]))) +
+                      qd[3] * std::cos(q[3]) *
+                          (std::cos(q[0]) * std::sin(q[2]) +
+                           std::cos(q[2]) * std::sin(q[0]) * std::sin(q[1]))) +
+                     qd[3] * std::sin(q[3]) *
+                         (std::cos(q[0]) * std::cos(q[2]) -
+                          std::sin(q[0]) * std::sin(q[1]) * std::sin(q[2]))) +
+                std::sin(q[4]) *
+                    (((std::cos(q[3]) *
+                           ((((qd[2] * std::cos(q[0]) * std::cos(q[2]) -
+                               qd[0] * std::sin(q[0]) * std::sin(q[2])) +
+                              qd[0] * std::cos(q[0]) * std::cos(q[2]) *
+                                  std::sin(q[1])) +
+                             qd[1] * std::cos(q[1]) * std::cos(q[2]) *
+                                 std::sin(q[0])) -
+                            qd[2] * std::sin(q[0]) * std::sin(q[1]) *
+                                std::sin(q[2])) -
+                       std::sin(q[3]) *
+                           ((((qd[0] * std::cos(q[2]) * std::sin(q[0]) +
+                               qd[2] * std::cos(q[0]) * std::sin(q[2])) +
+                              qd[0] * std::cos(q[0]) * std::sin(q[1]) *
+                                  std::sin(q[2])) +
+                             qd[1] * std::cos(q[1]) * std::sin(q[0]) *
+                                 std::sin(q[2])) +
+                            qd[2] * std::cos(q[2]) * std::sin(q[0]) *
+                                std::sin(q[1]))) +
+                      qd[3] * std::cos(q[3]) *
+                          (std::cos(q[0]) * std::cos(q[2]) -
+                           std::sin(q[0]) * std::sin(q[1]) * std::sin(q[2]))) -
+                     qd[3] * std::sin(q[3]) *
+                         (std::cos(q[0]) * std::sin(q[2]) +
+                          std::cos(q[2]) * std::sin(q[0]) * std::sin(q[1])))) +
+               qd[4] * std::cos(q[4]) *
+                   (std::cos(q[3]) *
+                        (std::cos(q[0]) * std::sin(q[2]) +
+                         std::cos(q[2]) * std::sin(q[0]) * std::sin(q[1])) +
+                    std::sin(q[3]) *
+                        (std::cos(q[0]) * std::cos(q[2]) -
+                         std::sin(q[0]) * std::sin(q[1]) * std::sin(q[2])))) +
+              qd[4] * std::sin(q[4]) *
+                  (std::cos(q[3]) *
+                       (std::cos(q[0]) * std::cos(q[2]) -
+                        std::sin(q[0]) * std::sin(q[1]) * std::sin(q[2])) -
+                   std::sin(q[3]) *
+                       (std::cos(q[0]) * std::sin(q[2]) +
+                        std::cos(q[2]) * std::sin(q[0]) * std::sin(q[1])))) -
+      p[2] *
+          (((std::cos(q[4]) *
+                 (((std::cos(q[3]) *
+                        ((((qd[2] * std::cos(q[0]) * std::cos(q[2]) -
+                            qd[0] * std::sin(q[0]) * std::sin(q[2])) +
+                           qd[0] * std::cos(q[0]) * std::cos(q[2]) *
+                               std::sin(q[1])) +
+                          qd[1] * std::cos(q[1]) * std::cos(q[2]) *
+                              std::sin(q[0])) -
+                         qd[2] * std::sin(q[0]) * std::sin(q[1]) *
+                             std::sin(q[2])) -
+                    std::sin(q[3]) *
+                        ((((qd[0] * std::cos(q[2]) * std::sin(q[0]) +
+                            qd[2] * std::cos(q[0]) * std::sin(q[2])) +
+                           qd[0] * std::cos(q[0]) * std::sin(q[1]) *
+                               std::sin(q[2])) +
+                          qd[1] * std::cos(q[1]) * std::sin(q[0]) *
+                              std::sin(q[2])) +
+                         qd[2] * std::cos(q[2]) * std::sin(q[0]) *
+                             std::sin(q[1]))) +
+                   qd[3] * std::cos(q[3]) *
+                       (std::cos(q[0]) * std::cos(q[2]) -
+                        std::sin(q[0]) * std::sin(q[1]) * std::sin(q[2]))) -
+                  qd[3] * std::sin(q[3]) *
+                      (std::cos(q[0]) * std::sin(q[2]) +
+                       std::cos(q[2]) * std::sin(q[0]) * std::sin(q[1]))) -
+             std::sin(q[4]) *
+                 (((std::cos(q[3]) *
+                        ((((qd[0] * std::cos(q[2]) * std::sin(q[0]) +
+                            qd[2] * std::cos(q[0]) * std::sin(q[2])) +
+                           qd[0] * std::cos(q[0]) * std::sin(q[1]) *
+                               std::sin(q[2])) +
+                          qd[1] * std::cos(q[1]) * std::sin(q[0]) *
+                              std::sin(q[2])) +
+                         qd[2] * std::cos(q[2]) * std::sin(q[0]) *
+                             std::sin(q[1])) +
+                    std::sin(q[3]) *
+                        ((((qd[2] * std::cos(q[0]) * std::cos(q[2]) -
+                            qd[0] * std::sin(q[0]) * std::sin(q[2])) +
+                           qd[0] * std::cos(q[0]) * std::cos(q[2]) *
+                               std::sin(q[1])) +
+                          qd[1] * std::cos(q[1]) * std::cos(q[2]) *
+                              std::sin(q[0])) -
+                         qd[2] * std::sin(q[0]) * std::sin(q[1]) *
+                             std::sin(q[2]))) +
+                   qd[3] * std::cos(q[3]) *
+                       (std::cos(q[0]) * std::sin(q[2]) +
+                        std::cos(q[2]) * std::sin(q[0]) * std::sin(q[1]))) +
+                  qd[3] * std::sin(q[3]) *
+                      (std::cos(q[0]) * std::cos(q[2]) -
+                       std::sin(q[0]) * std::sin(q[1]) * std::sin(q[2])))) +
+            qd[4] * std::cos(q[4]) *
+                (std::cos(q[3]) *
+                     (std::cos(q[0]) * std::cos(q[2]) -
+                      std::sin(q[0]) * std::sin(q[1]) * std::sin(q[2])) -
+                 std::sin(q[3]) *
+                     (std::cos(q[0]) * std::sin(q[2]) +
+                      std::cos(q[2]) * std::sin(q[0]) * std::sin(q[1])))) -
+           qd[4] * std::sin(q[4]) *
+               (std::cos(q[3]) *
+                    (std::cos(q[0]) * std::sin(q[2]) +
+                     std::cos(q[2]) * std::sin(q[0]) * std::sin(q[1])) +
+                std::sin(q[3]) *
+                    (std::cos(q[0]) * std::cos(q[2]) -
+                     std::sin(q[0]) * std::sin(q[1]) * std::sin(q[2])))) /
+          2.0;
+  lf1_Jv_dot[9] = (((b_lf1_Jv_dot_tmp_tmp_tmp + e_lf1_Jv_dot_tmp_tmp_tmp) +
+                    h_lf1_Jv_dot_tmp) +
+                   i_lf1_Jv_dot_tmp) +
+                  j_lf1_Jv_dot_tmp;
+  lf1_Jv_dot[12] = b_lf1_Jv_dot_tmp_tmp_tmp;
+  lf1_Jv_dot[1] =
+      (((((r_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp -
+           p[2] *
+               (((std::cos(q[4]) *
+                      (((std::cos(q[3]) *
+                             ((((qd[0] * std::cos(q[2]) * std::sin(q[0]) +
+                                 qd[2] * std::cos(q[0]) * std::sin(q[2])) +
+                                qd[0] * std::cos(q[0]) * std::sin(q[1]) *
+                                    std::sin(q[2])) +
+                               qd[1] * std::cos(q[1]) * std::sin(q[0]) *
+                                   std::sin(q[2])) +
+                              qd[2] * std::cos(q[2]) * std::sin(q[0]) *
+                                  std::sin(q[1])) +
+                         std::sin(q[3]) *
+                             ((((qd[2] * std::cos(q[0]) * std::cos(q[2]) -
+                                 qd[0] * std::sin(q[0]) * std::sin(q[2])) +
+                                qd[0] * std::cos(q[0]) * std::cos(q[2]) *
+                                    std::sin(q[1])) +
+                               qd[1] * std::cos(q[1]) * std::cos(q[2]) *
+                                   std::sin(q[0])) -
+                              qd[2] * std::sin(q[0]) * std::sin(q[1]) *
+                                  std::sin(q[2]))) +
+                        qd[3] * std::cos(q[3]) *
+                            (std::cos(q[0]) * std::sin(q[2]) +
+                             std::cos(q[2]) * std::sin(q[0]) *
+                                 std::sin(q[1]))) +
+                       qd[3] * std::sin(q[3]) *
+                           (std::cos(q[0]) * std::cos(q[2]) -
+                            std::sin(q[0]) * std::sin(q[1]) * std::sin(q[2]))) +
+                  std::sin(q[4]) *
+                      (((std::cos(q[3]) *
+                             ((((qd[2] * std::cos(q[0]) * std::cos(q[2]) -
+                                 qd[0] * std::sin(q[0]) * std::sin(q[2])) +
+                                qd[0] * std::cos(q[0]) * std::cos(q[2]) *
+                                    std::sin(q[1])) +
+                               qd[1] * std::cos(q[1]) * std::cos(q[2]) *
+                                   std::sin(q[0])) -
+                              qd[2] * std::sin(q[0]) * std::sin(q[1]) *
+                                  std::sin(q[2])) -
+                         std::sin(q[3]) *
+                             ((((qd[0] * std::cos(q[2]) * std::sin(q[0]) +
+                                 qd[2] * std::cos(q[0]) * std::sin(q[2])) +
+                                qd[0] * std::cos(q[0]) * std::sin(q[1]) *
+                                    std::sin(q[2])) +
+                               qd[1] * std::cos(q[1]) * std::sin(q[0]) *
+                                   std::sin(q[2])) +
+                              qd[2] * std::cos(q[2]) * std::sin(q[0]) *
+                                  std::sin(q[1]))) +
+                        qd[3] * std::cos(q[3]) *
+                            (std::cos(q[0]) * std::cos(q[2]) -
+                             std::sin(q[0]) * std::sin(q[1]) *
+                                 std::sin(q[2]))) -
+                       qd[3] * std::sin(q[3]) *
+                           (std::cos(q[0]) * std::sin(q[2]) +
+                            std::cos(q[2]) * std::sin(q[0]) *
+                                std::sin(q[1])))) +
+                 qd[4] * std::cos(q[4]) *
+                     (std::cos(q[3]) *
+                          (std::cos(q[0]) * std::sin(q[2]) +
+                           std::cos(q[2]) * std::sin(q[0]) * std::sin(q[1])) +
+                      std::sin(q[3]) *
+                          (std::cos(q[0]) * std::cos(q[2]) -
+                           std::sin(q[0]) * std::sin(q[1]) * std::sin(q[2])))) +
+                qd[4] * std::sin(q[4]) *
+                    (std::cos(q[3]) *
+                         (std::cos(q[0]) * std::cos(q[2]) -
+                          std::sin(q[0]) * std::sin(q[1]) * std::sin(q[2])) -
+                     std::sin(q[3]) *
+                         (std::cos(q[0]) * std::sin(q[2]) +
+                          std::cos(q[2]) * std::sin(q[0]) * std::sin(q[1])))) /
+               2.0) -
+          p[3] *
+              (((std::cos(q[4]) *
+                     (((std::cos(q[3]) *
+                            ((((qd[2] * std::cos(q[0]) * std::cos(q[2]) -
+                                qd[0] * std::sin(q[0]) * std::sin(q[2])) +
+                               qd[0] * std::cos(q[0]) * std::cos(q[2]) *
+                                   std::sin(q[1])) +
+                              qd[1] * std::cos(q[1]) * std::cos(q[2]) *
+                                  std::sin(q[0])) -
+                             qd[2] * std::sin(q[0]) * std::sin(q[1]) *
+                                 std::sin(q[2])) -
+                        std::sin(q[3]) *
+                            ((((qd[0] * std::cos(q[2]) * std::sin(q[0]) +
+                                qd[2] * std::cos(q[0]) * std::sin(q[2])) +
+                               qd[0] * std::cos(q[0]) * std::sin(q[1]) *
+                                   std::sin(q[2])) +
+                              qd[1] * std::cos(q[1]) * std::sin(q[0]) *
+                                  std::sin(q[2])) +
+                             qd[2] * std::cos(q[2]) * std::sin(q[0]) *
+                                 std::sin(q[1]))) +
+                       qd[3] * std::cos(q[3]) *
+                           (std::cos(q[0]) * std::cos(q[2]) -
+                            std::sin(q[0]) * std::sin(q[1]) * std::sin(q[2]))) -
+                      qd[3] * std::sin(q[3]) *
+                          (std::cos(q[0]) * std::sin(q[2]) +
+                           std::cos(q[2]) * std::sin(q[0]) * std::sin(q[1]))) -
+                 std::sin(q[4]) *
+                     (((std::cos(q[3]) *
+                            ((((qd[0] * std::cos(q[2]) * std::sin(q[0]) +
+                                qd[2] * std::cos(q[0]) * std::sin(q[2])) +
+                               qd[0] * std::cos(q[0]) * std::sin(q[1]) *
+                                   std::sin(q[2])) +
+                              qd[1] * std::cos(q[1]) * std::sin(q[0]) *
+                                  std::sin(q[2])) +
+                             qd[2] * std::cos(q[2]) * std::sin(q[0]) *
+                                 std::sin(q[1])) +
+                        std::sin(q[3]) *
+                            ((((qd[2] * std::cos(q[0]) * std::cos(q[2]) -
+                                qd[0] * std::sin(q[0]) * std::sin(q[2])) +
+                               qd[0] * std::cos(q[0]) * std::cos(q[2]) *
+                                   std::sin(q[1])) +
+                              qd[1] * std::cos(q[1]) * std::cos(q[2]) *
+                                  std::sin(q[0])) -
+                             qd[2] * std::sin(q[0]) * std::sin(q[1]) *
+                                 std::sin(q[2]))) +
+                       qd[3] * std::cos(q[3]) *
+                           (std::cos(q[0]) * std::sin(q[2]) +
+                            std::cos(q[2]) * std::sin(q[0]) * std::sin(q[1]))) +
+                      qd[3] * std::sin(q[3]) *
+                          (std::cos(q[0]) * std::cos(q[2]) -
+                           std::sin(q[0]) * std::sin(q[1]) * std::sin(q[2])))) +
+                qd[4] * std::cos(q[4]) *
+                    (std::cos(q[3]) *
+                         (std::cos(q[0]) * std::cos(q[2]) -
+                          std::sin(q[0]) * std::sin(q[1]) * std::sin(q[2])) -
+                     std::sin(q[3]) *
+                         (std::cos(q[0]) * std::sin(q[2]) +
+                          std::cos(q[2]) * std::sin(q[0]) * std::sin(q[1])))) -
+               qd[4] * std::sin(q[4]) *
+                   (std::cos(q[3]) *
+                        (std::cos(q[0]) * std::sin(q[2]) +
+                         std::cos(q[2]) * std::sin(q[0]) * std::sin(q[1])) +
+                    std::sin(q[3]) *
+                        (std::cos(q[0]) * std::cos(q[2]) -
+                         std::sin(q[0]) * std::sin(q[1]) * std::sin(q[2]))))) -
+         q_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp_tmp) -
+        p[0] * d_lf1_Jv_dot_tmp_tmp_tmp) -
+       s_lf1_Jv_dot_tmp_tmp * jb_lf1_Jv_dot_tmp_tmp) +
+      t_lf1_Jv_dot_tmp_tmp * ib_lf1_Jv_dot_tmp_tmp;
+  m_lf1_Jv_dot_tmp_tmp = qd[0] * j_lf1_Jv_dot_tmp_tmp;
+  b_lf1_Jv_dot_tmp = o_lf1_Jv_dot_tmp_tmp * j_lf1_Jv_dot_tmp_tmp;
+  x_lf1_Jv_dot_tmp_tmp = qd[3] * lf1_Jv_dot_tmp_tmp * j_lf1_Jv_dot_tmp_tmp;
+  ib_lf1_Jv_dot_tmp_tmp = lf1_Jv_dot_tmp_tmp * j_lf1_Jv_dot_tmp_tmp;
+  lf1_Jv_dot[4] =
+      (((((((((((d_lf1_Jv_dot_tmp * j_lf1_Jv_dot_tmp_tmp *
+                     c_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp *
+                     g_lf1_Jv_dot_tmp_tmp -
+                 p[3] *
+                     (((h_lf1_Jv_dot_tmp_tmp *
+                            (((((((m_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp *
+                                       f_lf1_Jv_dot_tmp_tmp *
+                                       c_lf1_Jv_dot_tmp_tmp +
+                                   c_lf1_Jv_dot_tmp_tmp_tmp *
+                                       b_lf1_Jv_dot_tmp_tmp *
+                                       f_lf1_Jv_dot_tmp_tmp *
+                                       d_lf1_Jv_dot_tmp_tmp) +
+                                  o_lf1_Jv_dot_tmp_tmp * j_lf1_Jv_dot_tmp_tmp *
+                                      b_lf1_Jv_dot_tmp_tmp *
+                                      g_lf1_Jv_dot_tmp_tmp) +
+                                 b_lf1_Jv_dot_tmp * f_lf1_Jv_dot_tmp_tmp *
+                                     e_lf1_Jv_dot_tmp_tmp) +
+                                x_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp *
+                                    g_lf1_Jv_dot_tmp_tmp) +
+                               x_lf1_Jv_dot_tmp_tmp * f_lf1_Jv_dot_tmp_tmp *
+                                   e_lf1_Jv_dot_tmp_tmp) -
+                              m_lf1_Jv_dot_tmp_tmp * c_lf1_Jv_dot_tmp_tmp *
+                                  e_lf1_Jv_dot_tmp_tmp * g_lf1_Jv_dot_tmp_tmp) -
+                             c_lf1_Jv_dot_tmp_tmp_tmp * d_lf1_Jv_dot_tmp_tmp *
+                                 e_lf1_Jv_dot_tmp_tmp * g_lf1_Jv_dot_tmp_tmp) -
+                        i_lf1_Jv_dot_tmp_tmp *
+                            (((((((qd[0] * std::cos(q[1]) * std::cos(q[2]) *
+                                       c_lf1_Jv_dot_tmp_tmp *
+                                       g_lf1_Jv_dot_tmp_tmp -
+                                   qd[3] * std::cos(q[0]) * std::cos(q[1]) *
+                                       std::cos(q[2]) * f_lf1_Jv_dot_tmp_tmp) -
+                                  qd[2] * std::cos(q[0]) * std::cos(q[1]) *
+                                      std::cos(q[2]) * f_lf1_Jv_dot_tmp_tmp) +
+                                 m_lf1_Jv_dot_tmp_tmp * f_lf1_Jv_dot_tmp_tmp *
+                                     c_lf1_Jv_dot_tmp_tmp *
+                                     e_lf1_Jv_dot_tmp_tmp) +
+                                qd[1] * std::cos(q[0]) * std::cos(q[2]) *
+                                    d_lf1_Jv_dot_tmp_tmp *
+                                    g_lf1_Jv_dot_tmp_tmp) +
+                               c_lf1_Jv_dot_tmp_tmp_tmp * f_lf1_Jv_dot_tmp_tmp *
+                                   d_lf1_Jv_dot_tmp_tmp *
+                                   e_lf1_Jv_dot_tmp_tmp) +
+                              b_lf1_Jv_dot_tmp * e_lf1_Jv_dot_tmp_tmp *
+                                  g_lf1_Jv_dot_tmp_tmp) +
+                             x_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp *
+                                 g_lf1_Jv_dot_tmp_tmp)) +
+                       u_lf1_Jv_dot_tmp_tmp *
+                           (ib_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp *
+                                g_lf1_Jv_dot_tmp_tmp +
+                            ib_lf1_Jv_dot_tmp_tmp * f_lf1_Jv_dot_tmp_tmp *
+                                e_lf1_Jv_dot_tmp_tmp)) +
+                      v_lf1_Jv_dot_tmp_tmp *
+                          (std::cos(q[0]) * std::cos(q[1]) * std::cos(q[2]) *
+                               f_lf1_Jv_dot_tmp_tmp -
+                           ib_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp *
+                               g_lf1_Jv_dot_tmp_tmp))) -
+                e_lf1_Jv_dot_tmp * j_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp *
+                    c_lf1_Jv_dot_tmp_tmp) -
+               f_lf1_Jv_dot_tmp * lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp *
+                   d_lf1_Jv_dot_tmp_tmp) -
+              g_lf1_Jv_dot_tmp * lf1_Jv_dot_tmp_tmp * j_lf1_Jv_dot_tmp_tmp *
+                  e_lf1_Jv_dot_tmp_tmp) -
+             qd[0] * p[1] * std::cos(q[1]) * b_lf1_Jv_dot_tmp_tmp *
+                 f_lf1_Jv_dot_tmp_tmp * c_lf1_Jv_dot_tmp_tmp) -
+            c_lf1_Jv_dot_tmp * lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp *
+                f_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp) -
+           bb_lf1_Jv_dot_tmp_tmp * lf1_Jv_dot_tmp_tmp * j_lf1_Jv_dot_tmp_tmp *
+               b_lf1_Jv_dot_tmp_tmp * g_lf1_Jv_dot_tmp_tmp) -
+          p[1] * qd[2] * std::cos(q[0]) * std::cos(q[1]) *
+              f_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp) -
+         n_lf1_Jv_dot_tmp_tmp * lf1_Jv_dot_tmp_tmp * j_lf1_Jv_dot_tmp_tmp *
+             b_lf1_Jv_dot_tmp_tmp * g_lf1_Jv_dot_tmp_tmp) -
+        p[1] * qd[3] * std::cos(q[0]) * std::cos(q[1]) * f_lf1_Jv_dot_tmp_tmp *
+            e_lf1_Jv_dot_tmp_tmp) -
+       p[2] *
+           (((h_lf1_Jv_dot_tmp_tmp *
+                  (((((((qd[0] * std::cos(q[1]) * std::cos(q[2]) *
+                             std::sin(q[0]) * std::sin(q[3]) -
+                         qd[3] * std::cos(q[0]) * std::cos(q[1]) *
+                             std::cos(q[2]) * std::cos(q[3])) -
+                        qd[2] * std::cos(q[0]) * std::cos(q[1]) *
+                            std::cos(q[2]) * std::cos(q[3])) +
+                       qd[0] * std::cos(q[1]) * std::cos(q[3]) *
+                           std::sin(q[0]) * std::sin(q[2])) +
+                      qd[1] * std::cos(q[0]) * std::cos(q[2]) * std::sin(q[1]) *
+                          std::sin(q[3])) +
+                     qd[1] * std::cos(q[0]) * std::cos(q[3]) * std::sin(q[1]) *
+                         std::sin(q[2])) +
+                    qd[2] * std::cos(q[0]) * std::cos(q[1]) * std::sin(q[2]) *
+                        std::sin(q[3])) +
+                   qd[3] * std::cos(q[0]) * std::cos(q[1]) * std::sin(q[2]) *
+                       std::sin(q[3])) +
+              i_lf1_Jv_dot_tmp_tmp *
+                  (((((((qd[0] * std::cos(q[1]) * std::cos(q[2]) *
+                             std::cos(q[3]) * std::sin(q[0]) +
+                         qd[1] * std::cos(q[0]) * std::cos(q[2]) *
+                             std::cos(q[3]) * std::sin(q[1])) +
+                        qd[2] * std::cos(q[0]) * std::cos(q[1]) *
+                            std::cos(q[2]) * std::sin(q[3])) +
+                       qd[2] * std::cos(q[0]) * std::cos(q[1]) *
+                           std::cos(q[3]) * std::sin(q[2])) +
+                      qd[3] * std::cos(q[0]) * std::cos(q[1]) * std::cos(q[2]) *
+                          std::sin(q[3])) +
+                     qd[3] * std::cos(q[0]) * std::cos(q[1]) * std::cos(q[3]) *
+                         std::sin(q[2])) -
+                    qd[0] * std::cos(q[1]) * std::sin(q[0]) * std::sin(q[2]) *
+                        std::sin(q[3])) -
+                   qd[1] * std::cos(q[0]) * std::sin(q[1]) * std::sin(q[2]) *
+                       std::sin(q[3]))) -
+             u_lf1_Jv_dot_tmp_tmp * (std::cos(q[0]) * std::cos(q[1]) *
+                                         std::cos(q[2]) * std::cos(q[3]) -
+                                     std::cos(q[0]) * std::cos(q[1]) *
+                                         std::sin(q[2]) * std::sin(q[3]))) +
+            v_lf1_Jv_dot_tmp_tmp * (std::cos(q[0]) * std::cos(q[1]) *
+                                        std::cos(q[2]) * std::sin(q[3]) +
+                                    std::cos(q[0]) * std::cos(q[1]) *
+                                        std::cos(q[3]) * std::sin(q[2]))) /
+           2.0) +
+      p[1] * qd[1] * std::cos(q[0]) * d_lf1_Jv_dot_tmp_tmp *
+          e_lf1_Jv_dot_tmp_tmp * g_lf1_Jv_dot_tmp_tmp;
+  b_lf1_Jv_dot_tmp =
+      p[3] * (((std::cos(q[4]) *
+                    (((std::sin(q[3]) *
+                           ((((qd[0] * std::cos(q[0]) * std::sin(q[2]) +
+                               qd[2] * std::cos(q[2]) * std::sin(q[0])) -
+                              qd[1] * std::cos(q[0]) * std::cos(q[1]) *
+                                  std::cos(q[2])) +
+                             qd[0] * std::cos(q[2]) * std::sin(q[0]) *
+                                 std::sin(q[1])) +
+                            qd[2] * std::cos(q[0]) * std::sin(q[1]) *
+                                std::sin(q[2])) -
+                       std::cos(q[3]) *
+                           ((((qd[0] * std::cos(q[0]) * std::cos(q[2]) -
+                               qd[2] * std::sin(q[0]) * std::sin(q[2])) +
+                              qd[1] * std::cos(q[0]) * std::cos(q[1]) *
+                                  std::sin(q[2])) +
+                             qd[2] * std::cos(q[0]) * std::cos(q[2]) *
+                                 std::sin(q[1])) -
+                            qd[0] * std::sin(q[0]) * std::sin(q[1]) *
+                                std::sin(q[2]))) +
+                      qd[3] * std::cos(q[3]) *
+                          (std::sin(q[0]) * std::sin(q[2]) -
+                           std::cos(q[0]) * std::cos(q[2]) * std::sin(q[1]))) +
+                     qd[3] * std::sin(q[3]) *
+                         (std::cos(q[2]) * std::sin(q[0]) +
+                          std::cos(q[0]) * std::sin(q[1]) * std::sin(q[2]))) +
+                std::sin(q[4]) *
+                    (((std::cos(q[3]) *
+                           ((((qd[0] * std::cos(q[0]) * std::sin(q[2]) +
+                               qd[2] * std::cos(q[2]) * std::sin(q[0])) -
+                              qd[1] * std::cos(q[0]) * std::cos(q[1]) *
+                                  std::cos(q[2])) +
+                             qd[0] * std::cos(q[2]) * std::sin(q[0]) *
+                                 std::sin(q[1])) +
+                            qd[2] * std::cos(q[0]) * std::sin(q[1]) *
+                                std::sin(q[2])) +
+                       std::sin(q[3]) *
+                           ((((qd[0] * std::cos(q[0]) * std::cos(q[2]) -
+                               qd[2] * std::sin(q[0]) * std::sin(q[2])) +
+                              qd[1] * std::cos(q[0]) * std::cos(q[1]) *
+                                  std::sin(q[2])) +
+                             qd[2] * std::cos(q[0]) * std::cos(q[2]) *
+                                 std::sin(q[1])) -
+                            qd[0] * std::sin(q[0]) * std::sin(q[1]) *
+                                std::sin(q[2]))) +
+                      qd[3] * std::cos(q[3]) *
+                          (std::cos(q[2]) * std::sin(q[0]) +
+                           std::cos(q[0]) * std::sin(q[1]) * std::sin(q[2]))) -
+                     qd[3] * std::sin(q[3]) *
+                         (std::sin(q[0]) * std::sin(q[2]) -
+                          std::cos(q[0]) * std::cos(q[2]) * std::sin(q[1])))) +
+               qd[4] * std::cos(q[4]) *
+                   (std::cos(q[3]) *
+                        (std::sin(q[0]) * std::sin(q[2]) -
+                         std::cos(q[0]) * std::cos(q[2]) * std::sin(q[1])) +
+                    std::sin(q[3]) *
+                        (std::cos(q[2]) * std::sin(q[0]) +
+                         std::cos(q[0]) * std::sin(q[1]) * std::sin(q[2])))) +
+              qd[4] * std::sin(q[4]) *
+                  (std::cos(q[3]) *
+                       (std::cos(q[2]) * std::sin(q[0]) +
+                        std::cos(q[0]) * std::sin(q[1]) * std::sin(q[2])) -
+                   std::sin(q[3]) *
+                       (std::sin(q[0]) * std::sin(q[2]) -
+                        std::cos(q[0]) * std::cos(q[2]) * std::sin(q[1])))) -
+      p[2] *
+          (((std::cos(q[4]) *
+                 (((std::cos(q[3]) *
+                        ((((qd[0] * std::cos(q[0]) * std::sin(q[2]) +
+                            qd[2] * std::cos(q[2]) * std::sin(q[0])) -
+                           qd[1] * std::cos(q[0]) * std::cos(q[1]) *
+                               std::cos(q[2])) +
+                          qd[0] * std::cos(q[2]) * std::sin(q[0]) *
+                              std::sin(q[1])) +
+                         qd[2] * std::cos(q[0]) * std::sin(q[1]) *
+                             std::sin(q[2])) +
+                    std::sin(q[3]) *
+                        ((((qd[0] * std::cos(q[0]) * std::cos(q[2]) -
+                            qd[2] * std::sin(q[0]) * std::sin(q[2])) +
+                           qd[1] * std::cos(q[0]) * std::cos(q[1]) *
+                               std::sin(q[2])) +
+                          qd[2] * std::cos(q[0]) * std::cos(q[2]) *
+                              std::sin(q[1])) -
+                         qd[0] * std::sin(q[0]) * std::sin(q[1]) *
+                             std::sin(q[2]))) +
+                   qd[3] * std::cos(q[3]) *
+                       (std::cos(q[2]) * std::sin(q[0]) +
+                        std::cos(q[0]) * std::sin(q[1]) * std::sin(q[2]))) -
+                  qd[3] * std::sin(q[3]) *
+                      (std::sin(q[0]) * std::sin(q[2]) -
+                       std::cos(q[0]) * std::cos(q[2]) * std::sin(q[1]))) -
+             std::sin(q[4]) *
+                 (((std::sin(q[3]) *
+                        ((((qd[0] * std::cos(q[0]) * std::sin(q[2]) +
+                            qd[2] * std::cos(q[2]) * std::sin(q[0])) -
+                           qd[1] * std::cos(q[0]) * std::cos(q[1]) *
+                               std::cos(q[2])) +
+                          qd[0] * std::cos(q[2]) * std::sin(q[0]) *
+                              std::sin(q[1])) +
+                         qd[2] * std::cos(q[0]) * std::sin(q[1]) *
+                             std::sin(q[2])) -
+                    std::cos(q[3]) *
+                        ((((qd[0] * std::cos(q[0]) * std::cos(q[2]) -
+                            qd[2] * std::sin(q[0]) * std::sin(q[2])) +
+                           qd[1] * std::cos(q[0]) * std::cos(q[1]) *
+                               std::sin(q[2])) +
+                          qd[2] * std::cos(q[0]) * std::cos(q[2]) *
+                              std::sin(q[1])) -
+                         qd[0] * std::sin(q[0]) * std::sin(q[1]) *
+                             std::sin(q[2]))) +
+                   qd[3] * std::cos(q[3]) *
+                       (std::sin(q[0]) * std::sin(q[2]) -
+                        std::cos(q[0]) * std::cos(q[2]) * std::sin(q[1]))) +
+                  qd[3] * std::sin(q[3]) *
+                      (std::cos(q[2]) * std::sin(q[0]) +
+                       std::cos(q[0]) * std::sin(q[1]) * std::sin(q[2])))) +
+            qd[4] * std::cos(q[4]) *
+                (std::cos(q[3]) *
+                     (std::cos(q[2]) * std::sin(q[0]) +
+                      std::cos(q[0]) * std::sin(q[1]) * std::sin(q[2])) -
+                 std::sin(q[3]) *
+                     (std::sin(q[0]) * std::sin(q[2]) -
+                      std::cos(q[0]) * std::cos(q[2]) * std::sin(q[1])))) -
+           qd[4] * std::sin(q[4]) *
+               (std::cos(q[3]) *
+                    (std::sin(q[0]) * std::sin(q[2]) -
+                     std::cos(q[0]) * std::cos(q[2]) * std::sin(q[1])) +
+                std::sin(q[3]) *
+                    (std::cos(q[2]) * std::sin(q[0]) +
+                     std::cos(q[0]) * std::sin(q[1]) * std::sin(q[2])))) /
+          2.0;
+  d_lf1_Jv_dot_tmp = r_lf1_Jv_dot_tmp_tmp * p_lf1_Jv_dot_tmp_tmp;
+  e_lf1_Jv_dot_tmp = q_lf1_Jv_dot_tmp_tmp * lf1_Jv_dot_tmp;
+  d_lf1_Jv_dot_tmp_tmp_tmp = s_lf1_Jv_dot_tmp_tmp * k_lf1_Jv_dot_tmp_tmp;
+  e_lf1_Jv_dot_tmp_tmp_tmp = t_lf1_Jv_dot_tmp_tmp * l_lf1_Jv_dot_tmp_tmp;
+  lf1_Jv_dot[7] =
+      ((((b_lf1_Jv_dot_tmp - p[0] * lf1_Jv_dot_tmp) + d_lf1_Jv_dot_tmp) -
+        e_lf1_Jv_dot_tmp) +
+       d_lf1_Jv_dot_tmp_tmp_tmp) +
+      e_lf1_Jv_dot_tmp_tmp_tmp;
+  lf1_Jv_dot[10] = (((b_lf1_Jv_dot_tmp + d_lf1_Jv_dot_tmp) - e_lf1_Jv_dot_tmp) +
+                    d_lf1_Jv_dot_tmp_tmp_tmp) +
+                   e_lf1_Jv_dot_tmp_tmp_tmp;
+  lf1_Jv_dot[13] = b_lf1_Jv_dot_tmp;
+  lf1_Jv_dot[2] = 0.0;
+  lf1_Jv_dot[5] =
+      ((((((((f_lf1_Jv_dot_tmp * j_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp -
+              p[3] *
+                  (((h_lf1_Jv_dot_tmp_tmp *
+                         (((((kb_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp *
+                                  g_lf1_Jv_dot_tmp_tmp -
+                              lf1_Jv_dot_tmp_tmp_tmp * f_lf1_Jv_dot_tmp_tmp) +
+                             lf1_Jv_dot_tmp_tmp_tmp_tmp * d_lf1_Jv_dot_tmp_tmp *
+                                 g_lf1_Jv_dot_tmp_tmp) +
+                            qd[2] * f_lf1_Jv_dot_tmp_tmp *
+                                d_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp) +
+                           qd[3] * b_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp *
+                               g_lf1_Jv_dot_tmp_tmp) +
+                          w_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp *
+                              e_lf1_Jv_dot_tmp_tmp) +
+                     i_lf1_Jv_dot_tmp_tmp *
+                         (((((lf1_Jv_dot_tmp_tmp_tmp * g_lf1_Jv_dot_tmp_tmp +
+                              kb_lf1_Jv_dot_tmp_tmp * f_lf1_Jv_dot_tmp_tmp *
+                                  e_lf1_Jv_dot_tmp_tmp) +
+                             lf1_Jv_dot_tmp_tmp_tmp_tmp * f_lf1_Jv_dot_tmp_tmp *
+                                 d_lf1_Jv_dot_tmp_tmp) +
+                            qd[3] * std::cos(q[2]) * f_lf1_Jv_dot_tmp_tmp *
+                                d_lf1_Jv_dot_tmp_tmp) -
+                           qd[2] * d_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp *
+                               g_lf1_Jv_dot_tmp_tmp) -
+                          qd[3] * d_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp *
+                              g_lf1_Jv_dot_tmp_tmp)) -
+                    v_lf1_Jv_dot_tmp_tmp *
+                        (d_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp *
+                             g_lf1_Jv_dot_tmp_tmp -
+                         b_lf1_Jv_dot_tmp_tmp * f_lf1_Jv_dot_tmp_tmp *
+                             d_lf1_Jv_dot_tmp_tmp)) +
+                   u_lf1_Jv_dot_tmp_tmp *
+                       (b_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp *
+                            g_lf1_Jv_dot_tmp_tmp +
+                        f_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp *
+                            e_lf1_Jv_dot_tmp_tmp))) -
+             g_lf1_Jv_dot_tmp * d_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp) -
+            p[2] *
+                (((i_lf1_Jv_dot_tmp_tmp *
+                       (((((qd[1] * std::cos(q[1]) * std::sin(q[2]) *
+                                std::sin(q[3]) -
+                            qd[1] * std::cos(q[1]) * std::cos(q[2]) *
+                                std::cos(q[3])) +
+                           qd[2] * std::cos(q[2]) * std::sin(q[1]) *
+                               std::sin(q[3])) +
+                          qd[2] * std::cos(q[3]) * std::sin(q[1]) *
+                              std::sin(q[2])) +
+                         qd[3] * std::cos(q[2]) * std::sin(q[1]) *
+                             std::sin(q[3])) +
+                        qd[3] * std::cos(q[3]) * std::sin(q[1]) *
+                            std::sin(q[2])) -
+                   h_lf1_Jv_dot_tmp_tmp *
+                       (((((qd[1] * std::cos(q[1]) * std::cos(q[2]) *
+                                std::sin(q[3]) +
+                            qd[1] * std::cos(q[1]) * std::cos(q[3]) *
+                                std::sin(q[2])) +
+                           qd[2] * std::cos(q[2]) * std::cos(q[3]) *
+                               std::sin(q[1])) +
+                          qd[3] * std::cos(q[2]) * std::cos(q[3]) *
+                              std::sin(q[1])) -
+                         qd[2] * std::sin(q[1]) * std::sin(q[2]) *
+                             std::sin(q[3])) -
+                        qd[3] * std::sin(q[1]) * std::sin(q[2]) *
+                            std::sin(q[3]))) +
+                  v_lf1_Jv_dot_tmp_tmp *
+                      (std::cos(q[2]) * std::sin(q[1]) * std::sin(q[3]) +
+                       std::cos(q[3]) * std::sin(q[1]) * std::sin(q[2]))) +
+                 u_lf1_Jv_dot_tmp_tmp *
+                     (std::sin(q[1]) * std::sin(q[2]) * std::sin(q[3]) -
+                      std::cos(q[2]) * std::cos(q[3]) * std::sin(q[1]))) /
+                2.0) +
+           c_lf1_Jv_dot_tmp * j_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp *
+               f_lf1_Jv_dot_tmp_tmp) -
+          p[1] * qd[1] * std::cos(q[1]) * e_lf1_Jv_dot_tmp_tmp *
+              g_lf1_Jv_dot_tmp_tmp) -
+         bb_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp *
+             g_lf1_Jv_dot_tmp_tmp) -
+        bb_lf1_Jv_dot_tmp_tmp * f_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp *
+            e_lf1_Jv_dot_tmp_tmp) -
+       n_lf1_Jv_dot_tmp_tmp * b_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp *
+           g_lf1_Jv_dot_tmp_tmp) -
+      s_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp;
+  lf1_Jv_dot[8] =
+      ((((((((p[2] *
+                  (((h_lf1_Jv_dot_tmp_tmp *
+                         (((((qd[1] * std::cos(q[2]) * std::cos(q[3]) *
+                                  d_lf1_Jv_dot_tmp_tmp +
+                              cb_lf1_Jv_dot_tmp_tmp * g_lf1_Jv_dot_tmp_tmp) +
+                             qd[2] * std::cos(q[1]) * std::cos(q[3]) *
+                                 e_lf1_Jv_dot_tmp_tmp) +
+                            db_lf1_Jv_dot_tmp_tmp * g_lf1_Jv_dot_tmp_tmp) +
+                           qd[3] * std::cos(q[1]) * std::cos(q[3]) *
+                               e_lf1_Jv_dot_tmp_tmp) -
+                          qd[1] * d_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp *
+                              g_lf1_Jv_dot_tmp_tmp) -
+                     i_lf1_Jv_dot_tmp_tmp *
+                         (((((eb_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp *
+                                  g_lf1_Jv_dot_tmp_tmp -
+                              qd[3] * std::cos(q[1]) * std::cos(q[2]) *
+                                  std::cos(q[3])) -
+                             qd[2] * std::cos(q[1]) * std::cos(q[2]) *
+                                 std::cos(q[3])) +
+                            qd[1] * std::cos(q[3]) * d_lf1_Jv_dot_tmp_tmp *
+                                e_lf1_Jv_dot_tmp_tmp) +
+                           y_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp *
+                               g_lf1_Jv_dot_tmp_tmp) +
+                          ab_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp *
+                              g_lf1_Jv_dot_tmp_tmp)) +
+                    u_lf1_Jv_dot_tmp_tmp *
+                        (fb_lf1_Jv_dot_tmp_tmp * g_lf1_Jv_dot_tmp_tmp +
+                         std::cos(q[1]) * std::cos(q[3]) *
+                             e_lf1_Jv_dot_tmp_tmp)) +
+                   v_lf1_Jv_dot_tmp_tmp *
+                       (std::cos(q[1]) * std::cos(q[2]) * std::cos(q[3]) -
+                        j_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp *
+                            g_lf1_Jv_dot_tmp_tmp)) /
+                  2.0 -
+              p[3] * (((h_lf1_Jv_dot_tmp_tmp *
+                            (((((qd[1] * std::cos(q[2]) * std::sin(q[1]) *
+                                     std::sin(q[3]) -
+                                 qd[3] * std::cos(q[1]) * std::cos(q[2]) *
+                                     std::cos(q[3])) -
+                                qd[2] * std::cos(q[1]) * std::cos(q[2]) *
+                                    std::cos(q[3])) +
+                               qd[1] * std::cos(q[3]) * std::sin(q[1]) *
+                                   std::sin(q[2])) +
+                              qd[2] * std::cos(q[1]) * std::sin(q[2]) *
+                                  std::sin(q[3])) +
+                             qd[3] * std::cos(q[1]) * std::sin(q[2]) *
+                                 std::sin(q[3])) +
+                        i_lf1_Jv_dot_tmp_tmp *
+                            (((((qd[1] * std::cos(q[2]) * std::cos(q[3]) *
+                                     std::sin(q[1]) +
+                                 qd[2] * std::cos(q[1]) * std::cos(q[2]) *
+                                     std::sin(q[3])) +
+                                qd[2] * std::cos(q[1]) * std::cos(q[3]) *
+                                    std::sin(q[2])) +
+                               qd[3] * std::cos(q[1]) * std::cos(q[2]) *
+                                   std::sin(q[3])) +
+                              qd[3] * std::cos(q[1]) * std::cos(q[3]) *
+                                  std::sin(q[2])) -
+                             qd[1] * std::sin(q[1]) * std::sin(q[2]) *
+                                 std::sin(q[3]))) -
+                       u_lf1_Jv_dot_tmp_tmp *
+                           (std::cos(q[1]) * std::cos(q[2]) * std::cos(q[3]) -
+                            std::cos(q[1]) * std::sin(q[2]) * std::sin(q[3]))) +
+                      v_lf1_Jv_dot_tmp_tmp *
+                          (std::cos(q[1]) * std::cos(q[2]) * std::sin(q[3]) +
+                           std::cos(q[1]) * std::cos(q[3]) * std::sin(q[2])))) -
+             f_lf1_Jv_dot_tmp * d_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp) +
+            p[0] * qd[2] * std::cos(q[1]) * b_lf1_Jv_dot_tmp_tmp) +
+           p[1] * qd[2] * std::cos(q[1]) * std::cos(q[2]) *
+               f_lf1_Jv_dot_tmp_tmp) +
+          p[1] * qd[3] * std::cos(q[1]) * std::cos(q[2]) *
+              f_lf1_Jv_dot_tmp_tmp) -
+         p[1] * qd[1] * std::cos(q[2]) * d_lf1_Jv_dot_tmp_tmp *
+             g_lf1_Jv_dot_tmp_tmp) -
+        c_lf1_Jv_dot_tmp * f_lf1_Jv_dot_tmp_tmp * d_lf1_Jv_dot_tmp_tmp *
+            e_lf1_Jv_dot_tmp_tmp) -
+       gb_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp * g_lf1_Jv_dot_tmp_tmp) -
+      hb_lf1_Jv_dot_tmp_tmp * e_lf1_Jv_dot_tmp_tmp * g_lf1_Jv_dot_tmp_tmp;
+  lf1_Jv_dot_tmp =
+      p[2] *
+          (((std::cos(q[4]) *
+                 (((((qd[1] * std::cos(q[2]) * std::cos(q[3]) * std::sin(q[1]) +
+                      qd[2] * std::cos(q[1]) * std::cos(q[2]) *
+                          std::sin(q[3])) +
+                     qd[2] * std::cos(q[1]) * std::cos(q[3]) * std::sin(q[2])) +
+                    qd[3] * std::cos(q[1]) * std::cos(q[2]) * std::sin(q[3])) +
+                   qd[3] * std::cos(q[1]) * std::cos(q[3]) * std::sin(q[2])) -
+                  qd[1] * std::sin(q[1]) * std::sin(q[2]) * std::sin(q[3])) -
+             std::sin(q[4]) *
+                 (((((qd[1] * std::cos(q[2]) * std::sin(q[1]) * std::sin(q[3]) -
+                      qd[3] * std::cos(q[1]) * std::cos(q[2]) *
+                          std::cos(q[3])) -
+                     qd[2] * std::cos(q[1]) * std::cos(q[2]) * std::cos(q[3])) +
+                    qd[1] * std::cos(q[3]) * std::sin(q[1]) * std::sin(q[2])) +
+                   qd[2] * std::cos(q[1]) * std::sin(q[2]) * std::sin(q[3])) +
+                  qd[3] * std::cos(q[1]) * std::sin(q[2]) * std::sin(q[3]))) +
+            qd[4] * std::cos(q[4]) *
+                (std::cos(q[1]) * std::cos(q[2]) * std::sin(q[3]) +
+                 std::cos(q[1]) * std::cos(q[3]) * std::sin(q[2]))) +
+           qd[4] * std::sin(q[4]) *
+               (std::cos(q[1]) * std::cos(q[2]) * std::cos(q[3]) -
+                std::cos(q[1]) * std::sin(q[2]) * std::sin(q[3]))) /
+          2.0 -
+      p[3] *
+          (((std::cos(q[4]) *
+                 (((((qd[1] * std::cos(q[2]) * std::sin(q[1]) * std::sin(q[3]) -
+                      qd[3] * std::cos(q[1]) * std::cos(q[2]) *
+                          std::cos(q[3])) -
+                     qd[2] * std::cos(q[1]) * std::cos(q[2]) * std::cos(q[3])) +
+                    qd[1] * std::cos(q[3]) * std::sin(q[1]) * std::sin(q[2])) +
+                   qd[2] * std::cos(q[1]) * std::sin(q[2]) * std::sin(q[3])) +
+                  qd[3] * std::cos(q[1]) * std::sin(q[2]) * std::sin(q[3])) +
+             std::sin(q[4]) *
+                 (((((qd[1] * std::cos(q[2]) * std::cos(q[3]) * std::sin(q[1]) +
+                      qd[2] * std::cos(q[1]) * std::cos(q[2]) *
+                          std::sin(q[3])) +
+                     qd[2] * std::cos(q[1]) * std::cos(q[3]) * std::sin(q[2])) +
+                    qd[3] * std::cos(q[1]) * std::cos(q[2]) * std::sin(q[3])) +
+                   qd[3] * std::cos(q[1]) * std::cos(q[3]) * std::sin(q[2])) -
+                  qd[1] * std::sin(q[1]) * std::sin(q[2]) * std::sin(q[3]))) -
+            qd[4] * std::cos(q[4]) *
+                (std::cos(q[1]) * std::cos(q[2]) * std::cos(q[3]) -
+                 std::cos(q[1]) * std::sin(q[2]) * std::sin(q[3]))) +
+           qd[4] * std::sin(q[4]) *
+               (std::cos(q[1]) * std::cos(q[2]) * std::sin(q[3]) +
+                std::cos(q[1]) * std::cos(q[3]) * std::sin(q[2])));
+  lf1_Jv_dot[11] =
+      (((((lf1_Jv_dot_tmp +
+           p[1] * qd[2] * std::cos(q[1]) * std::cos(q[2]) * std::cos(q[3])) +
+          p[1] * qd[3] * std::cos(q[1]) * std::cos(q[2]) * std::cos(q[3])) -
+         p[1] * qd[1] * std::cos(q[2]) * std::sin(q[1]) * std::sin(q[3])) -
+        p[1] * qd[1] * std::cos(q[3]) * std::sin(q[1]) * std::sin(q[2])) -
+       p[1] * qd[2] * std::cos(q[1]) * std::sin(q[2]) * std::sin(q[3])) -
+      p[1] * qd[3] * std::cos(q[1]) * std::sin(q[2]) * std::sin(q[3]);
+  lf1_Jv_dot[14] = lf1_Jv_dot_tmp;
+
+  // Create a 3x5 Eigen::MatrixXd object
+  Eigen::MatrixXd Jaco(3, 5);
+
+  // Copy the values from the Jacobian array to the Eigen::MatrixXd object
+  for (int j = 0; j < 5; j++) {
+      for (int i = 0; i < 3; i++) {
+          Jaco(i, j) = lf1_Jv_dot[j * 3 + i];
+      }
+  }
+
+  return Jaco;
+}
 
 #define TELLO_THIGH_LENGTH 0.228
 #define TELLO_CALF_LENGTH 0.260

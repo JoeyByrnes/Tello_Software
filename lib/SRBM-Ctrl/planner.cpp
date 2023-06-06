@@ -268,7 +268,8 @@ void dash_planner::SRB_Traj_Planner(
     MatrixXd &SRB_state_ref,
     VectorXd &SRB_wrench_ref,
     MatrixXd &lfv_comm,
-    MatrixXd &lfdv_comm)
+    MatrixXd &lfdv_comm,
+    MatrixXd &lfddv_comm)
 {
     // Parameters
     double m = srb_params.m;
@@ -328,7 +329,7 @@ void dash_planner::SRB_Traj_Planner(
             if( en_v2_ctrl )
                 dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(FxR, FyR, lfv_comm, lfdv_comm, human_dyn_data, srb_params, human_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv, tau_ext);  
             else
-                dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(FxR, FyR, lfv_comm, lfdv_comm, human_dyn_data, srb_params, human_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv, tau_ext);
+                dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(FxR, FyR, lfv_comm, lfdv_comm, lfddv_comm, human_dyn_data, srb_params, human_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv, tau_ext);
         }
         
         // SRB state reference (regulate all around SRB states around zero)

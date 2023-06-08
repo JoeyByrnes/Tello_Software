@@ -104,6 +104,7 @@ double dz_smoothed;
 double smoothFactor = 4;
 
 VectorXd gnd_contacts(4);
+VectorXd z_forces(4);
 
 // robot states indices
 int torso_x_idx = 0;
@@ -428,6 +429,11 @@ void* taskPD2Thread(void* arg) {
 // void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 void TELLO_locomotion_ctrl(ctrlData cd)
 {
+    tello->_GRFs.right_front = z_forces(0);
+    tello->_GRFs.right_back = z_forces(1);
+    tello->_GRFs.left_front = z_forces(2);
+    tello->_GRFs.left_back = z_forces(3);
+    // cout << tello->_GRFs.right_front << "    " << tello->_GRFs.right_back << "    " << tello->_GRFs.left_front << "    " << tello->_GRFs.left_back << " " << endl; 
     // Net wrench based PD controller with optimization-based force distribution
     // Simulation time
     // dash_utils::end_timer();
@@ -581,7 +587,7 @@ void TELLO_locomotion_ctrl(ctrlData cd)
     tello->sim_joint_pos << qVec;
     tello->sim_joint_vel << qdVec;
 
-    VectorXd task_velocities = tello->joint_vel_to_task_vel(qdVec);
+    VectorXd task_velocities = tello->joint_vel_to_task_vel(qdVec,tello->getJointPositions());
 
     MatrixXd lfdv_hip(4,3);
     lfdv_hip.row(2) = task_velocities.segment<3>(0);
@@ -684,9 +690,10 @@ void TELLO_locomotion_ctrl(ctrlData cd)
             swing_pd_config.task_ff_force = VectorXd::Zero(12);
             swing_pd_config.setTaskPosDesired(target_front_left, target_back_left, target_front_right, target_back_right);
             swing_pd_config.setTaskVelDesired(target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel);
-            swing_pd_config.setTaskKp(0,0,0);
-            swing_pd_config.setTaskKd(0,0,0);
-            swing_pd_config.setTaskKa(0,0,0);
+            swing_pd_config.setTaskKp(0,10000,0);
+            swing_pd_config.setTaskKd(0,50,0);
+            // swing_pd_config.setJointKa(swing_conf.hip_yaw_Ka,swing_conf.hip_roll_Ka,swing_conf.hip_pitch_Ka,swing_conf.knee_Ka,swing_conf.ankle_Ka);
+            swing_pd_config.setJointKa(0);
             swing_pd_config.setFFAccel(target_front_left_accel,target_back_left_accel,target_front_right_accel,target_back_right_accel);
             swing_pd_config.setJointKp(kp_vec_joint_swing);
             swing_pd_config.setJointKd(kd_vec_joint_swing);
@@ -706,8 +713,8 @@ void TELLO_locomotion_ctrl(ctrlData cd)
         posture_pd_config.task_ff_force = VectorXd::Zero(12);
         posture_pd_config.setTaskPosDesired(target_front_left, target_back_left, target_front_right, target_back_right);
         posture_pd_config.setTaskVelDesired(target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel);
-        posture_pd_config.setTaskKp(0,0,0);
-        posture_pd_config.setTaskKd(0,0,0);
+        posture_pd_config.setTaskKp(0,10000,0);
+        posture_pd_config.setTaskKd(0,50,0);
         posture_pd_config.setTaskKa(0,0,0);
         posture_pd_config.setJointKp(kp_vec_joint_posture);
         posture_pd_config.setJointKd(kd_vec_joint_posture);
@@ -720,11 +727,11 @@ void TELLO_locomotion_ctrl(ctrlData cd)
         tau_LR = tau_LR + posture_ctrl_torques;
 
         VectorXd torques_left  = tello->swing_stance_mux(tau_LR.head(5), swing_leg_torques.head(5),
-                                                            0.00,controller->get_isSwingToStanceRight(), 
+                                                            0.01,controller->get_isSwingToStanceRight(), 
                                                             cd.t-controller->get_transitionStartRight(), 
                                                             0);
         VectorXd torques_right = tello->swing_stance_mux(tau_LR.tail(5), swing_leg_torques.tail(5),
-                                                            0.00,controller->get_isSwingToStanceLeft(),
+                                                            0.01,controller->get_isSwingToStanceLeft(),
                                                             cd.t-controller->get_transitionStartLeft(), 
                                                             1);
         VectorXd tau_LR_muxed(10);
@@ -2017,7 +2024,9 @@ void* sim_step_task( void * arg )
                 d->time = d->time + elapsed;
                 mj_kinematics(m,d);
             }
+             
             pthread_mutex_lock(&sim_step_mutex);
+            contactforce(m,d, controller->get_FSM());
             cd_shared = copyMjData(m,d);
             pthread_mutex_unlock(&sim_step_mutex);
         }

@@ -60,12 +60,12 @@ DynamicRobot::DynamicRobot()
 
 }
 
-Eigen::VectorXd DynamicRobot::motor_vel_to_joint_vel(Eigen::VectorXd motor_velocites)
+Eigen::VectorXd DynamicRobot::motor_vel_to_joint_vel(Eigen::VectorXd motor_velocites, Eigen::VectorXd joint_positions)
 {
     Eigen::VectorXd motor_velocites_left = motor_velocites.segment(0,5);
 	Eigen::VectorXd motor_velocites_right = motor_velocites.segment(5,5);
 
-    Eigen::VectorXd joint_positions = this->getJointPositions();
+    // Eigen::VectorXd joint_positions = this->getJointPositions();
     Eigen::VectorXd joint_positions_left = joint_positions.segment(0,5);
     Eigen::VectorXd joint_positions_right = joint_positions.segment(5,5);
 
@@ -79,12 +79,12 @@ Eigen::VectorXd DynamicRobot::motor_vel_to_joint_vel(Eigen::VectorXd motor_veloc
     return joint_velocities;
 }
 
-Eigen::VectorXd DynamicRobot::joint_vel_to_motor_vel(Eigen::VectorXd joint_velocites)
+Eigen::VectorXd DynamicRobot::joint_vel_to_motor_vel(Eigen::VectorXd joint_velocites, Eigen::VectorXd joint_positions)
 {
     Eigen::VectorXd joint_velocites_left = joint_velocites.segment(0,5);
 	Eigen::VectorXd joint_velocites_right = joint_velocites.segment(5,5);
 
-    Eigen::VectorXd joint_positions = this->getJointPositions();
+    // Eigen::VectorXd joint_positions = this->getJointPositions();
     Eigen::VectorXd joint_positions_left = joint_positions.segment(0,5);
     Eigen::VectorXd joint_positions_right = joint_positions.segment(5,5);
 
@@ -97,12 +97,12 @@ Eigen::VectorXd DynamicRobot::joint_vel_to_motor_vel(Eigen::VectorXd joint_veloc
     return motor_velocities;
 }
 
-Eigen::VectorXd DynamicRobot::joint_vel_to_task_vel(Eigen::VectorXd joint_velocites)
+Eigen::VectorXd DynamicRobot::joint_vel_to_task_vel(Eigen::VectorXd joint_velocites, Eigen::VectorXd joint_positions)
 {
     Eigen::VectorXd joint_velocites_left = joint_velocites.segment(0,5);
 	Eigen::VectorXd joint_velocites_right = joint_velocites.segment(5,5);
 
-    Eigen::VectorXd joint_positions = this->getJointPositions();
+    // Eigen::VectorXd joint_positions = this->getJointPositions();
     Eigen::VectorXd joint_positions_left = joint_positions.segment(0,5);
     Eigen::VectorXd joint_positions_right = joint_positions.segment(5,5);
 
@@ -136,14 +136,14 @@ void* calculatePseudoInverse(void* threadData) {
     pthread_exit(NULL);
 }
 
-Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel_right(Eigen::VectorXd task_velocities, TaskPDConfig task_conf)
+Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel_right(Eigen::VectorXd task_velocities, TaskPDConfig task_conf, Eigen::VectorXd joint_positions)
 {
     if(task_conf.use_single_jacoian)
     {
         Eigen::VectorXd task_velocites_front_right(3);
         task_velocites_front_right << task_velocities.segment(6,3);
-
-        Eigen::MatrixXd J_front_right = this->jacobian_task_lf_front(this->getJointPositions().segment(5,5)).topRows(3);
+        
+        Eigen::MatrixXd J_front_right = this->jacobian_task_lf_front(joint_positions.segment(5,5)).topRows(3);
 
         Eigen::MatrixXd J_front_right_inverse = J_front_right.completeOrthogonalDecomposition().pseudoInverse();
 
@@ -158,8 +158,8 @@ Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel_right(Eigen::VectorXd task_v
         Eigen::VectorXd task_velocites_back_right(3);
         task_velocites_back_right << task_velocities.segment(9,3);
 
-        Eigen::MatrixXd J_front_right = this->jacobian_task_lf_front(this->getJointPositions().segment(5,5)).topRows(3);
-        Eigen::MatrixXd J_back_right = this->jacobian_task_lf_back(this->getJointPositions().segment(5,5)).topRows(3);
+        Eigen::MatrixXd J_front_right = this->jacobian_task_lf_front(joint_positions.segment(5,5)).topRows(3);
+        Eigen::MatrixXd J_back_right = this->jacobian_task_lf_back(joint_positions.segment(5,5)).topRows(3);
 
         Eigen::MatrixXd J_front_right_inverse = J_front_right.completeOrthogonalDecomposition().pseudoInverse();
         Eigen::MatrixXd J_back_right_inverse = J_back_right.completeOrthogonalDecomposition().pseudoInverse();
@@ -173,14 +173,14 @@ Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel_right(Eigen::VectorXd task_v
     }
 }
 
-Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel_left(Eigen::VectorXd task_velocities, TaskPDConfig task_conf)
+Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel_left(Eigen::VectorXd task_velocities, TaskPDConfig task_conf, Eigen::VectorXd joint_positions)
 {
     if(task_conf.use_single_jacoian)
     {
         Eigen::VectorXd task_velocites_front_left(3);
         task_velocites_front_left << task_velocities.segment(0,3);
 
-        Eigen::MatrixXd J_front_left = this->jacobian_task_lf_front(this->getJointPositions().segment(0,5)).topRows(3);
+        Eigen::MatrixXd J_front_left = this->jacobian_task_lf_front(joint_positions.segment(0,5)).topRows(3);
 
         Eigen::MatrixXd J_front_left_inverse = J_front_left.completeOrthogonalDecomposition().pseudoInverse();
 
@@ -195,8 +195,8 @@ Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel_left(Eigen::VectorXd task_ve
         Eigen::VectorXd task_velocites_back_left(3);
         task_velocites_back_left << task_velocities.segment(3,3);
 
-        Eigen::MatrixXd J_front_left = this->jacobian_task_lf_front(this->getJointPositions().segment(0,5)).topRows(3);
-        Eigen::MatrixXd J_back_left = this->jacobian_task_lf_back(this->getJointPositions().segment(0,5)).topRows(3);
+        Eigen::MatrixXd J_front_left = this->jacobian_task_lf_front(joint_positions.segment(0,5)).topRows(3);
+        Eigen::MatrixXd J_back_left = this->jacobian_task_lf_back(joint_positions.segment(0,5)).topRows(3);
 
         Eigen::MatrixXd J_front_left_inverse = J_front_left.completeOrthogonalDecomposition().pseudoInverse();
         Eigen::MatrixXd J_back_left_inverse = J_back_left.completeOrthogonalDecomposition().pseudoInverse();
@@ -210,27 +210,27 @@ Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel_left(Eigen::VectorXd task_ve
     }
 }
 
-Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel(Eigen::VectorXd task_velocities,TaskPDConfig task_conf)
+Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel(Eigen::VectorXd task_velocities,TaskPDConfig task_conf, Eigen::VectorXd joint_positions)
 {
     if(task_conf.side == BOTH_LEGS)
     {
-        return task_vel_to_joint_vel(task_velocities);
+        return task_vel_to_joint_vel(task_velocities, joint_positions);
     }
     else if(task_conf.side == RIGHT_LEG)
     {
         Eigen::VectorXd joint_velocities = VectorXd::Zero(10);
-        joint_velocities.head(5) = task_vel_to_joint_vel_right(task_velocities,task_conf);
+        joint_velocities.head(5) = task_vel_to_joint_vel_right(task_velocities,task_conf, joint_positions);
         return joint_velocities;
     }
     else//if(task_conf.side == LEFT_LEG)
     { 
         Eigen::VectorXd joint_velocities = VectorXd::Zero(10);
-        joint_velocities.tail(5) = task_vel_to_joint_vel_left(task_velocities,task_conf);
+        joint_velocities.tail(5) = task_vel_to_joint_vel_left(task_velocities,task_conf, joint_positions);
         return joint_velocities;
     }
 }
 
-Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel(Eigen::VectorXd task_velocities)
+Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel(Eigen::VectorXd task_velocities, Eigen::VectorXd joint_positions)
 {
     Eigen::VectorXd task_velocites_front_left(3);
     task_velocites_front_left << task_velocities.segment(0,3);
@@ -241,11 +241,11 @@ Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel(Eigen::VectorXd task_velocit
     Eigen::VectorXd task_velocites_back_right(3);
     task_velocites_back_right << task_velocities.segment(9,3);
 
-    Eigen::MatrixXd J_front_left = this->jacobian_task_lf_front(this->getJointPositions().segment(0,5)).topRows(3);
-    Eigen::MatrixXd J_back_left = this->jacobian_task_lf_back(this->getJointPositions().segment(0,5)).topRows(3);
+    Eigen::MatrixXd J_front_left = this->jacobian_task_lf_front(joint_positions.segment(0,5)).topRows(3);
+    Eigen::MatrixXd J_back_left = this->jacobian_task_lf_back(joint_positions.segment(0,5)).topRows(3);
 
-    Eigen::MatrixXd J_front_right = this->jacobian_task_lf_front(this->getJointPositions().segment(5,5)).topRows(3);
-    Eigen::MatrixXd J_back_right = this->jacobian_task_lf_back(this->getJointPositions().segment(5,5)).topRows(3);
+    Eigen::MatrixXd J_front_right = this->jacobian_task_lf_front(joint_positions.segment(5,5)).topRows(3);
+    Eigen::MatrixXd J_back_right = this->jacobian_task_lf_back(joint_positions.segment(5,5)).topRows(3);
 
     // pthread_t threads[4];
     // ThreadData threadData[4];
@@ -298,12 +298,12 @@ Eigen::VectorXd DynamicRobot::task_vel_to_joint_vel(Eigen::VectorXd task_velocit
     return joint_velocities;
 }
 
-Eigen::VectorXd DynamicRobot::motor_torque_to_joint_torque(Eigen::VectorXd motor_torques)
+Eigen::VectorXd DynamicRobot::motor_torque_to_joint_torque(Eigen::VectorXd motor_torques, Eigen::VectorXd joint_positions)
 {
-    return this->jacobian_joint_inverse(this->getJointPositions()).transpose()*motor_torques;
+    return this->jacobian_joint_inverse(joint_positions).transpose()*motor_torques;
 }
 
-Eigen::VectorXd DynamicRobot::joint_torque_to_motor_torque(Eigen::VectorXd joint_torques)
+Eigen::VectorXd DynamicRobot::joint_torque_to_motor_torque(Eigen::VectorXd joint_torques, Eigen::VectorXd joint_positions)
 {
     // Account for incorrect jacobian convention
     joint_torques[4] = -joint_torques[4];
@@ -312,7 +312,7 @@ Eigen::VectorXd DynamicRobot::joint_torque_to_motor_torque(Eigen::VectorXd joint
     Eigen::VectorXd joint_torques_left = joint_torques.segment(0,5);
 	Eigen::VectorXd joint_torques_right = joint_torques.segment(5,5);
 
-    Eigen::VectorXd joint_positions = this->getJointPositions();
+    // Eigen::VectorXd joint_positions = this->getJointPositions();
     Eigen::VectorXd joint_positions_left = joint_positions.segment(0,5);
     Eigen::VectorXd joint_positions_right = joint_positions.segment(5,5);
 
@@ -324,14 +324,14 @@ Eigen::VectorXd DynamicRobot::joint_torque_to_motor_torque(Eigen::VectorXd joint
     return motor_torques;
 }
 
-Eigen::VectorXd DynamicRobot::joint_torque_to_task_force(Eigen::VectorXd joint_torques)
+Eigen::VectorXd DynamicRobot::joint_torque_to_task_force(Eigen::VectorXd joint_torques, Eigen::VectorXd joint_positions)
 {
     // return this->jacobian_task_inverse(this->getJointPositions()).transpose()*joint_torques;
-    Eigen::Matrix<double,5,1> f;
+    Eigen::Matrix<double,5,1> f; // TODO
     return f;
 }
 
-Eigen::VectorXd DynamicRobot::task_force_to_joint_torque(Eigen::VectorXd task_forces_front, Eigen::VectorXd task_forces_back)
+Eigen::VectorXd DynamicRobot::task_force_to_joint_torque(Eigen::VectorXd task_forces_front, Eigen::VectorXd task_forces_back, Eigen::VectorXd joint_positions)
 {
     Eigen::VectorXd task_forces_front_left(6), task_forces_front_right(6), task_forces_back_left(6), task_forces_back_right(6);
     task_forces_front_left << task_forces_front.segment(0,3), 0, 0, 0;
@@ -339,7 +339,7 @@ Eigen::VectorXd DynamicRobot::task_force_to_joint_torque(Eigen::VectorXd task_fo
     task_forces_back_left << task_forces_front.segment(0,3), 0, 0, 0;
     task_forces_back_right << task_forces_front.segment(3,3), 0, 0, 0;
 
-    Eigen::VectorXd joint_positions = this->getJointPositions();
+    // Eigen::VectorXd joint_positions = this->getJointPositions();
     Eigen::VectorXd joint_positions_left = joint_positions.segment(0,5);
     Eigen::VectorXd joint_positions_right = joint_positions.segment(5,5);
 
@@ -355,7 +355,7 @@ Eigen::VectorXd DynamicRobot::task_force_to_joint_torque(Eigen::VectorXd task_fo
     joint_torques << joint_torques_left, joint_torques_right;
     return joint_torques;
 }
-Eigen::VectorXd DynamicRobot::task_force_to_joint_torque(Eigen::VectorXd task_forces)
+Eigen::VectorXd DynamicRobot::task_force_to_joint_torque(Eigen::VectorXd task_forces, Eigen::VectorXd joint_positions)
 {
     Eigen::VectorXd task_forces_front_left(6), task_forces_front_right(6), task_forces_back_left(6), task_forces_back_right(6);
     task_forces_front_left << task_forces.segment(0,3), 0, 0, 0;
@@ -363,7 +363,7 @@ Eigen::VectorXd DynamicRobot::task_force_to_joint_torque(Eigen::VectorXd task_fo
     task_forces_front_right << task_forces.segment(6,3), 0, 0, 0;
     task_forces_back_right << task_forces.segment(9,3), 0, 0, 0;
 
-    Eigen::VectorXd joint_positions = this->getJointPositions();
+    // Eigen::VectorXd joint_positions = this->getJointPositions();
     Eigen::VectorXd joint_positions_left = joint_positions.segment(0,5);
     Eigen::VectorXd joint_positions_right = joint_positions.segment(5,5);
 
@@ -382,10 +382,10 @@ Eigen::VectorXd DynamicRobot::task_force_to_joint_torque(Eigen::VectorXd task_fo
 
 // xddot = Jdot(q, qdot)*qdot + J(q)*qddot
 // qddot = J_inv(q)*( xddot - Jdot(q, qdot)*qdot )
-VectorXd DynamicRobot::task_accel_to_joint_accel(Eigen::VectorXd task_accel)
+VectorXd DynamicRobot::task_accel_to_joint_accel(Eigen::VectorXd task_accel, Eigen::VectorXd joint_positions, Eigen::VectorXd joint_velocities)
 {
-    Eigen::VectorXd joint_positions = this->getJointPositions();
-    Eigen::VectorXd joint_velocities = this->getJointVelocities();
+    // Eigen::VectorXd joint_positions = this->getJointPositions();
+    // Eigen::VectorXd joint_velocities = this->getJointVelocities();
 
     Eigen::VectorXd joint_positions_left =  joint_positions.segment(0,5);
     Eigen::VectorXd joint_positions_right = joint_positions.segment(5,5);
@@ -402,6 +402,24 @@ VectorXd DynamicRobot::task_accel_to_joint_accel(Eigen::VectorXd task_accel)
 
     Eigen::MatrixXd J_front_left = this->jacobian_task_lf_front(this->getJointPositions().segment(0,5)).topRows(3);
     Eigen::MatrixXd J_front_left_inverse = J_front_left.completeOrthogonalDecomposition().pseudoInverse();
+
+    // cout << "q: ==============================================" << endl;
+    // cout << joint_positions.transpose() << endl;
+    // cout << endl;
+    // cout << "q_dot: ==============================================" << endl;
+    // cout << joint_velocities.transpose() << endl;
+    // cout << endl;
+    // cout << "Jacobian =================================" << endl;
+    // cout << J_front_left << endl;
+    // cout << endl;
+    // cout << "Jacobian Inverse =================================" << endl;
+    // cout << J_front_left_inverse << endl;
+    // cout << endl;
+    // cout << "Jacobian_dot =================================" << endl;
+    // cout << this->jacobian_task_accel_lf_front(joint_positions_left,joint_velocities_left) << endl;
+    // cout << endl;
+
+
 
     Eigen::VectorXd joint_accel_fl = J_front_left_inverse*(task_accel_front_left - this->jacobian_task_accel_lf_front(joint_positions_left,joint_velocities_left)*joint_velocities_left);
     Eigen::VectorXd joint_accel_bl = joint_accel_fl;
@@ -474,7 +492,7 @@ Eigen::VectorXd DynamicRobot::getJointVelocities()
     {
         motor_velocities(i) = (this->motors[i]->getMotorState().vel*VELOCITY_TO_RADIANS_PER_SEC-32.484131)*this->motor_directions[i];
     }
-	VectorXd joint_velocities = this->motor_vel_to_joint_vel(motor_velocities);
+	VectorXd joint_velocities = this->motor_vel_to_joint_vel(motor_velocities,this->getJointPositions());
     return joint_velocities;
 }
 
@@ -569,7 +587,7 @@ void DynamicRobot::jointPD(JointPDConfig joint_conf)
                                      joint_conf.joint_vel_desired,joint_conf.joint_kp,joint_conf.joint_kd);
 
 	// Convert joint PD torques to motor torques
-	VectorXd motor_torques_from_joint_pd = this->joint_torque_to_motor_torque(joint_torques + joint_conf.joint_ff_torque);
+	VectorXd motor_torques_from_joint_pd = this->joint_torque_to_motor_torque(joint_torques + joint_conf.joint_ff_torque, this->getJointPositions());
 
     // Use inverse kinematics to calculate motor PD
     VectorXd motor_pos_desired = this->joint_pos_to_motor_pos(joint_conf.joint_pos_desired);
@@ -608,14 +626,14 @@ void DynamicRobot::taskPD(TaskPDConfig task_conf)
 
     // Get task space position and velocities
     VectorXd task_positions = joint_pos_to_task_pos(joint_positions);
-    VectorXd task_velocities = joint_vel_to_task_vel(joint_velocities);
+    VectorXd task_velocities = joint_vel_to_task_vel(joint_velocities, this->getJointPositions());
 
     // Calculate Task PD
     VectorXd task_forces = calc_pd(task_positions,task_velocities,task_conf.task_pos_desired,
                                    task_conf.task_vel_desired,task_conf.task_kp,task_conf.task_kd);
 
     // Get joint torques from task forces
-    VectorXd joint_torques = this->task_force_to_joint_torque(task_forces+ task_conf.task_ff_force);
+    VectorXd joint_torques = this->task_force_to_joint_torque(task_forces+ task_conf.task_ff_force, this->getJointPositions());
 
     // Use inverse kinematics to calculate joint pd
     VectorXd joint_pos_desired = this->task_pos_to_joint_pos(task_conf.task_pos_desired);
@@ -655,10 +673,10 @@ void DynamicRobot::addGravityCompensation()
     gravity_comp_world << gcf_fl_world,gcf_bl_world,gcf_fr_world,gcf_br_world;
 
     // Get joint torques from task forces
-    VectorXd joint_torques = this->task_force_to_joint_torque(gravity_comp_world);
+    VectorXd joint_torques = this->task_force_to_joint_torque(gravity_comp_world, this->getJointPositions());
 
     // Convert joint torques to motor torques
-	VectorXd motor_torques = this->joint_torque_to_motor_torque(joint_torques);
+	VectorXd motor_torques = this->joint_torque_to_motor_torque(joint_torques, this->getJointPositions());
 
     // Add the motor torques from the Task PD as feedforward commands
     motor_torques = _motor_direction_matrix*motor_torques;
@@ -773,11 +791,12 @@ VectorXd DynamicRobot::jointPD2(JointPDConfig joint_conf)
 	VectorXd joint_velocities = this->getJointVelocities();
 
 	// Calculate Joint PD
+    
 	VectorXd joint_torques = calc_pd(joint_positions,joint_velocities,joint_conf.joint_pos_desired,
                                      joint_conf.joint_vel_desired,joint_conf.joint_kp,joint_conf.joint_kd);
 
 	// Convert joint PD torques to motor torques
-	VectorXd motor_torques_from_joint_pd = this->joint_torque_to_motor_torque(joint_torques + joint_conf.joint_ff_torque);
+	VectorXd motor_torques_from_joint_pd = this->joint_torque_to_motor_torque(joint_torques + joint_conf.joint_ff_torque, this->getJointPositions());
 
     // Use inverse kinematics to calculate motor PD
     VectorXd motor_pos_desired = this->joint_pos_to_motor_pos(joint_conf.joint_pos_desired);
@@ -812,17 +831,16 @@ VectorXd DynamicRobot::taskPD2(TaskPDConfig task_conf)
 
     // Get task space position and velocities
     VectorXd task_positions = joint_pos_to_task_pos(joint_positions);
-    VectorXd task_velocities = joint_vel_to_task_vel(joint_velocities);
+    VectorXd task_velocities = joint_vel_to_task_vel(joint_velocities, this->getJointPositions());
+
+    
 
     // Calculate Task PD
     VectorXd task_forces = calc_pd(task_positions,task_velocities,task_conf.task_pos_desired,
                                    task_conf.task_vel_desired,task_conf.task_kp,task_conf.task_kd);
 
-    VectorXd task_forces_from_accel = task_conf.task_ka*task_conf.task_ff_accel;
-    VectorXd joint_forces_from_accel = this->task_accel_to_joint_accel(task_forces_from_accel);
     // Get joint torques from task forces
-
-    VectorXd joint_torques = this->task_force_to_joint_torque(task_forces+ task_conf.task_ff_force);
+    VectorXd joint_torques = this->task_force_to_joint_torque(task_forces+ task_conf.task_ff_force, this->getJointPositions());
 
     // Use inverse kinematics to calculate joint pd
     VectorXd joint_pos_desired = this->task_pos_to_joint_pos(task_conf.task_pos_desired);
@@ -834,11 +852,18 @@ VectorXd DynamicRobot::taskPD2(TaskPDConfig task_conf)
     }
     else
     {
-        joint_vel_desired = this->task_vel_to_joint_vel(task_conf.task_vel_desired,task_conf);
+        joint_vel_desired = this->task_vel_to_joint_vel(task_conf.task_vel_desired,task_conf, joint_pos_desired);
     }
 
+    VectorXd joint_accel_from_task_accel = this->task_accel_to_joint_accel(task_conf.task_ff_accel, joint_pos_desired, joint_vel_desired);
+
+    VectorXd joint_forces_from_accel = task_conf.joint_ka*joint_accel_from_task_accel;
+
+    // cout << "Torque from FF accel:" << endl;
+    // cout << joint_forces_from_accel.transpose() << endl;
+
     JointPDConfig joint_conf;
-    joint_conf.joint_ff_torque = joint_torques + joint_forces_from_accel;
+    joint_conf.joint_ff_torque = joint_torques;// + joint_forces_from_accel;
     joint_conf.joint_pos_desired = joint_pos_desired;
     joint_conf.joint_vel_desired = joint_vel_desired;
     joint_conf.joint_kp = task_conf.joint_kp;

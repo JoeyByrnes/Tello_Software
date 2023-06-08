@@ -185,14 +185,19 @@ struct Joint_PD_config
 {
     double hip_yaw_Kp;
     double hip_yaw_Kd;
+    double hip_yaw_Ka;
     double hip_roll_Kp;
     double hip_roll_Kd;
+    double hip_roll_Ka;
     double hip_pitch_Kp;
     double hip_pitch_Kd;
+    double hip_pitch_Ka;
     double knee_Kp;
     double knee_Kd;
+    double knee_Ka;
     double ankle_Kp;
     double ankle_Kd;
+    double ankle_Ka;
 };
 
 //#pragma pack(pop)

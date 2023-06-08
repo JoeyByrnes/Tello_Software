@@ -35,6 +35,7 @@ bool lb_seen = false;
 
 
 extern VectorXd gnd_contacts;
+extern VectorXd z_forces;
 
 // mouse interaction
 bool button_left = false;
@@ -189,27 +190,32 @@ void contactforce(const mjModel* m, mjData* d,int FSM)
         int ul = 10000;
         right_data_reliable = (rfz >= ll && rbz >= ll) && (rfz <= ul && rbz <= ul);
         left_data_reliable = (lfz >= ll && lbz >= ll) && (lfz <= ul && lbz <= ul);
+        int idx = -1;
         if (geom1.compare("floor") == 0 || geom2.compare("floor") == 0)
         {
             if((geom1.compare("right_foot_toe") == 0 || geom2.compare("right_foot_toe") == 0) && right_data_reliable  )
             {
                 gnd_contacts(0) = 1;
                 rf_seen = true;
+                idx = 0;
             }
             if((geom1.compare("right_foot_heel") == 0 || geom2.compare("right_foot_heel") == 0) && right_data_reliable  )
             {
                 gnd_contacts(1) = 1;
                 rb_seen = true;
+                idx = 1;
             }
             if((geom1.compare("left_foot_toe") == 0 || geom2.compare("left_foot_toe") == 0) && left_data_reliable  )
             {
                 gnd_contacts(2) = 1;
                 lf_seen = true;
+                idx = 2;
             }
             if((geom1.compare("left_foot_heel") == 0 || geom2.compare("left_foot_heel") == 0) && left_data_reliable  )
             {
                 gnd_contacts(3) = 1;
                 lb_seen = true;
+                idx = 3;
             }
             //get robot's geom id
             int bodyid;
@@ -235,7 +241,12 @@ void contactforce(const mjModel* m, mjData* d,int FSM)
             mjtNum f_world[9];
             mju_mulMatMat(f_world, f0_contact_frame, fw_contact_force, 3, 3, 3);
             // mju_printMat(f_world, 3, 3);
-            //std::cout << f_world[0] << ", " << f_world[3] << ", " << f_world[6] << endl;
+            // std::cout << f_world[0] << ", " << f_world[3] << ", " << f_world[6] << endl;
+
+            if(idx != -1)
+            {
+                z_forces[idx] = abs(f_world[6]);
+            }
 
         } // if one geom is object
     } // for i = 1:ncon
@@ -244,6 +255,11 @@ void contactforce(const mjModel* m, mjData* d,int FSM)
     if(!rb_seen) gnd_contacts(0) = 0;
     if(!lf_seen) gnd_contacts(3) = 0;
     if(!lb_seen) gnd_contacts(2) = 0;
+
+    if(!rf_seen) z_forces(0) = 0;
+    if(!rb_seen) z_forces(1) = 0;
+    if(!lf_seen) z_forces(2) = 0;
+    if(!lb_seen) z_forces(3) = 0;
 
     if(FSM == 1)
     {

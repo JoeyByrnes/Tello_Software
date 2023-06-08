@@ -1,5 +1,7 @@
 #include "planner.h"
+#include "dynamic_robot.h"
 
+extern RoboDesignLab::DynamicRobot* tello;
 extern MatrixXd lfv0, lfdv0;
 
 extern bool en_v2_ctrl;
@@ -159,16 +161,20 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     // From SSP_R can switch to DSP based on left foot z-position
 
     // cout << "next_SSP: " << next_SSP << "   u1z: " << u1z  << "   u2z: " << u2z << "   u3z: " << u3z  << "   u4z: " << u4z  << endl;
+    double grf_rf = tello->_GRFs.right_front;
+    double grf_rb = tello->_GRFs.right_back;
+    double grf_lf = tello->_GRFs.left_front;
+    double grf_lb = tello->_GRFs.left_back;
     
     int FSM_next;
     // cout << FSM_prev << "\t u1z:" << u1z << "\t u2z" << u3z << "\t t_dsp" << t_dsp << endl;
     if (FSM_prev == 0) // currently in DSP
     {
-        if ( (u1z < Fz_min || u2z < Fz_min ) && t > 0 && t_dsp > 0.0005 && next_SSP == 1) // enter SSP_L
+        if ( (grf_rf < Fz_min || grf_rb < Fz_min ) && t > 0 && t_dsp > 0.001 && next_SSP == 1) // enter SSP_L
         {
             FSM_next = 1;
         }
-        else if ( (u3z < Fz_min || u4z < Fz_min ) && t > 0 && t_dsp > 0.0005 && next_SSP == -1) // enter SSP_R 
+        else if ( (grf_lf < Fz_min || grf_lb < Fz_min ) && t > 0 && t_dsp > 0.001 && next_SSP == -1) // enter SSP_R 
         {
             FSM_next = -1;     
         }
@@ -179,7 +185,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     }
     else if (FSM_prev == 1) // currently in SSP_L
     {
-        if ( (lf1z <= 0.003 || lf2z <= 0.003) && s > 0.5) // enter DSP
+        if ( (grf_rf > 0 || grf_rb > 0 ) && s > 0.5) // enter DSP
         {
             FSM_next = 0;
         }
@@ -190,7 +196,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     }
     else if (FSM_prev == -1) // currently in SSP_R
     {
-        if ( (lf3z <= 0.003 || lf4z <= 0.003) && s > 0.5) // enter DSP
+        if ( (grf_lf > 0 || grf_lb > 0 ) && s > 0.5) // enter DSP
         {
             FSM_next = 0;
         }
@@ -199,6 +205,43 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
             FSM_next = -1;
         } 
     }
+    // if (FSM_prev == 0) // currently in DSP
+    // {
+    //     if ( (u1z < Fz_min || u2z < Fz_min ) && t > 0 && t_dsp > 0.005 && next_SSP == 1) // enter SSP_L
+    //     {
+    //         FSM_next = 1;
+    //     }
+    //     else if ( (u3z < Fz_min || u4z < Fz_min ) && t > 0 && t_dsp > 0.005 && next_SSP == -1) // enter SSP_R 
+    //     {
+    //         FSM_next = -1;     
+    //     }
+    //     else // stay in DSP 
+    //     {
+    //         FSM_next = 0;
+    //     }
+    // }
+    // else if (FSM_prev == 1) // currently in SSP_L
+    // {
+    //     if ( (lf1z <= 0.003 || lf2z <= 0.003) && s > 0.5) // enter DSP
+    //     {
+    //         FSM_next = 0;
+    //     }
+    //     else // stay in SSP_L
+    //     {
+    //         FSM_next = 1;
+    //     }
+    // }
+    // else if (FSM_prev == -1) // currently in SSP_R
+    // {
+    //     if ( (lf3z <= 0.003 || lf4z <= 0.003) && s > 0.5) // enter DSP
+    //     {
+    //         FSM_next = 0;
+    //     }
+    //     else // stay in SSP_R
+    //     {
+    //         FSM_next = -1;
+    //     } 
+    // }
     else // should not end up here
     {
         FSM_next = 0;

@@ -94,6 +94,7 @@ namespace RoboDesignLab {
         MatrixXd task_ka;
         MatrixXd joint_kp;
         MatrixXd joint_kd;
+        MatrixXd joint_ka;
         VectorXd motor_kp = VectorXd(10);
         VectorXd motor_kd = VectorXd(10);
         VectorXd task_ff_force = VectorXd::Zero(12);
@@ -128,6 +129,19 @@ namespace RoboDesignLab {
         }
         void setJointKd(VectorXd kd) {
             joint_kd = kd.asDiagonal();
+        }
+        void setJointKa(VectorXd ka) {
+            joint_ka = ka.asDiagonal();
+        }
+        void setJointKa(double ka) {
+            VectorXd ka_vec(10);
+            ka_vec << ka,ka,ka,ka,ka,ka,ka,ka,ka,ka;
+            joint_ka = ka_vec.asDiagonal();
+        }
+        void setJointKa(double ka0,double ka1,double ka2,double ka3,double ka4) {
+            VectorXd ka_vec(10);
+            ka_vec << ka0,ka1,ka2,ka3,ka4,ka0,ka1,ka2,ka3,ka4;
+            joint_ka = ka_vec.asDiagonal();
         }
 
         void setMotorKp(double kp) {
@@ -194,22 +208,21 @@ namespace RoboDesignLab {
 
         MatrixXd jacobian_task_accel_lf_front(VectorXd joint_config, VectorXd joint_velocites) { return (*_jaco_accel_task_to_joint)(joint_config,joint_velocites);  }
 
-        VectorXd motor_vel_to_joint_vel(VectorXd motor_velocites);
-        VectorXd joint_vel_to_motor_vel(VectorXd joint_velocites);
-        VectorXd joint_vel_to_task_vel(VectorXd joint_velocites);
-        VectorXd task_vel_to_joint_vel(VectorXd task_velocites_front, VectorXd task_velocites_back );
-        VectorXd task_vel_to_joint_vel(VectorXd task_velocites);
-        VectorXd task_vel_to_joint_vel(VectorXd task_velocites, TaskPDConfig task_conf);
-        VectorXd task_vel_to_joint_vel_right(VectorXd task_velocites, TaskPDConfig task_conf);
-        VectorXd task_vel_to_joint_vel_left(VectorXd task_velocites, TaskPDConfig task_conf);
+        VectorXd motor_vel_to_joint_vel(VectorXd motor_velocites, Eigen::VectorXd joint_positions);
+        VectorXd joint_vel_to_motor_vel(VectorXd joint_velocites, Eigen::VectorXd joint_positions);
+        VectorXd joint_vel_to_task_vel(VectorXd joint_velocites, Eigen::VectorXd joint_positions);
+        VectorXd task_vel_to_joint_vel(VectorXd task_velocites_front, VectorXd task_velocites_back, Eigen::VectorXd joint_positions);
+        VectorXd task_vel_to_joint_vel(VectorXd task_velocites, Eigen::VectorXd joint_positions);
+        VectorXd task_vel_to_joint_vel(VectorXd task_velocites, TaskPDConfig task_conf, Eigen::VectorXd joint_positions);
+        VectorXd task_vel_to_joint_vel_right(VectorXd task_velocites, TaskPDConfig task_conf, Eigen::VectorXd joint_positions);
+        VectorXd task_vel_to_joint_vel_left(VectorXd task_velocites, TaskPDConfig task_conf, Eigen::VectorXd joint_positions);
 
-        VectorXd motor_torque_to_joint_torque(VectorXd motor_torques);
-        VectorXd joint_torque_to_motor_torque(VectorXd joint_torques);
-        VectorXd joint_torque_to_task_force(VectorXd joint_torques);
-        VectorXd task_force_to_joint_torque(VectorXd task_forces_front, VectorXd task_forces_back);
-        VectorXd task_force_to_joint_torque(VectorXd task_forces);
-
-        VectorXd task_accel_to_joint_accel(Eigen::VectorXd task_accel);
+        VectorXd motor_torque_to_joint_torque(VectorXd motor_torques, Eigen::VectorXd joint_positions);
+        VectorXd joint_torque_to_motor_torque(VectorXd joint_torques, Eigen::VectorXd joint_positions);
+        VectorXd joint_torque_to_task_force(VectorXd joint_torques, Eigen::VectorXd joint_positions);
+        VectorXd task_force_to_joint_torque(VectorXd task_forces_front, VectorXd task_forces_back, Eigen::VectorXd joint_positions);
+        VectorXd task_force_to_joint_torque(VectorXd task_forces, Eigen::VectorXd joint_positions);
+        VectorXd task_accel_to_joint_accel(Eigen::VectorXd task_accel, Eigen::VectorXd joint_positions, Eigen::VectorXd joint_velocities);
 
         VectorXd motor_pos_to_joint_pos(VectorXd motor_positions){ return (*_fk_motor2joint)(motor_positions); }
         VectorXd joint_pos_to_motor_pos(VectorXd joint_positions){ return (*_ik_joint2motor)(joint_positions); }
@@ -235,6 +248,7 @@ namespace RoboDesignLab {
         // Simulation:
         VectorXd jointPD2(JointPDConfig joint_conf);
         VectorXd taskPD2(TaskPDConfig task_conf);
+        VectorXd taskPD3(TaskPDConfig task_conf);
         void resetController(){controller = new SRBMController();}
 
         // InEKF Functions:

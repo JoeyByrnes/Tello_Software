@@ -965,14 +965,19 @@ void dash_utils::parse_json_to_pd_params(const std::string& json_file_path, Join
   try {
     swing.hip_yaw_Kp = json_data["Swing_Control"]["Hip_Yaw_Kp"].get<double>();
     swing.hip_yaw_Kd = json_data["Swing_Control"]["Hip_Yaw_Kd"].get<double>();
+    // swing.hip_yaw_Ka = json_data["Swing_Control"]["Hip_Yaw_Ka"].get<double>();
     swing.hip_roll_Kp = json_data["Swing_Control"]["Hip_Roll_Kp"].get<double>();
     swing.hip_roll_Kd = json_data["Swing_Control"]["Hip_Roll_Kd"].get<double>();
+    // swing.hip_roll_Ka = json_data["Swing_Control"]["Hip_Roll_Ka"].get<double>();
     swing.hip_pitch_Kp = json_data["Swing_Control"]["Hip_Pitch_Kp"].get<double>();
     swing.hip_pitch_Kd = json_data["Swing_Control"]["Hip_Pitch_Kd"].get<double>();
+    // swing.hip_pitch_Ka = json_data["Swing_Control"]["Hip_Pitch_Ka"].get<double>();
     swing.knee_Kp = json_data["Swing_Control"]["Knee_Kp"].get<double>();
     swing.knee_Kd = json_data["Swing_Control"]["Knee_Kd"].get<double>();
+    // swing.knee_Ka = json_data["Swing_Control"]["Knee_Ka"].get<double>();
     swing.ankle_Kp = json_data["Swing_Control"]["Ankle_Kp"].get<double>();
     swing.ankle_Kd = json_data["Swing_Control"]["Ankle_Kd"].get<double>();
+    // swing.ankle_Ka = json_data["Swing_Control"]["Ankle_Ka"].get<double>();
   } catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << "\n";
     return;

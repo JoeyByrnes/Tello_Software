@@ -598,7 +598,7 @@ void run_balance_controller()
 	Vector3d EA_curr = tello->_rpy;
 	Vector3d dEA_curr = tello->_gyro;
 
-	VectorXd task_velocities = tello->joint_vel_to_task_vel(tello->getJointVelocities());
+	VectorXd task_velocities = tello->joint_vel_to_task_vel(tello->getJointVelocities(),tello->getJointPositions());
 
     MatrixXd lfdv_hip(4,3);
     lfdv_hip.row(2) = task_velocities.segment<3>(0);

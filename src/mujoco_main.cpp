@@ -1726,9 +1726,8 @@ void* mujoco_Update_1KHz( void * arg )
                 tello->controller->set_lfv0(new_lfv0);
                 tello->controller->set_q0(q0);
                 Human_params hp = tello->controller->get_human_params();
-                hp.human_nom_ft_width = robot_init_foot_width;
                 // double joystick_base_separation = 1.465;
-                // double foot_center_to_joystick = 0.0635;
+                // double foot_center_to_joystick = 0.0825;
                 // hp.fyH_home = (joystick_base_separation/2.0) - hp.human_nom_ft_width - foot_center_to_joystick; // joystick y width
                 // cout << "FyH Home: " << hp.fyH_home << endl;
                 tello->controller->set_human_params(hp);

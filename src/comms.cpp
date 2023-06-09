@@ -302,20 +302,19 @@ void* rx_UDP( void * arg ){
 
 			double hR = tello->controller->get_SRB_params().hLIP;
 			double hH = hp.hLIP; 
-			double human_nom_ft_width = hp.human_nom_ft_width;
 			double fyH_home = hp.fyH_home;
 
 			double fyH_R = hdd.fyH_R;
 			double fyH_L = hdd.fyH_L;
 
 			double joystick_base_separation = 1.525;
-    		double foot_center_to_joystick = 0.0635;
+    		double foot_center_to_joystick = 0.0825;
 
 			// double pyH_lim_lb = -1 * human_nom_ft_width + (fyH_R - fyH_home);
 			// double pyH_lim_ub = human_nom_ft_width - (fyH_L - fyH_home);
 			double human_foot_width = joystick_base_separation - 2*foot_center_to_joystick - fyH_R - fyH_L;
 			robot_init_foot_width = human_foot_width*(hR/hH);
-			//cout << "Robot Width: " << robot_init_foot_width << "    Human Width: " << human_foot_width << "    R: "<< fyH_R << "    L: "<< fyH_L << endl;
+			// cout << "Robot Width: " << robot_init_foot_width << "    Human Width: " << human_foot_width << "    R: "<< fyH_R << "    L: "<< fyH_L << endl;
 		}
 
 	// 	// smooth data here

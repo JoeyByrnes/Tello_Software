@@ -1900,6 +1900,7 @@ void dash_kin::SRB_Kin(MatrixXd& q, MatrixXd& qd, MatrixXd* Jv_mat, SRB_Params s
 
     // get SRB states
     Vector3d pc_curr = x.segment<3>(0);
+    Vector3d dpc_curr = x.segment<3>(3);
     Matrix3d R_curr = Eigen::Map<Matrix3d>(x.segment(6,9).data());
     Vector3d wb_curr = x.segment<3>(15);
 
@@ -1925,7 +1926,7 @@ void dash_kin::SRB_Kin(MatrixXd& q, MatrixXd& qd, MatrixXd* Jv_mat, SRB_Params s
     // calculate joint velocities
     Vector3d ww_curr = R_curr*wb_curr; // angular velocity in world frame
     VectorXd qd_b(6);
-    qd_b << pc_curr, ww_curr; // floating base velocities
+    qd_b << dpc_curr, ww_curr; // floating base velocities
     MatrixXd lfd_mat = lfdv.transpose(); // matrix form of end-effector velocities
     
     VectorXd r_mat_right = r_mat.col(right_end_effector_idx); // right end-effector positions

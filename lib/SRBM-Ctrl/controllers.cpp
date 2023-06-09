@@ -823,7 +823,7 @@ void dash_ctrl::sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm,
     // Parameters (human)
     const double hH = human_params.hLIP;    
     const double joystick_base_separation = 1.525;
-    const double foot_center_to_joystick = 0.0635;
+    const double foot_center_to_joystick = 0.0825;
 
     // Planner info
     const double sw_beg_step_x = traj_planner_dyn_data.sw_beg_step(0);

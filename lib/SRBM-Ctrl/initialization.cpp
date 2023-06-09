@@ -7,16 +7,16 @@ extern int simulation_mode;
 void dash_init::Human_Init(Human_params &Human_params, Human_dyn_data &Human_dyn_data) {
     // Human Parameters
     double joystick_base_separation = 1.525;
-    double foot_center_to_joystick = 0.0635;
+    double foot_center_to_joystick = 0.0825;
 
     // Human_params.m = 75; // human weight in kg
     // Human_params.hLIP = 1.2; // nominal human LIP height
 
-    Human_params.m = 75; // human weight in kg
-    Human_params.hLIP = 1.2; // nominal human LIP height
+    // Human_params.m = 75; // human weight in kg
+    // Human_params.hLIP = 1.2; // nominal human LIP height
 
-    // Human_params.m = 79; // human weight in kg
-    // Human_params.hLIP = 1.15; // nominal human LIP height
+    Human_params.m = 79; // human weight in kg
+    Human_params.hLIP = 1.15; // nominal human LIP height
 
     Human_params.human_nom_ft_width = 0.220; // nominal human feet width //was 0.175
     Human_params.fyH_home = (joystick_base_separation/2.0) - Human_params.human_nom_ft_width - foot_center_to_joystick; // joystick y width

@@ -51,6 +51,7 @@ std::string active_playback_log_png;
 int active_playback_log_index = 0;
 std::vector<std::string> hddFiles;
 bool showPlotMenu = false;
+bool showTuningMenu = false;
 
 //logging
 bool log_data_ready = false;
@@ -78,6 +79,8 @@ RoboDesignLab::TaskPDConfig swing_pd_config, posture_pd_config;
 extern bool filter_data_ready;
 int render_cnt = 0;
 int pos_sample_index = 0;
+
+VectorXd left_toe_vel_mj(6), right_toe_vel_mj(6), left_heel_vel_mj(6), right_heel_vel_mj(6);
 
 int camera_cnt = 0;
 
@@ -433,6 +436,11 @@ void TELLO_locomotion_ctrl(ctrlData cd)
     tello->_GRFs.right_back = z_forces(1);
     tello->_GRFs.left_front = z_forces(2);
     tello->_GRFs.left_back = z_forces(3);
+
+    VectorXd left_toe_vel_local = left_toe_vel_mj;
+    VectorXd right_toe_vel_local = right_toe_vel_mj;
+    VectorXd left_heel_vel_local = left_heel_vel_mj;
+    VectorXd right_heel_vel_local = right_heel_vel_mj;
     // cout << tello->_GRFs.right_front << "    " << tello->_GRFs.right_back << "    " << tello->_GRFs.left_front << "    " << tello->_GRFs.left_back << " " << endl; 
     // Net wrench based PD controller with optimization-based force distribution
     // Simulation time
@@ -597,7 +605,20 @@ void TELLO_locomotion_ctrl(ctrlData cd)
     if(simulation_mode == 1)
     {
         controller->set_lfdv_hip(lfdv_hip);
+        // MatrixXd lfdv_mj(4,3);
+        // lfdv_mj.row(0) = right_toe_vel_local.tail(3);
+        // lfdv_mj.row(1) = right_heel_vel_local.tail(3);
+        // lfdv_mj.row(2) = left_toe_vel_local.tail(3);
+        // lfdv_mj.row(3) = left_heel_vel_local.tail(3);
+        // tello->controller->set_lfdv_world(lfdv_mj);
     }
+    // cout << "left from mj: ==============================================" << endl;
+    // cout << left_toe_vel_local.transpose() << endl;
+    // cout << endl;
+
+    // cout << "left from transform: ==============================================" << endl;
+    // cout << tello->controller->get_lfdv_world().row(2) << endl;
+    // cout << endl;
 
 	// call SRBM-Ctrl here ======================================================================================
     double CoM_z = controller->get_CoM_z(controller->get_lfv_hip(),gnd_contacts,EA_curr); 
@@ -686,12 +707,12 @@ void TELLO_locomotion_ctrl(ctrlData cd)
             // if(tello->controller->get_FSM() == -1)
             //     swing_pd_config.side = LEFT_LEG;
 
-            swing_pd_config.ignore_joint_velocity = true;
+            swing_pd_config.ignore_joint_velocity = false;
             swing_pd_config.task_ff_force = VectorXd::Zero(12);
             swing_pd_config.setTaskPosDesired(target_front_left, target_back_left, target_front_right, target_back_right);
             swing_pd_config.setTaskVelDesired(target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel);
-            swing_pd_config.setTaskKp(0,10000,0);
-            swing_pd_config.setTaskKd(0,50,0);
+            swing_pd_config.setTaskKp(0,0,0);
+            swing_pd_config.setTaskKd(0,0,0);
             // swing_pd_config.setJointKa(swing_conf.hip_yaw_Ka,swing_conf.hip_roll_Ka,swing_conf.hip_pitch_Ka,swing_conf.knee_Ka,swing_conf.ankle_Ka);
             swing_pd_config.setJointKa(0);
             swing_pd_config.setFFAccel(target_front_left_accel,target_back_left_accel,target_front_right_accel,target_back_right_accel);
@@ -713,8 +734,8 @@ void TELLO_locomotion_ctrl(ctrlData cd)
         posture_pd_config.task_ff_force = VectorXd::Zero(12);
         posture_pd_config.setTaskPosDesired(target_front_left, target_back_left, target_front_right, target_back_right);
         posture_pd_config.setTaskVelDesired(target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel);
-        posture_pd_config.setTaskKp(0,10000,0);
-        posture_pd_config.setTaskKd(0,50,0);
+        posture_pd_config.setTaskKp(0,0,0);
+        posture_pd_config.setTaskKd(0,0,0);
         posture_pd_config.setTaskKa(0,0,0);
         posture_pd_config.setJointKp(kp_vec_joint_posture);
         posture_pd_config.setJointKd(kd_vec_joint_posture);
@@ -1235,7 +1256,7 @@ void* mujoco_Update_1KHz( void * arg )
     float baseFontSize = 60.0f; // 13.0f is the size of the default font. Change to the font size you use.
     float iconFontSize = baseFontSize * 2.25f / 3.0f; // FontAwesome fonts need to have their sizes reduced by 2.0f/3.0f in order to align correctly
 
-    
+
     ImFont* font;
     if (std::filesystem::is_directory("/home/tello")) {
         //std::cout << "The directory /home/tello exists!" << std::endl;
@@ -1247,6 +1268,7 @@ void* mujoco_Update_1KHz( void * arg )
         // font = io.Fonts->AddFontFromFileTTF("../../../lib/imGUI/fonts/seguisym.ttf", 80);
         
     }
+    
     // merge in icons from Font Awesome
     static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
     ImFontConfig icons_config; 
@@ -1684,6 +1706,11 @@ void* mujoco_Update_1KHz( void * arg )
         ImGui::PushStyleColor(ImGuiCol_FrameBg,grey1);
         ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,white);
         ImGui::PushStyleColor(ImGuiCol_FrameBgActive,grey2);
+        // ImGui::Separator();
+        // if (ImGui::Button(" " ICON_FA_COGS " ")) 
+        // {
+        //     showTuningMenu = !showTuningMenu;
+        // }
         ImGui::Separator();
         ImGui::Separator();
         if(!(sim_conf.en_autonomous_mode_on_boot))
@@ -1837,8 +1864,59 @@ void* mujoco_Update_1KHz( void * arg )
             }
             ImGui::End();
         }
-        
+        if(showTuningMenu)
+        {
+            
+            double tuning_width = (double)windowWidth*0.9;
+            double tuning_height = windowHeight*0.9- (35+60*screenScale);
+            ImGui::SetNextWindowSize(ImVec2(tuning_width,tuning_height));
+            ImGui::SetNextWindowPos(ImVec2(windowWidth*0.05, (35+60*screenScale)+windowHeight*0.05));
+            ImGui::Begin("plotHeader",nullptr,ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize);
 
+            if(ImGui::Button(" " ICON_FA_TIMES_CIRCLE " "))
+            {
+                showTuningMenu = false;
+            }
+            ImGui::SameLine();
+            ImGui::Text("  Tuning Menu:");
+            
+            ImGui::Separator();
+            ImGui::PushStyleColor(ImGuiCol_Separator,grey5);
+            ImGui::SetNextItemWidth(tuning_width*0.9);
+            ImGui::PushStyleColor(ImGuiCol_FrameBg,grey4);
+            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,grey4);
+            ImGui::PushStyleColor(ImGuiCol_SliderGrab,black);
+            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive,black);
+            float f1,f2,f3,f4,f5,f6,f7,f8,f9,f0;
+            ImGui::SliderFloat(" Kp1", &f1, 0.0f, 1.0f);
+            ImGui::Separator();ImGui::Separator();ImGui::Separator();
+            ImGui::SetNextItemWidth(tuning_width*0.9);
+            ImGui::SliderFloat(" Kp2", &f2, 0.0f, 1.0f);
+            ImGui::Separator();ImGui::Separator();ImGui::Separator();
+            ImGui::SetNextItemWidth(tuning_width*0.9);
+            ImGui::SliderFloat(" Kp3", &f3, 0.0f, 1.0f);
+            ImGui::Separator();ImGui::Separator();ImGui::Separator();
+            ImGui::SetNextItemWidth(tuning_width*0.9);
+            ImGui::SliderFloat(" Kp4", &f4, 0.0f, 1.0f);
+            ImGui::Separator();ImGui::Separator();ImGui::Separator();
+            ImGui::SetNextItemWidth(tuning_width*0.9);
+            ImGui::SliderFloat(" Kp5", &f5, 0.0f, 1.0f);
+            ImGui::Separator();ImGui::Separator();ImGui::Separator();
+            ImGui::SetNextItemWidth(tuning_width*0.9);
+            ImGui::SliderFloat(" Kp6", &f6, 0.0f, 1.0f);
+            ImGui::Separator();ImGui::Separator();ImGui::Separator();
+            ImGui::SetNextItemWidth(tuning_width*0.9);
+            ImGui::SliderFloat(" Kp7", &f7, 0.0f, 1.0f);
+            ImGui::Separator();ImGui::Separator();ImGui::Separator();
+            
+            ImGui::PopStyleColor(5);
+
+            // Reset the ImGui style to its original value
+            io.FontGlobalScale = screenScale;
+
+            ImGui::End();
+        }
+        
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -1900,8 +1978,8 @@ void* mujoco_Update_1KHz( void * arg )
 		// int n = sendto(sockfd_tx, hmi_tx_buffer, 20,MSG_CONFIRM, 
 		// 	   (const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
 
-		dash_utils::pack_data_to_hmi((uint8_t*)hmi_tx_buffer,hdd);
-		int n = sendto(sockfd_tx, hmi_tx_buffer, 12,MSG_CONFIRM, 
+		dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,enable_human_ff,zero_human,master_gain);
+		int n = sendto(sockfd_tx, hmi_tx_buffer, 24,MSG_CONFIRM, 
 			   (const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
         
 		// END LOOP CODE FOR MUJOCO =====================================================================
@@ -1915,6 +1993,13 @@ void* mujoco_Update_1KHz( void * arg )
 	// //free visualization storage
     // mjv_freeScene(&scn);
     // mjr_freeContext(&con);
+    Human_dyn_data hdd;
+    hdd.FxH_hmi = 0;
+    hdd.FyH_hmi = 0;
+    hdd.FxH_spring = 0;
+    dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,0,0,0);
+    int n = sendto(sockfd_tx, hmi_tx_buffer, 24,MSG_CONFIRM, 
+            (const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
 
     // // free MuJoCo model and data, deactivate
     // mj_deleteData(d);
@@ -2014,6 +2099,30 @@ void* sim_step_task( void * arg )
                 pthread_mutex_lock(&sim_mutex);
                 mj_step(m, d);
                 sim_step_completed = true;
+
+
+                const char* right_name_t = "rft"; 
+                int geomIdr = mj_name2id(m, mjOBJ_GEOM, right_name_t);
+                mjtNum right_foot_vel[6];
+                mj_objectVelocity(m,d,mjOBJ_GEOM,geomIdr,right_foot_vel,0);
+                right_toe_vel_mj << right_foot_vel[0],right_foot_vel[1],right_foot_vel[2],right_foot_vel[3],right_foot_vel[4],right_foot_vel[5];
+
+                const char* left_name_t = "lft"; 
+                int geomIdl = mj_name2id(m, mjOBJ_GEOM, left_name_t);
+                mjtNum left_foot_vel[6];
+                mj_objectVelocity(m,d,mjOBJ_GEOM,geomIdl,left_foot_vel,0);
+                left_toe_vel_mj << left_foot_vel[0],left_foot_vel[1],left_foot_vel[2],left_foot_vel[3],left_foot_vel[4],left_foot_vel[5];
+
+                const char* right_name_h = "rft"; 
+                geomIdr = mj_name2id(m, mjOBJ_GEOM, right_name_h);
+                mj_objectVelocity(m,d,mjOBJ_GEOM,geomIdr,right_foot_vel,0);
+                right_heel_vel_mj << right_foot_vel[0],right_foot_vel[1],right_foot_vel[2],right_foot_vel[3],right_foot_vel[4],right_foot_vel[5];
+
+                const char* left_name_h = "lft"; 
+                geomIdl = mj_name2id(m, mjOBJ_GEOM, left_name_h);
+                mj_objectVelocity(m,d,mjOBJ_GEOM,geomIdl,left_foot_vel,0);
+                left_heel_vel_mj << left_foot_vel[0],left_foot_vel[1],left_foot_vel[2],left_foot_vel[3],left_foot_vel[4],left_foot_vel[5];
+
                 pthread_mutex_unlock(&sim_mutex);
                 
                 

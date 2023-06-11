@@ -77,4 +77,7 @@ namespace  dash_utils
     double EMA(const VectorXd& circularBuffer, int latestSampleIndex, int numPreviousSamples, double smoothingParameter);
 
     void pseudoInverse(Matrix& matrix, double sigmaThreshold, Matrix& invMatrix, Vector* opt_sigmaOut);
+
+    VectorXd world_to_robot_task_vel(VectorXd qd_b, Matrix3d Rwb, Vector3d x_torso, VectorXd x_dot_trans);
+    VectorXd robot_to_world_task_vel(VectorXd qd_b, Matrix3d Rwb, Vector3d x_torso, VectorXd x_dot_trans);
 }

@@ -234,10 +234,46 @@ MatrixXd SRBMController::get_lfdv_hip()
     Vector3d hip_orientation_world(x(18),x(19),x(20));
     MatrixXd lfdv_hip(4,3);
 
-    lfdv_hip.row(0) = dash_utils::worldToHip(lfdv.row(0).transpose(), hip_right_pos_world, hip_orientation_world);
-    lfdv_hip.row(1) = dash_utils::worldToHip(lfdv.row(1).transpose(), hip_right_pos_world, hip_orientation_world);
-    lfdv_hip.row(2) = dash_utils::worldToHip(lfdv.row(2).transpose(), hip_left_pos_world, hip_orientation_world);
-    lfdv_hip.row(3) = dash_utils::worldToHip(lfdv.row(3).transpose(), hip_left_pos_world, hip_orientation_world);
+    Vector3d pc_curr = x.segment<3>(0);
+    Vector3d dpc_curr = x.segment<3>(3);
+    Matrix3d R_curr = Eigen::Map<Matrix3d>(x.segment(6,9).data());
+    Vector3d wb_curr = x.segment<3>(15);
+
+    double thigh_length = srb_params.thigh_length; // thigh length in m (L1)
+    double calf_length = srb_params.calf_length; // calf length in m (L2)
+    double foot_length = srb_params.foot_length; // toe length in m (L3)
+    double heel_length = srb_params.heel_length; // heel length in m (L4)
+    // construct leg parameter vector
+    VectorXd p_leg(4);
+    p_leg << thigh_length, calf_length, foot_length, heel_length; 
+
+    // MatrixXd r_mat = lfv.transpose() - p_hips;
+    MatrixXd r_mat = lfv.transpose() - pc_curr.replicate(1, 4);
+    // calculate joint velocities
+    Vector3d ww_curr = R_curr*wb_curr; // angular velocity in world frame
+    VectorXd qd_b(6);
+    qd_b << dpc_curr, ww_curr; // floating base velocities
+    MatrixXd lfd_mat = lfdv.transpose(); // matrix form of end-effector velocities
+    VectorXd r_mat_right_t = r_mat.col(0); // right front end-effector position relative to hip
+    VectorXd lfd_mat_right_t = lfd_mat.col(0); // right front end-effector velocity in world frame
+    VectorXd lfdv_hip_r_t = dash_utils::world_to_robot_task_vel(qd_b, R_curr, r_mat_right_t, lfd_mat_right_t); // right ee vel in hip frame
+
+    VectorXd r_mat_right_h = r_mat.col(1); // right back end-effector position relative to hip
+    VectorXd lfd_mat_right_h = lfd_mat.col(1); // right back end-effector velocity in world frame
+    VectorXd lfdv_hip_r_h = dash_utils::world_to_robot_task_vel(qd_b, R_curr, r_mat_right_h, lfd_mat_right_h); // right ee vel in hip frame
+    
+    VectorXd r_mat_left_t = r_mat.col(2); // left front end-effector position relative to hip
+    VectorXd lfd_mat_left_t = lfd_mat.col(2); // left front end-effector velocity in world frame
+    VectorXd lfdv_hip_l_t = dash_utils::world_to_robot_task_vel(qd_b, R_curr, r_mat_left_t, lfd_mat_left_t); // left ee vel in hip frame
+
+    VectorXd r_mat_left_h = r_mat.col(3); // left front end-effector position relative to hip
+    VectorXd lfd_mat_left_h = lfd_mat.col(3); // left front end-effector velocity in world frame
+    VectorXd lfdv_hip_l_h = dash_utils::world_to_robot_task_vel(qd_b, R_curr, r_mat_left_h, lfd_mat_left_h); // left ee vel in hip frame
+
+    lfdv_hip.row(0) = lfdv_hip_r_t.transpose().head(3);
+    lfdv_hip.row(1) = lfdv_hip_r_h.transpose().head(3);
+    lfdv_hip.row(2) = lfdv_hip_l_t.transpose().head(3);
+    lfdv_hip.row(3) = lfdv_hip_l_h.transpose().head(3);
 
     return lfdv_hip;
 }
@@ -264,10 +300,38 @@ MatrixXd SRBMController::get_lfdv_comm_hip()
     Vector3d hip_orientation_world(x(18),x(19),x(20));
     MatrixXd lfdv_comm_hip(4,3);
 
-    lfdv_comm_hip.row(0) = dash_utils::worldToHip(lfdv_comm.row(0).transpose(), hip_right_pos_world, hip_orientation_world);
-    lfdv_comm_hip.row(1) = dash_utils::worldToHip(lfdv_comm.row(1).transpose(), hip_right_pos_world, hip_orientation_world);
-    lfdv_comm_hip.row(2) = dash_utils::worldToHip(lfdv_comm.row(2).transpose(), hip_left_pos_world, hip_orientation_world);
-    lfdv_comm_hip.row(3) = dash_utils::worldToHip(lfdv_comm.row(3).transpose(), hip_left_pos_world, hip_orientation_world);
+    Vector3d pc_curr = x.segment<3>(0);
+    Vector3d dpc_curr = x.segment<3>(3);
+    Matrix3d R_curr = Eigen::Map<Matrix3d>(x.segment(6,9).data());
+    Vector3d wb_curr = x.segment<3>(15);
+
+    double thigh_length = srb_params.thigh_length; // thigh length in m (L1)
+    double calf_length = srb_params.calf_length; // calf length in m (L2)
+    double foot_length = srb_params.foot_length; // toe length in m (L3)
+    double heel_length = srb_params.heel_length; // heel length in m (L4)
+    // construct leg parameter vector
+    VectorXd p_leg(4);
+    p_leg << thigh_length, calf_length, foot_length, heel_length; 
+
+    // MatrixXd r_mat = lfv.transpose() - p_hips;
+    MatrixXd r_mat = lfv.transpose() - pc_curr.replicate(1, 4);
+    // calculate joint velocities
+    Vector3d ww_curr = R_curr*wb_curr; // angular velocity in world frame
+    VectorXd qd_b(6);
+    qd_b << dpc_curr, ww_curr; // floating base velocities
+    MatrixXd lfd_mat = lfdv_comm.transpose(); // matrix form of end-effector velocities
+    VectorXd r_mat_right = r_mat.col(0); // right front end-effector position relative to hip
+    VectorXd lfd_mat_right = lfd_mat.col(0); // right front end-effector velocity in world frame
+    VectorXd lfdv_comm_hip_r = dash_utils::world_to_robot_task_vel(qd_b, R_curr, r_mat_right, lfd_mat_right); // right ee vel in hip frame
+    
+    VectorXd r_mat_left = r_mat.col(2); // left front end-effector position relative to hip
+    VectorXd lfd_mat_left = lfd_mat.col(2); // left front end-effector velocity in world frame
+    VectorXd lfdv_comm_hip_l = dash_utils::world_to_robot_task_vel(qd_b, R_curr, r_mat_left, lfd_mat_left); // left ee vel in hip frame
+
+    lfdv_comm_hip.row(0) = lfdv_comm_hip_r.transpose().head(3);
+    lfdv_comm_hip.row(1) = lfdv_comm_hip_r.transpose().head(3);
+    lfdv_comm_hip.row(2) = lfdv_comm_hip_l.transpose().head(3);
+    lfdv_comm_hip.row(3) = lfdv_comm_hip_l.transpose().head(3);
 
     return lfdv_comm_hip;
 }
@@ -278,10 +342,43 @@ void SRBMController::set_lfdv_hip(const MatrixXd& lfdv_hip)
     Vector3d hip_left_pos_world = left_leg_last.col(0);
     Vector3d hip_orientation_world(x(18),x(19),x(20));
 
-    lfdv.row(0) = dash_utils::hipToWorld(lfdv_hip.row(0), hip_right_pos_world, hip_orientation_world);
-    lfdv.row(1) = dash_utils::hipToWorld(lfdv_hip.row(1), hip_right_pos_world, hip_orientation_world);
-    lfdv.row(2) = dash_utils::hipToWorld(lfdv_hip.row(2), hip_left_pos_world, hip_orientation_world);
-    lfdv.row(3) = dash_utils::hipToWorld(lfdv_hip.row(3), hip_left_pos_world, hip_orientation_world);
+    // lfdv.row(0) = dash_utils::hipToWorld(lfdv_hip.row(0), hip_right_pos_world, hip_orientation_world);
+    // lfdv.row(1) = dash_utils::hipToWorld(lfdv_hip.row(1), hip_right_pos_world, hip_orientation_world);
+    // lfdv.row(2) = dash_utils::hipToWorld(lfdv_hip.row(2), hip_left_pos_world, hip_orientation_world);
+    // lfdv.row(3) = dash_utils::hipToWorld(lfdv_hip.row(3), hip_left_pos_world, hip_orientation_world);
+
+    Vector3d pc_curr = x.segment<3>(0);
+    Vector3d dpc_curr = x.segment<3>(3);
+    Matrix3d R_curr = Eigen::Map<Matrix3d>(x.segment(6,9).data());
+    Vector3d wb_curr = x.segment<3>(15);
+
+    double thigh_length = srb_params.thigh_length; // thigh length in m (L1)
+    double calf_length = srb_params.calf_length; // calf length in m (L2)
+    double foot_length = srb_params.foot_length; // toe length in m (L3)
+    double heel_length = srb_params.heel_length; // heel length in m (L4)
+    // construct leg parameter vector
+    VectorXd p_leg(4);
+    p_leg << thigh_length, calf_length, foot_length, heel_length; 
+
+    // MatrixXd r_mat = lfv.transpose() - p_hips;
+    MatrixXd r_mat = lfv.transpose() - pc_curr.replicate(1, 4);
+    // calculate joint velocities
+    Vector3d ww_curr = R_curr*wb_curr; // angular velocity in world frame
+    VectorXd qd_b(6);
+    qd_b << dpc_curr, ww_curr; // floating base velocities
+    MatrixXd lfd_mat = lfdv_hip.transpose(); // matrix form of end-effector velocities
+    VectorXd r_mat_right = r_mat.col(0); // right front end-effector position relative to hip
+    VectorXd lfd_mat_right = lfd_mat.col(0); // right front end-effector velocity in world frame
+    VectorXd lfdv_world_r = dash_utils::robot_to_world_task_vel(qd_b, R_curr, r_mat_right, lfd_mat_right); // right ee vel in hip frame
+    
+    VectorXd r_mat_left = r_mat.col(2); // left front end-effector position relative to hip
+    VectorXd lfd_mat_left = lfd_mat.col(2); // left front end-effector velocity in world frame
+    VectorXd lfdv_world_l = dash_utils::robot_to_world_task_vel(qd_b, R_curr, r_mat_left, lfd_mat_left); // left ee vel in hip frame
+
+    lfdv.row(0) = lfdv_world_r.transpose().head(3);
+    lfdv.row(1) = lfdv_world_r.transpose().head(3);
+    lfdv.row(2) = lfdv_world_l.transpose().head(3);
+    lfdv.row(3) = lfdv_world_l.transpose().head(3);
 
 }
 

@@ -1072,10 +1072,15 @@ void dash_utils::pack_data_to_hmi_with_ctrls(uint8_t* buffer, Human_dyn_data dat
     float_buffer[0] = data.FxH_hmi;
     float_buffer[1] = data.FyH_hmi;
     float_buffer[2] = data.FxH_spring;
-    float_buffer[3] = (((int)ff) << 1) | ((int) tare);
-    float_buffer[4] = gain;
-    for (int i = 0; i < 20; i++) {
-        buffer[20] += buffer[i];
+    float_buffer[3] = gain;
+    float ff_f = 0;
+    float tare_f = 0;
+    if(tare) tare_f = 1;
+    if(ff) ff_f = 80;
+    float_buffer[4] = ff_f;
+    float_buffer[5] = tare_f;
+    for (int i = 0; i < 24; i++) {
+        buffer[24] += buffer[i];
     }
 }
 
@@ -1228,4 +1233,62 @@ void dash_utils::pseudoInverse(Matrix& matrix, double sigmaThreshold, Matrix& in
     if (opt_sigmaOut) {
         *opt_sigmaOut = svd.singularValues();
     }
+}
+
+VectorXd dash_utils::world_to_robot_task_vel(VectorXd qd_b, Matrix3d Rwb, Vector3d x_torso, VectorXd x_dot_trans)
+{
+    // Calculate task space velocities in the robot frame, accounting for relative velocity
+    
+    // Append zero rotational end effector velocity (for now)
+    VectorXd x_dot_rot = VectorXd::Zero(3);
+    VectorXd x_dot(6);
+    x_dot << x_dot_trans, x_dot_rot;
+
+    // Calculate Jacobian from floating base to end effector
+    MatrixXd J_b(6, 6);
+    J_b.block(0, 0, 3, 3) = Matrix3d::Identity();
+    J_b.block(0, 3, 3, 3) = -dash_utils::hatMap(x_torso);
+    J_b.block(3, 0, 3, 3) = Matrix3d::Zero();
+    J_b.block(3, 3, 3, 3) = Matrix3d::Identity();
+
+     // Calculate A
+    MatrixXd transform(6, 6);
+    transform.block(0, 0, 3, 3) = Rwb;
+    transform.block(0, 3, 3, 3) = Matrix3d::Zero();
+    transform.block(3, 0, 3, 3) = Matrix3d::Zero();
+    transform.block(3, 3, 3, 3) = Rwb;
+
+    // Calculate task space velocities in the robot frame, accounting for relative velocity
+    VectorXd x_dot_robot = transform.transpose()*(x_dot - J_b*qd_b);
+
+    return x_dot_robot;
+}
+
+VectorXd dash_utils::robot_to_world_task_vel(VectorXd qd_b, Matrix3d Rwb, Vector3d x_torso, VectorXd x_dot_trans)
+{
+    // Calculate task space velocities in the robot frame, accounting for relative velocity
+    
+    // Append zero rotational end effector velocity (for now)
+    VectorXd x_dot_rot = VectorXd::Zero(3);
+    VectorXd x_dot(6);
+    x_dot << x_dot_trans, x_dot_rot;
+
+    // Calculate Jacobian from floating base to end effector
+    MatrixXd J_b(6, 6);
+    J_b.block(0, 0, 3, 3) = Matrix3d::Identity();
+    J_b.block(0, 3, 3, 3) = -dash_utils::hatMap(x_torso);
+    J_b.block(3, 0, 3, 3) = Matrix3d::Zero();
+    J_b.block(3, 3, 3, 3) = Matrix3d::Identity();
+
+     // Calculate A
+    MatrixXd transform(6, 6);
+    transform.block(0, 0, 3, 3) = Rwb;
+    transform.block(0, 3, 3, 3) = Matrix3d::Zero();
+    transform.block(3, 0, 3, 3) = Matrix3d::Zero();
+    transform.block(3, 3, 3, 3) = Rwb;
+
+    // Calculate task space velocities in the robot frame, accounting for relative velocity
+    VectorXd x_dot_world = transform*x_dot + J_b*qd_b;
+
+    return x_dot_world;
 }

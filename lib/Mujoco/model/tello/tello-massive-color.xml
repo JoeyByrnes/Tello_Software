@@ -62,7 +62,7 @@
 		<site name='imu' size='0.01' pos='-0.06 0 0.015'/>
         <inertial pos = '0.0 0.0 -0.05' mass = '10.2' fullinertia = '0.4874 0.3081 0.2390 -0.00001031974 -0.00066429218 0.00013049593'/>
 		<geom type="sphere" size="0.01" pos="0 0 0" rgba="1 1 0 1"/>
-		<geom type="sphere" size="0.01" pos="0 0 -0.05" rgba="0 1 0 1"/>
+		<geom name = "com" type="sphere" size="0.01" pos="0 0 -0.05" rgba="0 1 0 1"/>
 		<joint axis = "1 0 0" pos = "0 0 -0.05" name = "move_x" type = "slide" limited = "false" damping="0"/>
 		<joint axis = "0 1 0" pos = "0 0 -0.05" name = "move_y" type = "slide" limited = "false" damping="0"/>
 		<joint axis = "0 0 1" pos = "0 0 -0.05" name = "move_z" type = "slide" limited = "false" damping="0"/>

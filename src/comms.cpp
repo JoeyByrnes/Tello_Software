@@ -1,5 +1,6 @@
 #include "comms.h"
 #include "mujoco_main.h"
+#include "user_config.h"
 
 extern uint16_t encoders[10];
 
@@ -308,7 +309,7 @@ void* rx_UDP( void * arg ){
 			double fyH_L = hdd.fyH_L;
 
 			double joystick_base_separation = 1.525;
-    		double foot_center_to_joystick = 0.0825;
+    		double foot_center_to_joystick = FOOT_2_JOYSTICK;
 
 			// double pyH_lim_lb = -1 * human_nom_ft_width + (fyH_R - fyH_home);
 			// double pyH_lim_ub = human_nom_ft_width - (fyH_L - fyH_home);

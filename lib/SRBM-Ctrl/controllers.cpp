@@ -1,4 +1,5 @@
 #include "controllers.h"
+#include "../../include/user_config.h"
 
 extern MatrixXd lfv_dsp_start;
 bool first_time_running_qp = true;
@@ -823,7 +824,7 @@ void dash_ctrl::sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm,
     // Parameters (human)
     const double hH = human_params.hLIP;    
     const double joystick_base_separation = 1.525;
-    const double foot_center_to_joystick = 0.0825;
+    const double foot_center_to_joystick = FOOT_2_JOYSTICK;
 
     // Planner info
     const double sw_beg_step_x = traj_planner_dyn_data.sw_beg_step(0);

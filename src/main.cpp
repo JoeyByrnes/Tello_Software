@@ -872,8 +872,8 @@ void signal_callback_handler(int signum){
 	hdd.FxH_spring = 0;
 	hdd.FxH_hmi = 0;
 	hdd.FyH_hmi = 0;
-	dash_utils::pack_data_to_hmi((uint8_t*)hmi_tx_buffer,hdd);
-	int n = sendto(sockfd_tx, hmi_tx_buffer, 12,MSG_CONFIRM, 
+	dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,0,0,0);
+	int n = sendto(sockfd_tx, hmi_tx_buffer, 24,MSG_CONFIRM, 
 			(const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
 
 	fsm_state = 0;

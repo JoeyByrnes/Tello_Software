@@ -16,7 +16,7 @@
       "Step_Height": 0.04,
       "Walking_Speed": 0.5,
       "Kx_DCM_mult": 1.0,
-      "Ky_DCM_mult": 1.0
+      "Ky_DCM_mult": 2.75
     },
     
     "Posture_Control": {

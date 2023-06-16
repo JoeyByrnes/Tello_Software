@@ -7,7 +7,7 @@
 	<default>
     <joint limited='true' damping="10"/>
     <motor ctrllimited='true'/>
-    <geom contype='0' conaffinity='0' condim='1' solref="0.002 2"/><!--solref='0.005 1'-->
+    <geom contype='0' conaffinity='0' condim='1' solref="0.002 5"/><!--solref='0.005 1'-->
     <default class='TELLO'>
     </default>
     <default class='collision'>
@@ -51,7 +51,7 @@
   
   <worldbody>
   
- 	<geom name ='floor' pos ='0 0 -0.672' size ='8 8 .125' type = 'plane' material ='MatPlane' condim = '3' conaffinity = '15'/>
+ 	<geom name ='floor' pos ='0 0 -0.692' size ='8 8 .125' type = 'plane' material ='MatPlane' condim = '3' conaffinity = '15'/>
 	<!-- <light mode ='trackcom' pos = '0 0 5' dir = '0 0 -1'/> -->
 	<light directional = 'true' pos = '0 0 3' dir = '0 0 -1' diffuse = '0.2 0.2 0.2' specular = '0 0 0'/>	 
     <light name="com_light" mode='trackcom' pos='10 0 10' dir='-1 0 -1' castshadow="false"/>

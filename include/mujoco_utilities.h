@@ -1,3 +1,5 @@
+#ifndef __MUJOCO_UTILS__
+#define __MUJOCO_UTILS__
 #include "mujoco_main.h"
 #include <random>
 #include <filesystem>
@@ -21,3 +23,5 @@ bool copyFile(const std::string& sourcePath, const std::string& destinationPath)
 bool LoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_width, int* out_height);
 std::string readActivePlaybackLog(const std::string& filename);
 void writeActivePlaybackLog(const std::string log, const std::string& filename);
+
+#endif

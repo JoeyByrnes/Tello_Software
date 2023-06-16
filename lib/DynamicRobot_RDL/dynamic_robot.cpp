@@ -863,7 +863,7 @@ VectorXd DynamicRobot::taskPD2(TaskPDConfig task_conf)
     // cout << joint_forces_from_accel.transpose() << endl;
 
     JointPDConfig joint_conf;
-    joint_conf.joint_ff_torque = joint_torques;// + joint_forces_from_accel;
+    joint_conf.joint_ff_torque = joint_torques + joint_forces_from_accel;
     joint_conf.joint_pos_desired = joint_pos_desired;
     joint_conf.joint_vel_desired = joint_vel_desired;
     joint_conf.joint_kp = task_conf.joint_kp;

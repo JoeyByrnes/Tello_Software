@@ -80,6 +80,7 @@ struct Human_params {
     double hLIP;
     double human_nom_ft_width;
     double fyH_home;
+    double foot_2_joystick;
 };
 
 struct Human_dyn_data {
@@ -106,6 +107,30 @@ struct Human_dyn_data {
     float FxH_spring;
 }__attribute__((packed, aligned(1)));
 
+struct Human_dyn_data_filter {
+    VectorXd* xH  = new VectorXd(100);
+    VectorXd* dxH  = new VectorXd(100);
+    VectorXd* pxH  = new VectorXd(100);
+    VectorXd* yH  = new VectorXd(100);
+    VectorXd* dyH  = new VectorXd(100);
+    VectorXd* pyH  = new VectorXd(100);
+    VectorXd* fxH_R  = new VectorXd(100);
+    VectorXd* fyH_R  = new VectorXd(100);
+    VectorXd* fzH_R  = new VectorXd(100);
+    VectorXd* fxH_L  = new VectorXd(100);
+    VectorXd* fyH_L  = new VectorXd(100);
+    VectorXd* fzH_L  = new VectorXd(100);
+    VectorXd* fdxH_R  = new VectorXd(100);
+    VectorXd* fdyH_R  = new VectorXd(100);
+    VectorXd* fdzH_R  = new VectorXd(100);
+    VectorXd* fdxH_L  = new VectorXd(100);
+    VectorXd* fdyH_L  = new VectorXd(100);
+    VectorXd* fdzH_L  = new VectorXd(100);
+    VectorXd* FxH_hmi  = new VectorXd(100);
+    VectorXd* FyH_hmi  = new VectorXd(100);
+    VectorXd* FxH_spring  = new VectorXd(100);
+};
+
 struct Traj_planner_dyn_data
 {
     bool stepping_flg;
@@ -129,6 +154,7 @@ struct Traj_planner_dyn_data
     Vector2d x_plus_HWRM; 
     double uk_HWRM;      
     Vector3d st_beg_step;   
+    double y_LIP_offset;
 };
 
 struct Teleop_Ref {

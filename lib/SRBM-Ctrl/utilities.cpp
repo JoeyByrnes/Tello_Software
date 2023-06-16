@@ -710,6 +710,7 @@ void dash_utils::writeHumanParamsToTxt(const Human_params& params, const std::st
     file << "m," << params.m << std::endl;
     file << "hLIP," << params.hLIP << std::endl;
     file << "human_nom_ft_width," << params.human_nom_ft_width << std::endl;
+    file << "foot_to_joystick," << params.foot_2_joystick << std::endl;
 
     file.close();
     std::cout << "Human_params written to file: " << filename << std::endl;
@@ -816,6 +817,38 @@ std::vector<Human_dyn_data> dash_utils::readHumanDynDataFromFile(const std::stri
 
         std::getline(ss, value, ',');
         data.FxH_spring = std::stof(value);
+
+        dataVector.push_back(data);
+        }
+
+        file.close();
+        return dataVector;
+
+}
+
+std::vector<Vector2d> dash_utils::readTimeDataFromFile(const std::string& filename) 
+{
+    std::ifstream file(filename);
+    std::vector<Vector2d> dataVector;
+
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file for reading: " << filename << std::endl;
+        return dataVector; // Return empty vector on failure
+    }
+
+    std::string line;
+    std::getline(file, line); // throw away first line
+
+    while (std::getline(file, line)) {
+        std::stringstream ss(line);
+        Vector2d data;
+
+        std::string value;
+        std::getline(ss, value, ',');
+        data(0) = std::stof(value);
+
+        std::getline(ss, value, ',');
+        data(1) = std::stof(value);
 
         dataVector.push_back(data);
         }
@@ -1264,6 +1297,19 @@ VectorXd dash_utils::world_to_robot_task_vel(VectorXd qd_b, Matrix3d Rwb, Vector
     return x_dot_robot;
 }
 
+VectorXd dash_utils::world_to_robot_task_accel(VectorXd qdd_b, Matrix3d Rwb, Vector3d x_torso, VectorXd x_ddot_trans)
+{
+    // Calculate task space velocities in the robot frame, accounting for relative velocity
+    
+    // Append zero rotational end effector velocity (for now)
+    VectorXd x_ddot_rot = VectorXd::Zero(3);
+
+    // Calculate task space velocities in the robot frame, accounting for relative velocity
+    VectorXd x_dot_robot = Rwb.transpose()*(x_ddot_trans - qdd_b);
+
+    return x_dot_robot;
+}
+
 VectorXd dash_utils::robot_to_world_task_vel(VectorXd qd_b, Matrix3d Rwb, Vector3d x_torso, VectorXd x_dot_trans)
 {
     // Calculate task space velocities in the robot frame, accounting for relative velocity
@@ -1291,4 +1337,65 @@ VectorXd dash_utils::robot_to_world_task_vel(VectorXd qd_b, Matrix3d Rwb, Vector
     VectorXd x_dot_world = transform*x_dot + J_b*qd_b;
 
     return x_dot_world;
+}
+
+Eigen::MatrixXd dash_utils::compute_robot_CoP(Eigen::MatrixXd lfv, Eigen::VectorXd u) 
+{
+    // This function computes the robot's CoP from the GRF and feet end-effector data
+
+    // Initialize CoP
+    Eigen::VectorXd CoP(3);
+    CoP.setZero();
+
+    // calculation based on GRFs and moment
+    Eigen::MatrixXd pi = lfv.transpose();
+    Eigen::VectorXd fiz(4);
+    fiz << u(2), u(5), u(8), u(11);
+    CoP = (pi.col(0) * fiz(0) + pi.col(1) * fiz(1) + pi.col(2) * fiz(2) + pi.col(3) * fiz(3)) / fiz.sum();
+
+    return CoP;
+}
+
+std::string dash_utils::visualizeCoP(double Left, double CoP, double Right) 
+{
+    if(std::isnan(Left) || std::isnan(Right) || std::isnan(CoP))
+    {
+        std::string progressIndicator(120, ' ');
+        progressIndicator[60] = '|';
+        return progressIndicator;
+    }
+    int progressWidth = 120;
+    double range = Left - Right;
+    double distance = CoP - Right;
+    double percentage = (distance / range) * (double)progressWidth;
+    std::string progressIndicator(progressWidth, ' ');
+    progressIndicator[progressWidth-floor(percentage)] = '|';
+
+    return progressIndicator;
+}
+
+Human_dyn_data dash_utils::smooth_human_dyn_data(Human_dyn_data hdd, Human_dyn_data_filter& hdd_vec, VectorXd alphas) 
+{
+    int n = hdd_vec.xH->size();
+
+    float* hdd_ptr = reinterpret_cast<float*>(&hdd);
+
+    Human_dyn_data hdd_out;
+    float* hdd_out_ptr = reinterpret_cast<float*>(&hdd_out);
+    
+    // Use a VectorXd** pointer to iterate over the struct
+    Eigen::VectorXd** ptr = reinterpret_cast<Eigen::VectorXd**>(&hdd_vec);
+
+    // Get the number of VectorXd members in the struct
+    int numMembers = sizeof(Human_dyn_data_filter) / sizeof(Eigen::VectorXd);
+
+    // Iterate over the struct using a for loop
+    for (int i = 0; i < numMembers; i++) {
+        Eigen::VectorXd* cur_element = ptr[i];
+        cur_element->tail(99) = cur_element->head(99).eval();
+        cur_element->head(0).setConstant(hdd_ptr[i]);
+        hdd_out_ptr[i] = dash_utils::smoothData((*cur_element), alphas(i));
+    }
+
+    return hdd_out;
 }

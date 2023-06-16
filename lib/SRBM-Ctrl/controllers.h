@@ -31,7 +31,7 @@ namespace dash_ctrl
 
     void sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm, MatrixXd& lfddv_comm, const SRB_Params srb_params, const Human_params human_params, 
                                 const Traj_planner_dyn_data& traj_planner_dyn_data, const Human_dyn_data& human_dyn_data, 
-                                const int FSM, const double s, const double swxf, MatrixXd& lfv, MatrixXd& lfdv);                                 
+                                const int FSM, const double s, const double swxf, MatrixXd& lfv, MatrixXd& lfdv, VectorXd x);                                 
     
     void SRB_Balance_Controller(VectorXd& u, VectorXd& tau_legs, SRB_Params srb_params, int FSM, VectorXd x, 
                             MatrixXd lfv, MatrixXd qd, MatrixXd* Jv_mat, VectorXd u0, VectorXd SRB_wrench_ref);

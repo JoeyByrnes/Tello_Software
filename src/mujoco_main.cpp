@@ -9,7 +9,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include "IconsFontAwesome5.h"
-#include "ImFileDialog.h"
 
 pthread_mutex_t plotting_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t sim_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -45,6 +44,7 @@ bool en_safety_monitor = false;
 bool bookmarked = false;
 bool showCopyErrorPopup = false;
 bool init_foot_width = false;
+bool playback_error = false;
 int hdd_cnt=0; // human_playback counter
 std::string active_playback_log;
 std::string active_playback_log_png;
@@ -52,6 +52,8 @@ int active_playback_log_index = 0;
 std::vector<std::string> hddFiles;
 bool showPlotMenu = false;
 bool showTuningMenu = false;
+
+extern double FxH_hmi_out, FxH_spring_out, FyH_hmi_out;
 
 //logging
 bool log_data_ready = false;
@@ -571,6 +573,8 @@ void TELLO_locomotion_ctrl(ctrlData cd)
     VectorXd imu_acc_world = Rwb*imu_acc;
     imu_acc_world += Vector3d(0,0,9.81);
 
+    tello->controller->set_ddpc_world(imu_acc_world);
+
     imu_acc = Rwb.transpose()*imu_acc_world;
 
     tello->_acc = imu_acc;
@@ -612,13 +616,13 @@ void TELLO_locomotion_ctrl(ctrlData cd)
         // lfdv_mj.row(3) = left_heel_vel_local.tail(3);
         // tello->controller->set_lfdv_world(lfdv_mj);
     }
-    // cout << "left from mj: ==============================================" << endl;
-    // cout << left_toe_vel_local.transpose() << endl;
-    // cout << endl;
-
-    // cout << "left from transform: ==============================================" << endl;
-    // cout << tello->controller->get_lfdv_world().row(2) << endl;
-    // cout << endl;
+    // cout << left_toe_vel_local.transpose().tail(3)(0) << ", "
+    // << left_toe_vel_local.transpose().tail(3)(1) << ", "
+    // << left_toe_vel_local.transpose().tail(3)(2) << ", "
+    // << tello->controller->get_lfdv_world().row(2)(0) << ", "
+    // << tello->controller->get_lfdv_world().row(2)(1) << ", "
+    // << tello->controller->get_lfdv_world().row(2)(2)
+    // << endl;
 
 	// call SRBM-Ctrl here ======================================================================================
     double CoM_z = controller->get_CoM_z(controller->get_lfv_hip(),gnd_contacts,EA_curr); 
@@ -878,7 +882,7 @@ void initializeSRBMCtrl()
     // printf("w: yaw\n");
     // printf("b: balance\n");
     // printf("s: stepping/walking\n");
-    //cin.get();
+    // cin.get();
     // char DoF;
     // cin.get(DoF);
     // if(DoF != 's')
@@ -1069,9 +1073,9 @@ void* tello_controller( void * arg )
                 //mjtNum simstart = d->time;
                 //while (d->time - simstart < 1.0 / 60.0){
                     //mj_step(m, d);
-                    dash_utils::start_timer();
+                    // dash_utils::start_timer();
                     TELLO_locomotion_ctrl(cd_local);
-                    dash_utils::print_timer();
+                    // dash_utils::print_timer();
                 //}  
             } 
         }
@@ -1082,9 +1086,9 @@ void* tello_controller( void * arg )
                 //while (d->time - simstart < 1.0 / 60.0){
                     // d->time = d->time + elapsed;
                                        
-                    dash_utils::start_timer();
+                    // dash_utils::start_timer();
                     TELLO_locomotion_ctrl(cd_local);
-                    dash_utils::print_timer();
+                    // dash_utils::print_timer();
                     set_mujoco_state(tello->controller->get_x());
                     // mj_kinematics(m,d);
                 //}
@@ -1155,7 +1159,7 @@ void* mujoco_Update_1KHz( void * arg )
         mj_activate("./lib/Mujoco/mjkey.txt");
         if(simulation_mode == 1)
         {
-            m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-color.xml", NULL, error, 1000);
+            m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-6-16-23.xml", NULL, error, 1000);
             // m_shared = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-color.xml", NULL, error, 1000);
         }
         else
@@ -1258,12 +1262,14 @@ void* mujoco_Update_1KHz( void * arg )
 
 
     ImFont* font;
+    ImFont* fontSmall;
     if (std::filesystem::is_directory("/home/tello")) {
         //std::cout << "The directory /home/tello exists!" << std::endl;
         font = io.Fonts->AddFontFromFileTTF("./tello_files/fonts/roboto/Roboto-Light.ttf", baseFontSize);
     }
     else {
         //std::cout << "The directory /home/tello does not exist!" << std::endl;
+        fontSmall = io.Fonts->AddFontFromFileTTF("../../../lib/imGUI/fonts/roboto/Roboto-Light.ttf", baseFontSize/1.75);
         font = io.Fonts->AddFontFromFileTTF("../../../lib/imGUI/fonts/roboto/Roboto-Light.ttf", baseFontSize);
         // font = io.Fonts->AddFontFromFileTTF("../../../lib/imGUI/fonts/seguisym.ttf", 80);
         
@@ -1282,6 +1288,7 @@ void* mujoco_Update_1KHz( void * arg )
     std::string plotfolderPath = "/home/joey/Desktop/tello_outputs/Favorite_Logs/Plots";
     std::vector<std::string> pngFiles;
     std::vector<GLuint> image_textures;
+    std::vector<std::string> image_names;
     GLuint active_texture;
     int im_width = 888;
     int im_height = 500;
@@ -1293,6 +1300,7 @@ void* mujoco_Update_1KHz( void * arg )
             GLuint tex = 0;
             LoadTextureFromFile((plotfolderPath+"/"+name).c_str(), &tex, &im_width, &im_height);
             image_textures.push_back(tex);
+            image_names.push_back(name.substr(0, name.length() - 4));
             hddFiles.push_back("/home/joey/Desktop/tello_outputs/Favorite_Logs/"+name.substr(0, name.length() - 4)+"/human_dyn_data.csv");
         }
     }
@@ -1323,30 +1331,30 @@ void* mujoco_Update_1KHz( void * arg )
         // dash_utils::print_timer();
         // dash_utils::start_timer();
         // Get body ID
-        // int body_id = mj_name2id(m, mjOBJ_BODY, "torso");
+        pthread_mutex_lock(&sim_step_mutex);
+        int body_id = mj_name2id(m, mjOBJ_BODY, "torso");
 
         // Apply force-torque to body
-        // mjtNum force[3] = {push_force_x, push_force_y, -push_force_z}; // x, y, z components of the force
-        // mjtNum torque[3] = {0.0, 0.0, 0.0}; // x, y, z components of the torque
-        // mjtNum point[3] = {0.0, 0.0, 0.0}; // x, y, z components of the torque
-        // pthread_mutex_lock(&sim_mutex);
-        // mj_applyFT(m, d, force, torque, point, body_id, d->qfrc_applied);
-        // pthread_mutex_unlock(&sim_mutex);
+        mjtNum force[3] = {push_force_x, push_force_y, -push_force_z}; // x, y, z components of the force
+        mjtNum torque[3] = {0.0, 0.0, 0.0}; // x, y, z components of the torque
+        mjtNum point[3] = {0.0, 0.0, 0.0}; // x, y, z components of the torque
+        pthread_mutex_lock(&sim_mutex);
+        mj_applyFT(m, d, force, torque, point, body_id, d->qfrc_applied);
+        pthread_mutex_unlock(&sim_mutex);
 
-        // if(push_force_x > 0){
-        //     printf("Pushed in X\n");
-        //     push_force_x = 0;
-        // }
-        // if(push_force_y > 0){
-        //     printf("Pushed in Y\n");
-        //     push_force_y = 0;
-        // }
-        // if(push_force_z > 0){
-        //     printf("Pushed in Z\n");
-        //     push_force_z = 0;
-        // }
+        if(push_force_x > 0){
+            printf("Pushed in X\n");
+            push_force_x = 0;
+        }
+        if(push_force_y > 0){
+            printf("Pushed in Y\n");
+            push_force_y = 0;
+        }
+        if(push_force_z > 0){
+            printf("Pushed in Z\n");
+            push_force_z = 0;
+        }
 
-        pthread_mutex_lock(&sim_step_mutex);
         ctrlData cd_local;
         cd_local = cd_shared;
         pthread_mutex_unlock(&sim_step_mutex);
@@ -1358,8 +1366,8 @@ void* mujoco_Update_1KHz( void * arg )
                 //while (d->time - simstart < 1.0 / 60.0){
                     //mj_step(m, d);
                     
-                    dash_utils::print_timer();
-                    dash_utils::start_timer();
+                    // dash_utils::print_timer();
+                    // dash_utils::start_timer();
                     TELLO_locomotion_ctrl(cd_local);
                     
                 //}  
@@ -1371,8 +1379,8 @@ void* mujoco_Update_1KHz( void * arg )
                 //mjtNum simstart = d->time;
                 //while (d->time - simstart < 1.0 / 60.0){
                     // d->time = d->time + elapsed;
-                    dash_utils::print_timer();
-                    dash_utils::start_timer();
+                    // dash_utils::print_timer();
+                    // dash_utils::start_timer();
                     TELLO_locomotion_ctrl(cd_local);
                     
                     
@@ -1460,6 +1468,7 @@ void* mujoco_Update_1KHz( void * arg )
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+        ImGui::PushFont(font);
         ImGui::PushStyleColor(ImGuiCol_MenuBarBg, grey5);
         ImGui::SetNextWindowSizeConstraints(ImVec2(-1, 35+60.0*screenScale), ImVec2(-1, FLT_MAX));
         ImGui::BeginMainMenuBar();
@@ -1472,7 +1481,7 @@ void* mujoco_Update_1KHz( void * arg )
         ImGui::PushStyleColor(ImGuiCol_Button, med_navy);
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, light_navy);
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, lighter_navy);
-        ImGui::PushFont(font);
+        
         ImGui::BeginMainMenuBar();
 
         ImGui::PushStyleColor(ImGuiCol_Separator,grey5);
@@ -1806,7 +1815,7 @@ void* mujoco_Update_1KHz( void * arg )
         
         ImGui::PopStyleColor(5);
         ImGui::EndMainMenuBar();
-        ImGui::PopFont();
+        // ImGui::PopFont();
         ImGui::PopStyleColor(4);
 
         // if(sim_conf.en_realtime_plot)
@@ -1832,6 +1841,9 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::PushStyleColor(ImGuiCol_Separator,grey5);
             ImGui::Separator();
             ImGui::PopStyleColor();
+            ImGui::PushFont(fontSmall);
+            ImGui::Text((image_names[active_playback_log_index]).c_str());
+            ImGui::PopFont();
             ImGui::Image((void*)(intptr_t)(image_textures[active_playback_log_index]), ImVec2(plot_width, plot_height));
             ImGui::PushStyleColor(ImGuiCol_Separator,grey5);
             ImGui::Separator();
@@ -1850,11 +1862,13 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::SetNextWindowSize(ImVec2((double)windowWidth/5.0,windowHeight-headerHeight-(35+60*screenScale)));
             ImGui::SetNextWindowPos(ImVec2( (windowWidth - (double)windowWidth/5.0), (35+60*screenScale+headerHeight)) );
             ImGui::Begin("plotSelect",nullptr,ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize);
+            ImGui::PushFont(fontSmall);
             for(int i=0;i<pngFiles.size();i++)
             {
                 ImGui::PushStyleColor(ImGuiCol_Separator,grey5);
                 ImGui::Separator();
                 ImGui::PopStyleColor();
+                ImGui::Text((image_names[i]).c_str());
                 if (ImGui::ImageButton((void*)(intptr_t)(image_textures[i]), ImVec2(plot_width, plot_height)))
                 {
                     active_playback_log_png = pngFiles[i];
@@ -1862,6 +1876,8 @@ void* mujoco_Update_1KHz( void * arg )
                     writeActivePlaybackLog(hddFiles[i],"/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/active_playback_log.json");
                 }
             }
+            ImGui::PopFont();
+            
             ImGui::End();
         }
         if(showTuningMenu)
@@ -1916,7 +1932,64 @@ void* mujoco_Update_1KHz( void * arg )
 
             ImGui::End();
         }
+
+        ImGui::SetNextWindowSize(ImVec2(900,500));
+        ImGui::SetNextWindowPos(ImVec2(50, (35+60*screenScale)+50));
+        ImGui::Begin("DebugView",nullptr,ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize);
         
+        ImGui::Text(" Live Variable View:");
+        ImGui::Separator();
+        std::string FSM = std::to_string(tello->controller->get_FSM());
+        std::string next_SSP = std::to_string(tello->controller->get_traj_planner_dyn_data().next_SSP);
+        std::string grf_rf = std::to_string(tello->_GRFs.right_front);
+        std::string grf_rb = std::to_string(tello->_GRFs.right_back);
+        std::string grf_lf = std::to_string(tello->_GRFs.left_front);
+        std::string grf_lb = std::to_string(tello->_GRFs.left_back);
+        ImGui::Text("FSM: %s", FSM.c_str());
+        ImGui::Separator();
+        ImGui::Text("Next SSP: %s", next_SSP.c_str());
+        ImGui::Separator();
+        // ImGui::Text("LF: %s \tRF %s", grf_lf.c_str(),grf_rf.c_str());
+        // ImGui::Text("LB: %s \tRB %s", grf_lb.c_str(),grf_rb.c_str());
+        // VectorXd u(12);
+        // u << 0,0,tello->_GRFs.right_front,0,0,tello->_GRFs.right_back,0,0,tello->_GRFs.left_front,0,0,tello->_GRFs.left_back;
+        // VectorXd CoP = dash_utils::compute_robot_CoP(tello->controller->get_lfv_world(),u);
+        // cout << "CoP Size: " << CoP.size() << endl;
+        // ImGui::Text("CoP from Mujoco GRF: ");
+        // ImGui::Separator();
+        // ImGui::PushFont(fontSmall);
+        // std::string copviz = "L"+dash_utils::visualizeCoP(tello->controller->get_lfv_world()(2,1),CoP(1),tello->controller->get_lfv_world()(0,1))+"R";
+        // ImGui::Text(copviz.c_str());
+        // ImGui::Separator();
+        // ImGui::PopFont();
+        // ImGui::Text("CoP from QP GRF: ");
+        // ImGui::PushFont(fontSmall);
+        // VectorXd u_qp = tello->controller->get_GRFs();
+        // VectorXd CoP_qp = dash_utils::compute_robot_CoP(tello->controller->get_lfv_world(),u_qp);
+        // std::string copviz_qp = "L"+dash_utils::visualizeCoP(tello->controller->get_lfv_world()(2,1),CoP_qp(1),tello->controller->get_lfv_world()(0,1))+"R";
+        // ImGui::Text(copviz_qp.c_str());
+        // ImGui::PopFont();
+        // Create the popup dialog
+        if (playback_error) {
+            ImGui::OpenPopup("Playback Error");
+
+            // Display the popup dialog
+            if (ImGui::BeginPopupModal("Playback Error", &playback_error, ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImGui::Text("Error Opening Playback File. Restart Program.");
+                ImGui::Separator();
+
+                if (ImGui::Button("Close"))
+                {
+                    playback_error = false;
+                    ImGui::CloseCurrentPopup();
+                }
+                    
+
+                ImGui::EndPopup();
+            }
+        }
+        ImGui::End();
+        ImGui::PopFont();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -1939,20 +2012,20 @@ void* mujoco_Update_1KHz( void * arg )
         // if( (fabs(hdd.FyH_hmi - last_Yf) > 100) ){
         //     controller_unstable = true;
         // }
-        last_Xf = hdd.FxH_hmi;
-        last_Yf = hdd.FyH_hmi;
-        last_springf = hdd.FxH_spring;
+        last_Xf = FxH_hmi_out;
+        last_Yf = FyH_hmi_out;
+        last_springf = FxH_spring_out;
 
         // hdd.FyH_hmi = 20*sin(sin_cnt);
         // sin_cnt+= 0.016;
         // if(sin_cnt >= 2*M_PI) sin_cnt = 0;
         // sin_val = hdd.FyH_hmi;
         x_forces.tail(99) = x_forces.head(99).eval();
-        x_forces[0] = hdd.FxH_hmi;
+        x_forces[0] = FxH_hmi_out;
         y_forces.tail(99) = y_forces.head(99).eval();
-        y_forces[0] = hdd.FyH_hmi;
+        y_forces[0] = FyH_hmi_out;
         s_forces.tail(99) = s_forces.head(99).eval();
-        s_forces[0] = hdd.FxH_spring;
+        s_forces[0] = FxH_spring_out;
 
         //dash_utils::start_timer();
         x_force = dash_utils::smoothData(x_forces,0.8);
@@ -1962,6 +2035,7 @@ void* mujoco_Update_1KHz( void * arg )
         hdd.FyH_hmi = y_force;
         hdd.FxH_hmi = x_force;
         hdd.FxH_spring = s_force;
+        tello->controller->set_hmi_forces(hdd);
 		if(tello->controller->is_human_ctrl_enabled() && !controller_unstable)
 		{
 			hdd.FxH_hmi = 0;
@@ -2157,6 +2231,16 @@ void* sim_step_task( void * arg )
     return  0;
 }
 
+std::string removeTextAfterLastSlash(const std::string& str) {
+    std::size_t lastSlashPos = str.find_last_of('/');
+    if (lastSlashPos != std::string::npos) {
+        return str.substr(0, lastSlashPos + 1);
+    }
+    return str;
+}
+
+Human_dyn_data_filter hdd_pb_filter;
+
 void* Human_Playback( void * arg )
 {
 	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
@@ -2170,67 +2254,200 @@ void* Human_Playback( void * arg )
     // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Desktop/tello_outputs/teleop/5-15_to_16/5-16-23-stepping-with-no-sim/human_dyn_data.csv");
     // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Documents/hdd-tuning.csv");
 
+    std::string logPath = removeTextAfterLastSlash(active_log);
+
     std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile(active_log);
+
+    std::vector<Vector2d> time_vec = dash_utils::readTimeDataFromFile(logPath + "t_and_FSM.csv");
 
     hdd_cnt=0;
 
-    VectorXd  xHvec(100);
-    VectorXd dxHvec(100);
-    VectorXd pxHvec(100);
-    VectorXd  yHvec(100);
-    VectorXd dyHvec(100);
-    VectorXd pyHvec(100);
-    double xHval, dxHval, pxHval, yHval, dyHval, pyHval;
+    Eigen::VectorXd xHvec(100);
+    Eigen::VectorXd dxHvec(100);
+    Eigen::VectorXd pxHvec(100);
+    Eigen::VectorXd yHvec(100);
+    Eigen::VectorXd dyHvec(100);
+    Eigen::VectorXd pyHvec(100);
+    Eigen::VectorXd fxH_Rvec(100);
+    Eigen::VectorXd fyH_Rvec(100);
+    Eigen::VectorXd fzH_Rvec(100);
+    Eigen::VectorXd fxH_Lvec(100);
+    Eigen::VectorXd fyH_Lvec(100);
+    Eigen::VectorXd fzH_Lvec(100);
+    Eigen::VectorXd fdxH_Rvec(100);
+    Eigen::VectorXd fdyH_Rvec(100);
+    Eigen::VectorXd fdzH_Rvec(100);
+    Eigen::VectorXd fdxH_Lvec(100);
+    Eigen::VectorXd fdyH_Lvec(100);
+    Eigen::VectorXd fdzH_Lvec(100);
+    Eigen::VectorXd FxH_hmi_vec(100);
+    Eigen::VectorXd FyH_hmi_vec(100);
+    Eigen::VectorXd FxH_spring_vec(100);
+    double xHval;
+    double dxHval;
+    double pxHval;
+    double yHval;
+    double dyHval;
+    double pyHval;
+    double fxH_Rval;
+    double fyH_Rval;
+    double fzH_Rval;
+    double fxH_Lval;
+    double fyH_Lval;
+    double fzH_Lval;
+    double fdxH_Rval;
+    double fdyH_Rval;
+    double fdzH_Rval;
+    double fdxH_Lval;
+    double fdyH_Lval;
+    double fdzH_Lval;
+    double FxH_hmi_val;
+    double FyH_hmi_val;
+    double FxH_spring_val;
     int dyn_data_idx = 0;
    
     struct timespec next;
     clock_gettime(CLOCK_MONOTONIC, &next);
     while(1)
     {
+        if(hdd_vec.size() == 0)
+        {
+            playback_error = true;
+            break;
+        }
         while(hdd_cnt < hdd_vec.size())
         {
             handle_start_of_periodic_task(next);
             if(tello->controller->is_human_ctrl_enabled() && (!pause_sim) && (sim_conf.en_playback_mode) )
             {
                 //dash_utils::print_human_dyn_data(hdd_vec[hdd_cnt]);
-                if(PS4_connected) hdd_vec[hdd_cnt].xH = xH_Commanded;
+                // if(PS4_connected) hdd_vec[hdd_cnt].xH = xH_Commanded;
                 Human_dyn_data human_dyn_data = hdd_vec[hdd_cnt];
-                hdd_cnt += 1;
-                //smooth data here
-                // xHvec.tail(99) = xHvec.head(99).eval();
-                // xHvec[0] = human_dyn_data.xH;
-                // dxHvec.tail(99) = dxHvec.head(99).eval();
-                // dxHvec[0] = human_dyn_data.dxH;
-                // pxHvec.tail(99) = pxHvec.head(99).eval();
-                // pxHvec[0] = human_dyn_data.pxH;
-
-                // yHvec.tail(99) = yHvec.head(99).eval();
-                // yHvec[0] = human_dyn_data.yH;
-                // dyHvec.tail(99) = dyHvec.head(99).eval();
-                // dyHvec[0] = human_dyn_data.dyH;
-                // pyHvec.tail(99) = pyHvec.head(99).eval();
-                // pyHvec[0] = human_dyn_data.pyH;
+                
+                double time = time_vec[hdd_cnt](0);
+                
+                // =======================================================================================================
                 
 
-                // //dash_utils::start_timer();
-                // xHval = dash_utils::smoothData(xHvec,1);
-                // dxHval = dash_utils::smoothData(dxHvec,1);
-                // pxHval = dash_utils::smoothData(pxHvec,1);
-                // yHval = dash_utils::smoothData(yHvec,1);
-                // dyHval = dash_utils::smoothData(dyHvec,1);
-                // pyHval = dash_utils::smoothData(pyHvec,1);
-                // //dash_utils::print_timer();
-                // human_dyn_data.xH  =  xHval;
-                // human_dyn_data.dxH = dxHval;
-                // human_dyn_data.pxH = pxHval;
-                // human_dyn_data.yH  =  yHval;
-                // human_dyn_data.dyH = dyHval;
-                // human_dyn_data.pyH = pyHval;
 
-                // human_dyn_data.xH = 0;
+                // =======================================================================================================
+                if(time <= tello->controller->get_time())
+                {
+                    xHvec.tail(99) = xHvec.head(99).eval();
+                    xHvec[0] = human_dyn_data.xH;
 
+                    dxHvec.tail(99) = dxHvec.head(99).eval();
+                    dxHvec[0] = human_dyn_data.dxH;
 
-                tello->controller->set_human_dyn_data(human_dyn_data);
+                    pxHvec.tail(99) = pxHvec.head(99).eval();
+                    pxHvec[0] = human_dyn_data.pxH;
+
+                    yHvec.tail(99) = yHvec.head(99).eval();
+                    yHvec[0] = human_dyn_data.yH;
+
+                    dyHvec.tail(99) = dyHvec.head(99).eval();
+                    dyHvec[0] = human_dyn_data.dyH;
+
+                    pyHvec.tail(99) = pyHvec.head(99).eval();
+                    pyHvec[0] = human_dyn_data.pyH;
+
+                    fxH_Rvec.tail(99) = fxH_Rvec.head(99).eval();
+                    fxH_Rvec[0] = human_dyn_data.fxH_R;
+
+                    fyH_Rvec.tail(99) = fyH_Rvec.head(99).eval();
+                    fyH_Rvec[0] = human_dyn_data.fyH_R;
+
+                    fzH_Rvec.tail(99) = fzH_Rvec.head(99).eval();
+                    fzH_Rvec[0] = human_dyn_data.fzH_R;
+
+                    fxH_Lvec.tail(99) = fxH_Lvec.head(99).eval();
+                    fxH_Lvec[0] = human_dyn_data.fxH_L;
+
+                    fyH_Lvec.tail(99) = fyH_Lvec.head(99).eval();
+                    fyH_Lvec[0] = human_dyn_data.fyH_L;
+
+                    fzH_Lvec.tail(99) = fzH_Lvec.head(99).eval();
+                    fzH_Lvec[0] = human_dyn_data.fzH_L;
+
+                    fdxH_Rvec.tail(99) = fdxH_Rvec.head(99).eval();
+                    fdxH_Rvec[0] = human_dyn_data.fdxH_R;
+
+                    fdyH_Rvec.tail(99) = fdyH_Rvec.head(99).eval();
+                    fdyH_Rvec[0] = human_dyn_data.fdyH_R;
+
+                    fdzH_Rvec.tail(99) = fdzH_Rvec.head(99).eval();
+                    fdzH_Rvec[0] = human_dyn_data.fdzH_R;
+
+                    fdxH_Lvec.tail(99) = fdxH_Lvec.head(99).eval();
+                    fdxH_Lvec[0] = human_dyn_data.fdxH_L;
+
+                    fdyH_Lvec.tail(99) = fdyH_Lvec.head(99).eval();
+                    fdyH_Lvec[0] = human_dyn_data.fdyH_L;
+
+                    fdzH_Lvec.tail(99) = fdzH_Lvec.head(99).eval();
+                    fdzH_Lvec[0] = human_dyn_data.fdzH_L;
+
+                    FxH_hmi_vec.tail(99) = FxH_hmi_vec.head(99).eval();
+                    FxH_hmi_vec[0] = human_dyn_data.FxH_hmi;
+
+                    FyH_hmi_vec.tail(99) = FyH_hmi_vec.head(99).eval();
+                    FyH_hmi_vec[0] = human_dyn_data.FyH_hmi;
+
+                    FxH_spring_vec.tail(99) = FxH_spring_vec.head(99).eval();
+                    FxH_spring_vec[0] = human_dyn_data.FxH_spring;
+
+                    xHval = dash_utils::smoothData(xHvec, 0.1/*alpha*/);
+                    dxHval = dash_utils::smoothData(dxHvec, 0.1/*alpha*/);
+                    pxHval = dash_utils::smoothData(pxHvec, 0.1/*alpha*/);
+                    yHval = dash_utils::smoothData(yHvec, 0.1/*alpha*/);
+                    dyHval = dash_utils::smoothData(dyHvec, 0.1/*alpha*/);
+                    pyHval = dash_utils::smoothData(pyHvec, 0.1/*alpha*/);
+                    fxH_Rval = dash_utils::smoothData(fxH_Rvec, 0.2/*alpha*/);
+                    fyH_Rval = dash_utils::smoothData(fyH_Rvec, 0.2/*alpha*/);
+                    fzH_Rval = dash_utils::smoothData(fzH_Rvec, 0.2/*alpha*/);
+                    fxH_Lval = dash_utils::smoothData(fxH_Lvec, 0.2/*alpha*/);
+                    fyH_Lval = dash_utils::smoothData(fyH_Lvec, 0.2/*alpha*/);
+                    fzH_Lval = dash_utils::smoothData(fzH_Lvec, 0.2/*alpha*/);
+                    fdxH_Rval = dash_utils::smoothData(fdxH_Rvec, 4.0/*alpha*/);
+                    fdyH_Rval = dash_utils::smoothData(fdyH_Rvec, 4.0/*alpha*/);
+                    fdzH_Rval = dash_utils::smoothData(fdzH_Rvec, 4.0/*alpha*/);
+                    fdxH_Lval = dash_utils::smoothData(fdxH_Lvec, 4.0/*alpha*/);
+                    fdyH_Lval = dash_utils::smoothData(fdyH_Lvec, 4.0/*alpha*/);
+                    fdzH_Lval = dash_utils::smoothData(fdzH_Lvec, 4.0/*alpha*/);
+                    FxH_hmi_val = dash_utils::smoothData(FxH_hmi_vec, 0.1/*alpha*/);
+                    FyH_hmi_val = dash_utils::smoothData(FyH_hmi_vec, 0.1/*alpha*/);
+                    FxH_spring_val = dash_utils::smoothData(FxH_spring_vec, 0.1/*alpha*/);
+
+                    human_dyn_data.xH = xHval;
+                    human_dyn_data.dxH = dxHval;
+                    human_dyn_data.pxH = pxHval;
+                    human_dyn_data.yH = yHval;
+                    human_dyn_data.dyH = dyHval;
+                    human_dyn_data.pyH = pyHval;
+                    human_dyn_data.fxH_R = fxH_Rval;
+                    human_dyn_data.fyH_R = fyH_Rval;
+                    human_dyn_data.fzH_R = fzH_Rval;
+                    human_dyn_data.fxH_L = fxH_Lval;
+                    human_dyn_data.fyH_L = fyH_Lval;
+                    human_dyn_data.fzH_L = fzH_Lval;
+                    human_dyn_data.fdxH_R = fdxH_Rval;
+                    human_dyn_data.fdyH_R = fdyH_Rval;
+                    human_dyn_data.fdzH_R = fdzH_Rval;
+                    human_dyn_data.fdxH_L = fdxH_Lval;
+                    human_dyn_data.fdyH_L = fdyH_Lval;
+                    human_dyn_data.fdzH_L = fdzH_Lval;
+                    human_dyn_data.FxH_hmi = FxH_hmi_val;
+                    human_dyn_data.FyH_hmi = FyH_hmi_val;
+                    human_dyn_data.FxH_spring = FxH_spring_val;
+
+                    // VectorXd alphas(21);
+                    // alphas.setConstant(4.0);
+                    // Human_dyn_data temp = dash_utils::smooth_human_dyn_data(human_dyn_data,hdd_pb_filter,alphas);
+                    // human_dyn_data = temp;
+
+                    tello->controller->set_human_dyn_data_without_forces(human_dyn_data);
+                    hdd_cnt += 1;
+                }
                 // if(hdd_cnt == hdd_vec.size()-1) hdd_cnt--;
                 //cout << "applying HDD struct # " << hdd_cnt << endl;
             }
@@ -2239,6 +2456,11 @@ void* Human_Playback( void * arg )
                 active_log = readActivePlaybackLog("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/active_playback_log.json");
                 hdd_vec = dash_utils::readHumanDynDataFromFile(active_log);
                 hdd_cnt = 0;
+                if(hdd_vec.size() == 0)
+                {
+                    playback_error = true;
+                    break;
+                }
             }
             double g = tello->controller->get_SRB_params().g;
             double hR = tello->controller->get_SRB_params().hLIP;
@@ -2246,7 +2468,7 @@ void* Human_Playback( void * arg )
             double wR = std::sqrt(g / hR);
             double wH = std::sqrt(g / hH);
             int periodScaled = (int)(((double)period)*(wH/wR));
-            handle_end_of_periodic_task(next,period);
+            handle_end_of_periodic_task(next,50);
         }
         hdd_cnt = 0;
         tello->controller->disable_human_ctrl();
@@ -2254,7 +2476,7 @@ void* Human_Playback( void * arg )
         Traj_planner_dyn_data tpdd = tello->controller->get_traj_planner_dyn_data();
         tpdd.stepping_flg = false;
         tello->controller->set_traj_planner_dyn_data(tpdd);
-        usleep(10000);
+        usleep(100000);
     }
    
     return  0;
@@ -2274,7 +2496,7 @@ void* logging( void * arg )
     while(true)
     {
         handle_start_of_periodic_task(next);
-        while(!log_data_ready || !sim_step_completed) usleep(100);
+        while(!log_data_ready || !sim_step_completed) usleep(50);
         log_data_ready = false;
         sim_step_completed = false;
         // logging:
@@ -2297,8 +2519,8 @@ void* logging( void * arg )
         dash_utils::writeHumanDynDataToCsv(hdd_out,"human_dyn_data.csv");
         dash_utils::writeTrajPlannerDataToCsv(tpdd_out,"traj_planner_dyn_data.csv");
         // end logging
-
-		handle_end_of_periodic_task(next,period);
+        usleep(50);
+		// handle_end_of_periodic_task(next,period);
 	}
     cout << "Human Playback Complete" << endl;
     return  0;
@@ -2505,7 +2727,7 @@ void* plotting( void * arg )
             y3.push_back(hdd.FxH_spring);
 
             y4.push_back(x_force);
-            y5.push_back(fY);
+            y5.push_back(y_force);
             y6.push_back(s_force);
 
             if(tello->controller->get_time() - last_plot_time > 0.1){
@@ -2513,15 +2735,15 @@ void* plotting( void * arg )
                 plt::rcparams({{"legend.loc","lower left"}});
                 plt::clf();
                 plt::title("HMI Force");
-                //plt::subplot(3, 1, 1);
-                //plt::named_plot("X", x, y1, "r-");
-                //plt::named_plot("Y", x, y4, "b-");
-                //plt::subplot(3, 1, 2);
+                plt::subplot(3, 1, 1);
+                plt::named_plot("X", x, y1, "r-");
+                plt::named_plot("Filt_X", x, y4, "b-");
+                plt::subplot(3, 1, 2);
                 plt::named_plot("Y", x, y2, "r-");
-                plt::named_plot("Log Y", x, y5, "b-");
-                //plt::subplot(3, 1, 3);
-                //plt::named_plot("S", x, y3, "r-");
-                //plt::named_plot("Y", x, y6, "b-");
+                plt::named_plot("Filt_Y", x, y5, "b-");
+                plt::subplot(3, 1, 3);
+                plt::named_plot("S", x, y3, "r-");
+                plt::named_plot("Filt_S", x, y6, "b-");
                 plt::legend();
                 plt::pause(0.001);
                 

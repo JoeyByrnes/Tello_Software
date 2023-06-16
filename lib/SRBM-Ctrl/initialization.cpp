@@ -1,4 +1,5 @@
 #include "initialization.h"
+#include "../../include/user_config.h"
 
 extern int simulation_mode;
 
@@ -7,7 +8,7 @@ extern int simulation_mode;
 void dash_init::Human_Init(Human_params &Human_params, Human_dyn_data &Human_dyn_data) {
     // Human Parameters
     double joystick_base_separation = 1.525;
-    double foot_center_to_joystick = 0.0825;
+    // double foot_center_to_joystick = 0.0825;
 
     // Human_params.m = 75; // human weight in kg
     // Human_params.hLIP = 1.2; // nominal human LIP height
@@ -19,7 +20,8 @@ void dash_init::Human_Init(Human_params &Human_params, Human_dyn_data &Human_dyn
     Human_params.hLIP = 1.15; // nominal human LIP height
 
     Human_params.human_nom_ft_width = 0.220; // nominal human feet width //was 0.175
-    Human_params.fyH_home = (joystick_base_separation/2.0) - Human_params.human_nom_ft_width - foot_center_to_joystick; // joystick y width
+    Human_params.fyH_home = (joystick_base_separation/2.0) - Human_params.human_nom_ft_width - FOOT_2_JOYSTICK; // joystick y width
+    Human_params.foot_2_joystick = FOOT_2_JOYSTICK;
     // Note: HMI joystick bases are 1.465m apart
     //       distance from center of foot to joystick end is 0.0635
 
@@ -203,8 +205,8 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.mu = 1.0; // coefficient of friction value
 
         // SRB specific
-        srb_params.m = 23; // robot mass in kg // was 23 for mujoco
-        srb_params.hLIP = 0.58; // nominal robot LIP height // was 0.66 for mujoco
+        srb_params.m = 12; // robot mass in kg // was 23 for mujoco // real robot is 15.8Kg
+        srb_params.hLIP = 0.60; // nominal robot LIP height // was 0.66 for mujoco
         srb_params.Ib = Matrix3d::Identity();
         srb_params.Ib(0,0) = 0.4874;
         srb_params.Ib(1,1) = 0.3081;
@@ -284,7 +286,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.beta_trans = 0.465; // transmission kinematics beta term
         srb_params.gamma_trans = 0.5; // transmission kinematics gamma term
         srb_params.Fz_min_QP = 0.0; // vertical force min to make sure no pulling on the ground (force distribution QP)
-        srb_params.Fz_min_FSM = 5; // vertical force min to detect when foot breaks contact (FSM) 
+        srb_params.Fz_min_FSM = 15.0; // vertical force min to detect when foot breaks contact (FSM) 
 
         // joint limits
         srb_params.q1_lim << -M_PI/9, M_PI/9;

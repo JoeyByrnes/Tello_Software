@@ -98,7 +98,7 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
     }
 }
 
-int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_planner_dyn_data, int FSM_prev, double t, MatrixXd lfv, VectorXd u)
+int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_planner_dyn_data, Human_dyn_data human_dyn_data, int FSM_prev, double t, MatrixXd lfv, VectorXd u)
 {
     // Finite State-Machine for SRBM reduced-order model
     // Possible states are double support phase (DSP = 0), single support phase
@@ -165,16 +165,20 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     double grf_rb = tello->_GRFs.right_back;
     double grf_lf = tello->_GRFs.left_front;
     double grf_lb = tello->_GRFs.left_back;
+
+    double fzH0 = traj_planner_dyn_data.human_leg_joystick_pos_beg_step(2);
+    double zHr = human_dyn_data.fzH_R - 0.002;
+    double zHl = human_dyn_data.fzH_L - 0.015;
     
     int FSM_next;
     // cout << FSM_prev << "\t u1z:" << u1z << "\t u2z" << u3z << "\t t_dsp" << t_dsp << endl;
     if (FSM_prev == 0) // currently in DSP
     {
-        if ( (grf_rf < Fz_min || grf_rb < Fz_min ) && t > 0 && t_dsp > 0.005 && (next_SSP==1 || t_dsp > 0.5)) // enter SSP_L
+        if ( (grf_rf < Fz_min || grf_rb < Fz_min ) && t > 0 && t_dsp > 0.005 && (next_SSP==1) && zHr > 0.003) // enter SSP_L
         {
             FSM_next = 1;
         }
-        else if ( (grf_lf < Fz_min || grf_lb < Fz_min ) && t > 0 && t_dsp > 0.005 && (next_SSP==-1 || t_dsp > 0.5)) // enter SSP_R 
+        else if ( (grf_lf < Fz_min || grf_lb < Fz_min ) && t > 0 && t_dsp > 0.005 && (next_SSP==-1) && zHl > 0.003) // enter SSP_R 
         {
             FSM_next = -1;     
         }
@@ -327,7 +331,7 @@ void dash_planner::SRB_Traj_Planner(
     int num_SRB_DoF = 6;
     
     // FSM
-    FSM = SRB_FSM(srb_params, traj_planner_dyn_data, FSM_prev, t, lfv, u);
+    FSM = SRB_FSM(srb_params, traj_planner_dyn_data,human_dyn_data, FSM_prev, t, lfv, u);
     
     // Update planner data
     traj_planner_dyn_data_gen(srb_params, human_params, traj_planner_dyn_data, human_dyn_data, t, FSM_prev, FSM, x, lfv);
@@ -511,6 +515,7 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
                 traj_planner_dyn_data.st2CoM_beg_step = pc - lfv.row(st_idx_R).transpose();
                 traj_planner_dyn_data.sw2CoM_beg_step = pc - lfv.row(sw_idx_R).transpose();  
                 traj_planner_dyn_data.xLIP_init << (pc(0) - lfv.row(st_idx_R)(0)) + (1.0/2.0)*ft_l, dx;
+                traj_planner_dyn_data.sw_beg_step = lfv.row(sw_idx_R);
                 
             } else if (planner_type == 2) { // planner_type = Human_Dyn_Telelocomotion
 
@@ -532,6 +537,8 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
             traj_planner_dyn_data.t_dsp_start = t;
             lfv_dsp_start = lfv;
 
+            traj_planner_dyn_data.y_LIP_offset = (lfv(0,1) + lfv(2,1))/2.0; 
+
             // final step time (store as assumed step time for next step)
             double T_step_final = t - t_sw_start;
 
@@ -545,7 +552,7 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
             dash_dyn::HLIP_Reset_Map_SSP_DSP(x_plus_HWRM, x_minus_HWRM);            
 
             if (planner_type == 2) {
-                traj_planner_dyn_data.T_step = T_step_final;
+                // traj_planner_dyn_data.T_step = T_step_final;
                 traj_planner_dyn_data.x_plus_HWRM = x_plus_HWRM;
             }
 

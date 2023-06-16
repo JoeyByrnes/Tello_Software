@@ -44,6 +44,8 @@ class SRBMController {
     // Getter and setter functions for Human_dyn_data
     Human_dyn_data get_human_dyn_data() const { return human_dyn_data; }
     void set_human_dyn_data(const Human_dyn_data& data) { human_dyn_data = data; }
+    void set_human_dyn_data_without_forces(const Human_dyn_data& data);
+    void set_hmi_forces(const Human_dyn_data& data);
 
     // Getter and setter functions for Traj_planner_dyn_data
     Traj_planner_dyn_data get_traj_planner_dyn_data() const { return traj_planner_dyn_data; }
@@ -141,6 +143,10 @@ class SRBMController {
     VectorXd get_x0() const { return x0; }
     void set_x0(const VectorXd& vec) { x0 = vec; }
 
+    // Getter and setter functions for x0
+    VectorXd get_ddpc_world() const { return _ddpc; }
+    void set_ddpc_world(const Vector3d& vec) { _ddpc = vec; }
+
     // Getter function for right_leg_last
     MatrixXd get_right_leg_last() const { return right_leg_last; }
 
@@ -210,6 +216,7 @@ class SRBMController {
     Vector3d _dEA;
     Vector3d _pc;
     Vector3d _dpc;
+    Vector3d _ddpc;
 
     VectorXd x = VectorXd(21);
     MatrixXd q = MatrixXd(2,5); 

@@ -40,3 +40,5 @@ bool optimize_serial_communication(std::string portName);
 
 std::string getCurrentDateTime();
 std::string createLogFolder(const std::string& location);
+
+double ema_filter(const Eigen::VectorXd& vel, double smoothingFactor);

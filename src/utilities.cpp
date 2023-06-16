@@ -147,3 +147,25 @@ std::string createLogFolder(const std::string& location) {
     std::cout << "Log Folder created successfully: " << folderPath << std::endl;
     return folderPath + "/";
 }
+
+double ema_filter(const Eigen::VectorXd& vel, double smoothingFactor) 
+{
+    int n = vel.size();
+    Eigen::VectorXd smoothedVel(n);
+    smoothedVel.setZero();
+
+    if (n > 0) {
+        smoothedVel(0) = vel(0);
+        int maxSamples = std::min(n, 100);
+        for (int i = 1; i < maxSamples; ++i) {
+            double weight = smoothingFactor / (i + 1);
+            smoothedVel(i) = (1 - weight) * smoothedVel(i - 1) + weight * vel(i);
+        }
+        for (int i = maxSamples; i < n; ++i) {
+            double weight = smoothingFactor / maxSamples;
+            smoothedVel(i) = (1 - weight) * smoothedVel(i - 1) + weight * vel(i);
+        }
+    }
+
+    return smoothedVel(n - 1);
+}

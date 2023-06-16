@@ -30,6 +30,17 @@ long long print_index = 0;
 extern simConfig sim_conf;
 double robot_init_foot_width=0.175;
 
+
+VectorXd fdxH_R_vec = VectorXd(100);
+VectorXd fdyH_R_vec = VectorXd(100);
+VectorXd fdzH_R_vec = VectorXd(100);
+VectorXd fdxH_L_vec = VectorXd(100);
+VectorXd fdyH_L_vec = VectorXd(100);
+VectorXd fdzH_L_vec = VectorXd(100);
+
+// Human_dyn_data_filter hdd_filter;
+
+
 void* rx_CAN( void * arg ){
     
 	TPCANStatus Status;
@@ -38,7 +49,7 @@ void* rx_CAN( void * arg ){
     void* arg1 = std::get<1>(*arg_tuple_ptr);
 	void* arg0 = std::get<0>(*arg_tuple_ptr);
 	int period = std::get<2>(*arg_tuple_ptr);
-    int pcd = *reinterpret_cast<int*>(arg1);
+    int pcd = *reinterpret_cast<int*>( arg1 );
 	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(arg0);
 	// Print the core and priority of the thread
 	int core = sched_getcpu();
@@ -191,7 +202,7 @@ void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* rob
 // 		socklen_t * len1;
 // 		n = recvfrom(sockfd, (char *)rx_buffer, 100,
 // 			MSG_WAITALL, ( struct sockaddr *) &cliaddr,
-// 			len1);
+// 			len1 );
 // 		uint8_t checksum = 0;
 // 		for(int i=0;i<n-1;i++){
 // 			checksum += rx_buffer[i]&0xFF;
@@ -223,6 +234,8 @@ VectorXd dyHvec(100);
 VectorXd pyHvec(100);
 double xHval, dxHval, pxHval, yHval, dyHval, pyHval;
 int dyn_data_idx = 0;
+
+
 
 
 void* rx_UDP( void * arg ){
@@ -271,14 +284,59 @@ void* rx_UDP( void * arg ){
 
 	int len, n;
 
+	Eigen::VectorXd xHvec(100);
+    Eigen::VectorXd dxHvec(100);
+    Eigen::VectorXd pxHvec(100);
+    Eigen::VectorXd yHvec(100);
+    Eigen::VectorXd dyHvec(100);
+    Eigen::VectorXd pyHvec(100);
+    Eigen::VectorXd fxH_Rvec(100);
+    Eigen::VectorXd fyH_Rvec(100);
+    Eigen::VectorXd fzH_Rvec(100);
+    Eigen::VectorXd fxH_Lvec(100);
+    Eigen::VectorXd fyH_Lvec(100);
+    Eigen::VectorXd fzH_Lvec(100);
+    Eigen::VectorXd fdxH_Rvec(100);
+    Eigen::VectorXd fdyH_Rvec(100);
+    Eigen::VectorXd fdzH_Rvec(100);
+    Eigen::VectorXd fdxH_Lvec(100);
+    Eigen::VectorXd fdyH_Lvec(100);
+    Eigen::VectorXd fdzH_Lvec(100);
+    Eigen::VectorXd FxH_hmi_vec(100);
+    Eigen::VectorXd FyH_hmi_vec(100);
+    Eigen::VectorXd FxH_spring_vec(100);
+    double xHval;
+    double dxHval;
+    double pxHval;
+    double yHval;
+    double dyHval;
+    double pyHval;
+    double fxH_Rval;
+    double fyH_Rval;
+    double fzH_Rval;
+    double fxH_Lval;
+    double fyH_Lval;
+    double fzH_Lval;
+    double fdxH_Rval;
+    double fdyH_Rval;
+    double fdzH_Rval;
+    double fdxH_Lval;
+    double fdyH_Lval;
+    double fdzH_Lval;
+    double FxH_hmi_val;
+    double FyH_hmi_val;
+    double FxH_spring_val;
+
 	while(1)
 	{
 		socklen_t * len1;
 		// dash_utils::print_timer();
 		// dash_utils::start_timer();
+		dash_utils::print_timer();
+		dash_utils::start_timer();
 		n = recvfrom(sockfd, (char *)rx_buffer, 100,
 			MSG_WAITALL, ( struct sockaddr *) &cliaddr,
-			len1);
+			len1 );
 		uint8_t checksum = 0;
 		for(int i=0;i<n-1;i++){
 			checksum += rx_buffer[i]&0xFF;
@@ -291,6 +349,7 @@ void* rx_UDP( void * arg ){
 		if(tello->controller->is_human_ctrl_enabled())
 		{
 			dash_utils::unpack_data_from_hmi(human_dyn_data,(uint8_t*)rx_buffer);
+			
 		}
 		else
 		{
@@ -317,41 +376,122 @@ void* rx_UDP( void * arg ){
 			robot_init_foot_width = human_foot_width*(hR/hH);
 			// cout << "Robot Width: " << robot_init_foot_width << "    Human Width: " << human_foot_width << "    R: "<< fyH_R << "    L: "<< fyH_L << endl;
 		}
+		
+		// =======================================================================================================
+                
+		xHvec.tail(99) = xHvec.head(99).eval();
+		xHvec[0] = human_dyn_data.xH;
 
-	// 	// smooth data here
-	// 	xHvec.tail(99) = xHvec.head(99).eval();
-    //     xHvec[0] = human_dyn_data.xH;
-	// 	dxHvec.tail(99) = dxHvec.head(99).eval();
-    //     dxHvec[0] = human_dyn_data.dxH;
-	// 	pxHvec.tail(99) = pxHvec.head(99).eval();
-    //     pxHvec[0] = human_dyn_data.pxH;
+		dxHvec.tail(99) = dxHvec.head(99).eval();
+		dxHvec[0] = human_dyn_data.dxH;
 
-	// 	yHvec.tail(99) = yHvec.head(99).eval();
-    //     yHvec[0] = human_dyn_data.yH;
-	// 	dyHvec.tail(99) = dyHvec.head(99).eval();
-    //     dyHvec[0] = human_dyn_data.dyH;
-	// 	pyHvec.tail(99) = pyHvec.head(99).eval();
-    //     pyHvec[0] = human_dyn_data.pyH;
-        
+		pxHvec.tail(99) = pxHvec.head(99).eval();
+		pxHvec[0] = human_dyn_data.pxH;
 
-    //    //dash_utils::start_timer();
-	// 	xHval = dash_utils::smoothData(xHvec,2);
-	// 	dxHval = dash_utils::smoothData(dxHvec,0.5);
-	// 	pxHval = dash_utils::smoothData(pxHvec,0);
-	// 	yHval = dash_utils::smoothData(yHvec,2);
-	// 	dyHval = dash_utils::smoothData(dyHvec,0.5);
-	// 	pyHval = dash_utils::smoothData(pyHvec,0);
-	// 	//dash_utils::print_timer();
-    //     human_dyn_data.xH  =  xHval;
-	// 	human_dyn_data.dxH = dxHval;
-	// 	human_dyn_data.pxH = pxHval;
-	// 	human_dyn_data.yH  =  yHval;
-	// 	human_dyn_data.dyH = dyHval;
-	// 	human_dyn_data.pyH = pyHval;
+		yHvec.tail(99) = yHvec.head(99).eval();
+		yHvec[0] = human_dyn_data.yH;
+
+		dyHvec.tail(99) = dyHvec.head(99).eval();
+		dyHvec[0] = human_dyn_data.dyH;
+
+		pyHvec.tail(99) = pyHvec.head(99).eval();
+		pyHvec[0] = human_dyn_data.pyH;
+
+		fxH_Rvec.tail(99) = fxH_Rvec.head(99).eval();
+		fxH_Rvec[0] = human_dyn_data.fxH_R;
+
+		fyH_Rvec.tail(99) = fyH_Rvec.head(99).eval();
+		fyH_Rvec[0] = human_dyn_data.fyH_R;
+
+		fzH_Rvec.tail(99) = fzH_Rvec.head(99).eval();
+		fzH_Rvec[0] = human_dyn_data.fzH_R;
+
+		fxH_Lvec.tail(99) = fxH_Lvec.head(99).eval();
+		fxH_Lvec[0] = human_dyn_data.fxH_L;
+
+		fyH_Lvec.tail(99) = fyH_Lvec.head(99).eval();
+		fyH_Lvec[0] = human_dyn_data.fyH_L;
+
+		fzH_Lvec.tail(99) = fzH_Lvec.head(99).eval();
+		fzH_Lvec[0] = human_dyn_data.fzH_L;
+
+		fdxH_Rvec.tail(99) = fdxH_Rvec.head(99).eval();
+		fdxH_Rvec[0] = human_dyn_data.fdxH_R;
+
+		fdyH_Rvec.tail(99) = fdyH_Rvec.head(99).eval();
+		fdyH_Rvec[0] = human_dyn_data.fdyH_R;
+
+		fdzH_Rvec.tail(99) = fdzH_Rvec.head(99).eval();
+		fdzH_Rvec[0] = human_dyn_data.fdzH_R;
+
+		fdxH_Lvec.tail(99) = fdxH_Lvec.head(99).eval();
+		fdxH_Lvec[0] = human_dyn_data.fdxH_L;
+
+		fdyH_Lvec.tail(99) = fdyH_Lvec.head(99).eval();
+		fdyH_Lvec[0] = human_dyn_data.fdyH_L;
+
+		fdzH_Lvec.tail(99) = fdzH_Lvec.head(99).eval();
+		fdzH_Lvec[0] = human_dyn_data.fdzH_L;
+
+		FxH_hmi_vec.tail(99) = FxH_hmi_vec.head(99).eval();
+		FxH_hmi_vec[0] = human_dyn_data.FxH_hmi;
+
+		FyH_hmi_vec.tail(99) = FyH_hmi_vec.head(99).eval();
+		FyH_hmi_vec[0] = human_dyn_data.FyH_hmi;
+
+		FxH_spring_vec.tail(99) = FxH_spring_vec.head(99).eval();
+		FxH_spring_vec[0] = human_dyn_data.FxH_spring;
+
+		xHval = dash_utils::smoothData(xHvec, 0.1/*alpha*/);
+		dxHval = dash_utils::smoothData(dxHvec, 2.0/*alpha*/);
+		pxHval = dash_utils::smoothData(pxHvec, 0.1/*alpha*/);
+		yHval = dash_utils::smoothData(yHvec, 0.1/*alpha*/);
+		dyHval = dash_utils::smoothData(dyHvec, 2.0/*alpha*/);
+		pyHval = dash_utils::smoothData(pyHvec, 0.1/*alpha*/);
+		fxH_Rval = dash_utils::smoothData(fxH_Rvec, 0.2/*alpha*/);
+		fyH_Rval = dash_utils::smoothData(fyH_Rvec, 0.2/*alpha*/);
+		fzH_Rval = dash_utils::smoothData(fzH_Rvec, 0.2/*alpha*/);
+		fxH_Lval = dash_utils::smoothData(fxH_Lvec, 0.2/*alpha*/);
+		fyH_Lval = dash_utils::smoothData(fyH_Lvec, 0.2/*alpha*/);
+		fzH_Lval = dash_utils::smoothData(fzH_Lvec, 0.2/*alpha*/);
+		fdxH_Rval = dash_utils::smoothData(fdxH_Rvec, 4.0/*alpha*/);
+		fdyH_Rval = dash_utils::smoothData(fdyH_Rvec, 4.0/*alpha*/);
+		fdzH_Rval = dash_utils::smoothData(fdzH_Rvec, 4.0/*alpha*/);
+		fdxH_Lval = dash_utils::smoothData(fdxH_Lvec, 4.0/*alpha*/);
+		fdyH_Lval = dash_utils::smoothData(fdyH_Lvec, 4.0/*alpha*/);
+		fdzH_Lval = dash_utils::smoothData(fdzH_Lvec, 4.0/*alpha*/);
+		FxH_hmi_val = dash_utils::smoothData(FxH_hmi_vec, 0.1/*alpha*/);
+		FyH_hmi_val = dash_utils::smoothData(FyH_hmi_vec, 0.1/*alpha*/);
+		FxH_spring_val = dash_utils::smoothData(FxH_spring_vec, 0.1/*alpha*/);
+
+		human_dyn_data.xH = xHval;
+		human_dyn_data.dxH = dxHval;
+		human_dyn_data.pxH = pxHval;
+		human_dyn_data.yH = yHval;
+		human_dyn_data.dyH = dyHval;
+		human_dyn_data.pyH = pyHval;
+		human_dyn_data.fxH_R = fxH_Rval;
+		human_dyn_data.fyH_R = fyH_Rval;
+		human_dyn_data.fzH_R = fzH_Rval;
+		human_dyn_data.fxH_L = fxH_Lval;
+		human_dyn_data.fyH_L = fyH_Lval;
+		human_dyn_data.fzH_L = fzH_Lval;
+		human_dyn_data.fdxH_R = fdxH_Rval;
+		human_dyn_data.fdyH_R = fdyH_Rval;
+		human_dyn_data.fdzH_R = fdzH_Rval;
+		human_dyn_data.fdxH_L = fdxH_Lval;
+		human_dyn_data.fdyH_L = fdyH_Lval;
+		human_dyn_data.fdzH_L = fdzH_Lval;
+		human_dyn_data.FxH_hmi = FxH_hmi_val;
+		human_dyn_data.FyH_hmi = FyH_hmi_val;
+		human_dyn_data.FxH_spring = FxH_spring_val;
+
+
+		// =======================================================================================================
 
 		if(!(sim_conf.en_playback_mode))
 		{
-			tello->controller->set_human_dyn_data(human_dyn_data);
+			tello->controller->set_human_dyn_data_without_forces(human_dyn_data);
 		}
 		//dash_utils::print_human_dyn_data(human_dyn_data);
 
@@ -474,7 +614,7 @@ void* BNO055_Comms( void * arg ){
 
 
 	Eigen::Vector3d v(0.05, -0.99, 9.84);
-    Eigen::Vector3d z_axis(0, 0, 1);
+    Eigen::Vector3d z_axis(0, 0, 1 );
 
     // Step 1: Calculate the angle between v and the z-axis
     double angle = std::acos(v.dot(z_axis) / v.norm());
@@ -640,9 +780,9 @@ Eigen::Vector3d vn2Eig_3D(const vn::math::vec3f& vec) {
 void subtractGravity(Eigen::Vector3d& accel, const Eigen::Vector3d& ypr) {
 	// Calculate the gravity vector based on the yaw, pitch, and roll angles
 	Eigen::Matrix3d R;
-	double yaw = ypr(0);
-	double pitch = ypr(1);
-	double roll = ypr(2);
+	double yaw = ypr(0 );
+	double pitch = ypr(1 );
+	double roll = ypr(2 );
 	double cy = cos(yaw);
 	double sy = sin(yaw);
 	double cp = cos(pitch);

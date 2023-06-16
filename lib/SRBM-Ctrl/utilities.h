@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <fstream>
 #include "json.hpp"
+#include <queue>
 
 using namespace std;
 using namespace Eigen;
@@ -44,6 +45,7 @@ namespace  dash_utils
     void writeHumanDynDataToCsv(const Human_dyn_data& data, const std::string& filename);
 
     std::vector<Human_dyn_data> readHumanDynDataFromFile(const std::string& filename);
+    std::vector<Vector2d> readTimeDataFromFile(const std::string& filename); 
 
     void writeTrajPlannerDataToCsv(const Traj_planner_dyn_data& data, const std::string& filename);
     void setOutputFolder(const std::string& foldername);
@@ -80,4 +82,11 @@ namespace  dash_utils
 
     VectorXd world_to_robot_task_vel(VectorXd qd_b, Matrix3d Rwb, Vector3d x_torso, VectorXd x_dot_trans);
     VectorXd robot_to_world_task_vel(VectorXd qd_b, Matrix3d Rwb, Vector3d x_torso, VectorXd x_dot_trans);
+
+    Eigen::MatrixXd compute_robot_CoP(Eigen::MatrixXd lfv, Eigen::VectorXd u);
+    std::string visualizeCoP(double Left, double CoP, double Right); 
+
+    Human_dyn_data smooth_human_dyn_data(Human_dyn_data hdd, Human_dyn_data_filter& hdd_vec, VectorXd alphas); 
+
+    VectorXd world_to_robot_task_accel(VectorXd qdd_b, Matrix3d Rwb, Vector3d x_torso, VectorXd x_ddot_trans);
 }

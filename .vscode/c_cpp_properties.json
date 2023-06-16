@@ -38,7 +38,6 @@
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/imGUI",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/imGUI/fonts/IconFont",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/imPlot",
-                "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/imFileDialog",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Tello_IMU",
                 ""
             ],
@@ -75,7 +74,6 @@
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/imGUI",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/imGUI/fonts/IconFont",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/imPlot",
-                    "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/imFileDialog",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Tello_IMU",
                     ""
                 ]

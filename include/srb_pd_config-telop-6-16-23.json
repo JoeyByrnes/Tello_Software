@@ -1,0 +1,55 @@
+{
+    "srb_params": {
+      "Kp_xR": 10000,
+      "Kd_xR": 1000,
+      "Kp_yR": 10000,
+      "Kd_yR": 1000,
+      "Kp_zR": 50000, 
+      "Kd_zR": 5,
+      "Kp_phiR": 15000,
+      "Kd_phiR": 1,
+      "Kp_thetaR": 1000,
+      "Kd_thetaR": 50,
+      "Kp_psiR": 5000,
+      "Kd_psiR": 50,
+      "Step_Period": 0.3,
+      "Step_Height": 0.04,
+      "Walking_Speed": 0.5,
+      "Kx_DCM_mult": 1.0,
+      "Ky_DCM_mult": 8.0
+    },
+    
+    "Posture_Control": {
+      "Hip_Yaw_Kp": 0,
+      "Hip_Yaw_Kd": 0,
+      
+      "Hip_Roll_Kp": 0,
+      "Hip_Roll_Kd": 0,
+      
+      "Hip_Pitch_Kp": 0,
+      "Hip_Pitch_Kd": 0,
+      
+      "Knee_Kp": 0,
+      "Knee_Kd": 0,
+      
+      "Ankle_Kp": 0,
+      "Ankle_Kd": 0
+    },
+    
+    "Swing_Control": {
+      "Hip_Yaw_Kp": 3000,
+      "Hip_Yaw_Kd": 20,
+      
+      "Hip_Roll_Kp": 5000,
+      "Hip_Roll_Kd": 10,
+      
+      "Hip_Pitch_Kp": 1100,
+      "Hip_Pitch_Kd": 4,
+      
+      "Knee_Kp": 1100,
+      "Knee_Kd": 4,
+      
+      "Ankle_Kp": 1100,
+      "Ankle_Kd": 4
+    }
+  }

@@ -30,13 +30,13 @@
     <mesh name="torso_link" file="body_torso.STL"/>
     <mesh name="right_hip_clamp" file="body_left_hipClamp.STL"/>
     <mesh name="right_hip_gimbal" file="body_gimbal.STL"/>
-    <mesh name="right_thigh" file="body_left_thigh.STL"/>
-    <mesh name="right_shin" file="body_left_shin.STL"/>
+    <mesh name="right_thigh" file="thigh.STL"/>
+    <mesh name="right_shin" file="shin.STL"/>
     <mesh name="right_foot" file="body_left_foot.STL"/>
     <mesh name="left_hip_clamp" file="body_left_hipClamp.STL"/>
     <mesh name="left_hip_gimbal" file="body_gimbal.STL"/>
-    <mesh name="left_thigh" file="body_left_thigh.STL"/>
-    <mesh name="left_shin" file="body_left_shin.STL"/>
+    <mesh name="left_thigh" file="thigh.STL"/>
+    <mesh name="left_shin" file="shin.STL"/>
     <mesh name="left_foot" file="body_left_foot.STL"/>
 	<texture type = "skybox" builtin = "gradient" width = "128" height = "128" rgb1 = "0.95 0.99 0.99" 
          rgb2 = "0.7 0.7 0.7"/>    
@@ -51,7 +51,7 @@
   
   <worldbody>
   
- 	<geom name ='floor' pos ='0 0 -0.60' size ='8 8 .125' type = 'plane' material ='MatPlane' condim = '3' conaffinity = '15'/>
+ 	<geom name ='floor' pos ='0 0 -0.58' size ='8 8 .125' type = 'plane' material ='MatPlane' condim = '3' conaffinity = '15'/>
 	<!-- <light mode ='trackcom' pos = '0 0 5' dir = '0 0 -1'/> -->
 	<light directional = 'true' pos = '0 0 3' dir = '0 0 -1' diffuse = '0.2 0.2 0.2' specular = '0 0 0'/>	 
     <light name="com_light" mode='trackcom' pos='10 0 10' dir='-1 0 -1' castshadow="false"/>
@@ -59,7 +59,7 @@
   
 	<body name = 'torso' pos = '0 0 0'> 
 	
-		<site name='imu' size='0.01' pos='-0.06 0 0.015'/>
+		<site name='imu' size='0.01' pos='-0.06 0 0.155'/>
         <inertial pos = '0.0 0.0 0.0' mass = '4.2587' diaginertia = '0.013122 0.0078744 0.013624'/>
 		<geom type="sphere" size="0.01" pos="0 0 0" rgba="1 1 0 1"/>
 		<geom name = "com" type="sphere" size="0.01" pos="0 0 0" rgba="0 1 0 1"/>

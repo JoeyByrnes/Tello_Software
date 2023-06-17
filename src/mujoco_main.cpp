@@ -700,6 +700,14 @@ void TELLO_locomotion_ctrl(ctrlData cd)
         VectorXd pos_desired(12);
         pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
 
+        VectorXd leg_inertia(5);
+        leg_inertia <<  0.0111, // straight leg (hip + thigh + shin + foot) inertia seen by hip yaw
+                        0.0926, // straight leg (thigh + shin + foot) inertia seen by hip roll
+                        0.0913, // straight leg (thigh + shin + foot) inertia seen by hip pitch
+                        0.0174, // straight leg (shin + foot) inertia seen by knee
+                        0.0030; // foot inertia seen by ankle
+        double inertia_accel_gain = 0.0;
+
         VectorXd swing_leg_torques = VectorXd::Zero(10);
         // if(abs(tello->controller->get_FSM()) == 1)
         // {
@@ -718,7 +726,7 @@ void TELLO_locomotion_ctrl(ctrlData cd)
             swing_pd_config.setTaskKp(0,0,0);
             swing_pd_config.setTaskKd(0,0,0);
             // swing_pd_config.setJointKa(swing_conf.hip_yaw_Ka,swing_conf.hip_roll_Ka,swing_conf.hip_pitch_Ka,swing_conf.knee_Ka,swing_conf.ankle_Ka);
-            swing_pd_config.setJointKa(0);
+            swing_pd_config.setJointKa(leg_inertia*inertia_accel_gain);
             swing_pd_config.setFFAccel(target_front_left_accel,target_back_left_accel,target_front_right_accel,target_back_right_accel);
             swing_pd_config.setJointKp(kp_vec_joint_swing);
             swing_pd_config.setJointKd(kd_vec_joint_swing);

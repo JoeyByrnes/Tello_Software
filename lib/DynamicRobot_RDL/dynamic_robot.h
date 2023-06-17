@@ -131,7 +131,16 @@ namespace RoboDesignLab {
             joint_kd = kd.asDiagonal();
         }
         void setJointKa(VectorXd ka) {
-            joint_ka = ka.asDiagonal();
+            if(ka.size()==5)
+            {
+                VectorXd ka_vec(10);
+                ka_vec << ka,ka;
+                joint_ka = ka_vec.asDiagonal();
+            }
+            else // else size must be 10
+            {
+                joint_ka = ka.asDiagonal();
+            }
         }
         void setJointKa(double ka) {
             VectorXd ka_vec(10);

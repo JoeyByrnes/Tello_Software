@@ -167,18 +167,18 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     double grf_lb = tello->_GRFs.left_back;
 
     double fzH0 = traj_planner_dyn_data.human_leg_joystick_pos_beg_step(2);
-    double zHr = human_dyn_data.fzH_R - 0.002;
+    double zHr = human_dyn_data.fzH_R - 0.001;
     double zHl = human_dyn_data.fzH_L - 0.015;
     
     int FSM_next;
     // cout << FSM_prev << "\t u1z:" << u1z << "\t u2z" << u3z << "\t t_dsp" << t_dsp << endl;
     if (FSM_prev == 0) // currently in DSP
     {
-        if ( (grf_rf < Fz_min || grf_rb < Fz_min ) && t > 0 && t_dsp > 0.005 && (next_SSP==1) && zHr > 0.003) // enter SSP_L
+        if ( (grf_rf < Fz_min || grf_rb < Fz_min ) && t > 0 && t_dsp > 0.005 && (next_SSP==1) && zHr > 0.005) // enter SSP_L
         {
             FSM_next = 1;
         }
-        else if ( (grf_lf < Fz_min || grf_lb < Fz_min ) && t > 0 && t_dsp > 0.005 && (next_SSP==-1) && zHl > 0.003) // enter SSP_R 
+        else if ( (grf_lf < Fz_min || grf_lb < Fz_min ) && t > 0 && t_dsp > 0.005 && (next_SSP==-1) && zHl > 0.005) // enter SSP_R 
         {
             FSM_next = -1;     
         }
@@ -189,7 +189,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     }
     else if (FSM_prev == 1) // currently in SSP_L
     {
-        if ( (grf_rf > 0 || grf_rb > 0 ) && s > 0.5) // enter DSP
+        if ( (grf_rf > 0.5 || grf_rb > 0.5 ) && s > 0.5) // enter DSP
         {
             FSM_next = 0;
         }
@@ -200,7 +200,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     }
     else if (FSM_prev == -1) // currently in SSP_R
     {
-        if ( (grf_lf > 0 || grf_lb > 0 ) && s > 0.5) // enter DSP
+        if ( (grf_lf > 0.5 || grf_lb > 0.5 ) && s > 0.5) // enter DSP
         {
             FSM_next = 0;
         }
@@ -374,7 +374,7 @@ void dash_planner::SRB_Traj_Planner(
         } else if (planner_type == 2) { // Human Whole-Body Dynamic Telelocomotion
             // Human pilot is the planner
             if( en_v2_ctrl )
-                dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(FxR, FyR, lfv_comm, lfdv_comm, human_dyn_data, srb_params, human_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv, tau_ext);  
+                dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(FxR, FyR, lfv_comm, lfdv_comm, lfddv_comm, human_dyn_data, srb_params, human_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv, tau_ext);  
             else
                 dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(FxR, FyR, lfv_comm, lfdv_comm, lfddv_comm, human_dyn_data, srb_params, human_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv, tau_ext);
         }
@@ -522,6 +522,7 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
                 // update
                 traj_planner_dyn_data.next_SSP = next_SSP;
                 traj_planner_dyn_data.sw_beg_step = lfv.row(sw_idx_R);
+                traj_planner_dyn_data.sw_beg_step(2) = -srb_params.hLIP ;
                 traj_planner_dyn_data.st_beg_step = lfv.row(st_idx_R);
                 traj_planner_dyn_data.sw_beg_step(0) = traj_planner_dyn_data.sw_beg_step(0) - (1.0/2.0)*ft_l;
                 traj_planner_dyn_data.st_beg_step(0) = traj_planner_dyn_data.st_beg_step(0) - (1.0/2.0)*ft_l;

@@ -201,6 +201,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
 
      // initialize commanded end-effector positions (DSP)
     lfv_comm = lfv_dsp_start;
+    lfv_comm.col(2).setConstant(-srb_params.hLIP);
     lfdv_comm.setZero();
 
     // swing-leg trajectories
@@ -270,7 +271,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
 
 }
 
-void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm, Human_dyn_data& human_dyn_data, 
+void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm, MatrixXd& lfddv_comm, Human_dyn_data& human_dyn_data, 
                                         SRB_Params srb_params, Human_params human_params, Traj_planner_dyn_data& traj_planner_dyn_data, 
                                         int FSM, double t, VectorXd x, MatrixXd lfv, MatrixXd lfdv, VectorXd tau_ext)
 {
@@ -467,6 +468,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
 
     // initialize commanded end-effector positions (DSP)
     lfv_comm = lfv_dsp_start;
+    lfv_comm.col(2).setConstant(-srb_params.hLIP);
     lfdv_comm.setZero();
 
     // swing-leg trajectories
@@ -577,8 +579,9 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
             lfv_comm(2,2) = swz0 + (hR/hH)*(fzH_L - fzH0); lfv_comm(3,2) = lfv_comm(2,2);
             lfdv_comm(2,2) = (wR/wH)*fdzH_L*0.0; lfdv_comm(3,2) = lfdv_comm(2,2);
         }
-
-    }
+        // update commanded task space trajectories
+        sw_teleop_step_strategy(lfv_comm, lfdv_comm, lfddv_comm, srb_params, human_params, traj_planner_dyn_data, human_dyn_data, FSM, s, swxf, lfv, lfdv, x);
+    } 
 
 }
 
@@ -896,9 +899,10 @@ void dash_ctrl::sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm,
     const double fzH_L = human_dyn_data.fzH_L;    
 
     // Initialize commanded end-effector positions (DSP)
-    lfv_comm = lfv_dsp_start; // lfv;
-    lfdv_comm.setZero(); // lfdv   
-    lfddv_comm.setZero();  
+    // lfv_comm = lfv_dsp_start; // lfv;
+    // lfv_comm.col(2).setConstant(-srb_params.hLIP);
+    // lfdv_comm.setZero(); // lfdv   
+    // lfddv_comm.setZero();  
 
     VectorXd sw_traj_x(3); VectorXd sw_traj_y(3); VectorXd sw_traj_z(3);
     double swyf, AH;

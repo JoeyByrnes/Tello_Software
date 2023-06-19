@@ -2042,12 +2042,13 @@ void* mujoco_Update_1KHz( void * arg )
         //dash_utils::print_timer();
         hdd.FyH_hmi = y_force;
         hdd.FxH_hmi = x_force;
-        hdd.FxH_spring = s_force;
+        hdd.FxH_spring = FxH_spring_out;
         tello->controller->set_hmi_forces(hdd);
 		if(tello->controller->is_human_ctrl_enabled() && !controller_unstable)
 		{
 			hdd.FxH_hmi = 0;
-            // hdd.FxH_spring = 0;
+            // hdd.FyH_hmi = 0;
+            hdd.FxH_spring = 0;
 		}
 		else
 		{

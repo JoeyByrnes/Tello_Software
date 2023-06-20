@@ -286,7 +286,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.beta_trans = 0.465; // transmission kinematics beta term
         srb_params.gamma_trans = 0.5; // transmission kinematics gamma term
         srb_params.Fz_min_QP = 0.0; // vertical force min to make sure no pulling on the ground (force distribution QP)
-        srb_params.Fz_min_FSM = 15.0; // vertical force min to detect when foot breaks contact (FSM) 
+        srb_params.Fz_min_FSM = 10.0; // vertical force min to detect when foot breaks contact (FSM) 
 
         // joint limits
         srb_params.q1_lim << -M_PI/9, M_PI/9;

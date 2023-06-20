@@ -23,5 +23,7 @@ bool copyFile(const std::string& sourcePath, const std::string& destinationPath)
 bool LoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_width, int* out_height);
 std::string readActivePlaybackLog(const std::string& filename);
 void writeActivePlaybackLog(const std::string log, const std::string& filename);
+void readProfilesFromJson(const std::string& filename, std::vector<userProfile>& profiles, std::string& active_user);
+void updateActiveUserInJson(const std::string& filename, const std::string& newActiveUser);
 
 #endif

@@ -1,0 +1,17 @@
+{
+    "Profiles": [
+        {
+            "Height": 1.15,
+            "Weight": 75,
+            "name": "Joey",
+            "srb_file": "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user-pd-configs/srb_pd_config_joey.json"
+        },
+        {
+            "Height": 1.2,
+            "Weight": 75,
+            "name": "Guillermo",
+            "srb_file": "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user-pd-configs/srb_pd_config_guillermo.json"
+        }
+    ],
+    "active_user": "Joey"
+}

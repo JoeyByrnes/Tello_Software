@@ -390,6 +390,11 @@ simConfig readSimConfigFromFile(const std::string& filename) {
         config.en_autonomous_mode_on_boot = jsonData["en_autonomous_mode_on_boot"];
         config.en_v2_controller = jsonData["en_v2_controller"];
         config.en_safety_monitor = jsonData["en_safety_monitor"];
+        config.en_x_haptic_force = jsonData["en_x_haptic_force"];
+        config.en_force_feedback = jsonData["en_force_feedback"];
+        config.en_human_control = jsonData["en_human_control"];
+        config.en_full_hmi_controls = jsonData["en_full_hmi_controls"];
+        config.en_live_variable_view = jsonData["en_live_variable_view"];
         en_v2_ctrl = config.en_v2_controller;
     } catch (json::exception& e) {
         std::cerr << "Error parsing JSON: " << e.what() << std::endl;
@@ -410,6 +415,11 @@ void writeSimConfigToFile(const simConfig& config, const std::string& filename) 
     jsonData["en_autonomous_mode_on_boot"] = config.en_autonomous_mode_on_boot;
     jsonData["en_v2_controller"] = config.en_v2_controller;
     jsonData["en_safety_monitor"] = config.en_safety_monitor;
+    jsonData["en_x_haptic_force"] = config.en_x_haptic_force;
+    jsonData["en_force_feedback"] = config.en_force_feedback;
+    jsonData["en_human_control"] = config.en_human_control;
+    jsonData["en_full_hmi_controls"] = config.en_full_hmi_controls;
+    jsonData["en_live_variable_view"] = config.en_live_variable_view;
 
 
     std::ofstream file(filename);
@@ -537,4 +547,65 @@ void writeActivePlaybackLog(const std::string log, const std::string& filename) 
     }
 
     file.close();
+}
+
+void readProfilesFromJson(const std::string& filename, std::vector<userProfile>& profiles, std::string& active_user)
+{
+    std::ifstream ifs(filename);
+    if (!ifs.is_open()) {
+        std::cout << "Failed to open JSON file: " << filename << std::endl;
+        return;
+    }
+
+    nlohmann::json root;
+    //active_user = root["active_user"].get<std::string>();
+    try {
+        ifs >> root;
+    } catch (const nlohmann::json::parse_error& e) {
+        std::cout << "Failed to parse JSON: " << e.what() << std::endl;
+        return;
+    }
+
+    const auto& profilesArray = root["Profiles"];
+    for (std::size_t i = 0; i < profilesArray.size(); ++i) {
+        userProfile profile;
+        profile.name = profilesArray[i]["name"].get<std::string>();
+        profile.lip_height = profilesArray[i]["Height"].get<double>();
+        profile.weight = profilesArray[i]["Weight"].get<double>();
+        profile.config_filename = profilesArray[i]["srb_file"].get<std::string>();
+        profiles.push_back(profile);
+    }
+    active_user = root["active_user"].get<std::string>();
+}
+
+void updateActiveUserInJson(const std::string& filename, const std::string& newActiveUser) {
+    // Read the existing JSON file
+    std::ifstream ifs(filename);
+    if (!ifs.is_open()) {
+        std::cout << "Failed to open JSON file: " << filename << std::endl;
+        return;
+    }
+
+    nlohmann::json root;
+    try {
+        ifs >> root;
+    } catch (const nlohmann::json::parse_error& e) {
+        std::cout << "Failed to parse JSON: " << e.what() << std::endl;
+        return;
+    }
+
+    // Update the "active_user" field
+    root["active_user"] = newActiveUser;
+
+    // Write the modified JSON back to the file
+    std::ofstream ofs(filename);
+    if (!ofs.is_open()) {
+        std::cout << "Failed to open JSON file for writing: " << filename << std::endl;
+        return;
+    }
+
+    ofs << root.dump(4);  // Write the JSON with an indentation of 4 spaces
+    ofs.close();
+
+    std::cout << "Active user updated successfully in the JSON file." << std::endl;
 }

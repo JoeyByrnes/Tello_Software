@@ -34,7 +34,6 @@ int plot_width = 0;
 double vx_desired_ps4 = 0;
 double vy_desired_ps4 = 0;
 bool PS4_connected = false;
-bool enable_human_ff = false;
 bool zero_human = false;
 float master_gain = 0;
 bool screen_recording = false;
@@ -45,6 +44,7 @@ bool bookmarked = false;
 bool showCopyErrorPopup = false;
 bool init_foot_width = false;
 bool playback_error = false;
+userProfile activeUser;
 int hdd_cnt=0; // human_playback counter
 std::string active_playback_log;
 std::string active_playback_log_png;
@@ -848,9 +848,9 @@ void initializeSRBMCtrl()
         //std::cout << "The directory /home/tello does not exist!" << std::endl;
         if(simulation_mode == 1)
         {
-            dash_utils::parse_json_to_srb_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",srb_params);
-            dash_utils::parse_json_to_pd_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",swing_conf,posture_conf);
-            copyFile("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config.json",log_folder);
+            dash_utils::parse_json_to_srb_params(activeUser.config_filename,srb_params);
+            dash_utils::parse_json_to_pd_params(activeUser.config_filename,swing_conf,posture_conf);
+            copyFile(activeUser.config_filename,log_folder);
         }
         if(simulation_mode == 2)
         {
@@ -1135,6 +1135,20 @@ void* mujoco_Update_1KHz( void * arg )
 
     sim_conf = readSimConfigFromFile("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/sim_config.json");
 
+    std::vector<userProfile> profiles;
+    std::string active_user;
+    readProfilesFromJson("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user_profiles.json",profiles, active_user);
+    for(int i=0;i<profiles.size();i++)
+    {
+        if(active_user.compare(profiles[i].name) == 0)
+        {
+            activeUser = profiles[i];
+            Human_params human_params = tello->controller->get_human_params();
+            human_params.hLIP = activeUser.lip_height;
+            human_params.m = activeUser.weight;
+        }
+    }
+
 
     // INITIALIZE SRBM CONTROLLER ========================================================
 
@@ -1313,11 +1327,10 @@ void* mujoco_Update_1KHz( void * arg )
         }
     }
 
-    // Print the filenames
-    for (const auto& filename : hddFiles) {
-        std::cout << filename << std::endl;
-    }
-
+    // // Print the filenames
+    // for (const auto& filename : hddFiles) {
+    //     std::cout << filename << std::endl;
+    // }
 
     // dash_utils::start_sim_timer();
 
@@ -1508,7 +1521,23 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::Checkbox(" " ICON_FA_DICE_TWO "  Enable V2 Controller   ", &(sim_conf.en_v2_controller));
             en_v2_ctrl = sim_conf.en_v2_controller;
             ImGui::Separator();
-            ImGui::Checkbox(" " ICON_FA_USER_ALT_SLASH "  Boot to Autonomous Mode (RR) ", &(sim_conf.en_autonomous_mode_on_boot));
+            std::string human_label;
+            if(sim_conf.en_playback_mode) human_label = " " ICON_FA_CHILD "  Enable HMI Playback   ";
+            else human_label = " " ICON_FA_CHILD "  Enable HMI Communication   ";
+            ImGui::Checkbox(human_label.c_str(), &sim_conf.en_human_control);
+            tello->controller->enable_human_dyn_data = sim_conf.en_human_control;
+            ImGui::Separator();
+            ImGui::Checkbox(" " ICON_FA_USER_ALT_SLASH "  Boot to Auto Mode (Restart Required)   ", &(sim_conf.en_autonomous_mode_on_boot));
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+            ImGui::Separator();
+            ImGui::PushStyleColor(ImGuiCol_Separator,grey5);
+            ImGui::Separator();  
+            ImGui::Checkbox(" " ICON_FA_SIGN_IN_ALT "  Enable X Haptic Force   ", &(sim_conf.en_x_haptic_force));
+            ImGui::Separator();
+            ImGui::Checkbox(" " ICON_FA_ARROWS_ALT_H "  Enable Force Feedback   ", &sim_conf.en_force_feedback);      // Edit bools storing our window open/close state
+            ImGui::Separator();//init_foot_width
+            ImGui::Checkbox(" " ICON_FA_HARD_HAT "  Enable Safety Monitor   ", &sim_conf.en_safety_monitor);      // Edit bools storing our window open/close state
             ImGui::Separator();
             ImGui::PopStyleColor();
             ImGui::Separator();
@@ -1524,8 +1553,12 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::Separator();
             ImGui::PushStyleColor(ImGuiCol_Separator,grey5);  
             ImGui::Separator();
-            ImGui::Checkbox(" " ICON_FA_CHART_LINE "  Display Realtime Plot   ", &(sim_conf.en_realtime_plot));
+            ImGui::Checkbox(" " ICON_FA_LAPTOP_CODE "  Show Live Variable View  ", &(sim_conf.en_live_variable_view));
             ImGui::Separator();
+            ImGui::Checkbox(" " ICON_FA_SLIDERS_H "  Show Full HMI Controls   ", &(sim_conf.en_full_hmi_controls));
+            ImGui::Separator();
+            // ImGui::Checkbox(" " ICON_FA_CHART_LINE "  Display Realtime Plot   ", &(sim_conf.en_realtime_plot));
+            // ImGui::Separator();
             ImGui::PopStyleColor();
             ImGui::Separator();
             ImGui::PushStyleColor(ImGuiCol_Separator,grey5);  
@@ -1541,6 +1574,28 @@ void* mujoco_Update_1KHz( void * arg )
         ImGui::Separator();
         ImGui::PopStyleColor();
         char notes[1001]; // String variable to store the entered notes
+        
+        if (ImGui::BeginMenu((" " ICON_FA_USER " " + activeUser.name + " ").c_str()))
+        {
+            ImGui::Separator();
+            ImGui::Text(" Select User Profile:   ");
+            ImGui::Separator();
+            for(int p=0;p<profiles.size();p++)
+            {
+                userProfile user = profiles[p];
+                ImGui::SetNextItemWidth(300);
+                if(ImGui::Button((" " + user.name + " ").c_str(),ImVec2(500, 0)))
+                {
+                    activeUser = profiles[p];
+                    updateActiveUserInJson("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user_profiles.json",activeUser.name);
+                    initializeSRBMCtrl();
+                }
+                ImGui::Separator();
+            }
+            ImGui::Separator();
+            ImGui::EndMenu();
+        }
+        ImGui::Separator();
         if(bookmarked)
         {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.84f, 0.0f, 1.0f)); // Set text color to gold
@@ -1598,6 +1653,7 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::Separator();
             ImGui::EndMenu();
         }
+        
         else if(bookmarked) ImGui::PopStyleColor();
 
         ImGui::Separator();
@@ -1629,7 +1685,7 @@ void* mujoco_Update_1KHz( void * arg )
         ImGui::PopStyleColor();
 
 
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.3f, 0.0f, 1.0f)); // set button color
+        /*ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.3f, 0.0f, 1.0f)); // set button color
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.4f, 0.0f, 1.0f)); // set hover color
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.6f, 0.2f, 0.0f, 1.0f)); // set active color
         if (ImGui::Button(" " ICON_FA_UNDO " ")) {
@@ -1653,7 +1709,7 @@ void* mujoco_Update_1KHz( void * arg )
         }
         ImGui::PushStyleColor(ImGuiCol_Separator,grey5);
         ImGui::Separator();
-        ImGui::PopStyleColor(4);
+        ImGui::PopStyleColor(4);*/
         if(pause_sim)
         {
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.4f, 0.0f, 1.0f));
@@ -1729,72 +1785,89 @@ void* mujoco_Update_1KHz( void * arg )
         //     showTuningMenu = !showTuningMenu;
         // }
         ImGui::Separator();
-        ImGui::Separator();
         if(!(sim_conf.en_autonomous_mode_on_boot))
         {
-            std::string human_label;
-            if(sim_conf.en_playback_mode) human_label = " Human-Playback   ";
-            else human_label = " Human-Control   ";
-            ImGui::Checkbox(human_label.c_str(), &tello->controller->enable_human_dyn_data);
             // ImGui::Separator();
             // ImGui::Checkbox(" Real-Time   ", &realtime_enabled);
-            if(!(sim_conf.en_playback_mode))
-            {
-                ImGui::Separator();
-                ImGui::Checkbox(" Force-Fdbk   ", &enable_human_ff);      // Edit bools storing our window open/close state
-                ImGui::Separator();//init_foot_width
-                ImGui::Checkbox(" Safety-Monitor   ", &sim_conf.en_safety_monitor);      // Edit bools storing our window open/close state
+            if(sim_conf.en_full_hmi_controls || sim_conf.en_playback_mode){
+
+                if(!(sim_conf.en_playback_mode))
+                {
+                    ImGui::Separator();//init_foot_width
+                    ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
+                    if (ImGui::Button(" " ICON_FA_WEIGHT " Tare CoM  ")) {
+                        zero_human = true;
+                    }
+                    else{
+                        zero_human = false;
+                    }
+                    ImGui::PopStyleColor(3);
+                }
+                
                 ImGui::Separator();//init_foot_width
                 ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
-                if (ImGui::Button(" " ICON_FA_WEIGHT " Tare CoM  ")) {
-                    zero_human = true;
+                if (ImGui::Button(" " ICON_FA_RULER " Init Foot Width  ")) {
+                    init_foot_width = true;
+                    MatrixXd new_lfv0(4,3);
+                    MatrixXd new_q0(2,5);
+                    dash_init::init_foot_width(robot_init_foot_width,tello->controller->get_human_params(),
+                                                tello->controller->get_SRB_params(),new_lfv0,q0);
+                    tello->controller->set_lfv0(new_lfv0);
+                    tello->controller->set_q0(q0);
+                    Human_params hp = tello->controller->get_human_params();
+                    // double joystick_base_separation = 1.465;
+                    // double foot_center_to_joystick = 0.0825;
+                    // hp.fyH_home = (joystick_base_separation/2.0) - hp.human_nom_ft_width - foot_center_to_joystick; // joystick y width
+                    // cout << "FyH Home: " << hp.fyH_home << endl;
+                    tello->controller->set_human_params(hp);
+                    initializeLegs();
+                    if(pause_sim)
+                        mj_forward(m,d);
                 }
                 else{
-                    zero_human = false;
+                    init_foot_width = false;
                 }
+                
                 ImGui::PopStyleColor(3);
-            }
-            
-            ImGui::Separator();//init_foot_width
-            ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
-            if (ImGui::Button(" " ICON_FA_RULER " Init Foot Width  ")) {
-                init_foot_width = true;
-                MatrixXd new_lfv0(4,3);
-                MatrixXd new_q0(2,5);
-                dash_init::init_foot_width(robot_init_foot_width,tello->controller->get_human_params(),
-                                            tello->controller->get_SRB_params(),new_lfv0,q0);
-                tello->controller->set_lfv0(new_lfv0);
-                tello->controller->set_q0(q0);
-                Human_params hp = tello->controller->get_human_params();
-                // double joystick_base_separation = 1.465;
-                // double foot_center_to_joystick = 0.0825;
-                // hp.fyH_home = (joystick_base_separation/2.0) - hp.human_nom_ft_width - foot_center_to_joystick; // joystick y width
-                // cout << "FyH Home: " << hp.fyH_home << endl;
-                tello->controller->set_human_params(hp);
-                initializeLegs();
-                if(pause_sim)
-                    mj_forward(m,d);
+                ImGui::Separator();
+                if(!(sim_conf.en_playback_mode))
+                {
+                    ImGui::SetNextItemWidth(250.0f*screenScale);
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg,grey2);
+                    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,grey2);
+                    ImGui::PushStyleColor(ImGuiCol_SliderGrab,black);
+                    ImGui::PushStyleColor(ImGuiCol_SliderGrabActive,black);
+                    ImGui::SliderFloat(" HMI Gain", &master_gain, 0.0f, 1.0f);
+                    ImGui::Separator();
+                    ImGui::PopStyleColor(4);
+                }
             }
             else{
-                init_foot_width = false;
-            }
-            
-            ImGui::PopStyleColor(3);
-            ImGui::Separator();
-            if(!(sim_conf.en_playback_mode))
-            {
-                ImGui::SetNextItemWidth(250.0f*screenScale);
-                ImGui::PushStyleColor(ImGuiCol_FrameBg,grey2);
-                ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,grey2);
-                ImGui::PushStyleColor(ImGuiCol_SliderGrab,black);
-                ImGui::PushStyleColor(ImGuiCol_SliderGrabActive,black);
-                ImGui::SliderFloat(" HMI Gain", &master_gain, 0.0f, 1.0f);
-                ImGui::Separator();
-                ImGui::PopStyleColor(4);
+                ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
+                if (ImGui::Button("  " ICON_FA_RULER " Initialize Human & Robot   ")) {
+                    init_foot_width = true;
+                    MatrixXd new_lfv0(4,3);
+                    MatrixXd new_q0(2,5);
+                    dash_init::init_foot_width(robot_init_foot_width,tello->controller->get_human_params(),
+                                                tello->controller->get_SRB_params(),new_lfv0,q0);
+                    tello->controller->set_lfv0(new_lfv0);
+                    tello->controller->set_q0(q0);
+                    Human_params hp = tello->controller->get_human_params();
+                    tello->controller->set_human_params(hp);
+                    initializeLegs();
+                    master_gain = 1.0;
+                    zero_human = true;
+                    if(pause_sim)
+                        mj_forward(m,d);
+                }
+                ImGui::PopStyleColor(3);
+                ImGui::Separator();//init_foot_width
             }
             if(sim_conf.en_playback_mode)
             {
@@ -1940,43 +2013,47 @@ void* mujoco_Update_1KHz( void * arg )
 
             ImGui::End();
         }
-
-        ImGui::SetNextWindowSize(ImVec2(900,500));
-        ImGui::SetNextWindowPos(ImVec2(50, (35+60*screenScale)+50));
-        ImGui::Begin("DebugView",nullptr,ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize);
+        if(sim_conf.en_live_variable_view)
+        {
+            ImGui::SetNextWindowSize(ImVec2(900,300));
+            ImGui::SetNextWindowPos(ImVec2(50, (35+60*screenScale)+50));
+            ImGui::Begin("DebugView",nullptr,ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize);
+            
+            ImGui::Text(" Live Variable View:");
+            ImGui::Separator();
+            std::string FSM = std::to_string(tello->controller->get_FSM());
+            std::string next_SSP = std::to_string(tello->controller->get_traj_planner_dyn_data().next_SSP);
+            std::string grf_rf = std::to_string(tello->_GRFs.right_front);
+            std::string grf_rb = std::to_string(tello->_GRFs.right_back);
+            std::string grf_lf = std::to_string(tello->_GRFs.left_front);
+            std::string grf_lb = std::to_string(tello->_GRFs.left_back);
+            ImGui::Text("FSM: %s", FSM.c_str());
+            ImGui::Separator();
+            ImGui::Text("Next SSP: %s", next_SSP.c_str());
+            ImGui::Separator();
+            // ImGui::Text("LF: %s \tRF %s", grf_lf.c_str(),grf_rf.c_str());
+            // ImGui::Text("LB: %s \tRB %s", grf_lb.c_str(),grf_rb.c_str());
+            // VectorXd u(12);
+            // u << 0,0,tello->_GRFs.right_front,0,0,tello->_GRFs.right_back,0,0,tello->_GRFs.left_front,0,0,tello->_GRFs.left_back;
+            // VectorXd CoP = dash_utils::compute_robot_CoP(tello->controller->get_lfv_world(),u);
+            // cout << "CoP Size: " << CoP.size() << endl;
+            // ImGui::Text("CoP from Mujoco GRF: ");
+            // ImGui::Separator();
+            // ImGui::PushFont(fontSmall);
+            // std::string copviz = "L"+dash_utils::visualizeCoP(tello->controller->get_lfv_world()(2,1),CoP(1),tello->controller->get_lfv_world()(0,1))+"R";
+            // ImGui::Text(copviz.c_str());
+            // ImGui::Separator();
+            // ImGui::PopFont();
+            // ImGui::Text("CoP from QP GRF: ");
+            // ImGui::PushFont(fontSmall);
+            // VectorXd u_qp = tello->controller->get_GRFs();
+            // VectorXd CoP_qp = dash_utils::compute_robot_CoP(tello->controller->get_lfv_world(),u_qp);
+            // std::string copviz_qp = "L"+dash_utils::visualizeCoP(tello->controller->get_lfv_world()(2,1),CoP_qp(1),tello->controller->get_lfv_world()(0,1))+"R";
+            // ImGui::Text(copviz_qp.c_str());
+            // ImGui::PopFont();
+            ImGui::End();
+        }
         
-        ImGui::Text(" Live Variable View:");
-        ImGui::Separator();
-        std::string FSM = std::to_string(tello->controller->get_FSM());
-        std::string next_SSP = std::to_string(tello->controller->get_traj_planner_dyn_data().next_SSP);
-        std::string grf_rf = std::to_string(tello->_GRFs.right_front);
-        std::string grf_rb = std::to_string(tello->_GRFs.right_back);
-        std::string grf_lf = std::to_string(tello->_GRFs.left_front);
-        std::string grf_lb = std::to_string(tello->_GRFs.left_back);
-        ImGui::Text("FSM: %s", FSM.c_str());
-        ImGui::Separator();
-        ImGui::Text("Next SSP: %s", next_SSP.c_str());
-        ImGui::Separator();
-        // ImGui::Text("LF: %s \tRF %s", grf_lf.c_str(),grf_rf.c_str());
-        // ImGui::Text("LB: %s \tRB %s", grf_lb.c_str(),grf_rb.c_str());
-        // VectorXd u(12);
-        // u << 0,0,tello->_GRFs.right_front,0,0,tello->_GRFs.right_back,0,0,tello->_GRFs.left_front,0,0,tello->_GRFs.left_back;
-        // VectorXd CoP = dash_utils::compute_robot_CoP(tello->controller->get_lfv_world(),u);
-        // cout << "CoP Size: " << CoP.size() << endl;
-        // ImGui::Text("CoP from Mujoco GRF: ");
-        // ImGui::Separator();
-        // ImGui::PushFont(fontSmall);
-        // std::string copviz = "L"+dash_utils::visualizeCoP(tello->controller->get_lfv_world()(2,1),CoP(1),tello->controller->get_lfv_world()(0,1))+"R";
-        // ImGui::Text(copviz.c_str());
-        // ImGui::Separator();
-        // ImGui::PopFont();
-        // ImGui::Text("CoP from QP GRF: ");
-        // ImGui::PushFont(fontSmall);
-        // VectorXd u_qp = tello->controller->get_GRFs();
-        // VectorXd CoP_qp = dash_utils::compute_robot_CoP(tello->controller->get_lfv_world(),u_qp);
-        // std::string copviz_qp = "L"+dash_utils::visualizeCoP(tello->controller->get_lfv_world()(2,1),CoP_qp(1),tello->controller->get_lfv_world()(0,1))+"R";
-        // ImGui::Text(copviz_qp.c_str());
-        // ImGui::PopFont();
         // Create the popup dialog
         if (playback_error) {
             ImGui::OpenPopup("Playback Error");
@@ -1996,7 +2073,7 @@ void* mujoco_Update_1KHz( void * arg )
                 ImGui::EndPopup();
             }
         }
-        ImGui::End();
+        
         ImGui::PopFont();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -2046,9 +2123,12 @@ void* mujoco_Update_1KHz( void * arg )
         tello->controller->set_hmi_forces(hdd);
 		if(tello->controller->is_human_ctrl_enabled() && !controller_unstable)
 		{
-			hdd.FxH_hmi = 0;
+            if( !(sim_conf.en_x_haptic_force) )
+            {
+                hdd.FxH_hmi = 0;
+            }
             // hdd.FyH_hmi = 0;
-            hdd.FxH_spring = 0;
+            // hdd.FxH_spring = 0;
 		}
 		else
 		{
@@ -2057,11 +2137,11 @@ void* mujoco_Update_1KHz( void * arg )
 			hdd.FxH_spring = 0;
 		}
 		// cout << "Fx: " << hdd.FxH_hmi << "  Fy: " << hdd.FyH_hmi << endl;
-        // dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,enable_human_ff,zero_human,master_gain);
+        // dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,sim_conf.en_force_feedback,zero_human,master_gain);
 		// int n = sendto(sockfd_tx, hmi_tx_buffer, 20,MSG_CONFIRM, 
 		// 	   (const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
 
-		dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,enable_human_ff,zero_human,master_gain);
+		dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,sim_conf.en_force_feedback,zero_human,master_gain);
 		int n = sendto(sockfd_tx, hmi_tx_buffer, 24,MSG_CONFIRM, 
 			   (const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
         
@@ -2072,6 +2152,7 @@ void* mujoco_Update_1KHz( void * arg )
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
     system("killall -2 ffmpeg");
+    system("pkill -f -9 ffmpeg");
     tcsetattr(STDIN_FILENO, TCSANOW, &originalSettings);
 	// //free visualization storage
     // mjv_freeScene(&scn);

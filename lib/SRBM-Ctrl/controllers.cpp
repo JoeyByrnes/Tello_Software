@@ -936,7 +936,7 @@ void dash_ctrl::sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm,
 
             // z-position trajectories
             AH = (hR / hH) * (std::max(0.0, (fzH_R - fzH0)));
-            AH = 0.01;
+            AH = srb_params.zcl;
             sw_traj_z = dash_utils::sw_leg_ref_z_v2(s, sw_beg_step_z, AH);
             // sw_traj_z = dash_utils::sw_leg_ref_z(s, AH,hR);
             lfv_comm(0, 2) = sw_traj_z(0); lfv_comm(1, 2) = lfv_comm(0, 2);
@@ -963,7 +963,7 @@ void dash_ctrl::sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm,
 
             // z-position trajectories
             AH = (hR / hH) * (std::max(0.0, (fzH_L - fzH0)));
-            AH = 0.01;
+            AH = srb_params.zcl;
             sw_traj_z = dash_utils::sw_leg_ref_z_v2(s, sw_beg_step_z, AH);
             // sw_traj_z = dash_utils::sw_leg_ref_z(s, AH,hR);
             lfv_comm(2, 2) = sw_traj_z(0); lfv_comm(3, 2) = lfv_comm(2, 2);

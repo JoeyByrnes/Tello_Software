@@ -65,6 +65,13 @@ void* sim_step_task( void * arg );
 void* screenRecord( void * arg );
 void* usbCamRecord( void * arg );
 
+struct userProfile {
+    std::string name;
+    double lip_height;
+    double weight;
+    std::string config_filename;
+};
+
 struct simConfig {
     bool en_data_logging;
     bool en_auto_record;
@@ -76,6 +83,11 @@ struct simConfig {
     bool en_autonomous_mode_on_boot;
     bool en_autonomous_mode;
     bool en_safety_monitor;
+    bool en_x_haptic_force;
+    bool en_force_feedback;
+    bool en_full_hmi_controls;
+    bool en_human_control;
+    bool en_live_variable_view;
 };
 
 struct ctrlData {

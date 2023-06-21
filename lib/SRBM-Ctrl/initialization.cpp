@@ -256,11 +256,11 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.t_end_stepping = 4.5; // time to end stepping in s
         srb_params.zcl = 0.04; // swing-leg max height in m
         // planner_type = Human_Dyn_Telelocomotion 
-        srb_params.xDCMH_deadband = 0.05; // deadband for applying gain for human DCM in m
-        srb_params.KxDCMH = 1.0; // gain for human DCM
+        srb_params.xDCMH_deadband = 0.10; // deadband for applying gain for human DCM in m
+        srb_params.KxDCMH = 0.5; // gain for human DCM
         srb_params.Kx_DCM_mult = 3.0; // multiplier of K_DCM for sagittal plane control
         srb_params.Ky_DCM_mult = 3.0; // multiplier of K_DCM for frontal plane control
-        srb_params.T_DSP = 0.005; // assumed duration of DSP in s
+        srb_params.T_DSP = 0.008; // assumed duration of DSP in s
         srb_params.lmaxR = 0.5; // maximum step length in m
 
         // controller 
@@ -286,7 +286,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.beta_trans = 0.465; // transmission kinematics beta term
         srb_params.gamma_trans = 0.5; // transmission kinematics gamma term
         srb_params.Fz_min_QP = 0.0; // vertical force min to make sure no pulling on the ground (force distribution QP)
-        srb_params.Fz_min_FSM = 10.0; // vertical force min to detect when foot breaks contact (FSM) 
+        srb_params.Fz_min_FSM = 15.0; // vertical force min to detect when foot breaks contact (FSM) 
 
         // joint limits
         srb_params.q1_lim << -M_PI/9, M_PI/9;

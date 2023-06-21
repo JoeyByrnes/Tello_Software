@@ -413,7 +413,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
 
     // LISA spring force (apply to actual human)
     // Equal to the opposite GRF of the HWRM
-    FxH_spring = -1.0 * Fx_HWRM;   
+    FxH_spring = 0.0;//-1.0 * Fx_HWRM;   
 
     // Update HWRM dynamics in traj_planner_dyn_data
     traj_planner_dyn_data.x_HWRM = x_HWRM;

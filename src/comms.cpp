@@ -30,6 +30,8 @@ long long print_index = 0;
 extern simConfig sim_conf;
 double robot_init_foot_width=0.175;
 
+extern double xH_Commanded;
+
 
 VectorXd fdxH_R_vec = VectorXd(100);
 VectorXd fdyH_R_vec = VectorXd(100);
@@ -486,7 +488,7 @@ void* rx_UDP( void * arg ){
 		human_dyn_data.FyH_hmi = FyH_hmi_val;
 		human_dyn_data.FxH_spring = FxH_spring_val;
 
-
+		// human_dyn_data.xH = xH_Commanded;
 		// =======================================================================================================
 
 		if(!(sim_conf.en_playback_mode))

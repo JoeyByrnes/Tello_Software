@@ -52,6 +52,9 @@ int active_playback_log_index = 0;
 std::vector<std::string> hddFiles;
 bool showPlotMenu = false;
 bool showTuningMenu = false;
+bool playback_changed = false;
+bool playback_chosen = false;
+bool auto_mode = false;
 
 extern double FxH_hmi_out, FxH_spring_out, FyH_hmi_out;
 
@@ -901,6 +904,7 @@ void initializeSRBMCtrl()
     // }
     if(sim_conf.en_autonomous_mode_on_boot)
     {
+        auto_mode = true;
         printf("Walking Selected\n\n");
         // Option 2: Walking using LIP angular momentum regulation about contact point
         // user input (walking speed and step frequency)
@@ -1333,8 +1337,6 @@ void* mujoco_Update_1KHz( void * arg )
     // }
 
     // dash_utils::start_sim_timer();
-
-    
     
 	while(!glfwWindowShouldClose(window))
     {
@@ -1521,17 +1523,17 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::Checkbox(" " ICON_FA_DICE_TWO "  Enable V2 Controller   ", &(sim_conf.en_v2_controller));
             en_v2_ctrl = sim_conf.en_v2_controller;
             ImGui::Separator();
-            std::string human_label;
-            if(sim_conf.en_playback_mode) human_label = " " ICON_FA_CHILD "  Enable HMI Playback   ";
-            else human_label = " " ICON_FA_CHILD "  Enable HMI Communication   ";
-            ImGui::Checkbox(human_label.c_str(), &sim_conf.en_human_control);
-            tello->controller->enable_human_dyn_data = sim_conf.en_human_control;
-            ImGui::Separator();
             ImGui::Checkbox(" " ICON_FA_USER_ALT_SLASH "  Boot to Auto Mode (Restart Required)   ", &(sim_conf.en_autonomous_mode_on_boot));
             ImGui::Separator();
             ImGui::PopStyleColor();
             ImGui::Separator();
             ImGui::PushStyleColor(ImGuiCol_Separator,grey5);
+            ImGui::Separator();
+            std::string human_label;
+            if(sim_conf.en_playback_mode) human_label = " " ICON_FA_CHILD "  Enable HMI Playback   ";
+            else human_label = " " ICON_FA_CHILD "  Enable HMI Communication   ";
+            ImGui::Checkbox(human_label.c_str(), &(sim_conf.en_human_control));
+            tello->controller->enable_human_dyn_data = sim_conf.en_human_control;
             ImGui::Separator();  
             ImGui::Checkbox(" " ICON_FA_SIGN_IN_ALT "  Enable X Haptic Force   ", &(sim_conf.en_x_haptic_force));
             ImGui::Separator();
@@ -1791,6 +1793,12 @@ void* mujoco_Update_1KHz( void * arg )
             // ImGui::Checkbox(" Real-Time   ", &realtime_enabled);
             if(sim_conf.en_full_hmi_controls || sim_conf.en_playback_mode){
 
+                std::string human_label;
+                if(sim_conf.en_playback_mode) human_label = "  Enable HMI Playback   ";
+                else human_label = "  Enable HMI Communication   ";
+                ImGui::Checkbox(human_label.c_str(), &sim_conf.en_human_control);
+                tello->controller->enable_human_dyn_data = sim_conf.en_human_control;
+
                 if(!(sim_conf.en_playback_mode))
                 {
                     ImGui::Separator();//init_foot_width
@@ -1954,6 +1962,8 @@ void* mujoco_Update_1KHz( void * arg )
                 {
                     active_playback_log_png = pngFiles[i];
                     active_playback_log_index = i;
+                    playback_changed = true;
+                    playback_chosen = true;
                     writeActivePlaybackLog(hddFiles[i],"/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/active_playback_log.json");
                 }
             }
@@ -2208,6 +2218,7 @@ void* PS4_Controller( void * arg )
             // vy_desired_ps4 = (127-(double)ds4->packet->rightStick_X)*(0.3/127.0);
             //if(ds4->packet->cross) pause_sim = true;
             xH_Commanded = (127.0-(double)ds4->packet->rightStick_Y)*(0.1/127.0);
+            // cout << "xH: " << xH_Commanded << endl;
         }
         print_cnt++;
 
@@ -2408,7 +2419,7 @@ void* Human_Playback( void * arg )
         while(hdd_cnt < hdd_vec.size())
         {
             handle_start_of_periodic_task(next);
-            if(tello->controller->is_human_ctrl_enabled() && (!pause_sim) && (sim_conf.en_playback_mode) )
+            if(playback_chosen && tello->controller->is_human_ctrl_enabled() && (!pause_sim) && (sim_conf.en_playback_mode) && !playback_changed)
             {
                 //dash_utils::print_human_dyn_data(hdd_vec[hdd_cnt]);
                 // if(PS4_connected) hdd_vec[hdd_cnt].xH = xH_Commanded;
@@ -2530,6 +2541,8 @@ void* Human_Playback( void * arg )
                     human_dyn_data.FyH_hmi = FyH_hmi_val;
                     human_dyn_data.FxH_spring = FxH_spring_val;
 
+                    human_dyn_data.xH = xH_Commanded;
+
                     // VectorXd alphas(21);
                     // alphas.setConstant(4.0);
                     // Human_dyn_data temp = dash_utils::smooth_human_dyn_data(human_dyn_data,hdd_pb_filter,alphas);
@@ -2546,6 +2559,7 @@ void* Human_Playback( void * arg )
                 active_log = readActivePlaybackLog("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/active_playback_log.json");
                 hdd_vec = dash_utils::readHumanDynDataFromFile(active_log);
                 hdd_cnt = 0;
+                playback_changed = false;
                 if(hdd_vec.size() == 0)
                 {
                     playback_error = true;

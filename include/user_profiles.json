@@ -7,10 +7,22 @@
             "srb_file": "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user-pd-configs/srb_pd_config_joey.json"
         },
         {
+            "Height": 1.15,
+            "Weight": 75,
+            "name": "Joey (auto)",
+            "srb_file": "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user-pd-configs/srb_pd_config_joey_autonomous.json"
+        },
+        {
             "Height": 1.2,
             "Weight": 75,
             "name": "Guillermo",
             "srb_file": "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user-pd-configs/srb_pd_config_guillermo.json"
+        },
+        {
+            "Height": 1.2,
+            "Weight": 75,
+            "name": "Guillermo (auto)",
+            "srb_file": "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user-pd-configs/srb_pd_config_guillermo_autonomous.json"
         }
     ],
     "active_user": "Joey"

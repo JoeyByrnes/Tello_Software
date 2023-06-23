@@ -403,6 +403,7 @@ void dash_planner::SRB_Traj_Planner(
 }
 
 bool first_time_planner = true;
+Vector3d st_beg_step_last;
 void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_params& human_params, Traj_planner_dyn_data& traj_planner_dyn_data, Human_dyn_data human_dyn_data,double t,int FSM_prev,int FSM, VectorXd x, MatrixXd lfv)
 {
     // Parameters
@@ -528,6 +529,7 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
                 traj_planner_dyn_data.st_beg_step = lfv.row(st_idx_R);
                 traj_planner_dyn_data.sw_beg_step(0) = traj_planner_dyn_data.sw_beg_step(0) - (1.0/2.0)*ft_l;
                 traj_planner_dyn_data.st_beg_step(0) = traj_planner_dyn_data.st_beg_step(0) - (1.0/2.0)*ft_l;
+                st_beg_step_last = traj_planner_dyn_data.st_beg_step;
                 traj_planner_dyn_data.human_leg_joystick_pos_beg_step = human_leg_joystick_data.segment<3>(sw_idx_H);
                 traj_planner_dyn_data.sigma1H = wH*(1.0/(tanh((T_step/2.0)*wH)));
                 traj_planner_dyn_data.x_plus_HWRM = x_plus_HWRM;
@@ -545,9 +547,9 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
             // final step time (store as assumed step time for next step)
             double T_step_final = t - t_sw_start;
 
-            // update HWRM step placement (if necessary)
+             //update HWRM step placement (if necessary)
             if (T_step_final < T_step) {
-                 uk_HWRM = (1/2) * (1 - cos(M_PI * (T_step_final/T_step))) * uk_HWRM;
+                 uk_HWRM = (1.0/2.0) * (1.0 - cos(M_PI * (T_step_final/T_step))) * uk_HWRM;
                  traj_planner_dyn_data.uk_HWRM = uk_HWRM;
             }
 

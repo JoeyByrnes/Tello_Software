@@ -219,17 +219,17 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
         // step length magnitude
         double l_mag = abs(l_cl);
         // step direction
-        int l_dir = 0;
-        if (l_cl > 0)
-            l_dir = 1;
+        double l_dir = 0.0;
+        if (l_cl > 0.0)
+            l_dir = 1.0;
         else
-            l_dir = -1;
+            l_dir = -1.0;
         // desired swing-leg x-position at the end of the step
         double swxf = 0.0;
         if (l_mag > lmaxR)
-            swxf = swx0 + l_dir*lmaxR;
+            swxf = stx0 + l_dir*lmaxR;
         else
-            swxf = swx0 + l_cl;
+            swxf = stx0 + l_cl;
 
         // generate x-direction swing-leg trajectory through the step
         VectorXd swx_traj(2);
@@ -350,7 +350,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
     // Get SRB states
     xR = x(0);
     dxR = x(3);
-    yR = x(1);
+    yR = x(1) - traj_planner_dyn_data.y_LIP_offset;
     dyR = x(4);
 
     // Compute LIP natural frequencies
@@ -398,10 +398,10 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
         pxR_lim_lb = lfv.col(0).minCoeff(); pxR_lim_ub = lfv.col(0).maxCoeff();
 
         // Use actual Human DCM to stabilize robot around zero velocity
-        if ((xDCMR > pxR_lim_lb && xDCMR < pxR_lim_ub) && (t_step > T_DSP)) {
-            x_HWRM = xH;
-            dx_HWRM = dxH;
-        }
+        // if ((xDCMR > pxR_lim_lb && xDCMR < pxR_lim_ub) && (t_step > T_DSP)) {
+        //     x_HWRM = xH;
+        //     dx_HWRM = dxH;
+        // }
 
     }    
     
@@ -492,9 +492,26 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
             sigma1H = wH*(1.0/(tanh((Ts/2.0)*wH)));
         }      
 
+        double xDCMH_shifted;
+        if
+        (xDCMH > 0) xDCMH_shifted = xDCMH - xDCMH_deadband;
+        else xDCMH_shifted = xDCMH + xDCMH_deadband;
+
         // Desired P1 orbit from human mapping
-        p_star = xDCMH / (1 + (sigma1H / wH));
-        v_star = wH * (xDCMH - p_star);
+        double tdsp = T_DSP;
+        double tssp = Ts;
+        double u_star = 0.5*(tdsp+tssp);
+        p_star = xDCMH_shifted / (1.0 + (sigma1H / wH));
+        v_star = wH * (xDCMH_shifted - p_star);
+
+        // p_star = u_star/(2.0+tdsp*sigma1H);
+        // v_star = sigma1H*p_star;
+
+        if(abs(xDCMH) < xDCMH_deadband){
+            p_star = 0.0;
+            v_star = 0.0;
+        }
+        
         xk_HWRM_des << p_star, v_star;
 
         // Calculate estimated pre-impact state of HWRM
@@ -531,18 +548,18 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
         double l_mag = abs(l_cl);
 
         // step direction
-        int l_dir = 0;
-        if (l_cl > 0)
-            l_dir = 1;
+        double l_dir = 0.0;
+        if (l_cl > 0.0)
+            l_dir = 1.0;
         else
-            l_dir = -1;
+            l_dir = -1.0;
 
         // desired swing-leg x-position at the end of the step
         double swxf = 0.0;
         if (l_mag > lmaxR)
-            swxf = swx0 + l_dir*lmaxR;
+            swxf = stx0 + l_dir*lmaxR;
         else
-            swxf = swx0 + l_cl;
+            swxf = stx0 + l_cl;
 
         // generate x-direction swing-leg trajectory through the step
         VectorXd swx_traj(2);
@@ -912,7 +929,7 @@ void dash_ctrl::sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm,
     {
 
         // robot target foot width calculation (y-direction swing-leg end-of-step calculation)
-        double human_foot_width = joystick_base_separation - (2 * foot_center_to_joystick) - fyH_R - fyH_L;
+        double human_foot_width = joystick_base_separation - (2.0 * foot_center_to_joystick) - fyH_R - fyH_L;
         double robot_target_foot_width = human_foot_width * (hR / hH);
 
         // initialize swing-leg trajectories
@@ -1572,7 +1589,7 @@ void dash_ctrl::opt_stepping_controller(double& uk, VectorXd xk, VectorXd xk_des
     double v_star = xk_des(1);
 
     // Discrete control law
-    uk = p + p_star + T_DSP*v + (1/w)*(1.0 / tanh(T_SSP*w))*(v - v_star);
+    uk = p + p_star + T_DSP*v + (1.0 / w)*(1.0 / tanh(T_SSP*w))*(v - v_star);
 
 }
 

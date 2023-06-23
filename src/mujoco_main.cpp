@@ -1729,6 +1729,7 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.25f, 0.0f, 0.25f, 1.0f));
             if (ImGui::Button(" " ICON_FA_PAUSE_CIRCLE " ") || controller_unstable) {
                 pause_sim = true;
+                master_gain = 0.0;
                 tello->controller->disable_human_ctrl();
             }
             ImGui::PopStyleColor(3);
@@ -2217,7 +2218,7 @@ void* PS4_Controller( void * arg )
             // vx_desired_ps4 = (127-(double)ds4->packet->rightStick_Y)*(0.6/127.0);
             // vy_desired_ps4 = (127-(double)ds4->packet->rightStick_X)*(0.3/127.0);
             //if(ds4->packet->cross) pause_sim = true;
-            xH_Commanded = (127.0-(double)ds4->packet->rightStick_Y)*(0.1/127.0);
+            xH_Commanded = (127.0-(double)ds4->packet->rightStick_Y)*(0.5/127.0);
             // cout << "xH: " << xH_Commanded << endl;
         }
         print_cnt++;
@@ -2541,7 +2542,8 @@ void* Human_Playback( void * arg )
                     human_dyn_data.FyH_hmi = FyH_hmi_val;
                     human_dyn_data.FxH_spring = FxH_spring_val;
 
-                    human_dyn_data.xH = xH_Commanded;
+                    if(PS4_connected)
+                        human_dyn_data.xH = xH_Commanded;
 
                     // VectorXd alphas(21);
                     // alphas.setConstant(4.0);
@@ -2731,7 +2733,7 @@ void* screenRecord( void * arg )
             cnt_str = to_string(recording_cnt);
             //execl("/usr/bin/ffmpeg", "ffmpeg", "-f", "x11grab", "-video_size", "3840x2160", /*"-loglevel", "quiet",*/ "-framerate", "30", "-i", ":1+eDP-1-1", "-c:v", "h264_nvenc", "-qp", "0", "ScreenCapture.mp4", NULL);
             //cout << "recording to: " << log_folder+"ScreenCapture_"+cnt_str+".mp4" << endl;
-            system(("taskset -c 1 ffmpeg -f x11grab -video_size "+window_size+" -loglevel quiet -framerate 30 -i $DISPLAY+"+window_pos+" -c:v h264_nvenc -qp 0 " + log_folder+"ScreenCapture_"+cnt_str+".mp4").c_str());
+            system(("taskset -c 14 ffmpeg -f x11grab -video_size "+window_size+" -loglevel quiet -framerate 30 -i $DISPLAY+"+window_pos+" -c:v h264_nvenc -qp 0 " + log_folder+"ScreenCapture_"+cnt_str+".mp4").c_str());
             recording_cnt++;
         }
         usleep(10000);
@@ -2761,7 +2763,7 @@ void* usbCamRecord( void * arg )
             usb_recording_in_progress = true;
             // Child process - execute FFmpeg command
             cnt_str = to_string(usb_recording_cnt);
-            system(("taskset -c 0 ffmpeg -f v4l2 -loglevel quiet -framerate 30 -video_size 800x600 -input_format mjpeg -i /dev/video4 -c:v copy " + log_folder+"usb_camera_"+cnt_str+".mp4").c_str());
+            system(("taskset -c 15 ffmpeg -f v4l2 -loglevel quiet -framerate 30 -video_size 800x600 -input_format mjpeg -i /dev/video4 -c:v copy " + log_folder+"usb_camera_"+cnt_str+".mp4").c_str());
             usb_recording_cnt++;
         }
         usleep(10000);
@@ -2797,6 +2799,7 @@ void* plotting( void * arg )
     plt::plot(x, y1);
     // Enable legend.
     plt::legend();
+
     plt::show();
 
     x.push_back(0);
@@ -2825,33 +2828,71 @@ void* plotting( void * arg )
             // TELEOP DATA ====================================================================================
 
             x.push_back(tello->controller->get_time());
-            Human_dyn_data hdd = tello->controller->get_human_dyn_data();
-            y1.push_back(hdd.FxH_hmi);
-            y2.push_back(hdd.FyH_hmi);
-            y3.push_back(hdd.FxH_spring);
+            Traj_planner_dyn_data tpdd = tello->controller->get_traj_planner_dyn_data();
+            SRB_Params srb_params = tello->controller->get_SRB_params();
+            Human_params human_params = tello->controller->get_human_params();
+            int FSM = tello->controller->get_FSM();
+            double xR = tello->controller->get_x()(0);
+            double dxR = tello->controller->get_x()(3);
+            double pxR_beg_step = tpdd.st_beg_step(0);
+            double xRlocal = xR - pxR_beg_step;
+            double hR = srb_params.hLIP;
+            double g = srb_params.g;
+            double x_HWRM = tpdd.x_HWRM;
+            double dx_HWRM = tpdd.dx_HWRM;
+            double hH = human_params.hLIP;
 
-            y4.push_back(x_force);
-            y5.push_back(y_force);
-            y6.push_back(s_force);
+            double wR = std::sqrt(g / hR);
+            double wH = std::sqrt(g / hH);
+
+            double xDCMRlocal = xRlocal + (dxR/wR);
+
+            double xDCMHWRM = x_HWRM + (dx_HWRM/wH);
+
+            y1.push_back(xDCMHWRM/hH);
+            y2.push_back(xDCMRlocal/hR);
 
             if(tello->controller->get_time() - last_plot_time > 0.1){
                 last_plot_time = tello->controller->get_time();
                 plt::rcparams({{"legend.loc","lower left"}});
                 plt::clf();
-                plt::title("HMI Force");
-                plt::subplot(3, 1, 1);
-                plt::named_plot("X", x, y1, "r-");
-                plt::named_plot("Filt_X", x, y4, "b-");
-                plt::subplot(3, 1, 2);
-                plt::named_plot("Y", x, y2, "r-");
-                plt::named_plot("Filt_Y", x, y5, "b-");
-                plt::subplot(3, 1, 3);
-                plt::named_plot("S", x, y3, "r-");
-                plt::named_plot("Filt_S", x, y6, "b-");
+                plt::title("Normalized DCM");
+                plt::named_plot("xDCMHWRM/hH", x, y1, "r-");
+                plt::named_plot("xDCMRlocal/hR", x, y2, "b-");
+
                 plt::legend();
                 plt::pause(0.001);
                 
             }
+
+            // x.push_back(tello->controller->get_time());
+            // Human_dyn_data hdd = tello->controller->get_human_dyn_data();
+            // y1.push_back(hdd.FxH_hmi);
+            // y2.push_back(hdd.FyH_hmi);
+            // y3.push_back(hdd.FxH_spring);
+
+            // y4.push_back(x_force);
+            // y5.push_back(y_force);
+            // y6.push_back(s_force);
+
+            // if(tello->controller->get_time() - last_plot_time > 0.1){
+            //     last_plot_time = tello->controller->get_time();
+            //     plt::rcparams({{"legend.loc","lower left"}});
+            //     plt::clf();
+            //     plt::title("HMI Force");
+            //     plt::subplot(3, 1, 1);
+            //     plt::named_plot("X", x, y1, "r-");
+            //     plt::named_plot("Filt_X", x, y4, "b-");
+            //     plt::subplot(3, 1, 2);
+            //     plt::named_plot("Y", x, y2, "r-");
+            //     plt::named_plot("Filt_Y", x, y5, "b-");
+            //     plt::subplot(3, 1, 3);
+            //     plt::named_plot("S", x, y3, "r-");
+            //     plt::named_plot("Filt_S", x, y6, "b-");
+            //     plt::legend();
+            //     plt::pause(0.001);
+                
+            // }
             
 
             // POSITION DATA ==================================================================================

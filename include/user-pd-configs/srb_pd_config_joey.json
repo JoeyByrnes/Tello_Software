@@ -8,9 +8,9 @@
       "Kd_zR": 5000,
       "Kp_phiR": 20000,
       "Kd_phiR": 0,
-      "Kp_thetaR": 5000,
+      "Kp_thetaR": 20000,
       "Kd_thetaR": 100,
-      "Kp_psiR": 1000,
+      "Kp_psiR": 20000,
       "Kd_psiR": 100,
       "Step_Period": 0.250,
       "Step_Height": 0.025,
@@ -20,7 +20,7 @@
     },
     
     "Posture_Control": {
-      "Hip_Yaw_Kp": 100,
+      "Hip_Yaw_Kp": 50,
       "Hip_Yaw_Kd": 0,
       
       "Hip_Roll_Kp": 1000,
@@ -49,7 +49,7 @@
       "Knee_Kp": 2500,
       "Knee_Kd": 4,
       
-      "Ankle_Kp": 500,
+      "Ankle_Kp": 800,
       "Ankle_Kd": 4
     }
   }

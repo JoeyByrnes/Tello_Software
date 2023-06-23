@@ -192,7 +192,16 @@ namespace RoboDesignLab {
     public:
         // Constructor and destructor
         DynamicRobot();
-        ~DynamicRobot();
+        // Destructor
+        ~DynamicRobot() {
+            // Delete dynamically allocated CheetahMotor objects
+            for (int i = 0; i < 10; i++) {
+                delete motors[i];
+            }
+            // Delete dynamically allocated SRBMController object
+            delete controller;
+        }
+        DynamicRobot(const DynamicRobot& other);
 
         void assign_jacobian_motors_to_joints(MatrixXd_function fcn){ _jaco_motor2joint = fcn; }
         void assign_jacobian_joints_to_motors(MatrixXd_function fcn){ _jaco_joint2motor = fcn; }
@@ -258,7 +267,7 @@ namespace RoboDesignLab {
         VectorXd jointPD2(JointPDConfig joint_conf);
         VectorXd taskPD2(TaskPDConfig task_conf);
         VectorXd taskPD3(TaskPDConfig task_conf);
-        void resetController(){controller = new SRBMController();}
+        void resetController(){delete controller; controller = new SRBMController();}
 
         // InEKF Functions:
         void update_filter_IMU_data(IMU_data imu_data);

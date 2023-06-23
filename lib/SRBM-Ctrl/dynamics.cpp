@@ -110,7 +110,6 @@ void dash_dyn::HLIP_SSP_dyn(double& x, double& dx, double t, double w, double x0
     double c2 = (1.0/2.0) * (x0 - (1.0/w) * dx0);
     x = c1 * exp(w * t) + c2 * exp(-w * t);
     dx = w * (c1 * exp(w * t) - c2 * exp(-w * t));
-    cout << "x: " << x << "   dx: " << dx << "   x0: " << x0 << "   dx0: " << dx0 << "   t: " << t  << "   w: " << w << endl;
 }
 
 void dash_dyn::HLIP_DSP_dyn(double& x, double& dx, double t, double x0, double dx0) {

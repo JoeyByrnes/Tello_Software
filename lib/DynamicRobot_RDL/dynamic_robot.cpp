@@ -60,6 +60,54 @@ DynamicRobot::DynamicRobot()
 
 }
 
+DynamicRobot::DynamicRobot(const DynamicRobot& other) {
+        // Copy CheetahMotor pointers
+        // for (int i = 0; i < 10; i++) {
+        //     motors[i] = new CheetahMotor(*other.motors[i]);
+        // }
+
+        // Copy other member variables
+        _motor_direction_matrix = other._motor_direction_matrix;
+        _balance_adjust = other._balance_adjust;
+        _GRFs = other._GRFs;
+        _GRF_biases = other._GRF_biases;
+        _right_loadcells_calibrated = other._right_loadcells_calibrated;
+        _left_loadcells_calibrated = other._left_loadcells_calibrated;
+        isSimulation = other.isSimulation;
+        sim_joint_torques = other.sim_joint_torques;
+        sim_joint_pos = other.sim_joint_pos;
+        sim_joint_vel = other.sim_joint_vel;
+        controller = new SRBMController(*other.controller);
+        // plot_data = other.plot_data;
+        // plot_mat = other.plot_mat;
+
+        // Copy Kinematics Functions
+        _jaco_motor2joint = other._jaco_motor2joint;
+        _jaco_joint2motor = other._jaco_joint2motor;
+        _jaco_joint2taskFront = other._jaco_joint2taskFront;
+        _jaco_joint2taskBack = other._jaco_joint2taskBack;
+        _jaco_accel_task_to_joint = other._jaco_accel_task_to_joint;
+        _ik_joint2motor = other._ik_joint2motor;
+        _fk_motor2joint = other._fk_motor2joint;
+        _ik_task2joint = other._ik_task2joint;
+        _fk_joint2task = other._fk_joint2task;
+
+        // Copy Actuators
+        _actuators = other._actuators;
+        _leg_DoF = other._leg_DoF;
+        _num_actuators = other._num_actuators;
+
+        // Copy InEKF
+        // initial_state = other.initial_state;
+        // noise_params = other.noise_params;
+        // filter = other.filter;
+        _imu_data = other._imu_data;
+        _imu_data_prev = other._imu_data_prev;
+        _ground_contacts = other._ground_contacts;
+        _direct_lfv_hip = other._direct_lfv_hip;
+        // _ekf_q = other._ekf_q;
+    }
+
 Eigen::VectorXd DynamicRobot::motor_vel_to_joint_vel(Eigen::VectorXd motor_velocites, Eigen::VectorXd joint_positions)
 {
     Eigen::VectorXd motor_velocites_left = motor_velocites.segment(0,5);
@@ -450,6 +498,9 @@ void DynamicRobot::addPeriodicTask(void *(*start_routine)(void *), int sched_pol
     arg_tuple = new std::tuple<void*, void*, int, int>(this,arg,period,task_type);
 
     int th = pthread_create( &thread, &tattr, start_routine, arg_tuple);
+
+    // Free the dynamically allocated memory
+    delete arg_tuple;
 }
 
 

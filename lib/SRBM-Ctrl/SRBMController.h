@@ -24,6 +24,7 @@ class SRBMController {
   public:
     SRBMController();
     SRBMController(int sim_mode);
+    SRBMController(const SRBMController& other);
     ~SRBMController() {}
 
     VectorXd update(Vector3d body_position, Vector3d body_linear_velocity,

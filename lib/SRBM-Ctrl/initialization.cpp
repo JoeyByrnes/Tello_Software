@@ -257,10 +257,10 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.zcl = 0.04; // swing-leg max height in m
         // planner_type = Human_Dyn_Telelocomotion 
         srb_params.xDCMH_deadband = 0.10; // deadband for applying gain for human DCM in m
-        srb_params.KxDCMH = 1.0; // gain for human DCM
+        srb_params.KxDCMH = 1.5; // gain for human DCM
         srb_params.Kx_DCM_mult = 3.0; // multiplier of K_DCM for sagittal plane control
         srb_params.Ky_DCM_mult = 3.0; // multiplier of K_DCM for frontal plane control
-        srb_params.T_DSP = 0.150; // assumed duration of DSP in s
+        srb_params.T_DSP = 0.0750; // assumed duration of DSP in s
         srb_params.lmaxR = 0.5; // maximum step length in m
 
         // controller 

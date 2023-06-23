@@ -30,6 +30,61 @@ SRBMController::SRBMController()
     last_print_time = std::chrono::high_resolution_clock::now();
 }
 
+SRBMController::SRBMController(const SRBMController& other) {
+        enable_human_dyn_data = other.enable_human_dyn_data;
+        srb_params = other.srb_params;
+        human_params = other.human_params;
+        human_dyn_data = other.human_dyn_data;
+        traj_planner_dyn_data = other.traj_planner_dyn_data;
+        t = other.t;
+        FSM = other.FSM;
+        FSM_prev = other.FSM_prev;
+        net_external_wrench = other.net_external_wrench;
+        x_next = other.x_next;
+        _EA = other._EA;
+        _dEA = other._dEA;
+        _pc = other._pc;
+        _dpc = other._dpc;
+        _ddpc = other._ddpc;
+        x = other.x;
+        q = other.q;
+        qd = other.qd;
+        lfv = other.lfv;
+        lfv_dsp_start = other.lfv_dsp_start;
+        lfdv = other.lfdv;
+        lfv_comm = other.lfv_comm;
+        lfdv_comm = other.lfdv_comm;
+        lfddv_comm = other.lfddv_comm;
+        u = other.u;
+        lfv0 = other.lfv0;
+        lfdv0 = other.lfdv0;
+        q0 = other.q0;
+        qd0 = other.qd0;
+        u0 = other.u0;
+        x0 = other.x0;
+        tau_ext = other.tau_ext;
+        tau = other.tau;
+        SRB_state_ref = other.SRB_state_ref;
+        SRB_wrench_ref = other.SRB_wrench_ref;
+        
+        // Copy Jv_mat array
+        for (int i = 0; i < 4; i++) {
+            Jv_mat[i] = other.Jv_mat[i];
+        }
+        
+        right_leg_last = other.right_leg_last;
+        left_leg_last = other.left_leg_last;
+        isSwingToStanceLeft = other.isSwingToStanceLeft;
+        isSwingToStanceRight = other.isSwingToStanceRight;
+        transitionStartLeft = other.transitionStartLeft;
+        transitionStartRight = other.transitionStartRight;
+        start_time = other.start_time;
+        end_time = other.end_time;
+        last_print_time = other.last_print_time;
+        simulation_mode = other.simulation_mode;
+        using_human_playback = other.using_human_playback;
+    }
+
 // all inputs must be in the world frame
 VectorXd SRBMController::update(Vector3d body_position, Vector3d body_linear_velocity,
                                  Vector3d body_orientation, Vector3d body_angular_velocity,

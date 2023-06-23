@@ -13,6 +13,7 @@
 pthread_mutex_t plotting_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t sim_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t sim_step_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t tello_ctrl_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t tau_share_mutex = PTHREAD_MUTEX_INITIALIZER;
 extern pthread_mutex_t EKF_mutex;
 
@@ -1073,12 +1074,12 @@ void* tello_controller( void * arg )
     while(1)
     {
         handle_start_of_periodic_task(next);
-
+        dash_utils::start_timer();
         pthread_mutex_lock(&sim_step_mutex);
         ctrlData cd_local;
         cd_local = cd_shared;
         pthread_mutex_unlock(&sim_step_mutex);
-
+        pthread_mutex_lock(&tello_ctrl_mutex);
         if(simulation_mode == 1)
         {
             if(!pause_sim){
@@ -1108,7 +1109,8 @@ void* tello_controller( void * arg )
             // cout << "CoM XYZ:" << tello->controller->get_x().head(3).transpose() << endl;
             //cout << "q right:" << tello->controller->get_q().row(0) << endl;
         }
-        
+        pthread_mutex_unlock(&tello_ctrl_mutex);
+        dash_utils::print_timer();
         handle_end_of_periodic_task(next, period);
     }
 
@@ -1337,22 +1339,17 @@ void* mujoco_Update_1KHz( void * arg )
     // }
 
     // dash_utils::start_sim_timer();
-    
+    sim_ready_for_control = true;
 	while(!glfwWindowShouldClose(window))
     {
         handle_start_of_periodic_task(next);
 		// BEGIN LOOP CODE FOR MUJOCO ===================================================================
-        // double elapsed = dash_utils::measure_sim_timer();
-        // if(realtime_enabled)
-        // {
-        //     m->opt.timestep = elapsed;
-        // }
-        // else{
-        //      m->opt.timestep = 0.002;
-        // }
-        // dash_utils::start_sim_timer();
-        // dash_utils::print_timer();
-        // dash_utils::start_timer();
+        
+        // set local tello object here:
+        pthread_mutex_lock(&tello_ctrl_mutex);
+        RoboDesignLab::DynamicRobot* telloLocal = new RoboDesignLab::DynamicRobot(*tello);
+        pthread_mutex_unlock(&tello_ctrl_mutex);
+
         // Get body ID
         pthread_mutex_lock(&sim_step_mutex);
         int body_id = mj_name2id(m, mjOBJ_BODY, "torso");
@@ -1382,65 +1379,65 @@ void* mujoco_Update_1KHz( void * arg )
         cd_local = cd_shared;
         pthread_mutex_unlock(&sim_step_mutex);
 
-        if(simulation_mode == 1)
-        {
-            if(!pause_sim){
-                //mjtNum simstart = d->time;
-                //while (d->time - simstart < 1.0 / 60.0){
-                    //mj_step(m, d);
+        // if(simulation_mode == 1)
+        // {
+        //     if(!pause_sim){
+        //         //mjtNum simstart = d->time;
+        //         //while (d->time - simstart < 1.0 / 60.0){
+        //             //mj_step(m, d);
                     
-                    // dash_utils::print_timer();
-                    // dash_utils::start_timer();
-                    TELLO_locomotion_ctrl(cd_local);
+        //             // dash_utils::print_timer();
+        //             // dash_utils::start_timer();
+        //             TELLO_locomotion_ctrl(cd_local);
                     
-                //}  
-            } 
-        }
-        if(simulation_mode == 2)
-        {
-            if(!pause_sim){
-                //mjtNum simstart = d->time;
-                //while (d->time - simstart < 1.0 / 60.0){
-                    // d->time = d->time + elapsed;
-                    // dash_utils::print_timer();
-                    // dash_utils::start_timer();
-                    TELLO_locomotion_ctrl(cd_local);
+        //         //}  
+        //     } 
+        // }
+        // if(simulation_mode == 2)
+        // {
+        //     if(!pause_sim){
+        //         //mjtNum simstart = d->time;
+        //         //while (d->time - simstart < 1.0 / 60.0){
+        //             // d->time = d->time + elapsed;
+        //             // dash_utils::print_timer();
+        //             // dash_utils::start_timer();
+        //             TELLO_locomotion_ctrl(cd_local);
                     
                     
-                    // dash_utils::start_timer();
+        //             // dash_utils::start_timer();
 
-                    // dash_utils::print_timer();
-                    set_mujoco_state(tello->controller->get_x());
-                    // mj_kinematics(m,d);
-                //}
-            } 
-            // cout << "CoM XYZ:" << tello->controller->get_x().head(3).transpose() << endl;
-            //cout << "q right:" << tello->controller->get_q().row(0) << endl;
-        }
+        //             // dash_utils::print_timer();
+        //             set_mujoco_state(telloLocal->controller->get_x());
+        //             // mj_kinematics(m,d);
+        //         //}
+        //     } 
+        //     // cout << "CoM XYZ:" << tello->controller->get_x().head(3).transpose() << endl;
+        //     //cout << "q right:" << tello->controller->get_q().row(0) << endl;
+        // }
         //tau_shared is ready to send back to sim thread here:
 
 
         // logging: 
         if(!pause_sim)
         {
-            x_out = tello->controller->get_x();
-            u_out = tello->controller->get_GRFs();
-            tau_out = tello->controller->get_joint_torques();
-            tau_ext_out = tello->controller->get_tau_ext();
+            x_out = telloLocal->controller->get_x();
+            u_out = telloLocal->controller->get_GRFs();
+            tau_out = telloLocal->controller->get_joint_torques();
+            tau_ext_out = telloLocal->controller->get_tau_ext();
 
-            q_out = dash_utils::flatten(tello->controller->get_q());
-            qd_out = dash_utils::flatten(tello->controller->get_qd());
+            q_out = dash_utils::flatten(telloLocal->controller->get_q());
+            qd_out = dash_utils::flatten(telloLocal->controller->get_qd());
 
-            lfv_out = dash_utils::flatten(tello->controller->get_lfv_world());
-            lfdv_out = dash_utils::flatten(tello->controller->get_lfdv_world());
+            lfv_out = dash_utils::flatten(telloLocal->controller->get_lfv_world());
+            lfdv_out = dash_utils::flatten(telloLocal->controller->get_lfdv_world());
 
-            lfv_comm_out = dash_utils::flatten(tello->controller->get_lfv_comm_world());
-            lfdv_comm_out = dash_utils::flatten(tello->controller->get_lfdv_comm_world());
+            lfv_comm_out = dash_utils::flatten(telloLocal->controller->get_lfv_comm_world());
+            lfdv_comm_out = dash_utils::flatten(telloLocal->controller->get_lfdv_comm_world());
 
-            t_n_FSM_out = Eigen::Vector2d(tello->controller->get_time(),tello->controller->get_FSM());
+            t_n_FSM_out = Eigen::Vector2d(telloLocal->controller->get_time(),telloLocal->controller->get_FSM());
 
-            hdd_out = tello->controller->get_human_dyn_data();
-            tpdd_out = tello->controller->get_traj_planner_dyn_data();
+            hdd_out = telloLocal->controller->get_human_dyn_data();
+            tpdd_out = telloLocal->controller->get_traj_planner_dyn_data();
             // cout << "xH_ref: " << tpdd_out.x_HWRM << "   dxH_ref: " << tpdd_out.dx_HWRM << endl;
             log_data_ready = true;
         }
@@ -1533,7 +1530,7 @@ void* mujoco_Update_1KHz( void * arg )
             if(sim_conf.en_playback_mode) human_label = " " ICON_FA_CHILD "  Enable HMI Playback   ";
             else human_label = " " ICON_FA_CHILD "  Enable HMI Communication   ";
             ImGui::Checkbox(human_label.c_str(), &(sim_conf.en_human_control));
-            tello->controller->enable_human_dyn_data = sim_conf.en_human_control;
+            // tello->controller->enable_human_dyn_data = sim_conf.en_human_control;
             ImGui::Separator();  
             ImGui::Checkbox(" " ICON_FA_SIGN_IN_ALT "  Enable X Haptic Force   ", &(sim_conf.en_x_haptic_force));
             ImGui::Separator();
@@ -1798,7 +1795,7 @@ void* mujoco_Update_1KHz( void * arg )
                 if(sim_conf.en_playback_mode) human_label = "  Enable HMI Playback   ";
                 else human_label = "  Enable HMI Communication   ";
                 ImGui::Checkbox(human_label.c_str(), &sim_conf.en_human_control);
-                tello->controller->enable_human_dyn_data = sim_conf.en_human_control;
+                
 
                 if(!(sim_conf.en_playback_mode))
                 {
@@ -1823,16 +1820,10 @@ void* mujoco_Update_1KHz( void * arg )
                     init_foot_width = true;
                     MatrixXd new_lfv0(4,3);
                     MatrixXd new_q0(2,5);
-                    dash_init::init_foot_width(robot_init_foot_width,tello->controller->get_human_params(),
-                                                tello->controller->get_SRB_params(),new_lfv0,q0);
+                    dash_init::init_foot_width(robot_init_foot_width,telloLocal->controller->get_human_params(),
+                                                telloLocal->controller->get_SRB_params(),new_lfv0,q0);
                     tello->controller->set_lfv0(new_lfv0);
                     tello->controller->set_q0(q0);
-                    Human_params hp = tello->controller->get_human_params();
-                    // double joystick_base_separation = 1.465;
-                    // double foot_center_to_joystick = 0.0825;
-                    // hp.fyH_home = (joystick_base_separation/2.0) - hp.human_nom_ft_width - foot_center_to_joystick; // joystick y width
-                    // cout << "FyH Home: " << hp.fyH_home << endl;
-                    tello->controller->set_human_params(hp);
                     initializeLegs();
                     if(pause_sim)
                         mj_forward(m,d);
@@ -1863,12 +1854,10 @@ void* mujoco_Update_1KHz( void * arg )
                     init_foot_width = true;
                     MatrixXd new_lfv0(4,3);
                     MatrixXd new_q0(2,5);
-                    dash_init::init_foot_width(robot_init_foot_width,tello->controller->get_human_params(),
-                                                tello->controller->get_SRB_params(),new_lfv0,q0);
+                    dash_init::init_foot_width(robot_init_foot_width,telloLocal->controller->get_human_params(),
+                                                telloLocal->controller->get_SRB_params(),new_lfv0,q0);
                     tello->controller->set_lfv0(new_lfv0);
                     tello->controller->set_q0(q0);
-                    Human_params hp = tello->controller->get_human_params();
-                    tello->controller->set_human_params(hp);
                     initializeLegs();
                     master_gain = 1.0;
                     zero_human = true;
@@ -2032,12 +2021,12 @@ void* mujoco_Update_1KHz( void * arg )
             
             ImGui::Text(" Live Variable View:");
             ImGui::Separator();
-            std::string FSM = std::to_string(tello->controller->get_FSM());
-            std::string next_SSP = std::to_string(tello->controller->get_traj_planner_dyn_data().next_SSP);
-            std::string grf_rf = std::to_string(tello->_GRFs.right_front);
-            std::string grf_rb = std::to_string(tello->_GRFs.right_back);
-            std::string grf_lf = std::to_string(tello->_GRFs.left_front);
-            std::string grf_lb = std::to_string(tello->_GRFs.left_back);
+            std::string FSM = std::to_string(telloLocal->controller->get_FSM());
+            std::string next_SSP = std::to_string(telloLocal->controller->get_traj_planner_dyn_data().next_SSP);
+            std::string grf_rf = std::to_string(telloLocal->_GRFs.right_front);
+            std::string grf_rb = std::to_string(telloLocal->_GRFs.right_back);
+            std::string grf_lf = std::to_string(telloLocal->_GRFs.left_front);
+            std::string grf_lb = std::to_string(telloLocal->_GRFs.left_back);
             ImGui::Text("FSM: %s", FSM.c_str());
             ImGui::Separator();
             ImGui::Text("Next SSP: %s", next_SSP.c_str());
@@ -2098,7 +2087,7 @@ void* mujoco_Update_1KHz( void * arg )
 
 
         //handle UDP transmit here:
-		Human_dyn_data hdd = tello->controller->get_human_dyn_data();
+		Human_dyn_data hdd = telloLocal->controller->get_human_dyn_data();
         if(sim_conf.en_safety_monitor)
         {
             if( (fabs(hdd.FxH_hmi - last_Xf) > 100) || (fabs(hdd.FyH_hmi - last_Yf) > 100) || (fabs(hdd.FxH_spring - last_springf) > 100)){
@@ -2131,8 +2120,8 @@ void* mujoco_Update_1KHz( void * arg )
         hdd.FyH_hmi = y_force;
         hdd.FxH_hmi = x_force;
         hdd.FxH_spring = FxH_spring_out;
-        tello->controller->set_hmi_forces(hdd);
-		if(tello->controller->is_human_ctrl_enabled() && !controller_unstable)
+        
+		if(telloLocal->controller->is_human_ctrl_enabled() && !controller_unstable)
 		{
             if( !(sim_conf.en_x_haptic_force) )
             {
@@ -2155,6 +2144,12 @@ void* mujoco_Update_1KHz( void * arg )
 		dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,sim_conf.en_force_feedback,zero_human,master_gain);
 		int n = sendto(sockfd_tx, hmi_tx_buffer, 24,MSG_CONFIRM, 
 			   (const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
+
+        // set tello data here:
+        pthread_mutex_lock(&tello_ctrl_mutex);
+        tello->controller->set_hmi_forces(hdd);
+        tello->controller->enable_human_dyn_data = sim_conf.en_human_control;
+        pthread_mutex_unlock(&tello_ctrl_mutex);
         
 		// END LOOP CODE FOR MUJOCO =====================================================================
 		handle_end_of_periodic_task(next,period);

@@ -16,6 +16,12 @@ extern mjrContext con;              // custom GPU context
 extern double push_force_x;
 extern double push_force_y;
 extern double push_force_z;
+extern mjtNum push_force[3];
+extern double impulse_start_time;
+extern bool impulse_scheduled;
+extern bool impulse_active;
+extern bool ball_throw_scheduled;
+
 extern bool pause_sim;
 
 double rfz;
@@ -67,18 +73,50 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
         // sim_was_restarted = true;
         // mj_forward(m, d);
     }
-    if (act == GLFW_PRESS && key == GLFW_KEY_X)
+    // if (act == GLFW_PRESS && key == GLFW_KEY_X)
+    // {
+    //     push_force_x = 10;
+    // }
+    // if (act == GLFW_PRESS && key == GLFW_KEY_Y)
+    // {
+    //     push_force_y = 10;
+    // }
+    // if (act == GLFW_PRESS && key == GLFW_KEY_Z)
+    // {
+    //     push_force_z = 10;
+    // }
+    if(!impulse_scheduled)
     {
-        push_force_x = 10;
+        if (act == GLFW_PRESS && key == GLFW_KEY_UP)
+        {
+            push_force[0] = 30;
+            impulse_scheduled = true;
+            impulse_start_time = d->time;
+        }
+        if (act == GLFW_PRESS && key == GLFW_KEY_DOWN)
+        {
+            push_force[0] = -30;
+            impulse_scheduled = true;
+            impulse_start_time = d->time;
+        }
+        if (act == GLFW_PRESS && key == GLFW_KEY_LEFT)
+        {
+            push_force[1] = 30;
+            impulse_scheduled = true;
+            impulse_start_time = d->time;
+        }
+        if (act == GLFW_PRESS && key == GLFW_KEY_RIGHT)
+        {
+            push_force[1] = -30;
+            impulse_scheduled = true;
+            impulse_start_time = d->time;
+        }
     }
-    if (act == GLFW_PRESS && key == GLFW_KEY_Y)
+    if (act == GLFW_PRESS && key == GLFW_KEY_B)
     {
-        push_force_y = 10;
+        ball_throw_scheduled = true;
     }
-    if (act == GLFW_PRESS && key == GLFW_KEY_Z)
-    {
-        push_force_z = 10;
-    }
+
     if (act == GLFW_PRESS && key == GLFW_KEY_C)
     {
         mju_zero(d->qfrc_applied, m->nv);
@@ -91,6 +129,14 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
 
 void window_close_callback(GLFWwindow* window)
 {
+    std::cout << "Closing the Simulation." << std::endl;
+    system("killall -2 ffmpeg");
+
+    // Free MuJoCo resources
+    mj_deleteData(d);
+    mj_deleteModel(m);
+    mj_deactivate();
+
     glfwSetWindowShouldClose(window, GLFW_TRUE);
 }
 
@@ -395,6 +441,7 @@ simConfig readSimConfigFromFile(const std::string& filename) {
         config.en_human_control = jsonData["en_human_control"];
         config.en_full_hmi_controls = jsonData["en_full_hmi_controls"];
         config.en_live_variable_view = jsonData["en_live_variable_view"];
+        config.en_ps4_controller = jsonData["en_ps4_controller"];
         en_v2_ctrl = config.en_v2_controller;
     } catch (json::exception& e) {
         std::cerr << "Error parsing JSON: " << e.what() << std::endl;
@@ -420,6 +467,7 @@ void writeSimConfigToFile(const simConfig& config, const std::string& filename) 
     jsonData["en_human_control"] = config.en_human_control;
     jsonData["en_full_hmi_controls"] = config.en_full_hmi_controls;
     jsonData["en_live_variable_view"] = config.en_live_variable_view;
+    jsonData["en_ps4_controller"] = config.en_ps4_controller;
 
 
     std::ofstream file(filename);

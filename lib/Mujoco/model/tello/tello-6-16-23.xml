@@ -51,7 +51,7 @@
   
   <worldbody>
   
- 	<geom name ='floor' pos ='0 0 -0.58' size ='8 8 .125' type = 'plane' material ='MatPlane' condim = '3' conaffinity = '15'/>
+ 	<geom name ='floor' pos ='0 0 -0.58' size ='20 10 .125' type = 'plane' material ='MatPlane' condim = '3' conaffinity = '15'/>
 	<!-- <light mode ='trackcom' pos = '0 0 5' dir = '0 0 -1'/> -->
 	<light directional = 'true' pos = '0 0 3' dir = '0 0 -1' diffuse = '0.2 0.2 0.2' specular = '0 0 0'/>	 
     <light name="com_light" mode='trackcom' pos='10 0 10' dir='-1 0 -1' castshadow="false"/>
@@ -171,7 +171,16 @@
 		
 	</body>	
 
+	<!-- <body name="projectile" pos="1 0 0">
+		<inertial pos="0 0 0" mass="2" diaginertia="0.0042 0.0042 0.0042"/>
+        <joint axis = "1 0 0" pos = "0 0 0" name = "ball_x" type = "slide" limited = "false" damping="0"/>
+		<joint axis = "0 1 0" pos = "0 0 0" name = "ball_y" type = "slide" limited = "false" damping="0"/>
+		<joint axis = "0 0 1" pos = "0 0 0" name = "ball_z" type = "slide" limited = "false" damping="0"/>
+      <geom name="ball" type="sphere" size="0.10" rgba="1 0 0 1" class='collision'/>
+    </body> -->
+
 </worldbody>
+
 
 <actuator>
 

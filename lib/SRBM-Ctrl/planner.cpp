@@ -169,8 +169,8 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_plann
     double grf_lb = tello->_GRFs.left_back;
 
     double fzH0 = traj_planner_dyn_data.human_leg_joystick_pos_beg_step(2);
-    double zHr = human_dyn_data.fzH_R - 0.001;
-    double zHl = human_dyn_data.fzH_L - 0.015;
+    double zHr = human_dyn_data.fzH_R - 0.006;
+    double zHl = human_dyn_data.fzH_L - 0.010;
     
     int FSM_next;
     // cout << FSM_prev << "\t u1z:" << u1z << "\t u2z" << u3z << "\t t_dsp" << t_dsp << endl;

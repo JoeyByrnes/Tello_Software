@@ -57,6 +57,8 @@ bool playback_changed = false;
 bool playback_chosen = false;
 bool auto_mode = false;
 
+bool cd_shared_data_ready = false;
+
 extern double FxH_hmi_out, FxH_spring_out, FyH_hmi_out;
 
 //logging
@@ -162,6 +164,12 @@ ctrlData cd_shared;
 double push_force_x = 0;
 double push_force_y = 0;
 double push_force_z = 0;
+mjtNum push_force[3];
+bool impulse_scheduled = false;
+bool impulse_active = false;
+double impulse_start_time = 0;
+bool ball_throw_scheduled = false;
+
 
 bool sim_was_restarted = false;
 extern int simulation_mode;
@@ -1070,11 +1078,12 @@ void* tello_controller( void * arg )
 
     struct timespec next;
     clock_gettime(CLOCK_MONOTONIC, &next);
-    while(!sim_ready_for_control) usleep(100);
+    while(!sim_ready_for_control || !cd_shared_data_ready) usleep(100);
+
     while(1)
     {
         handle_start_of_periodic_task(next);
-        dash_utils::start_timer();
+        
         pthread_mutex_lock(&sim_step_mutex);
         ctrlData cd_local;
         cd_local = cd_shared;
@@ -1110,11 +1119,12 @@ void* tello_controller( void * arg )
             //cout << "q right:" << tello->controller->get_q().row(0) << endl;
         }
         pthread_mutex_unlock(&tello_ctrl_mutex);
-        dash_utils::print_timer();
+        
         handle_end_of_periodic_task(next, period);
     }
 
 }
+
 
 char notes[100]; // String variable to store the entered notes
 void* mujoco_Update_1KHz( void * arg )
@@ -1232,9 +1242,9 @@ void* mujoco_Update_1KHz( void * arg )
     // cam.lookat[1] = 0;
     // cam.lookat[2] = -0.2;
 
-    cam.elevation = -25;
+    cam.elevation = -20;
     cam.distance = 2.0;
-    cam.azimuth = -15;
+    cam.azimuth = -0.0;
     cam.lookat[0] = 0;
     cam.lookat[1] = 0;
     cam.lookat[2] = -0.2;
@@ -1252,6 +1262,7 @@ void* mujoco_Update_1KHz( void * arg )
     glfwSetCursorPosCallback(window, mouse_move);
     glfwSetMouseButtonCallback(window, mouse_button);
     glfwSetScrollCallback(window, scroll);
+    glfwSetWindowCloseCallback(window,window_close_callback);
 
     m->opt.timestep = 0.002;
 
@@ -1339,7 +1350,7 @@ void* mujoco_Update_1KHz( void * arg )
     // }
 
     // dash_utils::start_sim_timer();
-    sim_ready_for_control = true;
+
 	while(!glfwWindowShouldClose(window))
     {
         handle_start_of_periodic_task(next);
@@ -1355,28 +1366,36 @@ void* mujoco_Update_1KHz( void * arg )
         int body_id = mj_name2id(m, mjOBJ_BODY, "torso");
 
         // Apply force-torque to body
-        mjtNum force[3] = {push_force_x, push_force_y, -push_force_z}; // x, y, z components of the force
+        // mjtNum force[3] = {push_force_x, push_force_y, -push_force_z}; // x, y, z components of the force
         mjtNum torque[3] = {0.0, 0.0, 0.0}; // x, y, z components of the torque
-        mjtNum point[3] = {0.0, 0.0, 0.0}; // x, y, z components of the torque
+        mjtNum point[3] = {0.0, 0.0, 0.0}; 
         pthread_mutex_lock(&sim_mutex);
-        mj_applyFT(m, d, force, torque, point, body_id, d->qfrc_applied);
+        if(impulse_scheduled)
+        {
+            mj_applyFT(m, d, push_force, torque, point, body_id, d->qfrc_applied);
+            impulse_scheduled = false;
+            impulse_active = true;
+            // cout << "Impulse Applied" << endl;
+            // dash_utils::start_timer();
+        }
+        if(d->time - impulse_start_time > 0.1 && impulse_active)
+        {
+            mju_zero(d->qfrc_applied, m->nv);
+            impulse_active = false;
+            // cout << "Impulse ended. ";
+            // dash_utils::print_timer();
+        }
+
+        if(ball_throw_scheduled)
+        {
+            ball_throw_scheduled = false;
+
+        }
+
         pthread_mutex_unlock(&sim_mutex);
 
-        if(push_force_x > 0){
-            printf("Pushed in X\n");
-            push_force_x = 0;
-        }
-        if(push_force_y > 0){
-            printf("Pushed in Y\n");
-            push_force_y = 0;
-        }
-        if(push_force_z > 0){
-            printf("Pushed in Z\n");
-            push_force_z = 0;
-        }
-
-        ctrlData cd_local;
-        cd_local = cd_shared;
+        // ctrlData cd_local;
+        // cd_local = cd_shared;
         pthread_mutex_unlock(&sim_step_mutex);
 
         // if(simulation_mode == 1)
@@ -1459,7 +1478,7 @@ void* mujoco_Update_1KHz( void * arg )
         mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
         pthread_mutex_unlock(&sim_mutex);
         mjr_render(viewport, &scn, &con);
-        
+        sim_ready_for_control = true;
         // render ImGui GUI
         ImVec4 dark_navy = hex2ImVec4(0x082032);
         ImVec4 med_navy = hex2ImVec4(0x2C394B);
@@ -1537,6 +1556,8 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::Checkbox(" " ICON_FA_ARROWS_ALT_H "  Enable Force Feedback   ", &sim_conf.en_force_feedback);      // Edit bools storing our window open/close state
             ImGui::Separator();//init_foot_width
             ImGui::Checkbox(" " ICON_FA_HARD_HAT "  Enable Safety Monitor   ", &sim_conf.en_safety_monitor);      // Edit bools storing our window open/close state
+            ImGui::Separator();
+            ImGui::Checkbox(" " ICON_FA_GAMEPAD "  Enable PS4 Controller   ", &sim_conf.en_ps4_controller);      // Edit bools storing our window open/close state
             ImGui::Separator();
             ImGui::PopStyleColor();
             ImGui::Separator();
@@ -1728,6 +1749,12 @@ void* mujoco_Update_1KHz( void * arg )
                 pause_sim = true;
                 master_gain = 0.0;
                 tello->controller->disable_human_ctrl();
+                // screen_recording = false;
+                // usbcam_recording = false;
+                // system("killall -2 ffmpeg");
+                
+                recording_in_progress = false;
+                usb_recording_in_progress = false;
             }
             ImGui::PopStyleColor(3);
         }
@@ -2015,7 +2042,7 @@ void* mujoco_Update_1KHz( void * arg )
         }
         if(sim_conf.en_live_variable_view)
         {
-            ImGui::SetNextWindowSize(ImVec2(900,300));
+            ImGui::SetNextWindowSize(ImVec2(900,500));
             ImGui::SetNextWindowPos(ImVec2(50, (35+60*screenScale)+50));
             ImGui::Begin("DebugView",nullptr,ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize);
             
@@ -2023,13 +2050,15 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::Separator();
             std::string FSM = std::to_string(telloLocal->controller->get_FSM());
             std::string next_SSP = std::to_string(telloLocal->controller->get_traj_planner_dyn_data().next_SSP);
-            std::string grf_rf = std::to_string(telloLocal->_GRFs.right_front);
-            std::string grf_rb = std::to_string(telloLocal->_GRFs.right_back);
-            std::string grf_lf = std::to_string(telloLocal->_GRFs.left_front);
-            std::string grf_lb = std::to_string(telloLocal->_GRFs.left_back);
+            std::string x_pos = std::to_string(telloLocal->controller->get_x()(0));
+            std::string x_vel = std::to_string(telloLocal->controller->get_x()(3));
             ImGui::Text("FSM: %s", FSM.c_str());
             ImGui::Separator();
             ImGui::Text("Next SSP: %s", next_SSP.c_str());
+            ImGui::Separator();
+            ImGui::Text("X Velocity: %s", x_vel.c_str());
+            ImGui::Separator();
+            ImGui::Text("X Position: %s", x_pos.c_str());
             ImGui::Separator();
             // ImGui::Text("LF: %s \tRF %s", grf_lf.c_str(),grf_rf.c_str());
             // ImGui::Text("LB: %s \tRB %s", grf_lb.c_str(),grf_rb.c_str());
@@ -2266,8 +2295,8 @@ void* sim_step_task( void * arg )
                 pthread_mutex_lock(&tau_share_mutex);
                 tau_local = tau_shared;
                 pthread_mutex_unlock(&tau_share_mutex);
-                applyJointTorquesMujoco(tau_local);
                 pthread_mutex_lock(&sim_mutex);
+                applyJointTorquesMujoco(tau_local);
                 mj_step(m, d);
                 sim_step_completed = true;
 
@@ -2307,6 +2336,7 @@ void* sim_step_task( void * arg )
             pthread_mutex_lock(&sim_step_mutex);
             contactforce(m,d, controller->get_FSM());
             cd_shared = copyMjData(m,d);
+            cd_shared_data_ready = true;
             pthread_mutex_unlock(&sim_step_mutex);
         }
         // pthread_mutex_unlock(&sim_step_mutex);
@@ -2537,7 +2567,7 @@ void* Human_Playback( void * arg )
                     human_dyn_data.FyH_hmi = FyH_hmi_val;
                     human_dyn_data.FxH_spring = FxH_spring_val;
 
-                    if(PS4_connected)
+                    if(PS4_connected && sim_conf.en_ps4_controller)
                         human_dyn_data.xH = xH_Commanded;
 
                     // VectorXd alphas(21);

@@ -499,8 +499,8 @@ void DynamicRobot::addPeriodicTask(void *(*start_routine)(void *), int sched_pol
 
     int th = pthread_create( &thread, &tattr, start_routine, arg_tuple);
 
-    // Free the dynamically allocated memory
-    delete arg_tuple;
+    // // Free the dynamically allocated memory
+    // delete arg_tuple;
 }
 
 

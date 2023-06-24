@@ -88,6 +88,7 @@ struct simConfig {
     bool en_full_hmi_controls;
     bool en_human_control;
     bool en_live_variable_view;
+    bool en_ps4_controller;
 };
 
 struct ctrlData {

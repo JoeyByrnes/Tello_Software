@@ -957,6 +957,14 @@ void dash_utils::parse_json_to_srb_params(const std::string& json_file_path, SRB
     std::cerr << "Error: " << e.what() << "\n";
     return;
   }
+  try {
+    params.KxDCMH = json_data["srb_params"]["KxDCMH"].get<double>();
+    params.T_DSP = json_data["srb_params"]["T_DSP"].get<double>();
+    params.xDCMH_deadband = json_data["srb_params"]["xDCMH_deadband"].get<double>();
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    return;
+  }
 }
 
 void dash_utils::parse_json_to_pd_params(const std::string& json_file_path, Joint_PD_config& swing, Joint_PD_config& posture) {

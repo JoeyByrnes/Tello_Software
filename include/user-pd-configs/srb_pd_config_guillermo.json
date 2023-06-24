@@ -15,8 +15,13 @@
       "Step_Period": 0.25,
       "Step_Height": 0.02,
       "Walking_Speed": 0.5,
+      
       "Kx_DCM_mult": 5.0,
-      "Ky_DCM_mult": 5.0
+      "Ky_DCM_mult": 5.0,
+      
+      "KxDCMH": 1.5,
+      "T_DSP"  : 0.075,
+      "xDCMH_deadband": 0.010
     },
     
     "Posture_Control": {

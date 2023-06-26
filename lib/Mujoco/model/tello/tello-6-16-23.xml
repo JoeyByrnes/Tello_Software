@@ -170,6 +170,7 @@
 		</body>
 		
 	</body>	
+	
 
 	<!-- <body name="projectile" pos="1 0 0">
 		<inertial pos="0 0 0" mass="2" diaginertia="0.0042 0.0042 0.0042"/>
@@ -180,6 +181,7 @@
     </body> -->
 
 </worldbody>
+
 
 
 <actuator>

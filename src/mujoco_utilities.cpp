@@ -20,8 +20,13 @@ extern mjtNum push_force[3];
 extern double impulse_start_time;
 extern bool impulse_scheduled;
 extern bool impulse_active;
+extern double impulse_force_newtons;
 extern bool ball_throw_scheduled;
 
+extern bool sim_window_close_requested;
+
+extern double screen_recording;
+extern double usbcam_recording;
 extern bool pause_sim;
 
 double rfz;
@@ -89,25 +94,29 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
     {
         if (act == GLFW_PRESS && key == GLFW_KEY_UP)
         {
-            push_force[0] = 30;
+            push_force[0] = impulse_force_newtons;
+            push_force[1] = 0;
             impulse_scheduled = true;
             impulse_start_time = d->time;
         }
         if (act == GLFW_PRESS && key == GLFW_KEY_DOWN)
         {
-            push_force[0] = -30;
+            push_force[0] = -impulse_force_newtons;
+            push_force[1] = 0;
             impulse_scheduled = true;
             impulse_start_time = d->time;
         }
         if (act == GLFW_PRESS && key == GLFW_KEY_LEFT)
         {
-            push_force[1] = 30;
+            push_force[1] = impulse_force_newtons;
+            push_force[0] = 0;
             impulse_scheduled = true;
             impulse_start_time = d->time;
         }
         if (act == GLFW_PRESS && key == GLFW_KEY_RIGHT)
         {
-            push_force[1] = -30;
+            push_force[1] = -impulse_force_newtons;
+            push_force[0] = 0;
             impulse_scheduled = true;
             impulse_start_time = d->time;
         }
@@ -116,6 +125,16 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
     {
         ball_throw_scheduled = true;
     }
+    if (act == GLFW_PRESS && key == GLFW_KEY_EQUAL)
+    {
+        impulse_force_newtons += 10.0;
+    }
+    if (act == GLFW_PRESS && key == GLFW_KEY_MINUS)
+    {
+        impulse_force_newtons -=10.0;
+    }
+    if(impulse_force_newtons > 30.0) impulse_force_newtons = 30.0;
+    if(impulse_force_newtons < 10.0) impulse_force_newtons = 10.0;
 
     if (act == GLFW_PRESS && key == GLFW_KEY_C)
     {
@@ -129,8 +148,20 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
 
 void window_close_callback(GLFWwindow* window)
 {
+    sim_window_close_requested = true;
     std::cout << "Closing the Simulation." << std::endl;
+    screen_recording = false;
+    usbcam_recording = false;
     system("killall -2 ffmpeg");
+    cout << endl << endl << "Please wait while the recordings are stopped." << endl;
+    for(int i=0;i<20;i++)
+    {
+        usleep(50000);
+        cout << ".";
+        cout.flush();
+    }
+    cout << endl;
+    cout << "Recording stopped." << endl;
 
     // Free MuJoCo resources
     mj_deleteData(d);
@@ -162,7 +193,7 @@ void mouse_move(GLFWwindow* window, double xpos, double ypos)
 
     last_xpos = xpos;
     last_ypos = ypos;
-    if(ypos < 100) return;
+    if(ypos < 300) return;
     if(sim_conf.en_realtime_plot && xpos < plot_width) return;
 
     if(showPlotMenu && xpos > (width-900)) return;
@@ -438,8 +469,8 @@ simConfig readSimConfigFromFile(const std::string& filename) {
         config.en_safety_monitor = jsonData["en_safety_monitor"];
         config.en_x_haptic_force = jsonData["en_x_haptic_force"];
         config.en_force_feedback = jsonData["en_force_feedback"];
-        config.en_human_control = jsonData["en_human_control"];
-        config.en_full_hmi_controls = jsonData["en_full_hmi_controls"];
+        config.en_human_control = false;
+        config.en_full_hmi_controls = true;
         config.en_live_variable_view = jsonData["en_live_variable_view"];
         config.en_ps4_controller = jsonData["en_ps4_controller"];
         en_v2_ctrl = config.en_v2_controller;
@@ -464,8 +495,8 @@ void writeSimConfigToFile(const simConfig& config, const std::string& filename) 
     jsonData["en_safety_monitor"] = config.en_safety_monitor;
     jsonData["en_x_haptic_force"] = config.en_x_haptic_force;
     jsonData["en_force_feedback"] = config.en_force_feedback;
-    jsonData["en_human_control"] = config.en_human_control;
-    jsonData["en_full_hmi_controls"] = config.en_full_hmi_controls;
+    // jsonData["en_human_control"] = config.en_human_control;
+    // jsonData["en_full_hmi_controls"] = config.en_full_hmi_controls;
     jsonData["en_live_variable_view"] = config.en_live_variable_view;
     jsonData["en_ps4_controller"] = config.en_ps4_controller;
 

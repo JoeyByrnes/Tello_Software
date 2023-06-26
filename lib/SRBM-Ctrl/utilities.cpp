@@ -577,7 +577,7 @@ void dash_utils::writeTrajPlannerDataToCsv(const Traj_planner_dyn_data& data, co
         file << "human_leg_joystick_pos_beg_step_x,human_leg_joystick_pos_beg_step_y,human_leg_joystick_pos_beg_step_z,";
         file << "sigma1H,left_in_contact,right_in_contact,left_off_gnd_cnt,right_off_gnd_cnt,";
         file << "x_HWRM,dx_HWRM,x_plus_HWRM_x,x_plus_HWRM_y,uk_HWRM,";
-        file << "st_beg_step_x,st_beg_step_y,st_beg_step_z" << newline;
+        file << "st_beg_step_x,st_beg_step_y,st_beg_step_z,y_LIP_offset" << newline;
         first_log_run_tpdd = false;
     }
     file << (data.stepping_flg ? 1 : 0) << delimiter
@@ -612,7 +612,8 @@ void dash_utils::writeTrajPlannerDataToCsv(const Traj_planner_dyn_data& data, co
          << data.uk_HWRM << delimiter
          << data.st_beg_step.x() << delimiter
          << data.st_beg_step.y() << delimiter
-         << data.st_beg_step.z() << newline;
+         << data.st_beg_step.z() << delimiter
+         << data.y_LIP_offset << newline;
 
     file.close();
 }

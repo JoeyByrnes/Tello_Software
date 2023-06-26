@@ -57,6 +57,8 @@ bool playback_changed = false;
 bool playback_chosen = false;
 bool auto_mode = false;
 
+bool sim_window_close_requested = false;
+
 bool cd_shared_data_ready = false;
 
 extern double FxH_hmi_out, FxH_spring_out, FyH_hmi_out;
@@ -65,9 +67,11 @@ extern double FxH_hmi_out, FxH_spring_out, FyH_hmi_out;
 bool log_data_ready = false;
 bool sim_step_completed = false;
 std::string log_folder;
-VectorXd x_out, u_out, q_out, qd_out, tau_out, tau_ext_out, lfv_out, lfdv_out,lfv_comm_out,lfdv_comm_out, t_n_FSM_out;
+VectorXd x_out, u_out, q_out, qd_out,full_tau_out, tau_out, tau_ext_out, lfv_out, lfdv_out,lfv_comm_out,lfdv_comm_out, t_n_FSM_out, impulse_out, meas_grf_out;
+double last_log_time = -1;
 Human_dyn_data hdd_out;
 Traj_planner_dyn_data tpdd_out;
+
 
 extern RoboDesignLab::DynamicRobot* tello;
 inekf::RobotState filter_state;
@@ -169,7 +173,7 @@ bool impulse_scheduled = false;
 bool impulse_active = false;
 double impulse_start_time = 0;
 bool ball_throw_scheduled = false;
-
+double impulse_force_newtons = 10;
 
 bool sim_was_restarted = false;
 extern int simulation_mode;
@@ -1381,15 +1385,12 @@ void* mujoco_Update_1KHz( void * arg )
         if(d->time - impulse_start_time > 0.1 && impulse_active)
         {
             mju_zero(d->qfrc_applied, m->nv);
+            push_force[0] = 0;
+            push_force[1] = 0;
+            push_force[2] = 0;
             impulse_active = false;
             // cout << "Impulse ended. ";
             // dash_utils::print_timer();
-        }
-
-        if(ball_throw_scheduled)
-        {
-            ball_throw_scheduled = false;
-
         }
 
         pthread_mutex_unlock(&sim_mutex);
@@ -1439,9 +1440,14 @@ void* mujoco_Update_1KHz( void * arg )
         // logging: 
         if(!pause_sim)
         {
+            VectorXd full_stance_swing_joint_torques;
+            pthread_mutex_lock(&tau_share_mutex);
+            full_stance_swing_joint_torques = tau_shared;
+            pthread_mutex_unlock(&tau_share_mutex);
             x_out = telloLocal->controller->get_x();
             u_out = telloLocal->controller->get_GRFs();
             tau_out = telloLocal->controller->get_joint_torques();
+            full_tau_out = full_stance_swing_joint_torques;
             tau_ext_out = telloLocal->controller->get_tau_ext();
 
             q_out = dash_utils::flatten(telloLocal->controller->get_q());
@@ -1457,6 +1463,11 @@ void* mujoco_Update_1KHz( void * arg )
 
             hdd_out = telloLocal->controller->get_human_dyn_data();
             tpdd_out = telloLocal->controller->get_traj_planner_dyn_data();
+
+            impulse_out = Vector3d(push_force[0], push_force[1], push_force[2]);
+            VectorXd meas_grf(4);
+            meas_grf << telloLocal->_GRFs.right_front, telloLocal->_GRFs.right_back, telloLocal->_GRFs.left_front, telloLocal->_GRFs.left_back;
+            meas_grf_out = meas_grf;
             // cout << "xH_ref: " << tpdd_out.x_HWRM << "   dxH_ref: " << tpdd_out.dx_HWRM << endl;
             log_data_ready = true;
         }
@@ -1545,12 +1556,12 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::Separator();
             ImGui::PushStyleColor(ImGuiCol_Separator,grey5);
             ImGui::Separator();
-            std::string human_label;
-            if(sim_conf.en_playback_mode) human_label = " " ICON_FA_CHILD "  Enable HMI Playback   ";
-            else human_label = " " ICON_FA_CHILD "  Enable HMI Communication   ";
-            ImGui::Checkbox(human_label.c_str(), &(sim_conf.en_human_control));
+            // std::string human_label;
+            // if(sim_conf.en_playback_mode) human_label = " " ICON_FA_CHILD "  Enable HMI Playback   ";
+            // else human_label = " " ICON_FA_CHILD "  Enable HMI Communication   ";
+            // ImGui::Checkbox(human_label.c_str(), &(sim_conf.en_human_control));
             // tello->controller->enable_human_dyn_data = sim_conf.en_human_control;
-            ImGui::Separator();  
+            // ImGui::Separator();  
             ImGui::Checkbox(" " ICON_FA_SIGN_IN_ALT "  Enable X Haptic Force   ", &(sim_conf.en_x_haptic_force));
             ImGui::Separator();
             ImGui::Checkbox(" " ICON_FA_ARROWS_ALT_H "  Enable Force Feedback   ", &sim_conf.en_force_feedback);      // Edit bools storing our window open/close state
@@ -1575,8 +1586,8 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::Separator();
             ImGui::Checkbox(" " ICON_FA_LAPTOP_CODE "  Show Live Variable View  ", &(sim_conf.en_live_variable_view));
             ImGui::Separator();
-            ImGui::Checkbox(" " ICON_FA_SLIDERS_H "  Show Full HMI Controls   ", &(sim_conf.en_full_hmi_controls));
-            ImGui::Separator();
+            // ImGui::Checkbox(" " ICON_FA_SLIDERS_H "  Show Full HMI Controls   ", &(sim_conf.en_full_hmi_controls));
+            // ImGui::Separator();
             // ImGui::Checkbox(" " ICON_FA_CHART_LINE "  Display Realtime Plot   ", &(sim_conf.en_realtime_plot));
             // ImGui::Separator();
             ImGui::PopStyleColor();
@@ -1749,9 +1760,9 @@ void* mujoco_Update_1KHz( void * arg )
                 pause_sim = true;
                 master_gain = 0.0;
                 tello->controller->disable_human_ctrl();
-                // screen_recording = false;
-                // usbcam_recording = false;
-                // system("killall -2 ffmpeg");
+                screen_recording = false;
+                usbcam_recording = false;
+                system("killall -2 ffmpeg");
                 
                 recording_in_progress = false;
                 usb_recording_in_progress = false;
@@ -2042,23 +2053,22 @@ void* mujoco_Update_1KHz( void * arg )
         }
         if(sim_conf.en_live_variable_view)
         {
-            ImGui::SetNextWindowSize(ImVec2(900,500));
+            ImGui::SetNextWindowSize(ImVec2(900,550));
             ImGui::SetNextWindowPos(ImVec2(50, (35+60*screenScale)+50));
             ImGui::Begin("DebugView",nullptr,ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize);
             
             ImGui::Text(" Live Variable View:");
             ImGui::Separator();
-            std::string FSM = std::to_string(telloLocal->controller->get_FSM());
-            std::string next_SSP = std::to_string(telloLocal->controller->get_traj_planner_dyn_data().next_SSP);
-            std::string x_pos = std::to_string(telloLocal->controller->get_x()(0));
-            std::string x_vel = std::to_string(telloLocal->controller->get_x()(3));
-            ImGui::Text("FSM: %s", FSM.c_str());
+
+            ImGui::Text("FSM: %d", telloLocal->controller->get_FSM());
             ImGui::Separator();
-            ImGui::Text("Next SSP: %s", next_SSP.c_str());
+            ImGui::Text("Next SSP: %d", telloLocal->controller->get_traj_planner_dyn_data().next_SSP);
             ImGui::Separator();
-            ImGui::Text("X Velocity: %s", x_vel.c_str());
+            ImGui::Text("X Velocity: %.2fm/s", telloLocal->controller->get_x()(3));
             ImGui::Separator();
-            ImGui::Text("X Position: %s", x_pos.c_str());
+            ImGui::Text("X Position: %.2fm", telloLocal->controller->get_x()(0));
+            ImGui::Separator();
+            ImGui::Text("Impulse Force: %dN", (int)impulse_force_newtons);
             ImGui::Separator();
             // ImGui::Text("LF: %s \tRF %s", grf_lf.c_str(),grf_rf.c_str());
             // ImGui::Text("LB: %s \tRB %s", grf_lb.c_str(),grf_rb.c_str());
@@ -2184,10 +2194,13 @@ void* mujoco_Update_1KHz( void * arg )
 		handle_end_of_periodic_task(next,period);
         
 	}
+    screen_recording = false;
+    usbcam_recording = false;
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
     system("killall -2 ffmpeg");
     system("pkill -f -9 ffmpeg");
+    usleep(100000);
     tcsetattr(STDIN_FILENO, TCSANOW, &originalSettings);
 	// //free visualization storage
     // mjv_freeScene(&scn);
@@ -2343,17 +2356,17 @@ void* sim_step_task( void * arg )
         // dash_utils::print_timer();
 		handle_end_of_periodic_task(next,period);
 	}
-    //free visualization storage
-    // mjv_freeScene(&scn);
-    // mjr_freeContext(&con);
+    // free visualization storage
+    mjv_freeScene(&scn);
+    mjr_freeContext(&con);
 
-    // // free MuJoCo model and data, deactivate
-    // mj_deleteData(d);
-    // mj_deleteModel(m);
-    // // mj_deleteData(d_shared);
-    // // mj_deleteModel(m_shared);
-    // mj_deactivate();
-
+    // free MuJoCo model and data, deactivate
+    mj_deleteData(d);
+    mj_deleteModel(m);
+    // mj_deleteData(d_shared);
+    // mj_deleteModel(m_shared);
+    mj_deactivate();
+    usleep(2000000);
     exit(0);
     return  0;
 }
@@ -2612,6 +2625,7 @@ void* Human_Playback( void * arg )
    
     return  0;
 }
+
 double fY = 0;
 void* logging( void * arg )
 {
@@ -2630,25 +2644,34 @@ void* logging( void * arg )
         while(!log_data_ready || !sim_step_completed) usleep(50);
         log_data_ready = false;
         sim_step_completed = false;
-        // logging:
-        dash_utils::writeVectorToCsv(x_out,"x.csv");
-        dash_utils::writeVectorToCsv(u_out,"u.csv");
-        dash_utils::writeVectorToCsv(tau_out,"tau.csv");
-        dash_utils::writeVectorToCsv(tau_ext_out,"tau_ext.csv");
 
-        dash_utils::writeVectorToCsv(q_out,"q.csv");
-        dash_utils::writeVectorToCsv(qd_out,"qd.csv");
+        if(t_n_FSM_out(0) != last_log_time){
+            last_log_time = t_n_FSM_out(0);
+            // logging:
+            dash_utils::writeVectorToCsv(x_out,"x.csv");
+            dash_utils::writeVectorToCsv(u_out,"u.csv");
+            dash_utils::writeVectorToCsv(tau_out,"tau.csv");
+            dash_utils::writeVectorToCsv(full_tau_out,"full_sw_st_tau.csv");
+            dash_utils::writeVectorToCsv(tau_ext_out,"tau_ext.csv");
 
-        dash_utils::writeVectorToCsv(lfv_out,"lfv.csv");
-        dash_utils::writeVectorToCsv(lfdv_out,"lfdv.csv");
+            dash_utils::writeVectorToCsv(q_out,"q.csv");
+            dash_utils::writeVectorToCsv(qd_out,"qd.csv");
 
-        dash_utils::writeVectorToCsv(lfv_comm_out,"lfv_comm.csv");
-        dash_utils::writeVectorToCsv(lfdv_comm_out,"lfdv_comm.csv");
+            dash_utils::writeVectorToCsv(lfv_out,"lfv.csv");
+            dash_utils::writeVectorToCsv(lfdv_out,"lfdv.csv");
 
-        dash_utils::writeVectorToCsv(t_n_FSM_out,"t_and_FSM.csv");
+            dash_utils::writeVectorToCsv(lfv_comm_out,"lfv_comm.csv");
+            dash_utils::writeVectorToCsv(lfdv_comm_out,"lfdv_comm.csv");
 
-        dash_utils::writeHumanDynDataToCsv(hdd_out,"human_dyn_data.csv");
-        dash_utils::writeTrajPlannerDataToCsv(tpdd_out,"traj_planner_dyn_data.csv");
+            dash_utils::writeVectorToCsv(t_n_FSM_out,"t_and_FSM.csv");
+
+            dash_utils::writeHumanDynDataToCsv(hdd_out,"human_dyn_data.csv");
+            dash_utils::writeTrajPlannerDataToCsv(tpdd_out,"traj_planner_dyn_data.csv");
+
+            dash_utils::writeVectorToCsv(impulse_out,"external_forces.csv");
+
+            dash_utils::writeVectorToCsv(meas_grf_out,"meas_grf_out.csv");
+        }
         // end logging
         usleep(50);
 		// handle_end_of_periodic_task(next,period);

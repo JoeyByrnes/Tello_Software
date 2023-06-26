@@ -162,6 +162,9 @@ struct sockaddr_in servaddr_tx;
 
 struct termios originalSettings;
 
+extern double screen_recording;
+extern double usbcam_recording;
+
 void signal_callback_handler(int signum);
 
 void handle_UDP_Commands(){
@@ -866,6 +869,8 @@ static void* update_1kHz( void * arg )
 
 // This callback handles CTRL+C and Segfaults
 void signal_callback_handler(int signum){
+	screen_recording = false;
+	usbcam_recording = false;
 	system("killall -2 ffmpeg");
 	tcsetattr(STDIN_FILENO, TCSANOW, &originalSettings);
 	Human_dyn_data hdd;

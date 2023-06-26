@@ -8,20 +8,20 @@
       "Kd_zR": 5000,
       
       "Kp_phiR": 30000,
-      "Kd_phiR": 200,
+      "Kd_phiR": 500,
       "Kp_thetaR": 20000,
       "Kd_thetaR": 200,
       "Kp_psiR": 20000,
       "Kd_psiR": 200,
       
-      "Step_Period": 0.250,
-      "Step_Height": 0.025,
+      "Step_Period": 0.2,
+      "Step_Height": 0.03,
       "Walking_Speed": 0.5,
       
       "Kx_DCM_mult": 15.0,
       "Ky_DCM_mult": 15.0,
 
-      "KxDCMH": 3.0,
+      "KxDCMH": 1.5,
       "T_DSP"  : 0.2,
       "xDCMH_deadband": 0.025
     },
@@ -56,7 +56,7 @@
       "Knee_Kp": 2500,
       "Knee_Kd": 4,
       
-      "Ankle_Kp": 800,
-      "Ankle_Kd": 4
+      "Ankle_Kp": 1000,
+      "Ankle_Kd": 2
     }
   }

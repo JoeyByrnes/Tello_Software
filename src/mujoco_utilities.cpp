@@ -22,6 +22,7 @@ extern bool impulse_scheduled;
 extern bool impulse_active;
 extern double impulse_force_newtons;
 extern bool ball_throw_scheduled;
+extern bool start_target_motion;
 
 extern bool sim_window_close_requested;
 
@@ -120,6 +121,10 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
             impulse_scheduled = true;
             impulse_start_time = d->time;
         }
+    }
+    if (act == GLFW_PRESS && key == GLFW_KEY_S)
+    {
+        start_target_motion = true;
     }
     if (act == GLFW_PRESS && key == GLFW_KEY_B)
     {

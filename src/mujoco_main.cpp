@@ -5,6 +5,7 @@
 #include "state_estimator.h"
 #include "utilities.h"
 #include <X11/Xlib.h>
+#include <X11/Xatom.h>
 #include <regex>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -56,6 +57,7 @@ bool showTuningMenu = false;
 bool playback_changed = false;
 bool playback_chosen = false;
 bool auto_mode = false;
+bool start_target_motion = false;
 
 bool sim_window_close_requested = false;
 
@@ -67,7 +69,9 @@ extern double FxH_hmi_out, FxH_spring_out, FyH_hmi_out;
 bool log_data_ready = false;
 bool sim_step_completed = false;
 std::string log_folder;
-VectorXd x_out, u_out, q_out, qd_out,full_tau_out, tau_out, tau_ext_out, lfv_out, lfdv_out,lfv_comm_out,lfdv_comm_out, t_n_FSM_out, impulse_out, meas_grf_out;
+VectorXd x_out, u_out, q_out, qd_out,full_tau_out, tau_out, tau_ext_out, lfv_out, lfdv_out,lfv_comm_out,lfdv_comm_out, t_n_FSM_out, impulse_out, meas_grf_out, xDCM_out;
+VectorXd target_pos_out = Vector3d(0,0,0);
+VectorXd target_vel_out = Vector3d(0,0,0);
 double last_log_time = -1;
 Human_dyn_data hdd_out;
 Traj_planner_dyn_data tpdd_out;
@@ -1436,10 +1440,31 @@ void* mujoco_Update_1KHz( void * arg )
         // }
         //tau_shared is ready to send back to sim thread here:
 
-
         // logging: 
         if(!pause_sim)
         {
+            Traj_planner_dyn_data tpdd = telloLocal->controller->get_traj_planner_dyn_data();
+            SRB_Params srb_params = telloLocal->controller->get_SRB_params();
+            Human_params human_params = telloLocal->controller->get_human_params();
+            int FSM = telloLocal->controller->get_FSM();
+            double xR = telloLocal->controller->get_x()(0);
+            double dxR = telloLocal->controller->get_x()(3);
+            double pxR_beg_step = tpdd.st_beg_step(0);
+            double xRlocal = xR - pxR_beg_step;
+            double hR = srb_params.hLIP;
+            double g = srb_params.g;
+            double x_HWRM = tpdd.x_HWRM;
+            double dx_HWRM = tpdd.dx_HWRM;
+            double hH = human_params.hLIP;
+
+            double wR = std::sqrt(g / hR);
+            double wH = std::sqrt(g / hH);
+
+            double xDCMRlocal = xRlocal + (dxR/wR);
+
+            double xDCMHWRM = x_HWRM + (dx_HWRM/wH);
+            Vector2d xDCM(xDCMHWRM/hH,xDCMRlocal/hR);
+
             VectorXd full_stance_swing_joint_torques;
             pthread_mutex_lock(&tau_share_mutex);
             full_stance_swing_joint_torques = tau_shared;
@@ -1468,6 +1493,8 @@ void* mujoco_Update_1KHz( void * arg )
             VectorXd meas_grf(4);
             meas_grf << telloLocal->_GRFs.right_front, telloLocal->_GRFs.right_back, telloLocal->_GRFs.left_front, telloLocal->_GRFs.left_back;
             meas_grf_out = meas_grf;
+
+            xDCM_out = xDCM;
             // cout << "xH_ref: " << tpdd_out.x_HWRM << "   dxH_ref: " << tpdd_out.dx_HWRM << endl;
             log_data_ready = true;
         }
@@ -2302,6 +2329,20 @@ void* sim_step_task( void * arg )
         {
             if(simulation_mode == 1)
             {
+                if(start_target_motion)
+                {
+                    int mocapBodyIndex = mj_name2id(m, mjOBJ_BODY, "target");
+                    // Set the new position of the mocap body
+                    double delta_x = 0.0001;
+                    if(d->mocap_pos[0] > 2.0) delta_x = 0.0002;
+                    if(d->mocap_pos[0] > 4.0) delta_x = 0.0003;
+                    if(d->mocap_pos[0] > 6.0) delta_x = 0.0;
+                    d->mocap_pos[0] = d->mocap_pos[0] + delta_x;  // Increment by 10mm (0.01m) in x-axis
+
+                    target_pos_out = Vector3d(d->mocap_pos[0],d->mocap_pos[1],d->mocap_pos[2]);
+                    target_vel_out = Vector3d(delta_x*1000.0,0,0);
+                }
+
                 // dash_utils::print_timer();
                 // dash_utils::start_timer();
                 VectorXd tau_local;
@@ -2671,6 +2712,13 @@ void* logging( void * arg )
             dash_utils::writeVectorToCsv(impulse_out,"external_forces.csv");
 
             dash_utils::writeVectorToCsv(meas_grf_out,"meas_grf_out.csv");
+
+            dash_utils::writeVectorToCsv(xDCM_out,"xDCM.csv");
+
+            VectorXd target_data(6);
+            target_data << target_pos_out, target_vel_out;
+            dash_utils::writeVectorToCsv(target_data,"target_pos.csv");
+            
         }
         // end logging
         usleep(50);

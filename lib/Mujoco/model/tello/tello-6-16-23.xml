@@ -172,13 +172,9 @@
 	</body>	
 	
 
-	<!-- <body name="projectile" pos="1 0 0">
-		<inertial pos="0 0 0" mass="2" diaginertia="0.0042 0.0042 0.0042"/>
-        <joint axis = "1 0 0" pos = "0 0 0" name = "ball_x" type = "slide" limited = "false" damping="0"/>
-		<joint axis = "0 1 0" pos = "0 0 0" name = "ball_y" type = "slide" limited = "false" damping="0"/>
-		<joint axis = "0 0 1" pos = "0 0 0" name = "ball_z" type = "slide" limited = "false" damping="0"/>
-      <geom name="ball" type="sphere" size="0.10" rgba="1 0 0 1" class='collision'/>
-    </body> -->
+	<body name="target" mocap="true" pos="0 0 -0.58" >
+        <geom name="box" type="box" size="0.2 0.25 0.001" rgba="0.2 0.2 1 0.5" contype='0'/>
+    </body>
 
 </worldbody>
 

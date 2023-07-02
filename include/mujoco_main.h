@@ -64,6 +64,7 @@ void* logging( void * arg );
 void* sim_step_task( void * arg );
 void* screenRecord( void * arg );
 void* usbCamRecord( void * arg );
+void* Animate_Log( void * arg );
 
 struct userProfile {
     std::string name;

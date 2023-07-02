@@ -488,6 +488,8 @@ void* rx_UDP( void * arg ){
 		human_dyn_data.FyH_hmi = FyH_hmi_val;
 		human_dyn_data.FxH_spring = FxH_spring_val;
 
+		tello->controller->updateStepZHistoryL(fzH_Lval);
+		tello->controller->updateStepZHistoryL(fzH_Rval);
 		
 		// =======================================================================================================
 

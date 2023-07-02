@@ -38,6 +38,9 @@
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/imGUI",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/imGUI/fonts/IconFont",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/imPlot",
+                "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/step_z_curve_fit",
+                "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/step_z_curve_fit/interface",
+                "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/matlab_include",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Tello_IMU",
                 ""
             ],
@@ -74,6 +77,9 @@
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/imGUI",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/imGUI/fonts/IconFont",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/imPlot",
+                    "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/step_z_curve_fit",
+                    "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/step_z_curve_fit/interface",
+                    "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/matlab_include",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Tello_IMU",
                     ""
                 ]

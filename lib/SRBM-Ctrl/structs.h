@@ -155,6 +155,15 @@ struct Traj_planner_dyn_data
     double uk_HWRM;      
     Vector3d st_beg_step;   
     double y_LIP_offset;
+    double step_z_offset_L = 0.016;
+    double step_z_offset_R = 0.003;
+    int human_FSM = 0;
+    int human_next_SSP = 1;
+    double T_step_predicted;
+    double AH_step_predicted;
+    int curr_SSP_sample_count;
+    VectorXd step_z_history_L = VectorXd::Zero(1000);
+    VectorXd step_z_history_R = VectorXd::Zero(1000);
 };
 
 struct Teleop_Ref {

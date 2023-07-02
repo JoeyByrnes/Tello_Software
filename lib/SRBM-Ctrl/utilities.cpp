@@ -577,7 +577,7 @@ void dash_utils::writeTrajPlannerDataToCsv(const Traj_planner_dyn_data& data, co
         file << "human_leg_joystick_pos_beg_step_x,human_leg_joystick_pos_beg_step_y,human_leg_joystick_pos_beg_step_z,";
         file << "sigma1H,left_in_contact,right_in_contact,left_off_gnd_cnt,right_off_gnd_cnt,";
         file << "x_HWRM,dx_HWRM,x_plus_HWRM_x,x_plus_HWRM_y,uk_HWRM,";
-        file << "st_beg_step_x,st_beg_step_y,st_beg_step_z,y_LIP_offset" << newline;
+        file << "st_beg_step_x,st_beg_step_y,st_beg_step_z,y_LIP_offset,step_z_offset_R,step_z_offset_L,human_FSM,AH_predicted,T_predicted" << newline;
         first_log_run_tpdd = false;
     }
     file << (data.stepping_flg ? 1 : 0) << delimiter
@@ -613,7 +613,12 @@ void dash_utils::writeTrajPlannerDataToCsv(const Traj_planner_dyn_data& data, co
          << data.st_beg_step.x() << delimiter
          << data.st_beg_step.y() << delimiter
          << data.st_beg_step.z() << delimiter
-         << data.y_LIP_offset << newline;
+         << data.y_LIP_offset << delimiter
+         << data.step_z_offset_R << delimiter
+         << data.step_z_offset_L << delimiter
+         << data.human_FSM << delimiter
+         << data.AH_step_predicted << delimiter
+         << data.T_step_predicted << newline;
 
     file.close();
 }
@@ -857,6 +862,61 @@ std::vector<Vector2d> dash_utils::readTimeDataFromFile(const std::string& filena
         file.close();
         return dataVector;
 
+}
+std::vector<Eigen::VectorXd> dash_utils::readVectorXdfromCSV(const std::string& filename) {
+    std::ifstream file(filename);
+    std::vector<Eigen::VectorXd> dataVector;
+
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file for reading: " << filename << std::endl;
+        return dataVector; // Return empty vector on failure
+    }
+
+    std::string line;
+    std::getline(file, line); // throw away first line
+
+    if (line.empty()) {
+        file.close();
+        return dataVector; // Return empty vector if file is empty
+    }
+
+    std::stringstream ss(line);
+    std::string value;
+    std::vector<double> values;
+
+    while (std::getline(ss, value, ',')) {
+        values.push_back(std::stod(value));
+    }
+
+    const int numColumns = values.size();
+    Eigen::VectorXd data(numColumns);
+    for (int i = 0; i < numColumns; ++i) {
+        data(i) = values[i];
+    }
+    dataVector.push_back(data);
+
+    while (std::getline(file, line)) {
+        std::stringstream ss(line);
+        values.clear();
+
+        while (std::getline(ss, value, ',')) {
+            values.push_back(std::stod(value));
+        }
+
+        if (values.size() != numColumns) {
+            std::cerr << "Warning: Skipping a line with an inconsistent number of columns." << std::endl;
+            continue;
+        }
+
+        Eigen::VectorXd data(numColumns);
+        for (int i = 0; i < numColumns; ++i) {
+            data(i) = values[i];
+        }
+        dataVector.push_back(data);
+    }
+
+    file.close();
+    return dataVector;
 }
 
 // Function to convert foot position in world frame to hip frame
@@ -1407,4 +1467,29 @@ Human_dyn_data dash_utils::smooth_human_dyn_data(Human_dyn_data hdd, Human_dyn_d
     }
 
     return hdd_out;
+}
+
+void dash_utils::updateAndShift(Eigen::VectorXd& vector, double sample) 
+{
+    vector.head(vector.size() - 1) = vector.tail(vector.size() - 1).eval();
+    vector(vector.size() - 1) = sample;
+}
+
+coder::array<double, 2U> dash_utils::eigenVectorToCoderArray(const Eigen::VectorXd& eigenVector) 
+{
+    coder::array<double, 2U> result;
+    // Set the size of the array.
+    // Change this size to the value that the application requires.
+    result.set_size(1, eigenVector.size());
+    int i = 0;
+    // Loop over the array to initialize each element.
+    for (int idx0{0}; idx0 < 1; idx0++) {
+        for (int idx1{0}; idx1 < result.size(1); idx1++) {
+            // Set the value of the array element.
+            // Change this value to the value that the application requires.
+            result[idx1] = eigenVector(i);
+            i++;
+        }
+    }
+    return result;
 }

@@ -23,6 +23,7 @@ extern bool impulse_active;
 extern double impulse_force_newtons;
 extern bool ball_throw_scheduled;
 extern bool start_target_motion;
+extern bool ramp_toggle;
 
 extern bool sim_window_close_requested;
 
@@ -122,9 +123,24 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
             impulse_start_time = d->time;
         }
     }
+    if (act == GLFW_PRESS && key == GLFW_KEY_H)
+    {
+        d->mocap_pos[2] = -1;
+        mj_kinematics(m,d);
+    }
     if (act == GLFW_PRESS && key == GLFW_KEY_S)
     {
+        d->mocap_pos[2] = -0.58;
         start_target_motion = true;
+         mj_kinematics(m,d);
+    }
+    if (act == GLFW_PRESS && key == GLFW_KEY_R)
+    {
+        ramp_toggle = true;
+    }
+    if (act == GLFW_PRESS && key == GLFW_KEY_T)
+    {
+        ramp_toggle = false;
     }
     if (act == GLFW_PRESS && key == GLFW_KEY_B)
     {

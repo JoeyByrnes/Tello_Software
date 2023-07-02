@@ -1,0 +1,13 @@
+/* Copyright 2022 The MathWorks, Inc. */
+#ifndef LIBMWCOVERAGE_UTIL_HPP
+#define LIBMWCOVERAGE_UTIL_HPP
+
+#if defined(BUILDING_LIBMWCOVERAGECODEGEN)
+/* For DLL_EXPORT_SYM and EXTERN_C */
+#include "package.h"
+#define LIBMWCOVERAGE_API DLL_EXPORT_SYM
+#else
+#define LIBMWCOVERAGE_API
+#endif
+
+#endif // LIBMWCOVERAGE_UTIL_HPP

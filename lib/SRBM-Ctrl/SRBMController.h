@@ -51,6 +51,13 @@ class SRBMController {
     // Getter and setter functions for Traj_planner_dyn_data
     Traj_planner_dyn_data get_traj_planner_dyn_data() const { return traj_planner_dyn_data; }
     void set_traj_planner_dyn_data(const Traj_planner_dyn_data& data) { traj_planner_dyn_data = data; }
+    void set_traj_planner_step_data(const Traj_planner_dyn_data& data) 
+    { 
+      traj_planner_dyn_data.step_z_history_L = data.step_z_history_L; 
+      traj_planner_dyn_data.step_z_history_R = data.step_z_history_R; 
+      traj_planner_dyn_data.curr_SSP_sample_count = data.curr_SSP_sample_count;
+    }
+
 
     // Getter and setter functions for t
     double get_time() const { return t; }
@@ -184,6 +191,34 @@ class SRBMController {
     // Getter function for _dpc
     Eigen::Vector3d get_dpc() const {return _dpc;}
 
+    // Getter function for step_z_history_L
+    Eigen::VectorXd getStepZHistoryL() const { return step_z_history_L;}
+
+    // Setter function for step_z_history_L
+    void setStepZHistoryL(const Eigen::VectorXd& newStepZHistoryL) {step_z_history_L = newStepZHistoryL;}
+    void updateStepZHistoryL(const double val)
+    {
+      dash_utils::updateAndShift(step_z_history_L,val);
+    }
+
+    // Getter function for step_z_history_R
+    Eigen::VectorXd getStepZHistoryR() const {return step_z_history_R;}
+
+    // Setter function for step_z_history_R
+    void setStepZHistoryR(const Eigen::VectorXd& newStepZHistoryR) {step_z_history_R = newStepZHistoryR;}
+    void updateStepZHistoryR(const double val) 
+    {
+      dash_utils::updateAndShift(step_z_history_R,val);
+    }
+
+    Eigen::VectorXd getStepTimeHistory() const {return step_time_history;}
+    void updateStepTimeHistory(const double val) 
+    {
+      dash_utils::updateAndShift(step_time_history,val);
+    }
+
+
+
     // Duration measurement functions for debugging
     void start_timer();
     void end_timer();
@@ -260,6 +295,10 @@ class SRBMController {
     int simulation_mode = 1;
 
     bool using_human_playback = false;
+
+    VectorXd step_z_history_L = VectorXd::Zero(1000); // last one second of step z data
+    VectorXd step_z_history_R = VectorXd::Zero(1000);
+    VectorXd step_time_history = VectorXd::Zero(1000);
 
 
 };

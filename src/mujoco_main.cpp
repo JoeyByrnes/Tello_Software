@@ -5,7 +5,6 @@
 #include "state_estimator.h"
 #include "utilities.h"
 #include <X11/Xlib.h>
-#include <X11/Xatom.h>
 #include <regex>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -58,6 +57,7 @@ bool playback_changed = false;
 bool playback_chosen = false;
 bool auto_mode = false;
 bool start_target_motion = false;
+bool ramp_toggle = false;
 
 bool sim_window_close_requested = false;
 
@@ -683,7 +683,7 @@ void TELLO_locomotion_ctrl(ctrlData cd)
     }
     else
     {
-        
+
         // VectorXd tau = controller->update(estimated_pc, estimated_dpc, EA_curr, imu_gyro,q ,qd ,time);
         // MatrixXd lfv_comm = controller->get_lfv_comm_world();
         // MatrixXd lfdv_comm = controller->get_lfdv_comm_world();
@@ -1126,6 +1126,23 @@ void* tello_controller( void * arg )
             // cout << "CoM XYZ:" << tello->controller->get_x().head(3).transpose() << endl;
             //cout << "q right:" << tello->controller->get_q().row(0) << endl;
         }
+        // if(simulation_mode == 3)
+        // {
+        //     if(!pause_sim){
+        //         //mjtNum simstart = d->time;
+        //         //while (d->time - simstart < 1.0 / 60.0){
+        //             // d->time = d->time + elapsed;
+                                       
+        //             // dash_utils::start_timer();
+        //             //TELLO_locomotion_ctrl(cd_local);
+        //             // dash_utils::print_timer();
+        //             set_mujoco_state(tello->controller->get_x());
+        //             // mj_kinematics(m,d);
+        //         //}
+        //     } 
+        //     // cout << "CoM XYZ:" << tello->controller->get_x().head(3).transpose() << endl;
+        //     //cout << "q right:" << tello->controller->get_q().row(0) << endl;
+        // }
         pthread_mutex_unlock(&tello_ctrl_mutex);
         
         handle_end_of_periodic_task(next, period);
@@ -1183,39 +1200,23 @@ void* mujoco_Update_1KHz( void * arg )
 
     // BEGIN SETUP CODE FOR MUJOCO ======================================================================
     
-	// activate software
-    // mj_activate("./lib/Mujoco/mjkey.txt");
-    // mj_activate("tello_files/mjkey.txt");
-    if (std::filesystem::is_directory("/home/tello")) {
-        //std::cout << "The directory /home/tello exists!" << std::endl;
-        mj_activate("tello_files/mjkey.txt");
-        if(simulation_mode == 1)
-        {
-            m = mj_loadXML("./tello_files/tello-massive-color.xml", NULL, error, 1000);
-            // m_shared = mj_loadXML("./tello_files/tello-massive-color.xml", NULL, error, 1000);
-        }
-        else
-        {
-            m = mj_loadXML("./tello_files/tello-massive-blue-grey.xml", NULL, error, 1000);
-            // m_shared = mj_loadXML("./tello_files/tello-massive-blue-grey.xml", NULL, error, 1000);
-        }
+    mj_activate("./lib/Mujoco/mjkey.txt");
+    if(simulation_mode == 1)
+    {
+        m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-6-16-23.xml", NULL, error, 1000);
+        // m_shared = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-color.xml", NULL, error, 1000);
     }
-    else {
-        //std::cout << "The directory /home/tello does not exist!" << std::endl;
-        mj_activate("./lib/Mujoco/mjkey.txt");
-        if(simulation_mode == 1)
-        {
-            m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-6-16-23.xml", NULL, error, 1000);
-            // m_shared = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-color.xml", NULL, error, 1000);
-        }
-        else
-        {
-            m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-blue-grey.xml", NULL, error, 1000);
-            // m_shared = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-blue-grey.xml", NULL, error, 1000);
-        }
-        
+    else if(simulation_mode == 3)
+    {
+        m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-6-16-23-animation.xml", NULL, error, 1000);
+        // m_shared = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-color.xml", NULL, error, 1000);
     }
-    // m = mj_loadXML("tello_files/tello-massive-color.xml", NULL, error, 1000);
+    else
+    {
+        m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-blue-grey.xml", NULL, error, 1000);
+        // m_shared = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-blue-grey.xml", NULL, error, 1000);
+    }
+
 	if (!m)
     {
         printf('r',"%s\n", error);
@@ -2087,16 +2088,16 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::Text(" Live Variable View:");
             ImGui::Separator();
 
-            ImGui::Text("FSM: %d", telloLocal->controller->get_FSM());
+            // ImGui::Text("FSM: %d", telloLocal->controller->get_FSM());
+            // ImGui::Separator();
+            // ImGui::Text("Next SSP: %d", telloLocal->controller->get_traj_planner_dyn_data().next_SSP);
+            // ImGui::Separator();
+            ImGui::Text("CoM X Velocity: %.2fm/s", telloLocal->controller->get_x()(3));
             ImGui::Separator();
-            ImGui::Text("Next SSP: %d", telloLocal->controller->get_traj_planner_dyn_data().next_SSP);
+            ImGui::Text("CoM X Position: %.2fm", telloLocal->controller->get_x()(0));
             ImGui::Separator();
-            ImGui::Text("X Velocity: %.2fm/s", telloLocal->controller->get_x()(3));
-            ImGui::Separator();
-            ImGui::Text("X Position: %.2fm", telloLocal->controller->get_x()(0));
-            ImGui::Separator();
-            ImGui::Text("Impulse Force: %dN", (int)impulse_force_newtons);
-            ImGui::Separator();
+            // ImGui::Text("Impulse Force: %dN", (int)impulse_force_newtons);
+            // ImGui::Separator();
             // ImGui::Text("LF: %s \tRF %s", grf_lf.c_str(),grf_rf.c_str());
             // ImGui::Text("LB: %s \tRB %s", grf_lb.c_str(),grf_rb.c_str());
             // VectorXd u(12);
@@ -2305,6 +2306,8 @@ void* sim_step_task( void * arg )
     struct timespec next;
     clock_gettime(CLOCK_MONOTONIC, &next);
 
+    // int mocapBodyIndex = mj_name2id(m, mjOBJ_BODY, "target");
+
     while(true)
     {
         handle_start_of_periodic_task(next);
@@ -2331,13 +2334,15 @@ void* sim_step_task( void * arg )
             {
                 if(start_target_motion)
                 {
-                    int mocapBodyIndex = mj_name2id(m, mjOBJ_BODY, "target");
+                    double delta_x;
+                    
                     // Set the new position of the mocap body
-                    double delta_x = 0.0001;
+                    delta_x = 0.0001;
                     if(d->mocap_pos[0] > 2.0) delta_x = 0.0002;
                     if(d->mocap_pos[0] > 4.0) delta_x = 0.0003;
-                    if(d->mocap_pos[0] > 6.0) delta_x = 0.0;
+                    if(d->mocap_pos[0] > 6.0) delta_x = 0.0000;
                     d->mocap_pos[0] = d->mocap_pos[0] + delta_x;  // Increment by 10mm (0.01m) in x-axis
+                    
 
                     target_pos_out = Vector3d(d->mocap_pos[0],d->mocap_pos[1],d->mocap_pos[2]);
                     target_vel_out = Vector3d(delta_x*1000.0,0,0);
@@ -2381,10 +2386,34 @@ void* sim_step_task( void * arg )
                 
                 
             }
-            else
+            else if(simulation_mode == 2)
             {
                 d->time = d->time + elapsed;
                 mj_kinematics(m,d);
+            }
+            else if(simulation_mode == 3)
+            {
+                pthread_mutex_lock(&sim_mutex);
+
+                // Find the indices of the lights in the model
+                int comLightIndex = mj_name2id(m, mjOBJ_LIGHT, "com_light");
+                int backLightIndex = mj_name2id(m, mjOBJ_LIGHT, "back_light");
+
+                // Set the position of com_light
+                m->light_pos[3 * comLightIndex] = 30.0+tello->controller->get_x()(0);
+                m->light_pos[3 * comLightIndex + 1] = 0.0;
+                m->light_pos[3 * comLightIndex + 2] = 30.0;
+
+
+                m->light_pos[3 * backLightIndex] = -30.0+tello->controller->get_x()(0);
+                m->light_pos[3 * backLightIndex + 1] = 0.0;
+                m->light_pos[3 * backLightIndex + 2] = 30.0;
+
+                d->time = d->time + 0.001;
+                tello->controller->set_time((double)(d->time));
+                mj_kinematics(m,d);
+                mj_forward(m,d);
+                pthread_mutex_unlock(&sim_mutex);
             }
              
             pthread_mutex_lock(&sim_step_mutex);
@@ -2624,6 +2653,17 @@ void* Human_Playback( void * arg )
                     if(PS4_connected && sim_conf.en_ps4_controller)
                         human_dyn_data.xH = xH_Commanded;
 
+                    tello->controller->updateStepZHistoryL(fzH_Lval);
+		            tello->controller->updateStepZHistoryR(fzH_Rval);
+                    tello->controller->updateStepTimeHistory(time);
+
+                    Traj_planner_dyn_data tpdds = tello->controller->get_traj_planner_dyn_data();
+                    tpdds.step_z_history_L = tello->controller->getStepZHistoryL();
+                    tpdds.step_z_history_R = tello->controller->getStepZHistoryR();
+                    if(tpdds.human_FSM != 0)
+                        tpdds.curr_SSP_sample_count = tpdds.curr_SSP_sample_count + 1;
+                    tello->controller->set_traj_planner_step_data(tpdds);
+
                     // VectorXd alphas(21);
                     // alphas.setConstant(4.0);
                     // Human_dyn_data temp = dash_utils::smooth_human_dyn_data(human_dyn_data,hdd_pb_filter,alphas);
@@ -2661,6 +2701,108 @@ void* Human_Playback( void * arg )
         Traj_planner_dyn_data tpdd = tello->controller->get_traj_planner_dyn_data();
         tpdd.stepping_flg = false;
         tello->controller->set_traj_planner_dyn_data(tpdd);
+        usleep(100000);
+    }
+   
+    return  0;
+}
+
+void* Animate_Log( void * arg )
+{
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	void* dynamic_robot_ptr = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
+
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
+
+    std::string logPath = removeTextAfterLastSlash(readActivePlaybackLog("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/active_playback_log.json"));
+    std::vector<Vector2d> time_vec = dash_utils::readTimeDataFromFile(logPath + "t_and_FSM.csv");
+    std::vector<VectorXd> x_vec = dash_utils::readVectorXdfromCSV(logPath + "x.csv");
+    std::vector<VectorXd> q_vec = dash_utils::readVectorXdfromCSV(logPath + "q.csv");
+    std::vector<VectorXd> target_vec = dash_utils::readVectorXdfromCSV(logPath + "target_pos.csv");
+    bool has_target_info = false;
+    if(target_vec.size() > 0) has_target_info = true;
+
+    usleep(1000000);
+    pthread_mutex_lock(&sim_mutex);
+    pthread_mutex_lock(&sim_step_mutex);
+    const Eigen::VectorXd& curr_x = x_vec[0];
+    const Eigen::VectorXd& curr_q = q_vec[0];
+    MatrixXd q_tello(2,5);
+    q_tello.row(0) = curr_q.head(5);
+    q_tello.row(1) = curr_q.tail(5);
+    tello->controller->set_q(q_tello);
+    set_mujoco_state(curr_x);
+    mj_kinematics(m,d);
+    pthread_mutex_unlock(&sim_step_mutex);
+    pthread_mutex_unlock(&sim_mutex);
+
+    d->qpos[hip_yaw_l_idx] = 0.0;
+    d->qpos[hip_roll_l_idx] = -0.04;
+    d->qpos[hip_pitch_l_idx] = -0.073+0.04+0.08;
+    d->qpos[knee_pitch_l_idx] = 0.28;
+    d->qpos[ankle_pitch_l_idx] = -0.19-0.04-0.04-0.08-0.01;
+    d->qpos[hip_yaw_r_idx] = 0.00;
+    d->qpos[hip_roll_r_idx] = -0.046;
+    d->qpos[hip_pitch_r_idx] = -0.55-0.12-0.08;
+    d->qpos[knee_pitch_r_idx] = 0.94+0.04+0.08+0.04;
+    d->qpos[ankle_pitch_r_idx] = -0.32-0.04;
+    d->qpos[torso_z_idx] = 0.028;
+    d->qpos[torso_x_idx] = 0.12;
+    d->qpos[torso_pitch_idx] = 0.04;
+    mj_kinematics(m,d);
+
+    struct timespec next;
+    clock_gettime(CLOCK_MONOTONIC, &next);
+    while(1)
+    {
+        // if(hdd_vec.size() == 0)
+        // {
+        //     playback_error = true;
+        //     break;
+        // }
+        int time_cnt = 0;
+        while(time_cnt < time_vec.size() && simulation_mode == 3)
+        {
+            handle_start_of_periodic_task(next);
+            // if(playback_chosen && tello->controller->is_human_ctrl_enabled() && (!pause_sim) && (sim_conf.en_playback_mode) && !playback_changed)
+            // {
+                
+                double time = time_vec[time_cnt](0);
+                
+                if(time <= tello->controller->get_time())
+                {
+                    const Eigen::VectorXd& curr_x = x_vec[time_cnt];
+                    const Eigen::VectorXd& curr_q = q_vec[time_cnt];
+                    MatrixXd q_tello(2,5);
+                    q_tello.row(0) = curr_q.head(5);
+                    q_tello.row(1) = curr_q.tail(5);
+                    tello->controller->set_x(curr_x);
+                    tello->controller->set_q(q_tello);
+                    set_mujoco_state(curr_x);
+
+                    if(has_target_info)
+                    {
+                        const Eigen::VectorXd& target = target_vec[time_cnt];
+                        d->mocap_pos[0] = target[0];
+                        d->mocap_pos[1] = target[1];
+                        d->mocap_pos[2] = target[2];
+                    }
+                    time_cnt++;
+                    master_gain = 1.0;
+                    sim_conf.en_human_control = true;
+                }
+
+            // }
+            
+            
+            handle_end_of_periodic_task(next,50);
+        }        
+        d->time = 0;
+        tello->controller->set_time((double)(d->time));
+        pause_sim = true;
+        master_gain = 0.0;
+        sim_conf.en_human_control = false;
         usleep(100000);
     }
    

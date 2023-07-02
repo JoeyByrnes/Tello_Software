@@ -6,11 +6,18 @@
 #include "controllers.h"
 #include "dynamics.h"
 
+#include "rt_nonfinite.h"
+#include "step_z_curve_fit.h"
+#include "step_z_curve_fit_terminate.h"
+#include "coder_array.h"
+
 namespace  dash_planner
 {
     void SRB_6DoF_Test(std::string& recording_file_name, double& sim_time, SRB_Params& srb_params, MatrixXd lfv, char DoF, int num_tests);
 
-    int SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data traj_planner_dyn_data, Human_dyn_data human_dyn_data, int FSM_prev, double t, MatrixXd lfv, VectorXd u);
+    int SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_planner_dyn_data, Human_dyn_data& human_dyn_data, int FSM_prev, double t, MatrixXd lfv, VectorXd u);
+
+    int predict_ssp_params(Traj_planner_dyn_data& traj_planner_dyn_data, Human_dyn_data& human_dyn_data);
 
     void SRB_Init_Traj_Planner_Data(Traj_planner_dyn_data& traj_planner_dyn_data, SRB_Params srb_params, Human_params human_params, VectorXd x0, MatrixXd lfv0);
 

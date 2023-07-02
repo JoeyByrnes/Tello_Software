@@ -872,6 +872,7 @@ void signal_callback_handler(int signum){
 	screen_recording = false;
 	usbcam_recording = false;
 	system("killall -2 ffmpeg");
+	usleep(2000000);
 	tcsetattr(STDIN_FILENO, TCSANOW, &originalSettings);
 	Human_dyn_data hdd;
 	hdd.FxH_spring = 0;
@@ -931,9 +932,13 @@ int main(int argc, char *argv[]) {
         if (arg1 == "--simulation" || arg1 == "-s") {
             simulation_mode = 1;
         }
-		else if (arg1 == "--euler-simulation" || arg1 == "-e") {
+		else if (arg1 == "--srbm-simulation" || arg1 == "-e") {
             simulation_mode = 2;
-        } else {
+        } 
+		else if (arg1 == "--animation" || arg1 == "-a") {
+            simulation_mode = 3;
+        }
+		else {
             std::cerr << "Invalid input: " << arg1 << std::endl;
             return 1;
         }
@@ -1042,12 +1047,37 @@ int main(int argc, char *argv[]) {
 		tello->addPeriodicTask(&sim_step_task, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_1, (void*)(NULL),"sim_step_task",TASK_CONSTANT_PERIOD, 998);
 		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&tello_controller, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"tello_ctrl",TASK_CONSTANT_PERIOD, 1000);
-		tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 500);
+		// tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 500);
 		tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 		tello->addPeriodicTask(&Human_Playback, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"human_playback_task",TASK_CONSTANT_PERIOD, 1000);
+		// tello->addPeriodicTask(&Animate_Log, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"human_playback_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&logging, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"logging_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&screenRecord, SCHED_FIFO, 1, ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&usbCamRecord, SCHED_FIFO, 0, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
+		// tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
+		// tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, 6, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
+		// tello->addPeriodicTask(&plot_human_data, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
+		while(1){ usleep(1000); }
+		return 0;
+	}
+	else if(simulation_mode == 3)
+	{
+		tello->controller->set_sim_mode(3);
+		// SIMULATION MODE (Interfaces with Mujoco instead of real sensors)
+		printf('o',"Software running in Simulation Mode.\n\n");
+		//printf('o',"Software running in Simulation Mode.\n\
+		\r\033[1;38;5;208mIf this is a mistake, run without the \033[1;33m-s 1;38;5;208mflag or comment the following line in platformio.ini:\n\
+		\r\033[34mupload_command \033[39m= pio run -t exec -a \"-s\"\n\n");
+		tello->addPeriodicTask(&sim_step_task, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_1, (void*)(NULL),"sim_step_task",TASK_CONSTANT_PERIOD, 998);
+		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 1000);
+		// tello->addPeriodicTask(&tello_controller, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"tello_ctrl",TASK_CONSTANT_PERIOD, 1000);
+		// tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 500);
+		// tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
+		// tello->addPeriodicTask(&Human_Playback, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"human_playback_task",TASK_CONSTANT_PERIOD, 1000);
+		tello->addPeriodicTask(&Animate_Log, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"animate_task",TASK_CONSTANT_PERIOD, 1000);
+		// tello->addPeriodicTask(&logging, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"logging_task",TASK_CONSTANT_PERIOD, 1000);
+		tello->addPeriodicTask(&screenRecord, SCHED_FIFO, 1, ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
+		// tello->addPeriodicTask(&usbCamRecord, SCHED_FIFO, 0, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
 		// tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, 6, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&plot_human_data, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);

@@ -11,6 +11,11 @@
 #include "json.hpp"
 #include <queue>
 
+#include "rt_nonfinite.h"
+#include "step_z_curve_fit.h"
+#include "step_z_curve_fit_terminate.h"
+#include "coder_array.h"
+
 using namespace std;
 using namespace Eigen;
 
@@ -46,6 +51,7 @@ namespace  dash_utils
 
     std::vector<Human_dyn_data> readHumanDynDataFromFile(const std::string& filename);
     std::vector<Vector2d> readTimeDataFromFile(const std::string& filename); 
+    std::vector<Eigen::VectorXd> readVectorXdfromCSV(const std::string& filename);
 
     void writeTrajPlannerDataToCsv(const Traj_planner_dyn_data& data, const std::string& filename);
     void setOutputFolder(const std::string& foldername);
@@ -89,4 +95,8 @@ namespace  dash_utils
     Human_dyn_data smooth_human_dyn_data(Human_dyn_data hdd, Human_dyn_data_filter& hdd_vec, VectorXd alphas); 
 
     VectorXd world_to_robot_task_accel(VectorXd qdd_b, Matrix3d Rwb, Vector3d x_torso, VectorXd x_ddot_trans);
+
+    void updateAndShift(Eigen::VectorXd& vector, double sample); 
+
+    coder::array<double, 2U> eigenVectorToCoderArray(const Eigen::VectorXd& eigenVector);
 }

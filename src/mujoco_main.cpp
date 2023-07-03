@@ -182,6 +182,12 @@ double impulse_force_newtons = 10;
 bool sim_was_restarted = false;
 extern int simulation_mode;
 
+bool curve_fitting_complete = false;
+bool data_ready_for_curve_fitting = false;
+bool ready_for_new_curve_fit_data = true;
+bool use_adaptive_step_time = true;
+double dtime = 0;
+
 extern int sockfd_tx;
 extern char hmi_tx_buffer[100];
 extern struct sockaddr_in servaddr_tx;
@@ -1788,9 +1794,9 @@ void* mujoco_Update_1KHz( void * arg )
                 pause_sim = true;
                 master_gain = 0.0;
                 tello->controller->disable_human_ctrl();
-                screen_recording = false;
-                usbcam_recording = false;
-                system("killall -2 ffmpeg");
+                // screen_recording = false;
+                // usbcam_recording = false;
+                // system("killall -2 ffmpeg");
                 
                 recording_in_progress = false;
                 usb_recording_in_progress = false;
@@ -2293,6 +2299,61 @@ void* PS4_Controller( void * arg )
     return  0;
 }
 
+void* curve_fitting( void * arg )
+{
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	void* dynamic_robot_ptr = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
+
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
+    
+    struct timespec next;
+    clock_gettime(CLOCK_MONOTONIC, &next);
+
+    while(true)
+    {
+        handle_start_of_periodic_task(next);
+        while(!data_ready_for_curve_fitting) usleep(5);
+        data_ready_for_curve_fitting = false;
+        ready_for_new_curve_fit_data = false;
+        // curve fitting code here:
+        pthread_mutex_lock(&tello_ctrl_mutex);
+        double prev_step_duration = tello->controller->get_prev_step_duration();
+        Traj_planner_dyn_data traj_planner_dyn_data = tello->controller->get_traj_planner_dyn_data();
+        Human_dyn_data human_dyn_data = tello->controller->get_human_dyn_data();
+        VectorXd xdata = tello->controller->get_xdata();
+        VectorXd ydata = tello->controller->get_ydata();
+        VectorXd timevec = tello->controller->get_timevec();
+        pthread_mutex_unlock(&tello_ctrl_mutex);
+        ready_for_new_curve_fit_data = true;
+
+        double AH, end_time;
+        double x0[] = { 0.04 , prev_step_duration };
+        double lb[] = { 0.000 , prev_step_duration - (((double)xdata.size()-35)/1000.0) };
+        double ub[] = { 1000 , prev_step_duration + (((double)xdata.size()-35)/1000.0) };
+        coder::array<double, 2U> x_data = dash_utils::eigenVectorToCoderArray(xdata);
+        coder::array<double, 2U> y_data = dash_utils::eigenVectorToCoderArray(ydata);
+        step_z_curve_fit(x_data, y_data, x0, lb, ub, &AH, &end_time);
+        traj_planner_dyn_data.AH_step_predicted = AH;
+        
+        if(end_time < 0.05) end_time = prev_step_duration;
+        timevec.tail(99) = timevec.head(99).eval();
+        timevec[0] = end_time;
+        double timeval = dash_utils::smoothData(timevec, 0.8);
+
+        traj_planner_dyn_data.T_step_predicted = timeval;
+        pthread_mutex_lock(&tello_ctrl_mutex);
+        tello->controller->set_timevec(timevec);
+        tello->controller->set_traj_planner_curve_params(traj_planner_dyn_data);
+        pthread_mutex_unlock(&tello_ctrl_mutex);
+        // end curve fitting
+        curve_fitting_complete = true;
+
+        handle_end_of_periodic_task(next,period);
+    }
+    return 0;
+}
+
 void* sim_step_task( void * arg )
 {
 	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
@@ -2357,6 +2418,7 @@ void* sim_step_task( void * arg )
                 pthread_mutex_lock(&sim_mutex);
                 applyJointTorquesMujoco(tau_local);
                 mj_step(m, d);
+                dtime = d->time;
                 sim_step_completed = true;
 
 

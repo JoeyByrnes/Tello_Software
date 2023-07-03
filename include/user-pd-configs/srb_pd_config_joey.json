@@ -10,7 +10,7 @@
       "Kp_phiR": 30000,
       "Kd_phiR": 500,
       "Kp_thetaR": 20000,
-      "Kd_thetaR": 200,
+      "Kd_thetaR": 100,
       "Kp_psiR": 20000,
       "Kd_psiR": 200,
       
@@ -19,15 +19,15 @@
       "Walking_Speed": 0.5,
       
       "Kx_DCM_mult": 15.0,
-      "Ky_DCM_mult": 15.0,
+      "Ky_DCM_mult": 25.0,
 
       "KxDCMH": 1.0,
       "T_DSP"  : 0.2,
-      "xDCMH_deadband": 0.025
+      "xDCMH_deadband": 0.05
     },
     
     "Posture_Control": {
-      "Hip_Yaw_Kp": 100,
+      "Hip_Yaw_Kp": 500,
       "Hip_Yaw_Kd": 0,
       
       "Hip_Roll_Kp": 100,

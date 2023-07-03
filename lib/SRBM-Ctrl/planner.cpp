@@ -5,6 +5,7 @@ extern RoboDesignLab::DynamicRobot* tello;
 extern MatrixXd lfv0, lfdv0;
 
 extern bool en_v2_ctrl;
+extern bool use_adaptive_step_time;
 
 extern bool auto_mode;
 
@@ -15,6 +16,15 @@ extern double lbz;
 
 extern double fzH0_min_L;
 extern double fzH0_min_R;
+
+double ssp_start_time = 0;
+double prev_step_duration = 0.4;
+
+extern bool curve_fitting_complete;
+extern bool data_ready_for_curve_fitting;
+extern bool ready_for_new_curve_fit_data;
+
+Eigen::VectorXd timevec(100);
 
 MatrixXd lfv_dsp_start(4,3);
 
@@ -100,7 +110,7 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
     }
 }
 
-int dash_planner::predict_ssp_params(Traj_planner_dyn_data& traj_planner_dyn_data, Human_dyn_data& human_dyn_data)
+int dash_planner::predict_ssp_params(Traj_planner_dyn_data& traj_planner_dyn_data, Human_dyn_data& human_dyn_data, double t)
 {
     int ssp_data_len = traj_planner_dyn_data.curr_SSP_sample_count;
     int human_FSM = traj_planner_dyn_data.human_FSM;
@@ -108,6 +118,10 @@ int dash_planner::predict_ssp_params(Traj_planner_dyn_data& traj_planner_dyn_dat
     double end_time;
     if(human_FSM == 0 || ssp_data_len < 35)
     {
+        // traj_planner_dyn_data.AH_step_predicted = 0;
+        // traj_planner_dyn_data.T_step_predicted = 0;
+        timevec.setConstant(traj_planner_dyn_data.T_step_actual);
+        tello->controller->set_timevec(timevec);
         return 0;
     }
     else
@@ -138,26 +152,37 @@ int dash_planner::predict_ssp_params(Traj_planner_dyn_data& traj_planner_dyn_dat
             ydata = ydata.tail(len-(index)).eval();
             xdata = xdata.tail(len-(index)).eval();
         }
-        if(human_FSM == 1) // Right Swing Leg
-        {
-            dash_utils::writeVectorToCsv(ydata,"ydata_right.csv");
-        }
-        else  // Left Swing Leg
-        {
-            dash_utils::writeVectorToCsv(ydata,"ydata_left.csv");
-        }
+        // if(human_FSM == 1) // Right Swing Leg
+        // {
+        //     dash_utils::writeVectorToCsv(ydata,"ydata_right.csv");
+        // }
+        // else  // Left Swing Leg
+        // {
+        //     dash_utils::writeVectorToCsv(ydata,"ydata_left.csv");
+        // }
         firstTime = xdata(0);
         xdata = xdata.array() - firstTime;
-        dash_utils::writeVectorToCsv(xdata,"tdata.csv");
+        // dash_utils::writeVectorToCsv(xdata,"tdata.csv");
+        if(ready_for_new_curve_fit_data)
+        {
+            tello->controller->set_xdata(xdata);
+            tello->controller->set_ydata(ydata);
+            data_ready_for_curve_fitting = true;
+        }
+        // double x0[] = { 0.04 , prev_step_duration };
+        // double lb[] = { 0.000 , prev_step_duration - (((double)xdata.size()-35)/1000.0) };
+        // double ub[] = { 1000 , prev_step_duration + (((double)xdata.size()-35)/1000.0) };
+        // coder::array<double, 2U> x_data = dash_utils::eigenVectorToCoderArray(xdata);
+        // coder::array<double, 2U> y_data = dash_utils::eigenVectorToCoderArray(ydata);
+        // step_z_curve_fit(x_data, y_data, x0, lb, ub, &AH, &end_time);
+        // traj_planner_dyn_data.AH_step_predicted = AH;
         
-        double x0[] = {0.016,0.3};
-        double lb[] = {0.0,0.0};
-        double ub[] = {ydata.maxCoeff()+0.005,0.8};
-        coder::array<double, 2U> x_data = dash_utils::eigenVectorToCoderArray(xdata);
-        coder::array<double, 2U> y_data = dash_utils::eigenVectorToCoderArray(ydata);
-        step_z_curve_fit(x_data, y_data, x0, lb, ub, &AH, &end_time);
-        traj_planner_dyn_data.AH_step_predicted = AH;
-        traj_planner_dyn_data.T_step_predicted = end_time;
+        // if(end_time < 0.05) end_time = prev_step_duration;
+        // timevec.tail(99) = timevec.head(99).eval();
+        // timevec[0] = end_time;
+        // double timeval = dash_utils::smoothData(timevec, 0.8);
+
+        // traj_planner_dyn_data.T_step_predicted = timeval;
     }
 
     return 0;
@@ -175,7 +200,9 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     double T_DSP = srb_params.T_DSP;
 
     // Planner info
+    double human_T_to_robot_T_scaler = 0.6;
     double T = traj_planner_dyn_data.T_step;
+    if(use_adaptive_step_time) T = traj_planner_dyn_data.T_step_predicted*human_T_to_robot_T_scaler;
     double t_sw_start;
     if (t != 0)
         t_sw_start = traj_planner_dyn_data.t_sw_start;
@@ -216,6 +243,8 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
 
     // compute phase variable for SSP
     double s = (t - t_sw_start) / T;
+    if(s < 0.0) s = 0.0;
+    if(s > 1.0) s = 1.0;
 
     // compute time variable for DSP
     double t_dsp = (t - t_dsp_start);
@@ -244,17 +273,24 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     // human FSM code:
     double step_threshold = 0.004;
     int num_init_samples = 35;
+    
     if(human_FSM == 0)
     {
         if(zHr > step_threshold && human_next_SSP == 1)
         {
             human_FSM = 1;
+            prev_step_duration = traj_planner_dyn_data.T_step_actual;
+            ssp_start_time = t-0.035;
+            traj_planner_dyn_data.T_step_actual = 0;
             human_next_SSP = -1;
             traj_planner_dyn_data.curr_SSP_sample_count = num_init_samples;
         }
         else if(zHl > step_threshold && human_next_SSP == -1)
         {
             human_FSM = -1;
+            prev_step_duration = traj_planner_dyn_data.T_step_actual;
+            ssp_start_time = t-0.035;
+            traj_planner_dyn_data.T_step_actual = 0;
             human_next_SSP = 1;
             traj_planner_dyn_data.curr_SSP_sample_count = num_init_samples;
         }
@@ -265,6 +301,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
         if(zHr < step_threshold)
         {
             human_FSM = 0;
+            traj_planner_dyn_data.T_step_actual = (t+0.035)-ssp_start_time;
             traj_planner_dyn_data.curr_SSP_sample_count = 0;
         }
     }
@@ -273,6 +310,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
         if(zHl < step_threshold)
         {
             human_FSM = 0;
+            traj_planner_dyn_data.T_step_actual = (t+0.035)-ssp_start_time;
             traj_planner_dyn_data.curr_SSP_sample_count = 0;
         }
     }
@@ -283,12 +321,12 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     // cout << FSM_prev << "\t u1z:" << u1z << "\t u2z" << u3z << "\t t_dsp" << t_dsp << endl;
     if (FSM_prev == 0) // currently in DSP
     {
-        if ( (grf_rf < Fz_min || grf_rb < Fz_min ) && t > 0 && t_dsp > 0.0025 && (next_SSP==1) && (zHr > 0.005 || auto_mode)) // enter SSP_L
+        if ( (grf_rf < Fz_min || grf_rb < Fz_min ) && t > 0 && t_dsp > 0.025 && (next_SSP==1) && (zHr > 0.006 || auto_mode)) // enter SSP_L
         {
             FSM_next = 1;
             traj_planner_dyn_data.step_z_offset_L = human_dyn_data.fzH_L;
         }
-        else if ( (grf_lf < Fz_min || grf_lb < Fz_min ) && t > 0 && t_dsp > 0.0025 && (next_SSP==-1) && (zHl > 0.005 || auto_mode)) // enter SSP_R 
+        else if ( (grf_lf < Fz_min || grf_lb < Fz_min ) && t > 0 && t_dsp > 0.025 && (next_SSP==-1) && (zHl > 0.006 || auto_mode)) // enter SSP_R 
         {
             FSM_next = -1;     
            traj_planner_dyn_data.step_z_offset_R = human_dyn_data.fzH_R;
@@ -300,7 +338,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == 1) // currently in SSP_L
     {
-        if ( (grf_rf > 0.5 || grf_rb > 0.5 ) && s > 0.5) // enter DSP
+        if ( (grf_rf > 0.01 || grf_rb > 0.01 ) && s > 0.1) // enter DSP
         {
             FSM_next = 0;
         }
@@ -311,7 +349,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == -1) // currently in SSP_R
     {
-        if ( (grf_lf > 0.5 || grf_lb > 0.5 ) && s > 0.5) // enter DSP
+        if ( (grf_lf > 0.01 || grf_lb > 0.01 ) && s > 0.1) // enter DSP
         {
             FSM_next = 0;
         }
@@ -406,9 +444,9 @@ void dash_planner::SRB_Traj_Planner(
     
     // FSM
     FSM = SRB_FSM(srb_params, traj_planner_dyn_data,human_dyn_data, FSM_prev, t, lfv, u);
-
-    predict_ssp_params(traj_planner_dyn_data,human_dyn_data);
-    
+    dash_utils::start_timer();
+    predict_ssp_params(traj_planner_dyn_data,human_dyn_data, t);
+    dash_utils::print_timer();
     // Update planner data
     traj_planner_dyn_data_gen(srb_params, human_params, traj_planner_dyn_data, human_dyn_data, t, FSM_prev, FSM, x, lfv);
     

@@ -164,6 +164,7 @@ struct Traj_planner_dyn_data
     int curr_SSP_sample_count;
     VectorXd step_z_history_L = VectorXd::Zero(1000);
     VectorXd step_z_history_R = VectorXd::Zero(1000);
+    double T_step_actual=0.4;
 };
 
 struct Teleop_Ref {

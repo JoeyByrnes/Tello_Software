@@ -41,6 +41,11 @@
 #include <glm/glm.hpp>
 #include <filesystem>
 
+#include "rt_nonfinite.h"
+#include "step_z_curve_fit.h"
+#include "step_z_curve_fit_terminate.h"
+#include "coder_array.h"
+
 #include "SRBM-Ctrl/utilities.h"
 #include "SRBM-Ctrl/controllers.h"
 #include "SRBM-Ctrl/dynamics.h"
@@ -65,6 +70,7 @@ void* sim_step_task( void * arg );
 void* screenRecord( void * arg );
 void* usbCamRecord( void * arg );
 void* Animate_Log( void * arg );
+void* curve_fitting( void * arg );
 
 struct userProfile {
     std::string name;

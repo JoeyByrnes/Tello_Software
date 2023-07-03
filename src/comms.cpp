@@ -238,7 +238,7 @@ double xHval, dxHval, pxHval, yHval, dyHval, pyHval;
 int dyn_data_idx = 0;
 
 
-
+extern double dtime;
 
 void* rx_UDP( void * arg ){
 
@@ -452,10 +452,10 @@ void* rx_UDP( void * arg ){
 		pyHval = dash_utils::smoothData(pyHvec, 0.1/*alpha*/);
 		fxH_Rval = dash_utils::smoothData(fxH_Rvec, 0.2/*alpha*/);
 		fyH_Rval = dash_utils::smoothData(fyH_Rvec, 0.2/*alpha*/);
-		fzH_Rval = dash_utils::smoothData(fzH_Rvec, 0.2/*alpha*/);
+		fzH_Rval = dash_utils::smoothData(fzH_Rvec, 0.4/*alpha*/);
 		fxH_Lval = dash_utils::smoothData(fxH_Lvec, 0.2/*alpha*/);
 		fyH_Lval = dash_utils::smoothData(fyH_Lvec, 0.2/*alpha*/);
-		fzH_Lval = dash_utils::smoothData(fzH_Lvec, 0.2/*alpha*/);
+		fzH_Lval = dash_utils::smoothData(fzH_Lvec, 0.4/*alpha*/);
 		fdxH_Rval = dash_utils::smoothData(fdxH_Rvec, 4.0/*alpha*/);
 		fdyH_Rval = dash_utils::smoothData(fdyH_Rvec, 4.0/*alpha*/);
 		fdzH_Rval = dash_utils::smoothData(fdzH_Rvec, 4.0/*alpha*/);
@@ -489,7 +489,15 @@ void* rx_UDP( void * arg ){
 		human_dyn_data.FxH_spring = FxH_spring_val;
 
 		tello->controller->updateStepZHistoryL(fzH_Lval);
-		tello->controller->updateStepZHistoryL(fzH_Rval);
+		tello->controller->updateStepZHistoryR(fzH_Rval);
+		tello->controller->updateStepTimeHistory(dtime);
+
+		Traj_planner_dyn_data tpdds = tello->controller->get_traj_planner_dyn_data();
+		tpdds.step_z_history_L = tello->controller->getStepZHistoryL();
+		tpdds.step_z_history_R = tello->controller->getStepZHistoryR();
+		if(tpdds.human_FSM != 0)
+			tpdds.curr_SSP_sample_count = tpdds.curr_SSP_sample_count + 1;
+		tello->controller->set_traj_planner_step_data(tpdds);
 		
 		// =======================================================================================================
 

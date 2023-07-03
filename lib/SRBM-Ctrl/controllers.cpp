@@ -11,6 +11,8 @@ extern double vx_desired_ps4;
 extern double vy_desired_ps4;
 extern double yaw_desired_ps4;
 
+extern bool use_adaptive_step_time;
+
 double fzH0_min_L = 1000;
 double fzH0_min_R = 1000;
 
@@ -294,7 +296,9 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
     // Get trajectory planner data
     double t_sw_start = traj_planner_dyn_data.t_sw_start;
     double t_dsp_start = traj_planner_dyn_data.t_dsp_start;
+    double human_T_to_robot_T_scaler = 0.6;
     double T_step = traj_planner_dyn_data.T_step;
+    if(use_adaptive_step_time) T_step = traj_planner_dyn_data.T_step_predicted*human_T_to_robot_T_scaler;
     double sigma1H = traj_planner_dyn_data.sigma1H;
     double swx0 = traj_planner_dyn_data.sw_beg_step[0];
     double swy0 = traj_planner_dyn_data.sw_beg_step[1];

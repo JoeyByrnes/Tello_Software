@@ -57,6 +57,11 @@ class SRBMController {
       traj_planner_dyn_data.step_z_history_R = data.step_z_history_R; 
       traj_planner_dyn_data.curr_SSP_sample_count = data.curr_SSP_sample_count;
     }
+    void set_traj_planner_curve_params(const Traj_planner_dyn_data& data) 
+    { 
+      traj_planner_dyn_data.AH_step_predicted = data.AH_step_predicted; 
+      traj_planner_dyn_data.T_step_predicted = data.T_step_predicted; 
+    }
 
 
     // Getter and setter functions for t
@@ -234,6 +239,16 @@ class SRBMController {
     bool is_human_ctrl_enabled(){return enable_human_dyn_data; }
     bool human_playback_enabled(){return using_human_playback; }
 
+    void set_prev_step_duration(double dur){prev_step_duration = dur;}
+    double get_prev_step_duration(){return prev_step_duration;}
+
+    void set_xdata(VectorXd data){xdata = data;}
+    VectorXd get_xdata(){return xdata;}
+    void set_ydata(VectorXd data){ydata = data;}
+    VectorXd get_ydata(){return ydata;}
+    void set_timevec(VectorXd data){timevec = data;}
+    VectorXd get_timevec(){return timevec;}
+
     bool enable_human_dyn_data = false;
 
   private:
@@ -299,6 +314,12 @@ class SRBMController {
     VectorXd step_z_history_L = VectorXd::Zero(1000); // last one second of step z data
     VectorXd step_z_history_R = VectorXd::Zero(1000);
     VectorXd step_time_history = VectorXd::Zero(1000);
+
+    VectorXd xdata; // data for curve fitting
+    VectorXd ydata;
+
+    double prev_step_duration = 0.4;
+    Eigen::VectorXd timevec = VectorXd(100);
 
 
 };

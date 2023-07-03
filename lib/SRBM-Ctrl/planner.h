@@ -17,7 +17,7 @@ namespace  dash_planner
 
     int SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_planner_dyn_data, Human_dyn_data& human_dyn_data, int FSM_prev, double t, MatrixXd lfv, VectorXd u);
 
-    int predict_ssp_params(Traj_planner_dyn_data& traj_planner_dyn_data, Human_dyn_data& human_dyn_data);
+    int predict_ssp_params(Traj_planner_dyn_data& traj_planner_dyn_data, Human_dyn_data& human_dyn_data, double t);
 
     void SRB_Init_Traj_Planner_Data(Traj_planner_dyn_data& traj_planner_dyn_data, SRB_Params srb_params, Human_params human_params, VectorXd x0, MatrixXd lfv0);
 

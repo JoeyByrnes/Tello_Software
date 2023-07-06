@@ -296,9 +296,9 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
     // Get trajectory planner data
     double t_sw_start = traj_planner_dyn_data.t_sw_start;
     double t_dsp_start = traj_planner_dyn_data.t_dsp_start;
-    double human_T_to_robot_T_scaler = 0.6;
+    double swing_T_scaler = srb_params.swing_time_scaler;
     double T_step = traj_planner_dyn_data.T_step;
-    if(use_adaptive_step_time) T_step = traj_planner_dyn_data.T_step_predicted*human_T_to_robot_T_scaler;
+    if(use_adaptive_step_time) T_step = traj_planner_dyn_data.T_step_predicted*swing_T_scaler;
     double sigma1H = traj_planner_dyn_data.sigma1H;
     double swx0 = traj_planner_dyn_data.sw_beg_step[0];
     double swy0 = traj_planner_dyn_data.sw_beg_step[1];
@@ -928,6 +928,8 @@ void dash_ctrl::sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm,
     VectorXd sw_traj_x(3); VectorXd sw_traj_y(3); VectorXd sw_traj_z(3);
     double swyf, AH;
 
+    
+
     // Swing-leg trajectories
     if (abs(FSM) == 1) // SSP
     {
@@ -957,7 +959,7 @@ void dash_ctrl::sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm,
 
             // z-position trajectories
             AH = (hR / hH) * (std::max(0.0, (fzH_R - fzH0)));
-            AH = srb_params.zcl;
+            AH = std::max(traj_planner_dyn_data.AH_step_predicted*(hR / hH),0.03);
             sw_traj_z = dash_utils::sw_leg_ref_z_v2(s, sw_beg_step_z, AH);
             // sw_traj_z = dash_utils::sw_leg_ref_z(s, AH,hR);
             lfv_comm(0, 2) = sw_traj_z(0); lfv_comm(1, 2) = lfv_comm(0, 2);
@@ -984,7 +986,7 @@ void dash_ctrl::sw_teleop_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm,
 
             // z-position trajectories
             AH = (hR / hH) * (std::max(0.0, (fzH_L - fzH0)));
-            AH = srb_params.zcl;
+            AH = std::max(traj_planner_dyn_data.AH_step_predicted*(hR / hH),0.03);
             sw_traj_z = dash_utils::sw_leg_ref_z_v2(s, sw_beg_step_z, AH);
             // sw_traj_z = dash_utils::sw_leg_ref_z(s, AH,hR);
             lfv_comm(2, 2) = sw_traj_z(0); lfv_comm(3, 2) = lfv_comm(2, 2);

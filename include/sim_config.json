@@ -4,7 +4,7 @@
     "en_autonomous_mode_on_boot": false,
     "en_data_logging": true,
     "en_force_feedback": true,
-    "en_live_variable_view": true,
+    "en_live_variable_view": false,
     "en_playback_mode": false,
     "en_ps4_controller": false,
     "en_realtime_plot": false,

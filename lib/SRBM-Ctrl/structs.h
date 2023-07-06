@@ -73,6 +73,7 @@ struct SRB_Params
     Vector2d q1_lim;
     Vector2d q2_lim;
     double des_walking_speed;
+    double swing_time_scaler;
 };
 
 struct Human_params {
@@ -165,6 +166,7 @@ struct Traj_planner_dyn_data
     VectorXd step_z_history_L = VectorXd::Zero(1000);
     VectorXd step_z_history_R = VectorXd::Zero(1000);
     double T_step_actual=0.4;
+    double AH_step_actual=0.03;
 };
 
 struct Teleop_Ref {

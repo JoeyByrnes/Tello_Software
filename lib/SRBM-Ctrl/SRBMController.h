@@ -62,6 +62,11 @@ class SRBMController {
       traj_planner_dyn_data.AH_step_predicted = data.AH_step_predicted; 
       traj_planner_dyn_data.T_step_predicted = data.T_step_predicted; 
     }
+    void set_traj_planner_human_foot_z_offsets(const Traj_planner_dyn_data& data) 
+    { 
+      traj_planner_dyn_data.step_z_offset_L = data.step_z_offset_L; 
+      traj_planner_dyn_data.step_z_offset_R = data.step_z_offset_R; 
+    }
 
 
     // Getter and setter functions for t
@@ -241,6 +246,8 @@ class SRBMController {
 
     void set_prev_step_duration(double dur){prev_step_duration = dur;}
     double get_prev_step_duration(){return prev_step_duration;}
+    void set_prev_step_amplitude(double ah){prev_step_amplitude = ah;}
+    double get_prev_step_amplitude(){return prev_step_amplitude;}
 
     void set_xdata(VectorXd data){xdata = data;}
     VectorXd get_xdata(){return xdata;}
@@ -248,6 +255,8 @@ class SRBMController {
     VectorXd get_ydata(){return ydata;}
     void set_timevec(VectorXd data){timevec = data;}
     VectorXd get_timevec(){return timevec;}
+    void set_AHvec(VectorXd data){AHvec = data;}
+    VectorXd get_AHvec(){return AHvec;}
 
     bool enable_human_dyn_data = false;
 
@@ -319,7 +328,9 @@ class SRBMController {
     VectorXd ydata;
 
     double prev_step_duration = 0.4;
+    double prev_step_amplitude = 0.03;
     Eigen::VectorXd timevec = VectorXd(100);
+    Eigen::VectorXd AHvec = VectorXd(100);
 
 
 };

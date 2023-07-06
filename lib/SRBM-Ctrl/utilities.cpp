@@ -577,7 +577,7 @@ void dash_utils::writeTrajPlannerDataToCsv(const Traj_planner_dyn_data& data, co
         file << "human_leg_joystick_pos_beg_step_x,human_leg_joystick_pos_beg_step_y,human_leg_joystick_pos_beg_step_z,";
         file << "sigma1H,left_in_contact,right_in_contact,left_off_gnd_cnt,right_off_gnd_cnt,";
         file << "x_HWRM,dx_HWRM,x_plus_HWRM_x,x_plus_HWRM_y,uk_HWRM,";
-        file << "st_beg_step_x,st_beg_step_y,st_beg_step_z,y_LIP_offset,step_z_offset_R,step_z_offset_L,human_FSM,AH_predicted,T_predicted,T_actual" << newline;
+        file << "st_beg_step_x,st_beg_step_y,st_beg_step_z,y_LIP_offset,step_z_offset_R,step_z_offset_L,human_FSM,AH_predicted,AH_actual,T_predicted,T_actual" << newline;
         first_log_run_tpdd = false;
     }
     file << (data.stepping_flg ? 1 : 0) << delimiter
@@ -618,6 +618,7 @@ void dash_utils::writeTrajPlannerDataToCsv(const Traj_planner_dyn_data& data, co
          << data.step_z_offset_L << delimiter
          << data.human_FSM << delimiter
          << data.AH_step_predicted << delimiter
+         << data.AH_step_actual << delimiter
          << data.T_step_predicted << delimiter
          << data.T_step_actual << newline;
 
@@ -700,6 +701,7 @@ void dash_utils::writeSRBParamsToTxt(const SRB_Params& params, const std::string
         file << "q1_lim, " <<  params.q1_lim(0) << "," << params.q1_lim(1) << std::endl;
         file << "q2_lim, " << params.q2_lim(0) << "," << params.q2_lim(1) << std::endl;
         file << "des_walking_speed, " << params.des_walking_speed << std::endl; 
+        file << "swing_time_scaler, " << params.swing_time_scaler << std::endl;
         file.close();
 
     }
@@ -1023,6 +1025,7 @@ void dash_utils::parse_json_to_srb_params(const std::string& json_file_path, SRB
     params.KxDCMH = json_data["srb_params"]["KxDCMH"].get<double>();
     params.T_DSP = json_data["srb_params"]["T_DSP"].get<double>();
     params.xDCMH_deadband = json_data["srb_params"]["xDCMH_deadband"].get<double>();
+    params.swing_time_scaler = json_data["srb_params"]["swing_time_scaler"].get<double>();
   } catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << "\n";
     return;

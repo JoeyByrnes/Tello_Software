@@ -452,10 +452,10 @@ void* rx_UDP( void * arg ){
 		pyHval = dash_utils::smoothData(pyHvec, 0.1/*alpha*/);
 		fxH_Rval = dash_utils::smoothData(fxH_Rvec, 0.2/*alpha*/);
 		fyH_Rval = dash_utils::smoothData(fyH_Rvec, 0.2/*alpha*/);
-		fzH_Rval = dash_utils::smoothData(fzH_Rvec, 0.4/*alpha*/);
+		fzH_Rval = dash_utils::smoothData(fzH_Rvec, 0.2/*alpha*/);
 		fxH_Lval = dash_utils::smoothData(fxH_Lvec, 0.2/*alpha*/);
 		fyH_Lval = dash_utils::smoothData(fyH_Lvec, 0.2/*alpha*/);
-		fzH_Lval = dash_utils::smoothData(fzH_Lvec, 0.4/*alpha*/);
+		fzH_Lval = dash_utils::smoothData(fzH_Lvec, 0.2/*alpha*/);
 		fdxH_Rval = dash_utils::smoothData(fdxH_Rvec, 4.0/*alpha*/);
 		fdyH_Rval = dash_utils::smoothData(fdyH_Rvec, 4.0/*alpha*/);
 		fdzH_Rval = dash_utils::smoothData(fdzH_Rvec, 4.0/*alpha*/);

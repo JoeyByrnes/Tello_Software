@@ -4,33 +4,34 @@
       "Kd_xR": 121,
       "Kp_yR": 1800,
       "Kd_yR": 121,
-      "Kp_zR": 20000, 
+      "Kp_zR": 60000, 
       "Kd_zR": 5000,
       
       "Kp_phiR": 30000,
       "Kd_phiR": 500,
       "Kp_thetaR": 20000,
       "Kd_thetaR": 100,
-      "Kp_psiR": 20000,
+      "Kp_psiR": 50000,
       "Kd_psiR": 200,
       
       "Step_Period": 0.2,
       "Step_Height": 0.03,
       "Walking_Speed": 0.5,
       
-      "Kx_DCM_mult": 15.0,
-      "Ky_DCM_mult": 25.0,
+      "Kx_DCM_mult": 10.0,
+      "Ky_DCM_mult": 20.0,
 
       "KxDCMH": 1.0,
-      "T_DSP"  : 0.2,
-      "xDCMH_deadband": 0.05
+      "T_DSP"  : 0.15,
+      "xDCMH_deadband": 0.05,
+      "swing_time_scaler": 0.6
     },
     
     "Posture_Control": {
       "Hip_Yaw_Kp": 500,
       "Hip_Yaw_Kd": 0,
       
-      "Hip_Roll_Kp": 100,
+      "Hip_Roll_Kp": 500,
       "Hip_Roll_Kd": 0,
       
       "Hip_Pitch_Kp": 0,

@@ -59,6 +59,8 @@ bool auto_mode = false;
 bool start_target_motion = false;
 bool ramp_toggle = false;
 
+double playback_foot_width = 0.175;
+
 bool sim_window_close_requested = false;
 
 bool cd_shared_data_ready = false;
@@ -1894,6 +1896,10 @@ void* mujoco_Update_1KHz( void * arg )
                     MatrixXd new_q0(2,5);
                     dash_init::init_foot_width(robot_init_foot_width,telloLocal->controller->get_human_params(),
                                                 telloLocal->controller->get_SRB_params(),new_lfv0,q0);
+                    Traj_planner_dyn_data tpdd_foot_z = tello->controller->get_traj_planner_dyn_data();
+                    tpdd_foot_z.step_z_offset_R = tello->controller->get_human_dyn_data().fzH_R;
+                    tpdd_foot_z.step_z_offset_L = tello->controller->get_human_dyn_data().fzH_L;
+                    tello->controller->set_traj_planner_human_foot_z_offsets(tpdd_foot_z);
                     tello->controller->set_lfv0(new_lfv0);
                     tello->controller->set_q0(q0);
                     initializeLegs();
@@ -1928,6 +1934,10 @@ void* mujoco_Update_1KHz( void * arg )
                     MatrixXd new_q0(2,5);
                     dash_init::init_foot_width(robot_init_foot_width,telloLocal->controller->get_human_params(),
                                                 telloLocal->controller->get_SRB_params(),new_lfv0,q0);
+                    Traj_planner_dyn_data tpdd_foot_z = telloLocal->controller->get_traj_planner_dyn_data();
+                    tpdd_foot_z.step_z_offset_R = telloLocal->controller->get_human_dyn_data().fzH_R;
+                    tpdd_foot_z.step_z_offset_L = telloLocal->controller->get_human_dyn_data().fzH_L;
+                    tello->controller->set_traj_planner_human_foot_z_offsets(tpdd_foot_z);
                     tello->controller->set_lfv0(new_lfv0);
                     tello->controller->set_q0(q0);
                     initializeLegs();
@@ -2319,31 +2329,43 @@ void* curve_fitting( void * arg )
         // curve fitting code here:
         pthread_mutex_lock(&tello_ctrl_mutex);
         double prev_step_duration = tello->controller->get_prev_step_duration();
+        double prev_step_amplitude = tello->controller->get_prev_step_amplitude();
         Traj_planner_dyn_data traj_planner_dyn_data = tello->controller->get_traj_planner_dyn_data();
         Human_dyn_data human_dyn_data = tello->controller->get_human_dyn_data();
         VectorXd xdata = tello->controller->get_xdata();
         VectorXd ydata = tello->controller->get_ydata();
         VectorXd timevec = tello->controller->get_timevec();
+        VectorXd AHvec = tello->controller->get_AHvec();
         pthread_mutex_unlock(&tello_ctrl_mutex);
         ready_for_new_curve_fit_data = true;
 
         double AH, end_time;
-        double x0[] = { 0.04 , prev_step_duration };
-        double lb[] = { 0.000 , prev_step_duration - (((double)xdata.size()-35)/1000.0) };
-        double ub[] = { 1000 , prev_step_duration + (((double)xdata.size()-35)/1000.0) };
+        double increasing_bound_limit = std::max((((double)xdata.size()-25)/1000.0),0.001);
+        double x0[] = { prev_step_amplitude , prev_step_duration };
+        double lb[] = { 0.01 , prev_step_duration - increasing_bound_limit };
+        double ub[] = { 0.2 , prev_step_duration + increasing_bound_limit };
         coder::array<double, 2U> x_data = dash_utils::eigenVectorToCoderArray(xdata);
         coder::array<double, 2U> y_data = dash_utils::eigenVectorToCoderArray(ydata);
         step_z_curve_fit(x_data, y_data, x0, lb, ub, &AH, &end_time);
-        traj_planner_dyn_data.AH_step_predicted = AH;
+        
         
         if(end_time < 0.05) end_time = prev_step_duration;
         timevec.tail(99) = timevec.head(99).eval();
         timevec[0] = end_time;
         double timeval = dash_utils::smoothData(timevec, 0.8);
 
+        if(AH < 0.008) AH = prev_step_amplitude;
+        AHvec.tail(99) = AHvec.head(99).eval();
+        AHvec[0] = AH;
+        double AHval = dash_utils::smoothData(AHvec, 1.5);
+
         traj_planner_dyn_data.T_step_predicted = timeval;
+        traj_planner_dyn_data.AH_step_predicted = AHval;
+
+        // traj_planner_dyn_data.T_step = timeval;
         pthread_mutex_lock(&tello_ctrl_mutex);
         tello->controller->set_timevec(timevec);
+        tello->controller->set_AHvec(AHvec);
         tello->controller->set_traj_planner_curve_params(traj_planner_dyn_data);
         pthread_mutex_unlock(&tello_ctrl_mutex);
         // end curve fitting
@@ -2399,9 +2421,10 @@ void* sim_step_task( void * arg )
                     
                     // Set the new position of the mocap body
                     delta_x = 0.0001;
-                    if(d->mocap_pos[0] > 2.0) delta_x = 0.0002;
-                    if(d->mocap_pos[0] > 4.0) delta_x = 0.0003;
+                    if(d->mocap_pos[0] > 1.0) delta_x = 0.0002;
+                    if(d->mocap_pos[0] > 3.0) delta_x = 0.0003;
                     if(d->mocap_pos[0] > 6.0) delta_x = 0.0000;
+                    // if(d->mocap_pos[0] > 6.0) delta_x = 0.0000;
                     d->mocap_pos[0] = d->mocap_pos[0] + delta_x;  // Increment by 10mm (0.01m) in x-axis
                     
 
@@ -2590,6 +2613,20 @@ void* Human_Playback( void * arg )
         while(hdd_cnt < hdd_vec.size())
         {
             handle_start_of_periodic_task(next);
+            if(hdd_cnt == 0 && (sim_conf.en_playback_mode))
+            {
+                double hR = tello->controller->get_SRB_params().hLIP;
+                double hH = tello->controller->get_human_params().hLIP; 
+                Human_dyn_data hdd0 = hdd_vec[0];
+                double fyH_R = hdd0.fyH_R;
+                double fyH_L = hdd0.fyH_L;
+
+                double joystick_base_separation = 1.525;
+                double foot_center_to_joystick = FOOT_2_JOYSTICK;
+                double human_foot_width = joystick_base_separation - 2*foot_center_to_joystick - fyH_R - fyH_L;
+                robot_init_foot_width = human_foot_width*(hR/hH);
+
+            }
             if(playback_chosen && tello->controller->is_human_ctrl_enabled() && (!pause_sim) && (sim_conf.en_playback_mode) && !playback_changed)
             {
                 //dash_utils::print_human_dyn_data(hdd_vec[hdd_cnt]);
@@ -2806,9 +2843,9 @@ void* Animate_Log( void * arg )
     d->qpos[ankle_pitch_l_idx] = -0.19-0.04-0.04-0.08-0.01;
     d->qpos[hip_yaw_r_idx] = 0.00;
     d->qpos[hip_roll_r_idx] = -0.046;
-    d->qpos[hip_pitch_r_idx] = -0.55-0.12-0.08;
-    d->qpos[knee_pitch_r_idx] = 0.94+0.04+0.08+0.04;
-    d->qpos[ankle_pitch_r_idx] = -0.32-0.04;
+    d->qpos[hip_pitch_r_idx] = -0.55-0.12-0.08-0.12;
+    d->qpos[knee_pitch_r_idx] = 0.94+0.04+0.08+0.04+0.12;
+    d->qpos[ankle_pitch_r_idx] = -0.32-0.04-0.12;
     d->qpos[torso_z_idx] = 0.028;
     d->qpos[torso_x_idx] = 0.12;
     d->qpos[torso_pitch_idx] = 0.04;

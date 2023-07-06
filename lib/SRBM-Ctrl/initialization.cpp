@@ -291,6 +291,8 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         // joint limits
         srb_params.q1_lim << -M_PI/9, M_PI/9;
         srb_params.q2_lim << -M_PI/12, M_PI/9;
+
+        srb_params.swing_time_scaler = 0.6;
         
     }
     else

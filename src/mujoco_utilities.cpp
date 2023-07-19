@@ -130,7 +130,7 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
     }
     if (act == GLFW_PRESS && key == GLFW_KEY_S)
     {
-        d->mocap_pos[2] = -0.58;
+        d->mocap_pos[2] = -0.579;
         start_target_motion = true;
          mj_kinematics(m,d);
     }
@@ -708,4 +708,37 @@ void updateActiveUserInJson(const std::string& filename, const std::string& newA
     ofs.close();
 
     std::cout << "Active user updated successfully in the JSON file." << std::endl;
+}
+
+double cubicEaseInOut(double t) {
+    if (t < 0.5) {
+        return 4 * t * t * t;
+    } else {
+        double x = (2 * t) - 2;
+        return 0.5 * x * x * x + 1;
+    }
+}
+
+double moveJoint(double currentTime, double startTime, double endTime, double startPoint, double endPoint) {
+    if (currentTime < startTime) {
+        return startPoint;
+    } else if (currentTime > endTime) {
+        return endPoint;
+    } else {
+        double t = (currentTime - startTime) / (endTime - startTime);
+        double direction = (endPoint >= startPoint) ? 1.0 : -1.0;
+        double smoothT = cubicEaseInOut(t);
+        return startPoint + (direction * smoothT * std::abs(endPoint - startPoint));
+    }
+}
+
+void moveJoint2(double currentTime, double startTime, double endTime, double startPoint, double endPoint, double& result) {
+    if (currentTime < startTime || currentTime > endTime) {
+        return;
+    } else {
+        double t = (currentTime - startTime) / (endTime - startTime);
+        double direction = (endPoint >= startPoint) ? 1.0 : -1.0;
+        double smoothT = cubicEaseInOut(t);
+        result = startPoint + (direction * smoothT * std::abs(endPoint - startPoint));
+    }
 }

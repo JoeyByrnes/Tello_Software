@@ -71,8 +71,18 @@
   
   
   <worldbody>
+
+  	<body name = 'dummy' pos = '0 0 0'>
+	<inertial pos = '0.0 0.0 0.0' mass = '4.2587' diaginertia = '0.013122 0.0078744 0.013624'/>
+	<joint axis = "1 0 0" pos = "0 0 0" name = "move_x" type = "slide" limited = "false" damping="0"/>
+		<joint axis = "0 1 0" pos = "0 0 0" name = "move_y" type = "slide" limited = "false" damping="0"/>
+		<joint axis = "0 0 1" pos = "0 0 0" name = "move_z" type = "slide" limited = "false" damping="0"/>
+		<joint axis = "1 0 0" pos = "0 0 0" name = "rotate_roll" type = "hinge" limited = "false" damping="0"/>
+		<joint axis = "0 1 0" pos = "0 0 0" name = "rotate_pitch" type = "hinge" limited = "false" damping="0"/>
+		<joint axis = "0 0 1" pos = "0 0 0" name = "rotate_yaw" type = "hinge" limited = "false" damping="0"/>  
+	</body>
   
- 	<!-- <geom name ='floor' pos ='0 0 -0.58' size ='20 10 .125' type = 'plane' material ='MatPlane' rgba="0.79 0.84 0.84 1" condim = '3' conaffinity = '15'/> -->
+ 	<geom name ='floor' pos ='0 0 -0.58' size ='20 10 .125' type = 'plane' material ='MatPlane' rgba="0.79 0.84 0.84 1" condim = '3' conaffinity = '15'/>
 	<!-- <geom name ='wall1' pos ='0 -10 5' size ='20 10 .125' type = 'plane' euler="-1.57 0  0" material ='MatPlane2' rgba="0.5 0.5 0.48 1.0" condim = '3' conaffinity = '15'/>
 	<geom name ='wall2' pos ='-20 0 5' size ='20 10 .125' type = 'plane' euler="1.57 1.57  0" material ='MatPlane2' rgba="0.5 0.5 0.48 1.0" condim = '3' conaffinity = '15'/>
 	<geom name ='wall3' pos ='20 0 5' size ='20 10 .125' type = 'plane' euler="1.57 -1.57  0" material ='MatPlane2' rgba="0.5 0.5 0.48 1.0" condim = '3' conaffinity = '15'/> -->
@@ -82,18 +92,18 @@
 	<light name="com_light_2" mode='trackcom' pos='0 20 10' dir='0 -1 -1' castshadow="false"/>
 	<light name="back_light" mode='trackcom' pos='-30 0 30' dir='1 0 -1' castshadow="false"/>
   
-	<body name = 'torso' pos = '0 0 0'> 
+	<body name = 'torso' mocap="true" pos = '0 0 0'> 
 	
 		<site name='imu' size='0.01' rgba="0.5 0.5 0.5 0.0" pos='-0.06 0 0.155'/>
         <inertial pos = '0.0 0.0 0.0' mass = '4.2587' diaginertia = '0.013122 0.0078744 0.013624'/>
 		<!-- <geom type="sphere" size="0.01" pos="0 0 0" rgba="1 1 0 1"/> -->
 		<!-- <geom name = "com" type="sphere" size="0.01" pos="0 0 0" rgba="0 1 0 1"/> -->
-		<joint axis = "1 0 0" pos = "0 0 0" name = "move_x" type = "slide" limited = "false" damping="0"/>
+		<!-- <joint axis = "1 0 0" pos = "0 0 0" name = "move_x" type = "slide" limited = "false" damping="0"/>
 		<joint axis = "0 1 0" pos = "0 0 0" name = "move_y" type = "slide" limited = "false" damping="0"/>
 		<joint axis = "0 0 1" pos = "0 0 0" name = "move_z" type = "slide" limited = "false" damping="0"/>
 		<joint axis = "1 0 0" pos = "0 0 0" name = "rotate_roll" type = "hinge" limited = "false" damping="0"/>
 		<joint axis = "0 1 0" pos = "0 0 0" name = "rotate_pitch" type = "hinge" limited = "false" damping="0"/>
-		<joint axis = "0 0 1" pos = "0 0 0" name = "rotate_yaw" type = "hinge" limited = "false" damping="0"/>  
+		<joint axis = "0 0 1" pos = "0 0 0" name = "rotate_yaw" type = "hinge" limited = "false" damping="0"/>   -->
 		<geom quat="0 0 0 1" type="mesh" material ='MatPlane3' rgba="0.549 0.565 0.580 1" mesh="torso_link" contype='0'/>
         <geom quat="0 0 0 1" type="mesh" material ='MatPlane4' rgba="0.2 0.2 0.2 1" mesh="torso_link-black" contype='0'/>
 		<!-- <geom quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="torso_link" class = "collision"/> -->
@@ -204,10 +214,11 @@
 	</body>	
 	
 
-	<body name="target" mocap="true" pos="0 0 -0.58" >
+	<!-- <body name="target" mocap="true" pos="0 0 -0.58" > -->
         <!-- <geom name="box" type="mesh" mesh="target1-rounded" size="0.2 0.25 0.001" rgba="0.2 0.2 1 0.5" contype='0'/> -->
-		<geom name ='floor' pos ='0 0 0' size ='10 10 .125' type = 'plane' material ='MatPlane' rgba="0.79 0.84 0.84 1" condim = '3' conaffinity = '15'/>
-    </body>
+		<!-- <geom name="box" type="box" size="0.05 0.1 0.1" rgba="0.2 0.2 1 0.5" contype='0'/> -->
+		<!-- <geom name ='floor' pos ='0 0 0' size ='10 10 .125' type = 'plane' material ='MatPlane' rgba="0.79 0.84 0.84 1" condim = '3' conaffinity = '15'/> -->
+    <!-- </body> -->
 
 </worldbody>
 

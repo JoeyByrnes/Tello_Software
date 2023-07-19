@@ -41,6 +41,7 @@
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/step_z_curve_fit",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/step_z_curve_fit/interface",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/matlab_include",
+                "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/PhaseSpace",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Tello_IMU",
                 ""
             ],
@@ -80,12 +81,13 @@
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/step_z_curve_fit",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/step_z_curve_fit/interface",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/matlab_include",
+                    "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/PhaseSpace",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Tello_IMU",
                     ""
                 ]
             },
             "defines": [
-                "PLATFORMIO=60108",
+                "PLATFORMIO=60109",
                 ""
             ],
             "cppStandard": "c++17",

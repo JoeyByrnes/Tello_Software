@@ -25,5 +25,7 @@ std::string readActivePlaybackLog(const std::string& filename);
 void writeActivePlaybackLog(const std::string log, const std::string& filename);
 void readProfilesFromJson(const std::string& filename, std::vector<userProfile>& profiles, std::string& active_user);
 void updateActiveUserInJson(const std::string& filename, const std::string& newActiveUser);
+double moveJoint(double currentTime, double startTime, double endTime, double startPoint, double endPoint);
+void moveJoint2(double currentTime, double startTime, double endTime, double startPoint, double endPoint, double& result);
 
 #endif

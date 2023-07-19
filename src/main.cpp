@@ -19,6 +19,7 @@
 #include <signal.h>
 #include <vector>
 #include <chrono>
+#include "owl.hpp"
 
 #include "math.h"
 
@@ -34,6 +35,7 @@
 #include "compile_time_tracker.h"
 #include "mujoco_main.h"
 #include "state_estimator.h"
+#include "mocap.h"
 
 #include <pcanfd.h>
 
@@ -164,6 +166,12 @@ struct termios originalSettings;
 
 extern double screen_recording;
 extern double usbcam_recording;
+
+extern OWL::Context owl;
+extern Vector3d CoM_pos;
+extern Vector3d CoM_rpy;
+extern Vector3d CoM_vel;
+extern VectorXd CoM_quat;
 
 void signal_callback_handler(int signum);
 
@@ -596,9 +604,9 @@ void run_balance_controller()
 	tello->controller->set_time(t);
 
 	// Set pc_curr, dpc_curr, EA_curr, dEA_Curr, q, qd here:
-	
-	// Vector3d dpc_curr = Vector3d(0,0,0);
-	Vector3d EA_curr = tello->_rpy;
+	Vector3d pc_curr = CoM_pos;
+	Vector3d dpc_curr = CoM_vel;
+	Vector3d EA_curr = CoM_rpy;
 	Vector3d dEA_curr = tello->_gyro;
 
 	VectorXd task_velocities = tello->joint_vel_to_task_vel(tello->getJointVelocities(),tello->getJointPositions());
@@ -620,7 +628,7 @@ void run_balance_controller()
 	// qd.row(1) = joint_vel_vec.head(5);
 	VectorXd gnd_contacts = VectorXd::Ones(4);
 
-	VectorXd tau = tello->controller->update(pc, Vector3d(0,0,0), EA_curr, dEA_curr,q ,qd ,t);
+	VectorXd tau = tello->controller->update(pc_curr, dpc_curr, EA_curr, dEA_curr,q ,qd ,t);
 	VectorXd tau_LR(10);
     tau_LR << tau.tail(5).array()*(2048.0/35.0), tau.head(5).array()*(2048.0/35.0);
 	if(apply_balance_torques) jointFFTorque = tau_LR;
@@ -869,6 +877,8 @@ static void* update_1kHz( void * arg )
 
 // This callback handles CTRL+C and Segfaults
 void signal_callback_handler(int signum){
+	owl.done();
+    owl.close();
 	screen_recording = false;
 	usbcam_recording = false;
 	system("killall -2 ffmpeg");
@@ -1080,8 +1090,9 @@ int main(int argc, char *argv[]) {
 		tello->addPeriodicTask(&screenRecord, SCHED_FIFO, 1, ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&usbCamRecord, SCHED_FIFO, 0, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
-		// tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, 6, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
+		tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, 6, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&plot_human_data, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
+		tello->addPeriodicTask(&motion_capture, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"Mocap_Task",TASK_CONSTANT_PERIOD, 1000);
 		while(1){ usleep(1000); }
 		return 0;
 	}
@@ -1150,9 +1161,10 @@ int main(int argc, char *argv[]) {
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd4),"rx_bus4",TASK_CONSTANT_DELAY, 50);
 	// tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 	tello->addPeriodicTask(&IMU_Comms, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL, "imu_task", TASK_CONSTANT_DELAY, 1000);
-	tello->addPeriodicTask(&update_1kHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, NULL, "update_task",TASK_CONSTANT_PERIOD, 2000);
+	tello->addPeriodicTask(&update_1kHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, NULL, "update_task",TASK_CONSTANT_PERIOD, 1000);
 	// tello->addPeriodicTask(&BNO055_Comms, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL, "bno_imu_task", TASK_CONSTANT_DELAY, 1000);
-	tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
+	// tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
+	tello->addPeriodicTask(&motion_capture, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"Mocap_Task",TASK_CONSTANT_PERIOD, 1000);
 	// tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, 3, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
 	
 	usleep(1000);

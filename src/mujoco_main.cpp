@@ -9,6 +9,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include "IconsFontAwesome5.h"
+#include "mocap.h"
 
 pthread_mutex_t plotting_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t sim_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -124,6 +125,8 @@ double dy_smoothed;
 double dz_smoothed;
 double smoothFactor = 4;
 
+VectorXd torso_vels = VectorXd(2000);
+
 VectorXd gnd_contacts(4);
 VectorXd z_forces(4);
 
@@ -195,6 +198,11 @@ extern char hmi_tx_buffer[100];
 extern struct sockaddr_in servaddr_tx;
 
 extern double robot_init_foot_width;
+
+Vector3d CoM_pos = Vector3d::Zero();
+Vector3d CoM_rpy = Vector3d::Zero();
+Vector3d CoM_vel = Vector3d::Zero();
+VectorXd CoM_quat = VectorXd::Zero(4);
 
 // begin SRBM-Ctrl Variables here ================================================================
 
@@ -1216,7 +1224,7 @@ void* mujoco_Update_1KHz( void * arg )
     }
     else if(simulation_mode == 3)
     {
-        m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-6-16-23-animation.xml", NULL, error, 1000);
+        m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-visualization.xml", NULL, error, 1000);
         // m_shared = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-color.xml", NULL, error, 1000);
     }
     else
@@ -1259,12 +1267,12 @@ void* mujoco_Update_1KHz( void * arg )
     // cam.lookat[1] = 0;
     // cam.lookat[2] = -0.2;
 
-    cam.elevation = -20;
+    cam.elevation = -8;
     cam.distance = 2.0;
-    cam.azimuth = -0.0;
+    cam.azimuth = -135;
     cam.lookat[0] = 0;
     cam.lookat[1] = 0;
-    cam.lookat[2] = -0.2;
+    cam.lookat[2] = -0.1;
 
     mjv_defaultOption(&opt);
     mjv_defaultScene(&scn);
@@ -1516,8 +1524,16 @@ void* mujoco_Update_1KHz( void * arg )
         mjrRect viewport = { 0, 0, 0, 0 };
         glfwGetFramebufferSize(window, &viewport.width, &viewport.height);
 
-        cam.lookat[0] = d->qpos[torso_x_idx];
+        if(!pause_sim)
+        {
+            torso_vels.tail(1999) = torso_vels.head(1999).eval();
+            torso_vels[0] = telloLocal->controller->get_x()(3);
+        }
+        double torso_vel_smooth = torso_vels.mean();
+
+        cam.lookat[0] = d->qpos[torso_x_idx];//-torso_vel_smooth/2.0;
         cam.lookat[1] = d->qpos[torso_y_idx];
+        
         // set the background color to white
         
         // update scene and render
@@ -2097,7 +2113,7 @@ void* mujoco_Update_1KHz( void * arg )
         }
         if(sim_conf.en_live_variable_view)
         {
-            ImGui::SetNextWindowSize(ImVec2(900,550));
+            ImGui::SetNextWindowSize(ImVec2(800*screenScale, 3*60*screenScale + 3*15*screenScale +65*screenScale));
             ImGui::SetNextWindowPos(ImVec2(50, (35+60*screenScale)+50));
             ImGui::Begin("DebugView",nullptr,ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize);
             
@@ -2108,10 +2124,14 @@ void* mujoco_Update_1KHz( void * arg )
             // ImGui::Separator();
             // ImGui::Text("Next SSP: %d", telloLocal->controller->get_traj_planner_dyn_data().next_SSP);
             // ImGui::Separator();
+            ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
+            ImGui::Separator();
+            ImGui::PopStyleColor();
             ImGui::Text("CoM X Velocity: %.2fm/s", telloLocal->controller->get_x()(3));
+            ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
             ImGui::Separator();
+            ImGui::PopStyleColor();
             ImGui::Text("CoM X Position: %.2fm", telloLocal->controller->get_x()(0));
-            ImGui::Separator();
             // ImGui::Text("Impulse Force: %dN", (int)impulse_force_newtons);
             // ImGui::Separator();
             // ImGui::Text("LF: %s \tRF %s", grf_lf.c_str(),grf_rf.c_str());
@@ -2814,7 +2834,8 @@ void* Animate_Log( void * arg )
 
 	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
 
-    std::string logPath = removeTextAfterLastSlash(readActivePlaybackLog("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/active_playback_log.json"));
+    std::string logPath = removeTextAfterLastSlash(readActivePlaybackLog("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/active_animation_log.json"));
+    cout << "LogPath: " << logPath << endl;
     std::vector<Vector2d> time_vec = dash_utils::readTimeDataFromFile(logPath + "t_and_FSM.csv");
     std::vector<VectorXd> x_vec = dash_utils::readVectorXdfromCSV(logPath + "x.csv");
     std::vector<VectorXd> q_vec = dash_utils::readVectorXdfromCSV(logPath + "q.csv");
@@ -2825,8 +2846,8 @@ void* Animate_Log( void * arg )
     usleep(1000000);
     pthread_mutex_lock(&sim_mutex);
     pthread_mutex_lock(&sim_step_mutex);
-    const Eigen::VectorXd& curr_x = x_vec[0];
-    const Eigen::VectorXd& curr_q = q_vec[0];
+    Eigen::VectorXd& curr_x = x_vec[1]; // skip first row
+    Eigen::VectorXd& curr_q = q_vec[1];
     MatrixXd q_tello(2,5);
     q_tello.row(0) = curr_q.head(5);
     q_tello.row(1) = curr_q.tail(5);
@@ -2836,20 +2857,35 @@ void* Animate_Log( void * arg )
     pthread_mutex_unlock(&sim_step_mutex);
     pthread_mutex_unlock(&sim_mutex);
 
-    d->qpos[hip_yaw_l_idx] = 0.0;
-    d->qpos[hip_roll_l_idx] = -0.04;
-    d->qpos[hip_pitch_l_idx] = -0.073+0.04+0.08;
-    d->qpos[knee_pitch_l_idx] = 0.28;
-    d->qpos[ankle_pitch_l_idx] = -0.19-0.04-0.04-0.08-0.01;
-    d->qpos[hip_yaw_r_idx] = 0.00;
-    d->qpos[hip_roll_r_idx] = -0.046;
-    d->qpos[hip_pitch_r_idx] = -0.55-0.12-0.08-0.12;
-    d->qpos[knee_pitch_r_idx] = 0.94+0.04+0.08+0.04+0.12;
-    d->qpos[ankle_pitch_r_idx] = -0.32-0.04-0.12;
-    d->qpos[torso_z_idx] = 0.028;
-    d->qpos[torso_x_idx] = 0.12;
-    d->qpos[torso_pitch_idx] = 0.04;
-    mj_kinematics(m,d);
+    // d->qpos[hip_yaw_l_idx] = 0.0;
+    // d->qpos[hip_roll_l_idx] = -0.04;
+    // d->qpos[hip_pitch_l_idx] = -0.073+0.04+0.08;
+    // d->qpos[knee_pitch_l_idx] = 0.28;
+    // d->qpos[ankle_pitch_l_idx] = -0.19-0.04-0.04-0.08-0.01;
+    // d->qpos[hip_yaw_r_idx] = 0.00;
+    // d->qpos[hip_roll_r_idx] = -0.046;
+    // d->qpos[hip_pitch_r_idx] = -0.55-0.12-0.08-0.12;
+    // d->qpos[knee_pitch_r_idx] = 0.94+0.04+0.08+0.04+0.12;
+    // d->qpos[ankle_pitch_r_idx] = -0.32-0.04-0.12;
+    // d->qpos[torso_z_idx] = 0.028;
+    // d->qpos[torso_x_idx] = 0.12;
+    // d->qpos[torso_pitch_idx] = 0.04;
+    // mj_kinematics(m,d);
+    MatrixXd q_tello_init = q_tello;
+    double hzl = q_tello_init(1,0);
+    double hxl = q_tello_init(1,1);
+    double hyl = q_tello_init(1,2);
+    double kl  = q_tello_init(1,3);
+    double al  = q_tello_init(1,4);
+
+    double hzr = q_tello_init(0,0);
+    double hxr = q_tello_init(0,1);
+    double hyr = q_tello_init(0,2);
+    double kr  = q_tello_init(0,3);
+    double ar  = q_tello_init(0,4);
+    double cam_angle = -135;
+    double cam_dist = 2.0;
+    double floor_height = -0.58;
 
     struct timespec next;
     clock_gettime(CLOCK_MONOTONIC, &next);
@@ -2871,22 +2907,111 @@ void* Animate_Log( void * arg )
                 
                 if(time <= tello->controller->get_time())
                 {
-                    const Eigen::VectorXd& curr_x = x_vec[time_cnt];
-                    const Eigen::VectorXd& curr_q = q_vec[time_cnt];
-                    MatrixXd q_tello(2,5);
-                    q_tello.row(0) = curr_q.head(5);
-                    q_tello.row(1) = curr_q.tail(5);
+                    // Eigen::VectorXd& curr_x = x_vec[time_cnt];
+                    // Eigen::VectorXd& curr_q = q_vec[time_cnt];
+                    // MatrixXd q_tello(2,5);
+                    // q_tello.row(0) = curr_q.head(5);
+                    // q_tello.row(1) = curr_q.tail(5);
+
+                    // Video animation:
+                        // moveJoint2(d->time,1,3,2.0,1.7,cam_dist);
+
+                        // moveJoint2(d->time,1,5,-0.58,-100,floor_height);
+                        
+
+                        // moveJoint2(d->time,1.5,3,q_tello_init(1,0),0,hzl);
+                        // moveJoint2(d->time,1.5,3,q_tello_init(1,1),0,hxl);
+                        // moveJoint2(d->time,1.5,3,q_tello_init(1,2),-0.19,hyl);
+                        // moveJoint2(d->time,1.5,3,q_tello_init(1,3),0.38,kl );
+                        // moveJoint2(d->time,1.5,3,q_tello_init(1,4),-0.19,al );
+                        // moveJoint2(d->time,1.5,3,q_tello_init(0,0),0,hzr);
+                        // moveJoint2(d->time,1.5,3,q_tello_init(0,1),0,hxr);
+                        // moveJoint2(d->time,1.5,3,q_tello_init(0,2),-0.19,hyr);
+                        // moveJoint2(d->time,1.5,3,q_tello_init(0,3),0.38,kr );
+                        // moveJoint2(d->time,1.5,3,q_tello_init(0,4),-0.19,ar );
+
+                        // moveJoint2(d->time,3,4,0,0.5,hzl);
+                        // moveJoint2(d->time,4,5,0.5,0,hzl);
+
+                        // moveJoint2(d->time,5,6,0,0.5,hxl);
+                        // moveJoint2(d->time,6,7,0.5,0,hxl);
+
+                        // moveJoint2(d->time,7,8,-0.19,0.5,hyl);
+                        // moveJoint2(d->time,8,9,0.5,-0.19,hyl);
+
+                        // moveJoint2(d->time,9,10,0.38,1.2,kl);
+                        // moveJoint2(d->time,10,11,1.2,0.38,kl);
+
+                        // moveJoint2(d->time,11,12,-0.19,0.5,al);
+                        // moveJoint2(d->time,12,13,0.5,-0.19,al);
+
+                        // moveJoint2(d->time,13,16,-135,-135+360,cam_angle);
+
+                        // moveJoint2(d->time,16,17,1.7,2.0,cam_dist);
+
+                        // moveJoint2(d->time,16,18,0    ,q_tello_init(1,0),hzl);
+                        // moveJoint2(d->time,16,18,0    ,q_tello_init(1,1),hxl);
+                        // moveJoint2(d->time,16,18,-0.19,q_tello_init(1,2),hyl);
+                        // moveJoint2(d->time,16,18,0.38 ,q_tello_init(1,3),kl );
+                        // moveJoint2(d->time,16,18,-0.19,q_tello_init(1,4),al );
+                        // moveJoint2(d->time,16,18,0    ,q_tello_init(0,0),hzr);
+                        // moveJoint2(d->time,16,18,0    ,q_tello_init(0,1),hxr);
+                        // moveJoint2(d->time,16,18,-0.19,q_tello_init(0,2),hyr);
+                        // moveJoint2(d->time,16,18,0.38 ,q_tello_init(0,3),kr );
+                        // moveJoint2(d->time,16,18,-0.19,q_tello_init(0,4),ar );
+                        // moveJoint2(d->time,14,18,-100,-0.58,floor_height);
+
+
+                        // cam.azimuth = cam_angle;
+                        // cam.distance = cam_dist;
+                        // q_tello(1,0) = hzl;
+                        // q_tello(1,1) = hxl;
+                        // q_tello(1,2) = hyl;
+                        // q_tello(1,3) = kl;
+                        // q_tello(1,4) = al;
+
+                        // q_tello(0,0) = hzr;
+                        // q_tello(0,1) = hxr;
+                        // q_tello(0,2) = hyr;
+                        // q_tello(0,3) = kr;
+                        // q_tello(0,4) = ar;
+                    curr_x.segment<3>(3) = CoM_pos;
+                    curr_x.segment<3>(3) = CoM_rpy;
                     tello->controller->set_x(curr_x);
-                    tello->controller->set_q(q_tello);
+                    // tello->controller->set_q(q_tello);
+
                     set_mujoco_state(curr_x);
 
-                    if(has_target_info)
-                    {
-                        const Eigen::VectorXd& target = target_vec[time_cnt];
-                        d->mocap_pos[0] = target[0];
-                        d->mocap_pos[1] = target[1];
-                        d->mocap_pos[2] = target[2];
-                    }
+                    cout << "CoM_vel: " << CoM_vel.transpose() << "       \r";
+
+                    d->mocap_pos[0] = CoM_pos(0);
+                    d->mocap_pos[1] = CoM_pos(1);
+                    d->mocap_pos[2] = CoM_pos(2);
+
+                    Eigen::Quaterniond quat;
+
+                    Eigen::Quaterniond quaternion(CoM_quat(0),CoM_quat(1),CoM_quat(2),CoM_quat(3));  // Quaternion (w, x, y, z)
+                    // Convert quaternion to Euler angles
+
+                    double roll = CoM_rpy(0);
+                    double pitch = CoM_rpy(1);
+                    double yaw = CoM_rpy(2);
+
+                    // cout << "RPY: " << roll*180.0/M_PI << ",     " << pitch*180.0/M_PI << ",     " << yaw*180.0/M_PI << "             \r";
+                    // cout.flush();
+
+                    d->mocap_quat[0] = CoM_quat(0);
+                    d->mocap_quat[1] = CoM_quat(1);
+                    d->mocap_quat[2] = CoM_quat(2);
+                    d->mocap_quat[3] = CoM_quat(3);
+
+                    // if(has_target_info)
+                    // {
+                    //     const Eigen::VectorXd& target = target_vec[time_cnt];
+                    //     d->mocap_pos[0] = target[0];
+                    //     d->mocap_pos[1] = target[1];
+                    //     d->mocap_pos[2] = floor_height;
+                    // }
                     time_cnt++;
                     master_gain = 1.0;
                     sim_conf.en_human_control = true;
@@ -3164,43 +3289,43 @@ void* plotting( void * arg )
 
             // TELEOP DATA ====================================================================================
 
-            x.push_back(tello->controller->get_time());
-            Traj_planner_dyn_data tpdd = tello->controller->get_traj_planner_dyn_data();
-            SRB_Params srb_params = tello->controller->get_SRB_params();
-            Human_params human_params = tello->controller->get_human_params();
-            int FSM = tello->controller->get_FSM();
-            double xR = tello->controller->get_x()(0);
-            double dxR = tello->controller->get_x()(3);
-            double pxR_beg_step = tpdd.st_beg_step(0);
-            double xRlocal = xR - pxR_beg_step;
-            double hR = srb_params.hLIP;
-            double g = srb_params.g;
-            double x_HWRM = tpdd.x_HWRM;
-            double dx_HWRM = tpdd.dx_HWRM;
-            double hH = human_params.hLIP;
+            // x.push_back(tello->controller->get_time());
+            // Traj_planner_dyn_data tpdd = tello->controller->get_traj_planner_dyn_data();
+            // SRB_Params srb_params = tello->controller->get_SRB_params();
+            // Human_params human_params = tello->controller->get_human_params();
+            // int FSM = tello->controller->get_FSM();
+            // double xR = tello->controller->get_x()(0);
+            // double dxR = tello->controller->get_x()(3);
+            // double pxR_beg_step = tpdd.st_beg_step(0);
+            // double xRlocal = xR - pxR_beg_step;
+            // double hR = srb_params.hLIP;
+            // double g = srb_params.g;
+            // double x_HWRM = tpdd.x_HWRM;
+            // double dx_HWRM = tpdd.dx_HWRM;
+            // double hH = human_params.hLIP;
 
-            double wR = std::sqrt(g / hR);
-            double wH = std::sqrt(g / hH);
+            // double wR = std::sqrt(g / hR);
+            // double wH = std::sqrt(g / hH);
 
-            double xDCMRlocal = xRlocal + (dxR/wR);
+            // double xDCMRlocal = xRlocal + (dxR/wR);
 
-            double xDCMHWRM = x_HWRM + (dx_HWRM/wH);
+            // double xDCMHWRM = x_HWRM + (dx_HWRM/wH);
 
-            y1.push_back(xDCMHWRM/hH);
-            y2.push_back(xDCMRlocal/hR);
+            // y1.push_back(xDCMHWRM/hH);
+            // y2.push_back(xDCMRlocal/hR);
 
-            if(tello->controller->get_time() - last_plot_time > 0.1){
-                last_plot_time = tello->controller->get_time();
-                plt::rcparams({{"legend.loc","lower left"}});
-                plt::clf();
-                plt::title("Normalized DCM");
-                plt::named_plot("xDCMHWRM/hH", x, y1, "r-");
-                plt::named_plot("xDCMRlocal/hR", x, y2, "b-");
+            // if(tello->controller->get_time() - last_plot_time > 0.1){
+            //     last_plot_time = tello->controller->get_time();
+            //     plt::rcparams({{"legend.loc","lower left"}});
+            //     plt::clf();
+            //     plt::title("Normalized DCM");
+            //     plt::named_plot("xDCMHWRM/hH", x, y1, "r-");
+            //     plt::named_plot("xDCMRlocal/hR", x, y2, "b-");
 
-                plt::legend();
-                plt::pause(0.001);
+            //     plt::legend();
+            //     plt::pause(0.001);
                 
-            }
+            // }
 
             // x.push_back(tello->controller->get_time());
             // Human_dyn_data hdd = tello->controller->get_human_dyn_data();
@@ -3296,14 +3421,14 @@ void* plotting( void * arg )
             // plt::pause(0.001);
 
             // VELOCITY and Position DATA ==================================================================================
-            // x.push_back(tello->controller->get_time());
+            x.push_back(tello->controller->get_time());
             // y1.push_back(dpc_curr(0));
             // y2.push_back(dpc_curr(1));
             // y3.push_back(dpc_curr(2));
 
-            // y4.push_back(dx_smoothed);
-            // y5.push_back(dy_smoothed);
-            // y6.push_back(dz_smoothed);
+            y4.push_back(CoM_vel(0));
+            y5.push_back(CoM_vel(1));
+            y6.push_back(CoM_vel(2));
 
             // // y7.push_back(pc_curr(0));
             // // y8.push_back(pc_curr(1));
@@ -3315,8 +3440,8 @@ void* plotting( void * arg )
 
             // if(tello->controller->get_time() - last_plot_time > 0.1){
             //     last_plot_time = tello->controller->get_time();
-            //     plt::rcparams({{"legend.loc","lower left"}});
-            //     plt::clf();
+                plt::rcparams({{"legend.loc","lower left"}});
+                plt::clf();
             //     // plt::subplot(3, 2, 1);
             //     // plt::title("CoM X Position True vs EKF");
             //     // plt::named_plot("True X", x, y7, "r-");
@@ -3332,22 +3457,22 @@ void* plotting( void * arg )
             //     // plt::named_plot("True Z", x, y9, "r-");
             //     // plt::named_plot("Kin Z", x, y12, "b-");
             //     // plt::legend();
-            //     plt::subplot(3, 1, 1);
+                // plt::subplot(3, 1, 1);
             //     plt::title("CoM X Velocity True vs Estimated");
             //     plt::named_plot("True dX", x, y1, "r-");
-            //     plt::named_plot("Est. dX", x, y4, "b-");
+                plt::named_plot("Est. dX", x, y4, "r-");
             //     plt::legend();
             //     plt::subplot(3, 1, 2);
             //     plt::title("CoM X Velocity True vs Estimated");
             //     plt::named_plot("True dY", x, y2, "r-");
-            //     plt::named_plot("Est.  dY", x, y5, "b-");
+                plt::named_plot("Est.  dY", x, y5, "g-");
             //     plt::legend();
             //     plt::subplot(3, 1, 3);
             //     plt::title("CoM X Velocity True vs Estimated");
             //     plt::named_plot("True dZ", x, y3, "r-");
-            //     plt::named_plot("Est. dZ", x, y6, "b-");
-            //     plt::legend();
-            //     plt::pause(0.001);
+                plt::named_plot("Est. dZ", x, y6, "b-");
+                plt::legend();
+                plt::pause(0.001);
             // }
             
 

@@ -454,26 +454,13 @@ ctrlData copyMjData(const mjModel* m, mjData*d)
     return cd;
 }
 
-struct ThreadArgs {
-    RoboDesignLab::DynamicRobot* tello;
-    RoboDesignLab::TaskPDConfig config;
-    VectorXd* torques;
-};
-
-// Define the thread function
-void* taskPD2Thread(void* arg) {
-    ThreadArgs* args = static_cast<ThreadArgs*>(arg);
-    *(args->torques) = args->tello->taskPD2(args->config);
-    return nullptr;
-}
-
 // void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 void TELLO_locomotion_ctrl(ctrlData cd)
 {
-    tello->_GRFs.right_front = z_forces(0);
-    tello->_GRFs.right_back = z_forces(1);
-    tello->_GRFs.left_front = z_forces(2);
-    tello->_GRFs.left_back = z_forces(3);
+    tello->_GRFs.right_front = cd.grf_rf;
+    tello->_GRFs.right_back = cd.grf_rb;
+    tello->_GRFs.left_front = cd.grf_lf;
+    tello->_GRFs.left_back = cd.grf_lb;
 
     VectorXd left_toe_vel_local = left_toe_vel_mj;
     VectorXd right_toe_vel_local = right_toe_vel_mj;
@@ -2524,6 +2511,10 @@ void* sim_step_task( void * arg )
             pthread_mutex_lock(&sim_step_mutex);
             contactforce(m,d, controller->get_FSM());
             cd_shared = copyMjData(m,d);
+            cd_shared.grf_rf = z_forces(0);
+            cd_shared.grf_rb = z_forces(1);
+            cd_shared.grf_lf = z_forces(2);
+            cd_shared.grf_lb = z_forces(3);
             cd_shared_data_ready = true;
             pthread_mutex_unlock(&sim_step_mutex);
         }

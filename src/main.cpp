@@ -172,6 +172,7 @@ extern Vector3d CoM_pos;
 extern Vector3d CoM_rpy;
 extern Vector3d CoM_vel;
 extern VectorXd CoM_quat;
+extern ctrlData cd_shared;
 
 void signal_callback_handler(int signum);
 
@@ -603,11 +604,18 @@ void run_balance_controller()
     double t = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch).count() / 1000000.0 - t_program_start;  // Convert to double with resolution of microseconds
 	tello->controller->set_time(t);
 
+	// Set up code for switching to Tello_locomotion_ctrl() here:
+	// ctrlData cd_local = cd_shared;
+	// TELLO_locomotion_ctrl(cd_local);
+	// TODO: set the z forces from foot sensors
+	// TODO: add a new config json for hardware mode
+	// end code for switching to Tello_locomotion_ctrl().
+
 	// Set pc_curr, dpc_curr, EA_curr, dEA_Curr, q, qd here:
-	Vector3d pc_curr = CoM_pos;
-	Vector3d dpc_curr = CoM_vel;
-	Vector3d EA_curr = CoM_rpy;
-	Vector3d dEA_curr = tello->_gyro;
+	Vector3d pc_curr = CoM_pos; // from mocap
+	Vector3d dpc_curr = CoM_vel; // from mocap
+	Vector3d EA_curr = CoM_rpy; // from mocap
+	Vector3d dEA_curr = tello->_gyro; // from IMU
 
 	VectorXd task_velocities = tello->joint_vel_to_task_vel(tello->getJointVelocities(),tello->getJointPositions());
 
@@ -633,45 +641,44 @@ void run_balance_controller()
     tau_LR << tau.tail(5).array()*(2048.0/35.0), tau.head(5).array()*(2048.0/35.0);
 	if(apply_balance_torques) jointFFTorque = tau_LR;
 
-
-	Matrix3d R_foot_right = tello->controller->get_foot_orientation_wrt_body(q.row(0));
-	Matrix3d R_foot_left = tello->controller->get_foot_orientation_wrt_body(q.row(1));
+	// Matrix3d R_foot_right = tello->controller->get_foot_orientation_wrt_body(q.row(0));
+	// Matrix3d R_foot_left = tello->controller->get_foot_orientation_wrt_body(q.row(1));
 
 	// EKF calls here
 
-	inekf::RobotState filter_state;
-	filter_state = tello->get_filter_state();
-	if(tare_efk_pos)
-	{
-		tare_efk_pos = false;
-		ekf_position_offset = filter_state.getPosition();
-		use_filter_pc = true;
-	}
+	// inekf::RobotState filter_state;
+	// filter_state = tello->get_filter_state();
+	// if(tare_efk_pos)
+	// {
+	// 	tare_efk_pos = false;
+	// 	ekf_position_offset = filter_state.getPosition();
+	// 	use_filter_pc = true;
+	// }
 
-	Vector3d estimated_pc(filter_state.getPosition()(0),filter_state.getPosition()(1),filter_state.getPosition()(2));
-    dx = (estimated_pc(0) - dx_prev)/0.001;
-    dx_prev = estimated_pc(0);
-    dy = (estimated_pc(1) - dy_prev)/0.001;
-    dy_prev = estimated_pc(1);
-    dz = (estimated_pc(2) - dz_prev)/0.001;
-    dz_prev = estimated_pc(2);
-    dx_vec.tail(99) = dx_vec.head(99).eval();
-    dx_vec[0] = dx;
-    dy_vec.tail(99) = dy_vec.head(99).eval();
-    dy_vec[0] = dy;
-    dz_vec.tail(99) = dz_vec.head(99).eval();
-    dz_vec[0] = dz;
-    dx_filtered = dash_utils::smoothData(dx_vec,3);
-    dy_filtered = dash_utils::smoothData(dy_vec,3);
-    dz_filtered = dash_utils::smoothData(dz_vec,3);
-    Vector3d estimated_dpc(dx_filtered,dy_filtered,dz_filtered);
-	dpc = estimated_dpc;
-	pc = Vector3d(0,0,0);
+	// Vector3d estimated_pc(filter_state.getPosition()(0),filter_state.getPosition()(1),filter_state.getPosition()(2));
+    // dx = (estimated_pc(0) - dx_prev)/0.001;
+    // dx_prev = estimated_pc(0);
+    // dy = (estimated_pc(1) - dy_prev)/0.001;
+    // dy_prev = estimated_pc(1);
+    // dz = (estimated_pc(2) - dz_prev)/0.001;
+    // dz_prev = estimated_pc(2);
+    // dx_vec.tail(99) = dx_vec.head(99).eval();
+    // dx_vec[0] = dx;
+    // dy_vec.tail(99) = dy_vec.head(99).eval();
+    // dy_vec[0] = dy;
+    // dz_vec.tail(99) = dz_vec.head(99).eval();
+    // dz_vec[0] = dz;
+    // dx_filtered = dash_utils::smoothData(dx_vec,3);
+    // dy_filtered = dash_utils::smoothData(dy_vec,3);
+    // dz_filtered = dash_utils::smoothData(dz_vec,3);
+    // Vector3d estimated_dpc(dx_filtered,dy_filtered,dz_filtered);
+	// dpc = estimated_dpc;
+	// pc = Vector3d(0,0,0);
 	
-	RoboDesignLab::IMU_data imu_data;
-    imu_data.timestamp = t;
-    imu_data.acc = tello->_acc;		// DATA DIRECTIONS AND BIASES VERIFIED
-    imu_data.gyro = tello->_gyro; 	// DATA DIRECTIONS AND BIASES VERIFIED
+	// RoboDesignLab::IMU_data imu_data;
+    // imu_data.timestamp = t;
+    // imu_data.acc = tello->_acc;		// DATA DIRECTIONS AND BIASES VERIFIED
+    // imu_data.gyro = tello->_gyro; 	// DATA DIRECTIONS AND BIASES VERIFIED
 
 	//pthread_mutex_lock(&EKF_mutex);
 	MatrixXd direct_lfv_hip = MatrixXd(4,3);
@@ -680,33 +687,34 @@ void run_balance_controller()
 	direct_lfv_hip.row(1) = task_pos.segment<3>(9);
 	direct_lfv_hip.row(2) = task_pos.segment<3>(0);
 	direct_lfv_hip.row(3) = task_pos.segment<3>(3); // DATA VERIFIED
-	tello->set_imu_data_for_ekf(imu_data);
-	tello->set_gnd_contact_data_for_ekf(gnd_contacts);
-	tello->set_lfv_hip_data_for_ekf(direct_lfv_hip);
-	tello->set_q_data_for_ekf(q);
-	double CoM_z = tello->controller->get_CoM_z(direct_lfv_hip,gnd_contacts,EA_curr); 
-	pc(2) = CoM_z;
+	
+	// tello->set_imu_data_for_ekf(imu_data);
+	// tello->set_gnd_contact_data_for_ekf(gnd_contacts);
+	// tello->set_lfv_hip_data_for_ekf(direct_lfv_hip);
+	// tello->set_q_data_for_ekf(q);
+	// double CoM_z = tello->controller->get_CoM_z(direct_lfv_hip,gnd_contacts,EA_curr); 
+	// pc(2) = CoM_z;
 
-	filter_data_ready = true;
+	// filter_data_ready = true;
 	// tello->update_filter_IMU_data(imu_data);
 	// tello->update_filter_contact_data(gnd_contacts);
 	// tello->update_filter_kinematic_data(direct_lfv_hip,R_foot_right,R_foot_left);
-	
 
-	double x = filter_state.getPosition()(0)-ekf_position_offset(0);
-	double y = filter_state.getPosition()(1)-ekf_position_offset(1);
-	double z = filter_state.getPosition()(2)-ekf_position_offset(2);
+	// double x = filter_state.getPosition()(0)-ekf_position_offset(0);
+	// double y = filter_state.getPosition()(1)-ekf_position_offset(1);
+	// double z = filter_state.getPosition()(2)-ekf_position_offset(2);
 
-	Vector3d rf_error = tello->controller->get_lfv_comm_hip().row(2) - direct_lfv_hip.row(2);
+	// Vector3d rf_error = tello->controller->get_lfv_comm_hip().row(2) - direct_lfv_hip.row(2);
 	//cout << direct_lfv_hip << endl;
 	//cout << "lfv_comm_hip: " << tello->controller->get_lfv_comm_hip().row(2) << "            \r"; // lfv_comm verified
 	//cout << "==================================================================================================" << endl;
 	//cout << "X: " << x << "       Y: " << y << "       Z: " << z << "       t: " << t << "             \r";
-	cout << tau_LR.transpose() << "           \r";
+	// cout << tau_LR.transpose() << "           \r";
 	//cout << x << ",\t" << y << ",\t" << z << ",\t" << t << "\n";
 	//cout << "R: " << EA_curr(0) << "       P: " << EA_curr(1) << "       Y: " << EA_curr(2) << "       t: " << t << "             \n";
 	//cout << "X: " << tello->_acc(0) << "       Y: " << tello->_acc(1) << "       Z: " << tello->_acc(2) << "       t: " << t << "             \n";
-	cout.flush();
+	// cout.flush();
+
 	if(run_motors_for_balancing){
 		balance_pd(tello->controller->get_lfv_comm_hip());
 	}
@@ -851,10 +859,10 @@ static void* update_1kHz( void * arg )
 			hdd.FyH_hmi = 0;
 			hdd.FxH_spring = 0;
 		}
-		cout << "Fx: " << hdd.FxH_hmi << "Fy: " << hdd.FyH_hmi << endl;
-		dash_utils::pack_data_to_hmi((uint8_t*)hmi_tx_buffer,hdd);
-		int n = sendto(sockfd, hmi_tx_buffer, 12,MSG_CONFIRM, 
-			   (const struct sockaddr *) &servaddr, sizeof(servaddr));
+		// cout << "Fx: " << hdd.FxH_hmi << "Fy: " << hdd.FyH_hmi << endl;
+		// dash_utils::pack_data_to_hmi((uint8_t*)hmi_tx_buffer,hdd);
+		// int n = sendto(sockfd, hmi_tx_buffer, 12,MSG_CONFIRM, 
+		// 	   (const struct sockaddr *) &servaddr, sizeof(servaddr));
 		pthread_mutex_lock(&mutex_CAN_recv);
 		if(disableScheduled){
 			tello->disable_all_motors();
@@ -1155,17 +1163,16 @@ int main(int argc, char *argv[]) {
 	
 	printf("CAN Channels opened: %s \n",(channels).c_str());
 
-	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd1),"rx_bus1",TASK_CONSTANT_DELAY, 50);
-	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd2),"rx_bus2",TASK_CONSTANT_DELAY, 50);
-	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd3),"rx_bus3",TASK_CONSTANT_DELAY, 50);
-	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(&pcd4),"rx_bus4",TASK_CONSTANT_DELAY, 50);
-	// tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
-	tello->addPeriodicTask(&IMU_Comms, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL, "imu_task", TASK_CONSTANT_DELAY, 1000);
-	tello->addPeriodicTask(&update_1kHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, NULL, "update_task",TASK_CONSTANT_PERIOD, 1000);
-	// tello->addPeriodicTask(&BNO055_Comms, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, NULL, "bno_imu_task", TASK_CONSTANT_DELAY, 1000);
-	// tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
-	tello->addPeriodicTask(&motion_capture, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"Mocap_Task",TASK_CONSTANT_PERIOD, 1000);
-	// tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, 3, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
+	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd1),"rx_bus1",TASK_CONSTANT_DELAY, 50);
+	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd2),"rx_bus2",TASK_CONSTANT_DELAY, 50);
+	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd3),"rx_bus3",TASK_CONSTANT_DELAY, 50);
+	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd4),"rx_bus4",TASK_CONSTANT_DELAY, 50);
+	// tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
+	tello->addPeriodicTask(&IMU_Comms, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_2, NULL, "imu_task", TASK_CONSTANT_DELAY, 1000);
+	tello->addPeriodicTask(&update_1kHz, SCHED_FIFO, 99, UPX_ISOLATED_CORE_1_THREAD_2, NULL, "update_task",TASK_CONSTANT_PERIOD, 1000);
+	// tello->addPeriodicTask(&BNO055_Comms, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, NULL, "bno_imu_task", TASK_CONSTANT_DELAY, 1000);
+	// tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
+	tello->addPeriodicTask(&motion_capture, SCHED_FIFO, 99, UPX_ISOLATED_CORE_3_THREAD_1, (void*)(NULL),"Mocap_Task",TASK_CONSTANT_PERIOD, 1000);
 	
 	usleep(1000);
 	
@@ -1228,7 +1235,7 @@ int main(int argc, char *argv[]) {
 				break;
 			case 'B':
 				fsm_state = 6;
-				printf("\nBalance Controller & EKF Testing Mode:\n");
+				printf("\nBalance Controller:\n");
 
 				break;
 			case 'M':

@@ -17,6 +17,8 @@ extern Vector3d CoM_vel;
 
 double time_last;
 
+extern ctrlData cd_shared;
+
 Eigen::VectorXd quaternionToEuler(const Eigen::Quaterniond& quat) {
   Eigen::VectorXd euler(3);
   
@@ -168,8 +170,20 @@ void* motion_capture( void * arg )
 
               CoM_vel = Vector3d(dx_smoothed,dy_smoothed,dz_smoothed);
 
+              // code for populating ctrlData struct here:
+              cd_shared.setTime(tello->controller->get_time());
+              // From Mocap
+              cd_shared.setCoMPos(CoM_pos);
+              cd_shared.setCoMVel(CoM_vel);
+              cd_shared.setCoMRPY(CoM_rpy);
+              // From tello sensors
+              cd_shared.setCoMAcc(tello->_acc);
+              cd_shared.setCoMAngVel(tello->_gyro);
+              cd_shared.setJointPos(tello->getJointPositions());
+              cd_shared.setJointVel(tello->getJointVelocities());
+
               // cout << "  " << r->id << ") " << r->pose[0] << ",     " << r->pose[1] << ",     " << r->pose[2]
-              //        << ",     " << euler(0)*180.0/M_PI << ",     " << euler(1)*180.0/M_PI << ",     " << euler(2)*180.0/M_PI << "                          \r";
+              //        << ",     " << CoM_rpy(0)*180.0/M_PI << ",     " << CoM_rpy(1)*180.0/M_PI << ",     " << CoM_rpy(2)*180.0/M_PI << "                          \r";
               // cout.flush();
             }
           }

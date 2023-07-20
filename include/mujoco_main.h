@@ -59,18 +59,6 @@
 #include "Driver/DataPacket/DataPacket.h"
 #include "Driver/DualShock4Connector.h"
 
-void* mujoco_Update_1KHz( void * arg );
-void* tello_controller( void * arg );
-void* plotting( void * arg );
-void* plot_human_data( void * arg );
-void* PS4_Controller( void * arg );
-void* Human_Playback( void * arg );
-void* logging( void * arg );
-void* sim_step_task( void * arg );
-void* screenRecord( void * arg );
-void* usbCamRecord( void * arg );
-void* Animate_Log( void * arg );
-void* curve_fitting( void * arg );
 
 struct userProfile {
     std::string name;
@@ -102,10 +90,13 @@ struct ctrlData {
     double t;
     double xR;
     double xdR;
+    double xddR;
     double yR;
     double ydR;
+    double yddR;
     double zR;
     double zdR;
+    double zddR;
     double phiR;
     double phidR;
     double thetaR;
@@ -132,6 +123,11 @@ struct ctrlData {
     double qd3r;      
     double qd4r;
     double qd5r;
+    double grf_rf;
+    double grf_rb;
+    double grf_lf;
+    double grf_lb;
+
     // MatrixXd mujoco_lfv = MatrixXd(4,3);
     mjtNum acceleration[3];
     mjtNum angular_velocity[3];
@@ -145,15 +141,84 @@ struct ctrlData {
         *this = other;
     }
 
+    void setTime(double tsec){
+        t = tsec;
+    }
+    void setGRFs(double rf, double rb, double lf, double lb){
+        grf_rf = rf;
+        grf_rb = rb;
+        grf_lf = lf;
+        grf_lb = lb;
+    }
+
+    void setCoMPos(Vector3d pos){
+        xR = pos(0);
+        yR = pos(1);
+        zR = pos(2);
+    }
+    void setCoMVel(Vector3d vel){
+        xdR = vel(0);
+        ydR = vel(1);
+        zdR = vel(2);
+    }
+    void setCoMRPY(Vector3d rpy){
+        phiR = rpy(0);
+        thetaR = rpy(1);
+        psiR = rpy(2);
+    }
+    void setCoMAngVel(Vector3d drpy){
+        phidR = drpy(0);
+        thetadR = drpy(1);
+        psidR = drpy(2);
+        angular_velocity[0] = drpy(0);
+        angular_velocity[1] = drpy(1);
+        angular_velocity[2] = drpy(2);
+    }
+    void setJointPos(VectorXd pos_LR){
+        q1l = pos_LR(0);
+        q2l = pos_LR(1);
+        q3l = pos_LR(2);
+        q4l = pos_LR(3);
+        q5l = pos_LR(4);
+        q1r = pos_LR(5);
+        q2r = pos_LR(6);
+        q3r = pos_LR(7);
+        q4r = pos_LR(8);
+        q5r = pos_LR(9);
+    }
+    void setJointVel(VectorXd vel_LR){
+        qd1l = vel_LR(0);
+        qd2l = vel_LR(1);
+        qd3l = vel_LR(2);
+        qd4l = vel_LR(3);
+        qd5l = vel_LR(4);
+        qd1r = vel_LR(5);
+        qd2r = vel_LR(6);
+        qd3r = vel_LR(7);
+        qd4r = vel_LR(8);
+        qd5r = vel_LR(9);
+    }
+    void setCoMAcc(Vector3d acc){
+        xddR = acc(0);
+        yddR = acc(1);
+        zddR = acc(2);
+        acceleration[0] = acc(0);
+        acceleration[1] = acc(1);
+        acceleration[2] = acc(2);
+    }
+
     // Assignment operator
     ctrlData& operator=(const ctrlData& other) {
         t = other.t;
         xR = other.xR;
         xdR = other.xdR;
+        xddR = other.xddR;
         yR = other.yR;
         ydR = other.ydR;
+        yddR = other.yddR;
         zR = other.zR;
         zdR = other.zdR;
+        zddR = other.zddR;
         phiR = other.phiR;
         phidR = other.phidR;
         thetaR = other.thetaR;
@@ -180,11 +245,29 @@ struct ctrlData {
         qd3r = other.qd3r;
         qd4r = other.qd4r;
         qd5r = other.qd5r;
+        grf_rf = other.grf_rf;
+        grf_rb = other.grf_rb;
+        grf_lf = other.grf_lf;
+        grf_lb = other.grf_lb;
         // mujoco_lfv = other.mujoco_lfv;
         std::memcpy(acceleration, other.acceleration, sizeof(acceleration));
         std::memcpy(angular_velocity, other.angular_velocity, sizeof(angular_velocity));
         return *this;
     }
 };
+
+void TELLO_locomotion_ctrl(ctrlData cd);
+void* mujoco_Update_1KHz( void * arg );
+void* tello_controller( void * arg );
+void* plotting( void * arg );
+void* plot_human_data( void * arg );
+void* PS4_Controller( void * arg );
+void* Human_Playback( void * arg );
+void* logging( void * arg );
+void* sim_step_task( void * arg );
+void* screenRecord( void * arg );
+void* usbCamRecord( void * arg );
+void* Animate_Log( void * arg );
+void* curve_fitting( void * arg );
 
 #endif

@@ -82,8 +82,8 @@ void* rx_CAN( void * arg ){
 				}
 				else if(id == 18 || id == 19){
 					process_foot_sensor_data(Message, tello);
-					cout << "RF: " << tello->_GRFs.right_front << "                  \r";
-					cout.flush();
+					// cout << "RF: " << tello->_GRFs.right_front << "                  \r";
+					// cout.flush();
 					// if(id == 18){
 					// 	printf("L: %f, \t %f \t\t R: %f, \t %f          \r",tello->_GRFs.left_front,tello->_GRFs.left_back,tello->_GRFs.right_front,tello->_GRFs.right_back);
 					// 	std::cout.flush();

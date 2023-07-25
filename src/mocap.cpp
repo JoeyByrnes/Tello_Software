@@ -41,6 +41,18 @@ Eigen::VectorXd quaternionToEuler(const Eigen::Quaterniond& quat) {
   return euler;
 }
 
+Eigen::Quaterniond rotateQuaternion(const Eigen::Quaterniond& inputQuaternion, const Eigen::Vector3d& alignment_error) {
+    // Create the rotation quaternions for each axis using axis-angle representation
+    Eigen::Quaterniond qx(std::cos(alignment_error.x() / 2.0), std::sin(alignment_error.x() / 2.0), 0.0, 0.0);
+    Eigen::Quaterniond qy(std::cos(alignment_error.y() / 2.0), 0.0, std::sin(alignment_error.y() / 2.0), 0.0);
+    Eigen::Quaterniond qz(std::cos(alignment_error.z() / 2.0), 0.0, 0.0, std::sin(alignment_error.z() / 2.0));
+
+    // Combine the rotations by multiplying the quaternions in the proper order
+    Eigen::Quaterniond rotatedQuaternion = qz * qy * qx * inputQuaternion;
+
+    return rotatedQuaternion;
+}
+
 double smoothMocapData(const Eigen::VectorXd& vel, double smoothingFactor) {
     int n = vel.size();
     Eigen::VectorXd smoothedVel(n);
@@ -96,6 +108,8 @@ void* motion_capture( void * arg )
   // start streaming
   owl.streaming(1);
 
+  bool stream_started = false;
+
   auto now = std::chrono::system_clock::now();  // Get the current time
   auto micros = std::chrono::time_point_cast<std::chrono::microseconds>(now);  // Round down to nearest microsecond
   auto since_epoch = micros.time_since_epoch();  // Get duration since epoch
@@ -141,10 +155,25 @@ void* motion_capture( void * arg )
               //        << "," << r->pose[3] << "," << r->pose[4] << "," << r->pose[5] << "," << r->pose[6]
               //        << endl;
               Eigen::Quaterniond quaternion(r->pose[3], r->pose[6], r->pose[4], r->pose[5]);  // Quaternion (w, x, y, z)
+
+              // Define the rotation angle in radians
+              Eigen::Vector3d alignment_error(-0.0035, 0.0305, 0);
+
+              Eigen::Quaterniond rotatedQuaternion = rotateQuaternion(quaternion, alignment_error);
               
-              CoM_rpy = quaternionToEuler(quaternion);
+              CoM_rpy = quaternionToEuler(rotatedQuaternion);
               CoM_quat << r->pose[3], r->pose[6], r->pose[4], r->pose[5];
-              CoM_pos = Vector3d(r->pose[2]/1000.0, r->pose[0]/1000.0, r->pose[1]/1000.0-0.58);
+              CoM_pos = Vector3d(r->pose[2]/1000.0, r->pose[0]/1000.0, r->pose[1]/1000.0-0.58+0.0212);
+              if(!(r->pose[2] == 0.0 && r->pose[0] == 0.0 && r->pose[1] == 0.0))
+              {
+                stream_started = true;
+              }
+              if(stream_started && r->pose[2] == 0.0 && r->pose[0] == 0.0 && r->pose[1] == 0.0)
+              {
+                scheduleDisable();
+                cout << "Lost Phasespace Tracking. Disabling Motors." << endl;
+                stream_started = false;
+              }
               if(first_time) 
               {
                 CoM_pos_last = CoM_pos;
@@ -164,9 +193,9 @@ void* motion_capture( void * arg )
               CoM_z_vels.tail(99) = CoM_z_vels.head(99).eval();
               CoM_z_vels[0] = CoM_vel_raw(2);
 
-              double dx_smoothed = smoothMocapData(CoM_x_vels,0.0);
-              double dy_smoothed = smoothMocapData(CoM_y_vels,0.0);
-              double dz_smoothed = smoothMocapData(CoM_z_vels,0.0);
+              double dx_smoothed = smoothMocapData(CoM_x_vels,1.5);
+              double dy_smoothed = smoothMocapData(CoM_y_vels,1.5);
+              double dz_smoothed = smoothMocapData(CoM_z_vels,1.5);
 
               CoM_vel = Vector3d(dx_smoothed,dy_smoothed,dz_smoothed);
 

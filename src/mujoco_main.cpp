@@ -462,10 +462,10 @@ void TELLO_locomotion_ctrl(ctrlData cd)
     tello->_GRFs.left_front = cd.grf_lf;
     tello->_GRFs.left_back = cd.grf_lb;
 
-    VectorXd left_toe_vel_local = left_toe_vel_mj;
-    VectorXd right_toe_vel_local = right_toe_vel_mj;
-    VectorXd left_heel_vel_local = left_heel_vel_mj;
-    VectorXd right_heel_vel_local = right_heel_vel_mj;
+    // VectorXd left_toe_vel_local = left_toe_vel_mj;
+    // VectorXd right_toe_vel_local = right_toe_vel_mj;
+    // VectorXd left_heel_vel_local = left_heel_vel_mj;
+    // VectorXd right_heel_vel_local = right_heel_vel_mj;
     // cout << tello->_GRFs.right_front << "    " << tello->_GRFs.right_back << "    " << tello->_GRFs.left_front << "    " << tello->_GRFs.left_back << " " << endl; 
     // Net wrench based PD controller with optimization-based force distribution
     // Simulation time
@@ -535,7 +535,7 @@ void TELLO_locomotion_ctrl(ctrlData cd)
     // mujoco_lfv.row(3) = Vector3d(left_foot_heel[0],left_foot_heel[1],left_foot_heel[2]);   
 
     // VectorXd mujoco_lfv_vector = dash_utils::flatten(cd.mujoco_lfv);
-    VectorXd lfv_comm_vector = dash_utils::flatten(controller->get_lfv_comm_world());
+    // VectorXd lfv_comm_vector = dash_utils::flatten(controller->get_lfv_comm_world());
     //dash_utils::setOutputFolder("/home/joey/Desktop/tello_outputs/");
     //dash_utils::writeVectorToCsv(mujoco_lfv_vector,"mujoco_lfv.csv");
     //dash_utils::writeVectorToCsv(lfv_comm_vector,"lfv_comm.csv");

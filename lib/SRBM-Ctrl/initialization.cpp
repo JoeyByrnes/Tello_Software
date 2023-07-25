@@ -97,7 +97,7 @@ void dash_init::SRB_Init(VectorXd& x0, MatrixXd& q0, MatrixXd& qd0, MatrixXd& lf
         // default initialization places feet underneath hips
         // assumes no hip roll or yaw
         double hip_angle_yaw_init = 0;
-        double hip_angle_roll_init = 0.0472665;
+        double hip_angle_roll_init = 0; // 0.0472665
         double HK_length = thigh_length;
         double KA_length = calf_length;
         double HA_length = hR - CoM2H_z_dist - heel_length;
@@ -198,7 +198,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
     {
         // simulation 
         srb_params.dt = 0.002; // simulation time step
-        srb_params.init_type = 1; // default = 0, teleop_setup = 1
+        srb_params.init_type = 0; // default = 0, teleop_setup = 1
 
         // physical constants
         srb_params.g = 9.81; // acceleration due to gravity in m/s^2
@@ -295,11 +295,11 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.swing_time_scaler = 0.6;
         
     }
-    else
+    else if(simulation_mode == 2)
     {
         // simulation 
         srb_params.dt = 0.002; // simulation time step
-        srb_params.init_type = 1; // default = 0, teleop_setup = 1
+        srb_params.init_type = 0; // default = 0, teleop_setup = 1
 
         // physical constants
         srb_params.g = 9.81; // acceleration due to gravity in m/s^2
@@ -393,5 +393,106 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.q1_lim << -M_PI/9, M_PI/9;
         srb_params.q2_lim << -M_PI/12, M_PI/9;
 
+    }
+    else // Hardware mode
+    {
+        // simulation 
+        srb_params.dt = 0.001; // simulation time step
+        srb_params.init_type = 0; // default = 0, teleop_setup = 1
+
+        // physical constants
+        srb_params.g = 9.81; // acceleration due to gravity in m/s^2
+        srb_params.mu = 1.0; // coefficient of friction value
+
+        // SRB specific
+        srb_params.m = 12; // robot mass in kg // was 23 for mujoco // real robot is 15.8Kg
+        srb_params.hLIP = 0.58; // nominal robot LIP height // was 0.66 for mujoco
+        srb_params.Ib = Matrix3d::Identity();
+        srb_params.Ib(0,0) = 0.4874;
+        srb_params.Ib(1,1) = 0.3081;
+        srb_params.Ib(2,2) = 0.2390; // robot fixed moment of inertia tensor in {B} - Ixx, Iyy, Izz in kg-m^2
+
+        // kinematics
+        srb_params.W = 0.252; // body width in m (along y-direction)
+        srb_params.L = 0.0840; // body length in m (along x-direction) -- visualization only
+        srb_params.H = 0.252; // body height in m (along z-direction) -- visualization only
+        srb_params.thigh_length = 0.2286; // thigh length in m (L1)
+        srb_params.calf_length = 0.26; // calf length in m (L2)
+        srb_params.foot_length = 0.12; // foot length in m (L3)
+        srb_params.heel_length = 0.0485; // heel length in m (L4)
+        srb_params.CoM2H_z_dist = 0.088; // CoM to hip connection z-direction distance in m was 0.18 for mujoco
+
+        // planner (all) -- perhaps move to a separate data structure later
+        srb_params.planner_type = 0; // none = 0, LIP_ang_mom_reg = 1, Human_Dyn_Telelocomotion = 2
+        srb_params.T = 0.25; // single-support-phase time (step time)
+        // planner_type = none
+        srb_params.x_sinu_traj_params << 0.0, 0.0, 0.0; // x-direction sinusoidal reference parameters
+        srb_params.y_sinu_traj_params << 0.0, 0.0, 0.0; // y-direction sinusoidal reference parameters
+        srb_params.z_sinu_traj_params << 0.0, 0.0, 0.0; // z-direction sinusoidal reference parameters
+        srb_params.roll_sinu_traj_params << 0.0, 0.0, 0.0; // roll sinusoidal reference parameters 
+        srb_params.pitch_sinu_traj_params << 0.0, 0.0, 0.0; // pitch sinusoidal reference parameters
+        srb_params.yaw_sinu_traj_params << 0.0, 0.0, 0.0; // yaw sinusoidal reference parameters
+        // planner_type = LIP_ang_mom_reg 
+        std::vector<double> vx_des_t;
+        for (double t = 0; t <= 5.0; t += 0.1) {
+            vx_des_t.push_back(t);
+        } 
+        Eigen::VectorXd eigen_vx_des_t(vx_des_t.size());
+        for (int i = 0; i < vx_des_t.size(); ++i) {
+            eigen_vx_des_t[i] = vx_des_t[i];
+        }
+        srb_params.vx_des_t = eigen_vx_des_t;  // time signal for desired x-direction velocity (end-of-next-step)
+        std::vector<double> vx_des_vx;
+        for (int i = 0; i < vx_des_t.size(); ++i) {
+            double t = vx_des_t[i];
+            vx_des_vx.push_back((1.0 / 8.0) * (-1 * (t - 2) * (t - 2) + 4));
+        }
+        Eigen::VectorXd eigen_vx_des_vx(vx_des_vx.size());
+        for (int i = 0; i < vx_des_vx.size(); ++i) {
+            eigen_vx_des_vx[i] = vx_des_vx[i];
+        }
+        srb_params.vx_des_vx = eigen_vx_des_vx; // desired x-direction velocity (end-of-next-step) 
+        srb_params.t_beg_stepping = 5; // time to initiate stepping in s
+        srb_params.t_end_stepping = 4.5; // time to end stepping in s
+        srb_params.zcl = 0.04; // swing-leg max height in m
+        // planner_type = Human_Dyn_Telelocomotion 
+        srb_params.xDCMH_deadband = 0.10; // deadband for applying gain for human DCM in m
+        srb_params.KxDCMH = 1.5; // gain for human DCM
+        srb_params.Kx_DCM_mult = 3.0; // multiplier of K_DCM for sagittal plane control
+        srb_params.Ky_DCM_mult = 3.0; // multiplier of K_DCM for frontal plane control
+        srb_params.T_DSP = 0.0750; // assumed duration of DSP in s
+        srb_params.lmaxR = 0.5; // maximum step length in m
+
+        // controller 
+        srb_params.Kp_xR = 1000.0; // P gain for x-direction tracking
+        srb_params.Kd_xR = 500.0; // D gain for x-direction tracking
+        srb_params.Kp_yR = 2000.0; // P gain for y-direction tracking
+        srb_params.Kd_yR = 120.0; // D gain for y-direction tracking
+        srb_params.Kp_zR = 45000.0; // P gain for z-direction tracking
+        srb_params.Kd_zR = 120.0; // D gain for z-direction tracking
+        srb_params.Kp_phiR = 100.0; // P gain for roll tracking
+        srb_params.Kd_phiR = 10.0; // D gain for roll tracking
+        srb_params.Kp_thetaR = 150.0; // P gain for pitch tracking
+        srb_params.Kd_thetaR = 20.0; // D gain for pitch tracking
+        srb_params.Kp_psiR = 10.0; // P gain for yaw tracking
+        srb_params.Kd_psiR = 10.0; // D gain for yaw tracking
+        srb_params.QP_opt_sol_type = 2; // quadprog = 0, quadprog (active-set) = 1, qpOASES = 2 --> DEFAULT
+        srb_params.W_wrench = 100.0; // cost function weight for satisfying desired net wrench
+        srb_params.W_u_minus_u0_norm = 1.0; // cost function weight for penalizing large GRFs that differ too much from the previous (helps with large internal forces that cancel)
+        srb_params.Act_const_type = 0; // joint torque based = 0 or motor torque based = 1
+        srb_params.tau_m_max = 15.0; // maximum motor torque (15-20)
+        srb_params.tau_m_stall = 15.0; // motor stall torque
+        srb_params.alpha_m = 0.358; // motor dynamics alpha term
+        srb_params.beta_trans = 0.465; // transmission kinematics beta term
+        srb_params.gamma_trans = 0.5; // transmission kinematics gamma term
+        srb_params.Fz_min_QP = 0.0; // vertical force min to make sure no pulling on the ground (force distribution QP)
+        srb_params.Fz_min_FSM = 15.0; // vertical force min to detect when foot breaks contact (FSM) 
+
+        // joint limits
+        srb_params.q1_lim << -M_PI/9, M_PI/9;
+        srb_params.q2_lim << -M_PI/12, M_PI/9;
+
+        srb_params.swing_time_scaler = 0.6;
+        
     }
 }

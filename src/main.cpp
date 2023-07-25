@@ -51,6 +51,11 @@ bool tare_efk_pos = false;
 Vector3d ekf_position_offset;
 bool run_motors_for_balancing = false;
 bool apply_balance_torques = false;
+bool no_posture_ctrl = false;
+
+bool start_controller_time = false;
+bool tare_mocap_pos = false;
+Vector3d mocap_offset = Vector3d::Zero();
 
 int udp_data_ready = 0;
 char udp_control_packet[UDP_MAXLINE];
@@ -402,17 +407,18 @@ void run_tello_pd()
 	if(h_offset < 0){
 		delta_task = 0.02;
 	}
-	Vector3d target(0, 0, -0.500+(h_offset/1000.0));
+	Vector3d target(0, 0, -0.58+0.088);
 
 	double foot_len_half = 0.060;
 	double pitch_degrees = tello_ypr[1];
 
 	double x_off = 0.002;
+
 	
-	Vector3d target_front_left(foot_len_half+target(0)+x_off, target(1)+0.050, target(2)-(pitch_degrees/3500.0));
-	Vector3d target_back_left(-foot_len_half+target(0)+x_off, target(1)+0.050, target(2)+(pitch_degrees/3500.0));
-	Vector3d target_front_right(foot_len_half+target(0)+x_off, target(1)-0.050, target(2)-(pitch_degrees/3500.0));
-	Vector3d target_back_right(-foot_len_half+target(0)+x_off, target(1)-0.050, target(2)+(pitch_degrees/3500.0));
+	Vector3d target_front_left(foot_len_half+target(0)+x_off, target(1), target(2)-(pitch_degrees/3500.0));
+	Vector3d target_back_left(-foot_len_half+target(0)+x_off, target(1), target(2)+(pitch_degrees/3500.0));
+	Vector3d target_front_right(foot_len_half+target(0)+x_off, target(1), target(2)-(pitch_degrees/3500.0));
+	Vector3d target_back_right(-foot_len_half+target(0)+x_off, target(1), target(2)+(pitch_degrees/3500.0));
 
 	VectorXd pos_desired(12);
 	pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
@@ -560,18 +566,29 @@ void balance_pd(MatrixXd lfv_hip)
 	kp_vec_joint(9) = joint_kp + gain_adjustment;
 	
 	int motor_kp = 0;
-	int motor_kd = 1100;
+	int motor_kd = 400;
 	VectorXd kp_vec_motor = VectorXd::Ones(10)*motor_kp;
 	VectorXd kd_vec_motor = VectorXd::Ones(10)*motor_kd;
 
 	VectorXd vel_desired = VectorXd::Zero(12);
 
-	Vector3d target(0, 0, -0.500+(h_offset/1000.0));
-
 	Vector3d target_front_left = lfv_hip.row(2);
 	Vector3d target_back_left = lfv_hip.row(3);
-	Vector3d target_front_right = lfv_hip.row(0);;
+	Vector3d target_front_right = lfv_hip.row(0);
 	Vector3d target_back_right = lfv_hip.row(1);
+
+	if(!no_posture_ctrl)
+	{
+		target_front_left(2) = -0.58+0.088;
+		target_back_left(2) = -0.58+0.088;
+		target_front_right(2) = -0.58+0.088;
+		target_back_right(2) = -0.58+0.088;
+	}
+	// double foot_len_half = 0.060;
+	// Vector3d target_front_left(foot_len_half+target(0), target(1), target(2));
+	// Vector3d target_back_left(-foot_len_half+target(0), target(1), target(2));
+	// Vector3d target_front_right(foot_len_half+target(0), target(1), target(2));
+	// Vector3d target_back_right(-foot_len_half+target(0), target(1), target(2));
 
 	VectorXd pos_desired(12);
 	pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
@@ -580,7 +597,11 @@ void balance_pd(MatrixXd lfv_hip)
 	int task_kd = 0;
 	VectorXd kp_vec_task = VectorXd::Ones(3)*task_kp;
 	VectorXd kd_vec_task = VectorXd::Ones(3)*task_kd;
-
+	if(no_posture_ctrl)
+	{
+		kp_vec_joint << 4000, 2000, 0,0,0, 4000, 2000, 0,0,0;
+		kd_vec_joint.setZero();
+	}
 	// Set up configuration struct for Task Space Controller
 	task_pd_config.task_ff_force = VectorXd::Zero(12);
 	task_pd_config.task_pos_desired = pos_desired;
@@ -603,6 +624,13 @@ void run_balance_controller()
     auto since_epoch = micros.time_since_epoch();  // Get duration since epoch
     double t = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch).count() / 1000000.0 - t_program_start;  // Convert to double with resolution of microseconds
 	tello->controller->set_time(t);
+	
+
+	if(tare_mocap_pos)
+	{
+		mocap_offset = CoM_pos;
+	}
+	mocap_offset(2) = 0;
 
 	// Set up code for switching to Tello_locomotion_ctrl() here:
 	// ctrlData cd_local = cd_shared;
@@ -612,10 +640,19 @@ void run_balance_controller()
 	// end code for switching to Tello_locomotion_ctrl().
 
 	// Set pc_curr, dpc_curr, EA_curr, dEA_Curr, q, qd here:
-	Vector3d pc_curr = CoM_pos; // from mocap
+	Vector3d pc_curr = CoM_pos-mocap_offset; // from mocap
 	Vector3d dpc_curr = CoM_vel; // from mocap
 	Vector3d EA_curr = CoM_rpy; // from mocap
 	Vector3d dEA_curr = tello->_gyro; // from IMU
+
+	// cout << "Time: " << t << "     X: " << CoM_pos(0) << "     Y: " << CoM_pos(1) << "     Z: " << CoM_pos(2) << "                \r";
+	// cout.flush();
+
+	cout << "LFV_Z: " << "     RF: " << tello->controller->get_lfv_world()(0,2) << "                \r";
+	cout.flush();
+
+	// cout << "RPY Error: " << "     R: " << tello->_rpy(0)-CoM_rpy(0) << "     P: " << tello->_rpy(1)-CoM_rpy(1) << "     Y: " << 0-CoM_rpy(2) << "                \r";
+	// cout.flush();
 
 	VectorXd task_velocities = tello->joint_vel_to_task_vel(tello->getJointVelocities(),tello->getJointPositions());
 
@@ -640,6 +677,15 @@ void run_balance_controller()
 	VectorXd tau_LR(10);
     tau_LR << tau.tail(5).array()*(2048.0/35.0), tau.head(5).array()*(2048.0/35.0);
 	if(apply_balance_torques) jointFFTorque = tau_LR;
+
+	if(tare_mocap_pos)
+	{
+		tello->controller->set_lfv0(tello->controller->get_lfv_world());
+		tare_mocap_pos = false;
+	}
+
+
+	// cout << " Tau: " << tau_LR.transpose() << endl;
 
 	// Matrix3d R_foot_right = tello->controller->get_foot_orientation_wrt_body(q.row(0));
 	// Matrix3d R_foot_left = tello->controller->get_foot_orientation_wrt_body(q.row(1));
@@ -1048,6 +1094,21 @@ int main(int argc, char *argv[]) {
 	//SRB_Params srb_params = tello->controller->get_SRB_params();
 	//dash_utils::parse_json_to_srb_params("./tello_files/srb_pd_config_HW.json",srb_params);
 	//tello->controller->set_SRB_params(srb_params);
+	// string dummy;
+	// double sim_time;
+	// char DoF = 'y';
+	// MatrixXd lfv0 = tello->controller->get_lfv0();
+	// SRB_Params srb_params = tello->controller->get_SRB_params();
+	// Traj_planner_dyn_data traj_planner_dyn_data = tello->controller->get_traj_planner_dyn_data();
+	// Human_params human_params = tello->controller->get_human_params();
+	// VectorXd x0 = tello->controller->get_x0();
+	// dash_planner::SRB_6DoF_Test(dummy,sim_time,srb_params,lfv0,DoF,1);
+
+	// // Initialize trajectory planner data
+    // dash_planner::SRB_Init_Traj_Planner_Data(traj_planner_dyn_data, srb_params, human_params, x0, lfv0);
+
+    // tello->controller->set_SRB_params(srb_params);
+    // tello->controller->set_traj_planner_dyn_data(traj_planner_dyn_data);    
 
 	auto now = std::chrono::system_clock::now();  // Get the current time
     auto micros = std::chrono::time_point_cast<std::chrono::microseconds>(now);  // Round down to nearest microsecond
@@ -1186,6 +1247,11 @@ int main(int argc, char *argv[]) {
 		Eigen::Matrix<double,5,1> jointsLeft, jointsRight;
 		Eigen::VectorXd motorsLeft, motorsRight;
 		int targets[10];
+
+		std::chrono::_V2::system_clock::time_point now1;
+		std::chrono::time_point<std::chrono::_V2::system_clock, std::chrono::microseconds> micros1;
+		std::chrono::microseconds since_epoch1;
+
 		char choice;
 		std::cin >> choice;
 		switch(choice){
@@ -1196,18 +1262,6 @@ int main(int argc, char *argv[]) {
 			case 'D':
 				move_up_down = !move_up_down;
 				printf("Running Move Up-Down\n");
-				break;
-			case '1':
-				tello->_balance_adjust-=100;
-				printf("Balance_Adjust: %d \n", tello->_balance_adjust);
-				break;
-			case '2':
-				tello->_balance_adjust+=100;
-				printf("Balance_Adjust: %d \n", tello->_balance_adjust);
-				break;
-			case '6':
-				x_offset-=5;
-				printf("X Offset: %d \n", x_offset);
 				break;
 			case 'w':
 				gain_adjustment+=2000;
@@ -1235,19 +1289,43 @@ int main(int argc, char *argv[]) {
 				break;
 			case 'B':
 				fsm_state = 6;
+				tare_mocap_pos = true;
 				printf("\nBalance Controller:\n");
+
+				break;
+			case 'b':
+				no_posture_ctrl = true;
+				printf("\nBalance Torques only:\n");
 
 				break;
 			case 'M':
 				scheduleEnable();
 				run_motors_for_balancing = true;
+				tare_mocap_pos = true;
 				break;
 			case 'A':
+				fsm_state = 6;
+				run_motors_for_balancing = true;
 				apply_balance_torques = true;
+				no_posture_ctrl = true;
+				tare_mocap_pos = true;
+				// now1 = std::chrono::system_clock::now();  // Get the current time
+				// micros1 = std::chrono::time_point_cast<std::chrono::microseconds>(now);  // Round down to nearest microsecond
+				// since_epoch1 = micros.time_since_epoch();  // Get duration since epoch
+				// t_program_start = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch).count() / 1000000.0;  // Convert to double with resolution of microseconds
 				break;
 			case 't':
 				printf("\nEKF Position Tared:\n");
 				tare_efk_pos = true;
+				tare_mocap_pos = true;
+				break;
+			case '6':
+				printf("\nStart 6DoF Test:\n");
+				start_controller_time = true;
+				// now1 = std::chrono::system_clock::now();  // Get the current time
+				// micros1 = std::chrono::time_point_cast<std::chrono::microseconds>(now);  // Round down to nearest microsecond
+				// since_epoch1 = micros.time_since_epoch();  // Get duration since epoch
+				// t_program_start = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch).count() / 1000000.0;  // Convert to double with resolution of microseconds
 				break;
 			case 'R':
 				fsm_state = 5;

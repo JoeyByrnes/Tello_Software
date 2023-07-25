@@ -54,8 +54,8 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
             // sinusoidal trajectory parameters
             recording_file_name = "Y";
             printf("Running Y (Side2Side) Test\n");
-            amplitude = (0.9*abs(lfv(0,1)))/(sqrt(2));
-            omega = 1.5;
+            amplitude = (0.6*abs(lfv(0,1)))/(sqrt(2));
+            omega = 0.5;
             phase = 0.0;
             sim_time = num_tests*(2.0*M_PI/omega);
             srb_params.y_sinu_traj_params = Eigen::Vector3d(omega, amplitude, phase);
@@ -66,7 +66,7 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
             recording_file_name = "Z";
             printf("Running Z (Squat) Test\n");
             amplitude = 0.06;
-            omega = 1.0;
+            omega = 0.5;
             phase = -M_PI;
             sim_time = num_tests*(M_PI/omega);
             srb_params.z_sinu_traj_params = Eigen::Vector3d(omega, amplitude, phase);
@@ -77,7 +77,7 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
             recording_file_name = "Roll";
             printf("Running Roll Test\n");
             amplitude = 5.0*(M_PI/180.0);
-            omega = 1.5;
+            omega = 0.5;
             phase = 0.0;
             sim_time = num_tests*(2.0*M_PI/omega);
             srb_params.roll_sinu_traj_params = Eigen::Vector3d(omega, amplitude, phase);
@@ -466,9 +466,9 @@ void dash_planner::SRB_Traj_Planner(
     
     // FSM
     FSM = SRB_FSM(srb_params, traj_planner_dyn_data,human_dyn_data, FSM_prev, t, lfv, u);
-    dash_utils::start_timer();
+    // dash_utils::start_timer();
     predict_ssp_params(traj_planner_dyn_data,human_dyn_data, t);
-    dash_utils::print_timer();
+    // dash_utils::print_timer();
     // Update planner data
     traj_planner_dyn_data_gen(srb_params, human_params, traj_planner_dyn_data, human_dyn_data, t, FSM_prev, FSM, x, lfv);
     

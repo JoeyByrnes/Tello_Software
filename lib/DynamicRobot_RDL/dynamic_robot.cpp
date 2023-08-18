@@ -623,7 +623,7 @@ void DynamicRobot::motorPD(MotorPDConfig motor_conf)
         this->motors[i]->setKd(motor_conf.motor_kd[i]);
         this->motors[i]->setPos(motor_conf.motor_pos_desired[i]);
         this->motors[i]->setVel(motor_conf.motor_vel_desired[i]);
-        this->motors[i]->setff(motor_conf.motor_ff_torque[i]);
+        this->motors[i]->setff((double)motor_conf.motor_ff_torque[i]*NM_TO_MOTOR_TORQUE_CMD);
     }
 }
 
@@ -869,6 +869,10 @@ VectorXd DynamicRobot::jointPD2(JointPDConfig joint_conf)
     motor_conf.motor_pos_desired = motor_pos_desired_real;
     motor_conf.motor_vel_desired = motor_vel_desired;
 
+    // cout << "Joint Torques JPD:   " << (joint_torques).transpose() << endl;
+
+    // cout << "Joint Torques + FF:   " << (joint_torques + joint_conf.joint_ff_torque).transpose() << endl;
+
     return (joint_torques + joint_conf.joint_ff_torque);
 }
 
@@ -884,11 +888,10 @@ VectorXd DynamicRobot::taskPD2(TaskPDConfig task_conf)
     VectorXd task_positions = joint_pos_to_task_pos(joint_positions);
     VectorXd task_velocities = joint_vel_to_task_vel(joint_velocities, this->getJointPositions());
 
-    
-
     // Calculate Task PD
     VectorXd task_forces = calc_pd(task_positions,task_velocities,task_conf.task_pos_desired,
                                    task_conf.task_vel_desired,task_conf.task_kp,task_conf.task_kd);
+
 
     // Get joint torques from task forces
     VectorXd joint_torques = this->task_force_to_joint_torque(task_forces+ task_conf.task_ff_force, this->getJointPositions());
@@ -914,7 +917,7 @@ VectorXd DynamicRobot::taskPD2(TaskPDConfig task_conf)
     // cout << joint_forces_from_accel.transpose() << endl;
 
     JointPDConfig joint_conf;
-    joint_conf.joint_ff_torque = joint_torques + joint_forces_from_accel;
+    joint_conf.joint_ff_torque = joint_torques;// + joint_forces_from_accel;
     joint_conf.joint_pos_desired = joint_pos_desired;
     joint_conf.joint_vel_desired = joint_vel_desired;
     joint_conf.joint_kp = task_conf.joint_kp;

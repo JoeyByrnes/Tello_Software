@@ -19,6 +19,8 @@
 #include <sstream>
 #include <sys/stat.h>
 
+#include "mujoco_main.h"
+
 #define GOV_PERFORMANCE "performance"
 #define GOV_POWERSAVE "powersave"
 

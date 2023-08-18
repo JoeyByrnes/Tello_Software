@@ -157,13 +157,13 @@ void* motion_capture( void * arg )
               Eigen::Quaterniond quaternion(r->pose[3], r->pose[6], r->pose[4], r->pose[5]);  // Quaternion (w, x, y, z)
 
               // Define the rotation angle in radians
-              Eigen::Vector3d alignment_error(-0.0035, 0.0305, 0);
+              Eigen::Vector3d alignment_error(0, 0, 0);
 
               Eigen::Quaterniond rotatedQuaternion = rotateQuaternion(quaternion, alignment_error);
               
               CoM_rpy = quaternionToEuler(rotatedQuaternion);
               CoM_quat << r->pose[3], r->pose[6], r->pose[4], r->pose[5];
-              CoM_pos = Vector3d(r->pose[2]/1000.0, r->pose[0]/1000.0, r->pose[1]/1000.0-0.58+0.0212);
+              CoM_pos = Vector3d(r->pose[2]/1000.0, r->pose[0]/1000.0, r->pose[1]/1000.0-0.58+0.0292);
               if(!(r->pose[2] == 0.0 && r->pose[0] == 0.0 && r->pose[1] == 0.0))
               {
                 stream_started = true;
@@ -193,9 +193,9 @@ void* motion_capture( void * arg )
               CoM_z_vels.tail(99) = CoM_z_vels.head(99).eval();
               CoM_z_vels[0] = CoM_vel_raw(2);
 
-              double dx_smoothed = smoothMocapData(CoM_x_vels,1.5);
-              double dy_smoothed = smoothMocapData(CoM_y_vels,1.5);
-              double dz_smoothed = smoothMocapData(CoM_z_vels,1.5);
+              double dx_smoothed = smoothMocapData(CoM_x_vels,0.0);
+              double dy_smoothed = smoothMocapData(CoM_y_vels,0.1);
+              double dz_smoothed = smoothMocapData(CoM_z_vels,0.1);
 
               CoM_vel = Vector3d(dx_smoothed,dy_smoothed,dz_smoothed);
 
@@ -213,6 +213,8 @@ void* motion_capture( void * arg )
 
               // cout << "  " << r->id << ") " << r->pose[0] << ",     " << r->pose[1] << ",     " << r->pose[2]
               //        << ",     " << CoM_rpy(0)*180.0/M_PI << ",     " << CoM_rpy(1)*180.0/M_PI << ",     " << CoM_rpy(2)*180.0/M_PI << "                          \r";
+              // cout.flush();
+              // cout << CoM_rpy(0)-tello->_rpy(0) << ",     " << CoM_rpy(1)-tello->_rpy(1) << ",     " << CoM_rpy(2)-tello->_rpy(2) << "                          \r";
               // cout.flush();
             }
           }

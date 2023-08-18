@@ -25,6 +25,11 @@
 #define UDP_TRANSMIT_PORT 54004
 #define HMI_IP_ADDRESS "169.254.212.117"
 
+#define VIZ_UDP_RECEIVE_PORT 54005
+#define VIZ_UDP_TRANSMIT_PORT 54005
+#define VIZ_IP_ADDRESS "192.168.1.2"
+#define TELLO_IP_ADDRESS "192.168.1.10"
+
 #define MOTION_LOG_NAME "motion_log.txt"
 
 #define MOTOR_TIMEOUT 3 //Milliseconds until motors cut out

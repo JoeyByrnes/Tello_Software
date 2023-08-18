@@ -98,6 +98,8 @@ class SRBMController {
     MatrixXd get_lfv_dsp_start() const { return lfv_dsp_start; }
     MatrixXd get_ankles_hip();
 
+    void set_lfv_dsp_start(MatrixXd lfv_dsp_st) { lfv_dsp_start = lfv_dsp_st; }
+
     // Getter and setter functions for lfdv
     MatrixXd get_lfdv_world() const { return lfdv; }
     MatrixXd get_lfdv_hip();

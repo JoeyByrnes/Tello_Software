@@ -60,6 +60,18 @@
 #include "Driver/DualShock4Connector.h"
 
 
+struct VisualizationData {
+    float CoM_pos_measured[3];
+    float CoM_rpy_measured[3];
+    float q_measured[10];
+    float CoM_pos_desired[3];
+    float CoM_rpy_desired[3];
+    float q_desired[10];
+    float CoP[3];
+    float GRFs[3];
+};
+
+
 struct userProfile {
     std::string name;
     double lip_height;
@@ -268,6 +280,7 @@ void* sim_step_task( void * arg );
 void* screenRecord( void * arg );
 void* usbCamRecord( void * arg );
 void* Animate_Log( void * arg );
+void* visualize_robot( void * arg );
 void* curve_fitting( void * arg );
 
 #endif

@@ -60,6 +60,8 @@ bool auto_mode = false;
 bool start_target_motion = false;
 bool ramp_toggle = false;
 
+double human_x_zero = 0;
+
 double playback_foot_width = 0.175;
 
 bool sim_window_close_requested = false;
@@ -159,6 +161,36 @@ int knee_motor_r_idx = 6;
 int knee_motor_l_idx = 7;
 int ankle_motor_r_idx = 8;
 int ankle_motor_l_idx = 9;
+
+// robot states indices
+int torso_x_idx_viz         = 16 + 0;
+int torso_y_idx_viz         = 16 + 1;
+int torso_z_idx_viz         = 16 + 2;
+int torso_roll_idx_viz      = 16 + 3;
+int torso_pitch_idx_viz     = 16 + 4;
+int torso_yaw_idx_viz       = 16 + 5;
+int hip_yaw_r_idx_viz       = 16 + 6;
+int hip_roll_r_idx_viz      = 16 + 7;
+int hip_pitch_r_idx_viz     = 16 + 8;
+int knee_pitch_r_idx_viz    = 16 + 9;
+int ankle_pitch_r_idx_viz   = 16 + 10;
+int hip_yaw_l_idx_viz       = 16 + 11;
+int hip_roll_l_idx_viz      = 16 + 12;
+int hip_pitch_l_idx_viz     = 16 + 13;
+int knee_pitch_l_idx_viz    = 16 + 14;
+int ankle_pitch_l_idx_viz   = 16 + 15;
+
+// robot actuators indices
+int hip_motor1_r_idx_viz  = 10 + 0;
+int hip_motor1_l_idx_viz  = 10 + 1;
+int hip_motor2_r_idx_viz  = 10 + 2;
+int hip_motor2_l_idx_viz  = 10 + 3;
+int hip_motor3_r_idx_viz  = 10 + 4;
+int hip_motor3_l_idx_viz  = 10 + 5;
+int knee_motor_r_idx_viz  = 10 + 6;
+int knee_motor_l_idx_viz  = 10 + 7;
+int ankle_motor_r_idx_viz = 10 + 8;
+int ankle_motor_l_idx_viz = 10 + 9;
 
 // MuJoCo data structures
 mjModel* m = NULL;                  // MuJoCo model
@@ -1214,6 +1246,11 @@ void* mujoco_Update_1KHz( void * arg )
         m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-visualization.xml", NULL, error, 1000);
         // m_shared = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-color.xml", NULL, error, 1000);
     }
+    else if(simulation_mode == 4)
+    {
+        m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-hardware-visualization.xml", NULL, error, 1000);
+        // m_shared = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-color.xml", NULL, error, 1000);
+    }
     else
     {
         m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-blue-grey.xml", NULL, error, 1000);
@@ -1882,6 +1919,7 @@ void* mujoco_Update_1KHz( void * arg )
                     ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
                     if (ImGui::Button(" " ICON_FA_WEIGHT " Tare CoM  ")) {
                         zero_human = true;
+                        human_x_zero = tello->controller->get_human_dyn_data().xH;
                     }
                     else{
                         zero_human = false;
@@ -2209,7 +2247,7 @@ void* mujoco_Update_1KHz( void * arg )
         //dash_utils::print_timer();
         hdd.FyH_hmi = y_force;
         hdd.FxH_hmi = x_force;
-        hdd.FxH_spring = FxH_spring_out;
+        hdd.FxH_spring = (human_x_zero - tello->controller->get_human_dyn_data().xH)*1000;
         
 		if(telloLocal->controller->is_human_ctrl_enabled() && !controller_unstable)
 		{
@@ -2484,6 +2522,30 @@ void* sim_step_task( void * arg )
                 mj_kinematics(m,d);
             }
             else if(simulation_mode == 3)
+            {
+                pthread_mutex_lock(&sim_mutex);
+
+                // Find the indices of the lights in the model
+                int comLightIndex = mj_name2id(m, mjOBJ_LIGHT, "com_light");
+                int backLightIndex = mj_name2id(m, mjOBJ_LIGHT, "back_light");
+
+                // Set the position of com_light
+                m->light_pos[3 * comLightIndex] = 30.0+tello->controller->get_x()(0);
+                m->light_pos[3 * comLightIndex + 1] = 0.0;
+                m->light_pos[3 * comLightIndex + 2] = 30.0;
+
+
+                m->light_pos[3 * backLightIndex] = -30.0+tello->controller->get_x()(0);
+                m->light_pos[3 * backLightIndex + 1] = 0.0;
+                m->light_pos[3 * backLightIndex + 2] = 30.0;
+
+                d->time = d->time + 0.001;
+                tello->controller->set_time((double)(d->time));
+                mj_kinematics(m,d);
+                mj_forward(m,d);
+                pthread_mutex_unlock(&sim_mutex);
+            }
+            else if(simulation_mode == 4)
             {
                 pthread_mutex_lock(&sim_mutex);
 
@@ -3019,6 +3081,119 @@ void* Animate_Log( void * arg )
         master_gain = 0.0;
         sim_conf.en_human_control = false;
         usleep(100000);
+    }
+   
+    return  0;
+}
+
+void* visualize_robot( void * arg )
+{
+    pause_sim = false;
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	void* dynamic_robot_ptr = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
+
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
+
+    usleep(1000000);
+    Eigen::VectorXd curr_x(21);
+    Eigen::VectorXd curr_q(10);
+
+    //setup
+	const char *localIP = "192.168.1.2"; // This PC's IP
+    const int localPort = VIZ_UDP_RECEIVE_PORT;
+    const int bufferSize = 152;
+
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        std::cerr << "Failed to create socket." << std::endl;
+    }
+
+    sockaddr_in localAddr;
+    localAddr.sin_family = AF_INET;
+    localAddr.sin_port = htons(localPort);
+    localAddr.sin_addr.s_addr = inet_addr(localIP);
+
+    if (bind(sockfd, (struct sockaddr *)&localAddr, sizeof(localAddr)) < 0) {
+        std::cerr << "Failed to bind socket." << std::endl;
+        close(sockfd);
+    }
+
+    struct timespec next;
+    clock_gettime(CLOCK_MONOTONIC, &next);
+    while(1)
+    {
+        socklen_t * len1;
+        int len, n;
+        VisualizationData vd;
+
+        char buffer[bufferSize];
+		n = recvfrom(sockfd, buffer, bufferSize, 0, nullptr, nullptr);
+        memcpy(&vd, buffer, sizeof(vd));
+
+        // cout << "x: " << vd.CoM_pos_measured[0] << "   y: " << vd.CoM_pos_measured[1] << "   z: " << vd.CoM_pos_measured[2] << endl;
+        // Get robot states
+        // pthread_mutex_lock(&sim_mutex);
+        // pthread_mutex_lock(&sim_step_mutex);
+        d->mocap_pos[0] = vd.CoM_pos_measured[0];
+        d->mocap_pos[1] = vd.CoM_pos_measured[1];
+        d->mocap_pos[2] = vd.CoM_pos_measured[2];
+
+        Eigen::Quaterniond quat;
+        quat =  Eigen::AngleAxisd(M_PI - vd.CoM_rpy_measured[2], Eigen::Vector3d::UnitZ()) *
+                Eigen::AngleAxisd(-vd.CoM_rpy_measured[1], Eigen::Vector3d::UnitY()) *
+                Eigen::AngleAxisd(vd.CoM_rpy_measured[0], Eigen::Vector3d::UnitX());
+
+        d->mocap_quat[0] = quat.z();
+        d->mocap_quat[1] = quat.y();
+        d->mocap_quat[2] = quat.x();
+        d->mocap_quat[3] = quat.w();
+
+        d->qpos[hip_yaw_l_idx] = vd.q_measured[0];
+        d->qpos[hip_roll_l_idx] = vd.q_measured[1];
+        d->qpos[hip_pitch_l_idx] = vd.q_measured[2];
+        d->qpos[knee_pitch_l_idx] = vd.q_measured[3];
+        d->qpos[ankle_pitch_l_idx] = vd.q_measured[4];
+        d->qpos[hip_yaw_r_idx] = vd.q_measured[5];
+        d->qpos[hip_roll_r_idx] = vd.q_measured[6];
+        d->qpos[hip_pitch_r_idx] = vd.q_measured[7];
+        d->qpos[knee_pitch_r_idx] = vd.q_measured[8];
+        d->qpos[ankle_pitch_r_idx] = vd.q_measured[9];
+        // pthread_mutex_unlock(&sim_mutex);
+        // pthread_mutex_unlock(&sim_step_mutex);
+
+        // curr_x.segment<3>(3) = CoM_pos;
+        // curr_x.segment<3>(3) = CoM_rpy;
+        // tello->controller->set_x(curr_x);
+        // // tello->controller->set_q(q_tello);
+
+        // set_mujoco_state(curr_x);
+
+        // cout << "CoM_vel: " << CoM_vel.transpose() << "       \r";
+
+        // d->mocap_pos[0] = CoM_pos(0);
+        // d->mocap_pos[1] = CoM_pos(1);
+        // d->mocap_pos[2] = CoM_pos(2);
+
+        // Eigen::Quaterniond quat;
+
+        // Eigen::Quaterniond quaternion(CoM_quat(0),CoM_quat(1),CoM_quat(2),CoM_quat(3));  // Quaternion (w, x, y, z)
+        // // Convert quaternion to Euler angles
+
+        // double roll = CoM_rpy(0);
+        // double pitch = CoM_rpy(1);
+        // double yaw = CoM_rpy(2);
+
+        // // cout << "RPY: " << roll*180.0/M_PI << ",     " << pitch*180.0/M_PI << ",     " << yaw*180.0/M_PI << "             \r";
+        // // cout.flush();
+
+        // d->mocap_quat[0] = CoM_quat(0);
+        // d->mocap_quat[1] = CoM_quat(1);
+        // d->mocap_quat[2] = CoM_quat(2);
+        // d->mocap_quat[3] = CoM_quat(3);
+
+        handle_end_of_periodic_task(next,1000);      
+        
     }
    
     return  0;

@@ -104,11 +104,11 @@
 				  <inertial pos="0.0033954 0 -0.0283579" quat="0 0 0 1" mass="0.14232" diaginertia="1.19095587491302E-05 0.000133626524087711 0.000131614380502955"/>
 				  <joint name="right_ankle" pos="0 0 0" axis="0 -1 0" limited = "true" range = "-0.785398 0.785398" armature=" 0.006" damping="1"/>
 				  <geom name = "rfoot" type="mesh" rgba="0.7 0 0 1" mesh="right_foot" euler="0 0 3.14159265359" contype='0'/>
- 				  <geom name = "right_foot_heel" pos = "-0.06 0 -0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
-				  <geom name = "right_foot_toe" pos = "0.06 0 -0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
+ 				  <geom name = "right_foot_heel" pos = "-0.06 0 -0.0535"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
+				  <geom name = "right_foot_toe" pos = "0.06 0 -0.0535"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
 
-				  <geom name = "rfh" pos = "-0.06 0 -0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
-				  <geom name = "rft" pos = "0.06 0 -0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+				  <geom name = "rfh" pos = "-0.06 0 -0.0535"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+				  <geom name = "rft" pos = "0.06 0 -0.0535"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
                   <!-- <geom type='capsule' size='0.01' fromto='-0.06 0 0.0385 0.06 0 0.0385' class='collision-right'/> -->
 				  
 				</body>
@@ -152,11 +152,11 @@
 				  <inertial pos="0.0033954 0 -0.0283579" quat="0 0 0 1" mass="0.14232" diaginertia="1.19095587491302E-05 0.000133626524087711 0.000131614380502955"/>
 				  <joint name="left_ankle" pos="0 0 0" axis="0 -1 0" limited = "true" range = "-0.785398 0.785398" armature=" 0.006" damping="1"/>
 				  <geom name = "lfoot" type="mesh" rgba="0.7 0 0 1" mesh="left_foot" euler="0 0 3.14159265359" contype='0'/>
- 				  <geom name = "left_foot_heel" pos = "-0.06 0 -0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>
-				  <geom name = "left_foot_toe" pos = "0.06 0 -0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>
+ 				  <geom name = "left_foot_heel" pos = "-0.06 0 -0.0535"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>
+				  <geom name = "left_foot_toe" pos = "0.06 0 -0.0535"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>
 
-				  <geom name = "lfh" pos = "-0.06 0 -0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
-				  <geom name = "lft" pos = "0.06 0 -0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+				  <geom name = "lfh" pos = "-0.06 0 -0.0535"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+				  <geom name = "lft" pos = "0.06 0 -0.0535"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
                   <!-- <geom type='capsule' size='0.01' fromto='-0.06 0 0.0385 0.06 0 0.0385' class='collision-left'/> -->
 				  
 				</body>

@@ -212,13 +212,108 @@
 		</body>
 		
 	</body>	
-	
+	<!--|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||-->
+	<!--|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||-->
 
-	<!-- <body name="target" mocap="true" pos="0 0 -0.58" > -->
-        <!-- <geom name="box" type="mesh" mesh="target1-rounded" size="0.2 0.25 0.001" rgba="0.2 0.2 1 0.5" contype='0'/> -->
-		<!-- <geom name="box" type="box" size="0.05 0.1 0.1" rgba="0.2 0.2 1 0.5" contype='0'/> -->
-		<!-- <geom name ='floor' pos ='0 0 0' size ='10 10 .125' type = 'plane' material ='MatPlane' rgba="0.79 0.84 0.84 1" condim = '3' conaffinity = '15'/> -->
-    <!-- </body> -->
+	<body name = 'torsov' mocap="true" pos = '0 0 0'> 
+	
+        <inertial pos = '0.0 0.0 0.0' mass = '4.2587' diaginertia = '0.013122 0.0078744 0.013624'/>
+
+		<geom quat="0 0 0 1" type="mesh" material ='MatPlane3' rgba="1 0 1 0.15" mesh="torso_link" contype='0'/>
+        <geom quat="0 0 0 1" type="mesh" material ='MatPlane4' rgba="1 0 1 0.15" mesh="torso_link-black" contype='0'/>
+		<!-- <geom quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="torso_link" class = "collision"/> -->
+
+		<body name="right_hip_clampv" pos="0 -0.126 0.0545" quat="1 0 0 0" gravcomp="0">
+		
+		  <inertial pos="4.44319E-05 -0.011651 -0.006856" quat="0 0 0 1" mass="1.3787" diaginertia="0.00146238287829404 0.00273729393380137 0.0014215626389636"/>
+		  <joint name="right_hip_yawv" pos="0 0 0" axis="0 0 1" limited = "true" range = "-0.4363 0.4363" armature=" 0.006"/>
+		  <geom type="mesh" material ='MatPlane3' rgba="1 0 1 0.15" mesh="right_hip_clamp" contype='0'/>
+          <geom type="mesh" material ='MatPlane4' rgba="1 0 1 0.15" mesh="right_hip_clamp-black" contype='0'/>
+		  
+		  <body name="right_hip_gimbalv" pos="0 0 -0.1425" gravcomp="0">
+		  
+			<inertial pos="-0.0029449 0 0.02492554" quat="0 0 0 1" mass="0.4589" diaginertia="0.000481462682576961 0.000667169674942171 0.000497975686833487"/>
+			<joint name="right_hip_rollv" pos="0 0 0" axis="1 0 0" limited = "true" range = "-0.6491 0.6491" armature=" 0.006"/>
+			<geom type="mesh" material ='MatPlane3' rgba="1 0 1 0.15" mesh="right_hip_gimbal" contype='0'/>
+			
+			<body name="right_thighv" pos="0 0 0" gravcomp="0">
+			
+			  <inertial pos="-0.008193 8.0336E-05 -0.0465117" quat="0 0 0 1" mass="1.7145" diaginertia="0.00379144706855402 0.00440910409346791 0.000892300490534084"/>
+			  <joint name="right_hip_pitchv" pos="0 0 0" axis="0 1 0" limited = "true" range = "-1.5708 0.4014" armature=" 0.006"/>
+			  <geom type="mesh" material ='MatPlane3' rgba="1 0 1 0.15" mesh="right_thigh" contype='0'/>
+              <geom type="mesh" material ='MatPlane4' rgba="1 0 1 0.15" mesh="right_thigh-black" contype='0'/>
+			  
+			  <body name="right_shinv" pos="0 0 -0.2286" gravcomp="0">
+			  
+				<inertial pos="0.0047419 -0.0003324 -0.104315" quat="0 0 0 1" mass="0.3071" diaginertia="0.00196114277995999 0.00202057471858548 7.91059574612859E-05"/>
+				<joint name="right_kneev" pos="0 0 0" axis="0 1 0" limited = "true" range = "0.2852 2.0305" armature=" 0.006"/>
+				<geom type="mesh" material ='MatPlane3' rgba="1 0 1 0.15" mesh="right_shin" contype='0'/>
+				
+				<body name="right_footv" pos="0 0 -0.26" quat="0 0 0 1" gravcomp="0">
+				
+				  <inertial pos="0.0033954 0 -0.0283579" quat="0 0 0 1" mass="0.14232" diaginertia="1.19095587491302E-05 0.000133626524087711 0.000131614380502955"/>
+				  <joint name="right_anklev" pos="0 0 0" axis="0 -1 0" limited = "true" range = "-0.785398 0.785398" armature=" 0.006" damping="1"/>
+				  <geom name = "rfootv" type="mesh" material ='MatPlane3' rgba="1 0 1 0.15" mesh="right_foot" euler="0 0 3.14159265359" contype='0'/>
+                  <geom name = "rfootbv" type="mesh" material ='MatPlane4' rgba="1 0 1 0.15" mesh="right_foot-black" euler="0 0 3.14159265359" contype='0'/>
+                  <!-- <geom type='capsule' size='0.01' fromto='-0.06 0 0.0385 0.06 0 0.0385' class='collision-right'/> -->
+				  
+				</body>
+				
+			  </body>
+			  
+			</body>
+			
+		  </body>
+		  
+		</body>
+		
+		<body name="left_hip_clampv" pos="0 0.126 0.0545" quat="1 0 0 0" gravcomp="0">
+		
+		  <inertial pos="4.44319E-05 -0.011651 -0.006856" quat="0 0 0 1" mass="1.3787" diaginertia="0.00146238287829404 0.00273729393380137 0.0014215626389636"/>
+		  <joint name="left_hip_yawv" pos="0 0 0" axis="0 0 1" limited = "true" range = "-0.4363 0.4363" armature=" 0.006"/>
+		  <geom type="mesh" material ='MatPlane3' rgba="1 0 1 0.15" mesh="left_hip_clamp" contype='0'/>
+          <geom type="mesh" material ='MatPlane4' rgba="1 0 1 0.15" mesh="left_hip_clamp-black" contype='0'/>
+		  
+		  <body name="left_hip_gimbalv" pos="0 0 -0.1425" gravcomp="0">
+		  
+			<inertial pos="-0.0029449 0 0.02492554" quat="0 0 0 1" mass="0.4589" diaginertia="0.000481462682576961 0.000667169674942171 0.000497975686833487"/>
+			<joint name="left_hip_rollv" pos="0 0 0" axis="1 0 0" limited = "true" range = "-0.64910 0.6491" armature=" 0.006"/>
+			<geom type="mesh" material ='MatPlane3' rgba="1 0 1 0.15" mesh="left_hip_gimbal" contype='0'/>
+			
+			<body name="left_thighv" pos="0 0 0" gravcomp="0">
+			
+			  <inertial pos="-0.008193 8.0336E-05 -0.0465117" quat="0 0 0 1" mass="1.7145" diaginertia="0.00379144706855402 0.00440910409346791 0.000892300490534084"/>
+			  <joint name="left_hip_pitchv" pos="0 0 0" axis="0 1 0" limited = "true" range = "-1.5708 0.4014" armature=" 0.006"/>
+			  <geom type="mesh" material ='MatPlane3' rgba="1 0 1 0.15" mesh="left_thigh" contype='0'/>
+              <geom type="mesh" material ='MatPlane4' rgba="1 0 1 0.15" mesh="left_thigh-black" contype='0'/>
+			  
+			  <body name="left_shinv" pos="0 0 -0.2286" gravcomp="0">
+			  
+				<inertial pos="0.0047419 -0.0003324 -0.104315" quat="0 0 0 1" mass="0.3071" diaginertia="0.00196114277995999 0.00202057471858548 7.91059574612859E-05"/>
+				<joint name="left_kneev" pos="0 0 0" axis="0 1 0" limited = "true" range = "0.2852 2.0305" armature=" 0.006"/>
+				<geom type="mesh" material ='MatPlane3' rgba="1 0 1 0.15" mesh="left_shin" contype='0'/>
+				
+				<body name="left_footv" pos="0 0 -0.26" quat="0 0 0 1" gravcomp="0">
+				
+				  <inertial pos="0.0033954 0 -0.0283579" quat="0 0 0 1" mass="0.14232" diaginertia="1.19095587491302E-05 0.000133626524087711 0.000131614380502955"/>
+				  <joint name="left_anklev" pos="0 0 0" axis="0 -1 0" limited = "true" range = "-0.785398 0.785398" armature=" 0.006" damping="1"/>
+				  <geom name = "lfootv" type="mesh" material ='MatPlane3' rgba="1 0 1 0.15" mesh="left_foot" euler="0 0 3.14159265359" contype='0'/>
+                  <geom name = "lfootbv" type="mesh" material ='MatPlane4' rgba="1 0 1 0.15" mesh="left_foot-black" euler="0 0 3.14159265359" contype='0'/>
+				  
+				</body>
+				
+			  </body>
+			  
+			</body>
+			
+		  </body>
+		  
+		</body>
+		
+	</body>	
+
+	<!--|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||-->
+	<!--|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||-->
 
 </worldbody>
 
@@ -235,6 +330,17 @@
 	<motor name = 'left_knee_tq'  joint = 'left_knee'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
 	<motor name = 'right_ankle_tq'  joint = 'right_ankle'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
 	<motor name = 'left_ankle_tq'  joint = 'left_ankle'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+
+	<motor name = 'right_hip_yaw_tqv'  joint = 'right_hip_yawv'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'left_hip_yaw_tqv'  joint = 'left_hip_yawv'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'right_hip_roll_tqv'  joint = 'right_hip_rollv'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'left_hip_roll_tqv'  joint = 'left_hip_rollv'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'right_hip_pitch_tqv'  joint = 'right_hip_pitchv'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'left_hip_pitch_tqv'  joint = 'left_hip_pitchv'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'right_knee_tqv'  joint = 'right_kneev'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'left_knee_tqv'  joint = 'left_kneev'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'right_ankle_tqv'  joint = 'right_anklev'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'left_ankle_tqv'  joint = 'left_anklev'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
 
 </actuator>    
 

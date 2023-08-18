@@ -130,8 +130,8 @@ void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* rob
 	uint16_t front_force_uint16 = (Message.DATA[3] << 8) | Message.DATA[4];
 
 	// Given front_force_uint16 and back_force_uint16 variables
-	double front_force = (double)((int)front_force_uint16 - 32768)/1000.0;
-	double back_force = (double)((int)back_force_uint16 - 32768)/1000.0;
+	double front_force = (double)((int)front_force_uint16 - 32768)/100.0;
+	double back_force = (double)((int)back_force_uint16 - 32768)/100.0;
 
 	if(id == 18){
 		if(!robot->_left_loadcells_calibrated){
@@ -336,8 +336,7 @@ void* rx_UDP( void * arg ){
 		socklen_t * len1;
 		// dash_utils::print_timer();
 		// dash_utils::start_timer();
-		dash_utils::print_timer();
-		dash_utils::start_timer();
+
 		n = recvfrom(sockfd, (char *)rx_buffer, 100,
 			MSG_WAITALL, ( struct sockaddr *) &cliaddr,
 			len1 );

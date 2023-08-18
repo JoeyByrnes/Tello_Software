@@ -177,14 +177,14 @@ VectorXd SRBMController::update(VectorXd srb_state, MatrixXd joint_pos, MatrixXd
         transitionStartLeft = t;
     }
     
-    if(simulation_mode == 2)
-    {
-        dash_dyn::SRB_Dyn(x_next, net_external_wrench, srb_params, x, lfv, u, tau_ext);
-        x = x_next;
-        lfv = lfv_comm;
-        lfdv = lfdv_comm;
-        dash_kin::SRB_Kin(q, qd, Jv_mat, srb_params, x, lfv, lfdv);
-    }
+    // if(simulation_mode == 2)
+    // {
+    //     dash_dyn::SRB_Dyn(x_next, net_external_wrench, srb_params, x, lfv, u, tau_ext);
+    //     x = x_next;
+    //     lfv = lfv_comm;
+    //     lfdv = lfdv_comm;
+    //     dash_kin::SRB_Kin(q, qd, Jv_mat, srb_params, x, lfv, lfdv);
+    // }
     // cout << lfv_comm  << endl;
     // cout << "===============================" << endl;
     // cout << endl;

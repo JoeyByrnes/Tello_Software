@@ -52,6 +52,12 @@ using namespace inekf;
 #define DT_MIN 1e-6
 #define DT_MAX 0.025
 
+#define GEAR_RATIO 6.0
+#define MOTOR_KT 0.0955
+#define MAX_ACTUATOR_CURRENT 15.0
+#define MAX_ACTUATOR_TORQUE_NM (double)(MAX_ACTUATOR_CURRENT*MOTOR_KT*GEAR_RATIO)
+#define NM_TO_MOTOR_TORQUE_CMD (double)(2048.0/MAX_ACTUATOR_TORQUE_NM)
+
 typedef VectorXd (*VectorXd_function)(const VectorXd&);
 typedef MatrixXd (*MatrixXd_function)(const VectorXd&);
 

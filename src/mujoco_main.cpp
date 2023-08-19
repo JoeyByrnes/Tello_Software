@@ -163,22 +163,22 @@ int ankle_motor_r_idx = 8;
 int ankle_motor_l_idx = 9;
 
 // robot states indices
-int torso_x_idx_viz         = 16 + 0;
-int torso_y_idx_viz         = 16 + 1;
-int torso_z_idx_viz         = 16 + 2;
-int torso_roll_idx_viz      = 16 + 3;
-int torso_pitch_idx_viz     = 16 + 4;
-int torso_yaw_idx_viz       = 16 + 5;
-int hip_yaw_r_idx_viz       = 16 + 6;
-int hip_roll_r_idx_viz      = 16 + 7;
-int hip_pitch_r_idx_viz     = 16 + 8;
-int knee_pitch_r_idx_viz    = 16 + 9;
-int ankle_pitch_r_idx_viz   = 16 + 10;
-int hip_yaw_l_idx_viz       = 16 + 11;
-int hip_roll_l_idx_viz      = 16 + 12;
-int hip_pitch_l_idx_viz     = 16 + 13;
-int knee_pitch_l_idx_viz    = 16 + 14;
-int ankle_pitch_l_idx_viz   = 16 + 15;
+// int torso_x_idx_viz         = 16 + 0;
+// int torso_y_idx_viz         = 16 + 1;
+// int torso_z_idx_viz         = 16 + 2;
+// int torso_roll_idx_viz      = 16 + 3;
+// int torso_pitch_idx_viz     = 16 + 4;
+// int torso_yaw_idx_viz       = 16 + 5;
+int hip_yaw_r_idx_viz       = 16;
+int hip_roll_r_idx_viz      = 17;
+int hip_pitch_r_idx_viz     = 18;
+int knee_pitch_r_idx_viz    = 19;
+int ankle_pitch_r_idx_viz   = 20;
+int hip_yaw_l_idx_viz       = 21;
+int hip_roll_l_idx_viz      = 22;
+int hip_pitch_l_idx_viz     = 23;
+int knee_pitch_l_idx_viz    = 24;
+int ankle_pitch_l_idx_viz   = 25;
 
 // robot actuators indices
 int hip_motor1_r_idx_viz  = 10 + 0;
@@ -3159,6 +3159,34 @@ void* visualize_robot( void * arg )
         d->qpos[hip_pitch_r_idx] = vd.q_measured[7];
         d->qpos[knee_pitch_r_idx] = vd.q_measured[8];
         d->qpos[ankle_pitch_r_idx] = vd.q_measured[9];
+
+        d->mocap_pos[3] = vd.CoM_pos_desired[0];
+        d->mocap_pos[4] = vd.CoM_pos_desired[1];
+        d->mocap_pos[5] = vd.CoM_pos_desired[2];
+
+        quat =  Eigen::AngleAxisd(M_PI - vd.CoM_rpy_desired[2], Eigen::Vector3d::UnitZ()) *
+                Eigen::AngleAxisd(-vd.CoM_rpy_desired[1], Eigen::Vector3d::UnitY()) *
+                Eigen::AngleAxisd(vd.CoM_rpy_desired[0], Eigen::Vector3d::UnitX());
+
+        d->mocap_quat[4] = quat.z();
+        d->mocap_quat[5] = quat.y();
+        d->mocap_quat[6] = quat.x();
+        d->mocap_quat[7] = quat.w();
+
+        int jointID = mj_name2id(m, mjOBJ_JOINT, "left_anklev");
+
+        std::cout << "Joint ID for left_anklev: " << jointID << std::endl;
+
+        d->qpos[hip_yaw_l_idx_viz] = vd.q_desired[0];
+        d->qpos[hip_roll_l_idx_viz] = vd.q_desired[1];
+        d->qpos[hip_pitch_l_idx_viz] = vd.q_desired[2];
+        d->qpos[knee_pitch_l_idx_viz] = vd.q_desired[3];
+        d->qpos[ankle_pitch_l_idx_viz] = vd.q_desired[4];
+        d->qpos[hip_yaw_r_idx_viz] = vd.q_desired[5];
+        d->qpos[hip_roll_r_idx_viz] = vd.q_desired[6];
+        d->qpos[hip_pitch_r_idx_viz] = vd.q_desired[7];
+        d->qpos[knee_pitch_r_idx_viz] = vd.q_desired[8];
+        d->qpos[ankle_pitch_r_idx_viz] = vd.q_desired[9];
         // pthread_mutex_unlock(&sim_mutex);
         // pthread_mutex_unlock(&sim_step_mutex);
 
@@ -3192,7 +3220,7 @@ void* visualize_robot( void * arg )
         // d->mocap_quat[2] = CoM_quat(2);
         // d->mocap_quat[3] = CoM_quat(3);
 
-        handle_end_of_periodic_task(next,1000);      
+        handle_end_of_periodic_task(next,period);      
         
     }
    

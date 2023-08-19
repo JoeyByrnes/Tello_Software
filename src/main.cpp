@@ -101,7 +101,7 @@ uint16_t encoder_positions[10];
 uint16_t encoder_offsets[10]  = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int motor_directions[10] =      { 1,-1, 1, 1,-1, 1,-1, 1, 1,-1};
 								//1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-int motor_zeros[10] = {35530,35265,33314,34291-KNEE_OFFSET_ENC,33915+KNEE_OFFSET_ENC,32746,35253,34193,34657-KNEE_OFFSET_ENC,33657+KNEE_OFFSET_ENC}; // offsets handled
+int motor_zeros[10] = {35516,35268,33308,34190-KNEE_OFFSET_ENC,33847+KNEE_OFFSET_ENC,32721,35254,34194,34611-KNEE_OFFSET_ENC,33681+KNEE_OFFSET_ENC}; // offsets handled
 int motor_init_config[10] = {35540, 36558, 31813, 38599, 31811, 32767, 36712, 32718, 38436, 33335};
 int motor_initialized[10] = {0,0,0,0,0,0,0,0,0,0};
 int motor_move_complete[10] = {0,0,0,0,0,0,0,0,0,0};
@@ -666,7 +666,7 @@ void balance_pd(MatrixXd lfv_hip)
 	kp_vec_joint(9) = joint_kp + gain_adjustment;
 	
 	double motor_kp = 0;
-	double motor_kd = 600;
+	double motor_kd = 400;
 	VectorXd kp_vec_motor(10);// = VectorXd::Ones(10)*motor_kp;
 	kp_vec_motor << 600,200,200,200,200,600,200,200,200,200;
 	VectorXd kd_vec_motor = VectorXd::Ones(10)*motor_kd;
@@ -747,7 +747,7 @@ void run_balance_controller()
 
 	Vector3d pc_des = tello->controller->get_SRB_state_ref().col(0).head(3);
 
-	Vector3d EA_des = tello->controller->get_SRB_state_ref().col(0).head(3);
+	Vector3d EA_des = tello->controller->get_SRB_state_ref().col(0).tail(3);
 	
 	vizData.CoM_pos_measured[0] = pc_curr[0];
 	vizData.CoM_pos_measured[1] = pc_curr[1];
@@ -781,7 +781,7 @@ void run_balance_controller()
 		vizData.q_measured[i] = q_measured_eig(i);
 		vizData.q_desired[i] = q_desired_eig(i);
 	}
-	
+	// cout << "Hip Pitch Diff: " << q_measured_eig(2)-q_measured_eig(7) << "    Knee Pitch Diff: " << q_measured_eig(3)-q_measured_eig(8) << endl;
 
 	// cout << "Time: " << t << "     X: " << pc_curr(0) << "     Y: " << pc_curr(1) << "     Z: " << pc_curr(2) << "                \r";
 	// cout.flush();
@@ -1147,7 +1147,7 @@ void init_6dof_test()
 {
 	string dummy;
 	double sim_time;
-	char DoF = 'b';
+	char DoF = 'r';
 	MatrixXd lfv0 = tello->controller->get_lfv0();
 	SRB_Params srb_params = tello->controller->get_SRB_params();
 	Traj_planner_dyn_data traj_planner_dyn_data = tello->controller->get_traj_planner_dyn_data();
@@ -1366,9 +1366,9 @@ int main(int argc, char *argv[]) {
 		// SIMULATION MODE (Interfaces with Mujoco instead of real sensors)
 		printf('o',"Software running in Visualization Mode.\n\n");
 		tello->addPeriodicTask(&sim_step_task, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_1, (void*)(NULL),"sim_step_task",TASK_CONSTANT_PERIOD, 998);
-		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 1000);
+		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 10000);
 		// tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 500);
-		tello->addPeriodicTask(&visualize_robot, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"animate_task",TASK_CONSTANT_PERIOD, 1000);
+		tello->addPeriodicTask(&visualize_robot, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"animate_task",TASK_CONSTANT_PERIOD, 500);
 		tello->addPeriodicTask(&screenRecord, SCHED_FIFO, 1, ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&usbCamRecord, SCHED_FIFO, 0, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, 6, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);

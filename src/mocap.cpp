@@ -94,10 +94,10 @@ void* motion_capture( void * arg )
   owl.createTracker(tracker_id, "rigid", "CoM");
 
   // Front of robot tracker
-  owl.assignMarker(tracker_id, 0, "m0", "pos=122.3860,177.9332,87.0012");
-  owl.assignMarker(tracker_id, 1, "m1", "pos=121.5570,285.3265,90.6545");
-  owl.assignMarker(tracker_id, 2, "m2", "pos=-121.9130,175.6818,98.1765");
-  owl.assignMarker(tracker_id, 3, "m3", "pos=-122.0300,283.0585,101.9678");
+  owl.assignMarker(tracker_id, 0, "m0", "pos=121.8125,176.5,94.4527");
+  owl.assignMarker(tracker_id, 1, "m1", "pos=121.8125,284.5,94.4527");
+  owl.assignMarker(tracker_id, 2, "m2", "pos=-121.8125,176.5,94.4527");
+  owl.assignMarker(tracker_id, 3, "m3", "pos=-121.8125,284.5,94.4527");
 
   // Side of robot tracker
   // owl.assignMarker(tracker_id, 4, "m4", "pos=58.5059,288.5615,148.9263");
@@ -157,11 +157,11 @@ void* motion_capture( void * arg )
               Eigen::Quaterniond quaternion(r->pose[3], r->pose[6], r->pose[4], r->pose[5]);  // Quaternion (w, x, y, z)
 
               // Define the rotation angle in radians
-              Eigen::Vector3d alignment_error(0, 0, 0);
+              // Eigen::Vector3d alignment_error(0, 0, 0);
 
-              Eigen::Quaterniond rotatedQuaternion = rotateQuaternion(quaternion, alignment_error);
+              // Eigen::Quaterniond rotatedQuaternion = rotateQuaternion(quaternion, alignment_error);
               
-              CoM_rpy = quaternionToEuler(rotatedQuaternion);
+              CoM_rpy = quaternionToEuler(quaternion);
               CoM_quat << r->pose[3], r->pose[6], r->pose[4], r->pose[5];
               CoM_pos = Vector3d(r->pose[2]/1000.0, r->pose[0]/1000.0, r->pose[1]/1000.0-0.58+0.0292);
               if(!(r->pose[2] == 0.0 && r->pose[0] == 0.0 && r->pose[1] == 0.0))

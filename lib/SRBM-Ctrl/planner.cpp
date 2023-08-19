@@ -65,7 +65,7 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
             // sinusoidal trajectory parameters
             recording_file_name = "Z";
             printf("Running Z (Squat) Test\n");
-            amplitude = 0.06;
+            amplitude = 0.03;
             omega = 0.3;
             phase = -M_PI;
             sim_time = num_tests*(M_PI/omega);

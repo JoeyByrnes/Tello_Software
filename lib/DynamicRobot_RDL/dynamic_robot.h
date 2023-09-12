@@ -67,6 +67,19 @@ typedef MatrixXd (*MatrixXd_function_accel)(const VectorXd&, const VectorXd&);
 #define RIGHT_LEG 1
 #define LEFT_LEG  2
 
+enum JointName {
+    L_Hip_Yaw,
+    L_Hip_Roll,
+    L_Hip_Pitch,
+    L_Knee,
+    L_Ankle,
+    R_Hip_Yaw,
+    R_Hip_Roll,
+    R_Hip_Pitch,
+    R_Knee,
+    R_Ankle
+};
+
 namespace RoboDesignLab {
 
     struct BipedActuatorTree{
@@ -264,6 +277,9 @@ namespace RoboDesignLab {
         VectorXd getJointVelocities();
         VectorXd getJointPositions();
 
+        void setJointEncoderPosition(double rad, JointName joint_name);
+        void setJointEncoderVelocity(double rad, JointName joint_name);
+
         void motorPD(MotorPDConfig motor_conf);
         void jointPD(JointPDConfig joint_conf);
         void taskPD(TaskPDConfig task_conf);
@@ -359,6 +375,9 @@ namespace RoboDesignLab {
         BipedActuatorTree _actuators;
         int _leg_DoF; // automatically set from actuator tree
         int _num_actuators;
+
+        VectorXd joint_encoder_positions = VectorXd(10);
+        VectorXd joint_encoder_velocities = VectorXd(10);
 
         // InEKF:
         RobotState initial_state; 

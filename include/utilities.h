@@ -44,3 +44,5 @@ std::string getCurrentDateTime();
 std::string createLogFolder(const std::string& location);
 
 double ema_filter(const Eigen::VectorXd& vel, double smoothingFactor);
+
+Eigen::Vector3d calculateSupportCenter(const Eigen::Vector3d& v1, const Eigen::Vector3d& v2, const Eigen::Vector3d& v3, const Eigen::Vector3d& v4);

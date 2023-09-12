@@ -547,6 +547,16 @@ Eigen::VectorXd DynamicRobot::getJointVelocities()
     return joint_velocities;
 }
 
+void DynamicRobot::setJointEncoderPosition(double rad, JointName joint_name)
+{
+    joint_encoder_positions[joint_name] = rad;
+}
+
+void DynamicRobot::setJointEncoderVelocity(double radpersec, JointName joint_name)
+{
+    joint_encoder_velocities[joint_name] = radpersec;
+}
+
 MotorPDConfig DynamicRobot::switchController(const MotorPDConfig& stanceCtrl, const MotorPDConfig& swingCtrl,
                                int durationMs, bool isSwingToStance, int currTimeStep) {
     MotorPDConfig output;

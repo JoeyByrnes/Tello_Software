@@ -87,7 +87,7 @@
                 ]
             },
             "defines": [
-                "PLATFORMIO=60110",
+                "PLATFORMIO=60111",
                 ""
             ],
             "cppStandard": "c++17",

@@ -345,16 +345,19 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     
     
     int FSM_next;
-    // cout << FSM_prev << "\t u1z:" << u1z << "\t u2z" << u3z << "\t t_dsp" << t_dsp << endl;
+    // cout << FSM_prev << "\t grf_check:" << (grf_rf < Fz_min && grf_rb < Fz_min ) << "\t next_SSP: " << next_SSP << "\t t_check" << (t > 0 && t_dsp > 0.080) << endl;
     if (FSM_prev == 0) // currently in DSP
     {
+        // cout << "FSM_prev==0" << endl;
         if ( (grf_rf < Fz_min && grf_rb < Fz_min ) && t > 0 && t_dsp > 0.080 && (next_SSP==1) && (zHr > 0.007 || auto_mode)) // enter SSP_L
         {
+            cout << "Setting FSM to 1" << endl;
             FSM_next = 1;
             traj_planner_dyn_data.step_z_offset_L = human_dyn_data.fzH_L;
         }
         else if ( (grf_lf < Fz_min && grf_lb < Fz_min ) && t > 0 && t_dsp > 0.080 && (next_SSP==-1) && (zHl > 0.007 || auto_mode)) // enter SSP_R 
         {
+            cout << "Setting FSM to -1" << endl;
             FSM_next = -1;     
            traj_planner_dyn_data.step_z_offset_R = human_dyn_data.fzH_R;
         }
@@ -365,8 +368,9 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == 1) // currently in SSP_L
     {
-        if ( (grf_rf > 10 || grf_rb > 10 ) && s > 0.1) // enter DSP
+        if ( (grf_rf > 10 || grf_rb > 10 ) && s > 0.8) // enter DSP
         {
+            cout << "Setting FSM from 1 to 0" << endl;
             FSM_next = 0;
         }
         else // stay in SSP_L
@@ -376,8 +380,9 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == -1) // currently in SSP_R
     {
-        if ( (grf_lf > 10 || grf_lb > 10 ) && s > 0.1) // enter DSP
+        if ( (grf_lf > 10 || grf_lb > 10 ) && s > 0.8) // enter DSP
         {
+            cout << "Setting FSM from -1 to 0" << endl;
             FSM_next = 0;
         }
         else // stay in SSP_R
@@ -518,7 +523,7 @@ void dash_planner::SRB_Traj_Planner(
         } else if (planner_type == 2) { // Human Whole-Body Dynamic Telelocomotion
             // Human pilot is the planner
             if( en_v2_ctrl )
-                dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(FxR, FyR, lfv_comm, lfdv_comm, lfddv_comm, human_dyn_data, srb_params, human_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv, tau_ext);  
+                dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v3(FxR, FyR, lfv_comm, lfdv_comm, lfddv_comm, human_dyn_data, srb_params, human_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv, tau_ext);  
             else
                 dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(FxR, FyR, lfv_comm, lfdv_comm, lfddv_comm, human_dyn_data, srb_params, human_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv, tau_ext);
         }

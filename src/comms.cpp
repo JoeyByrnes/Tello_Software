@@ -155,6 +155,21 @@ void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* rob
 	}
 }
 
+void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot){
+	
+	uint8_t id = Message.DATA[0];
+	uint16_t joint_position = (Message.DATA[1] << 8) | Message.DATA[2];
+	uint16_t joint_velocity = (Message.DATA[3] << 8) | Message.DATA[4];
+
+	// Given front_force_uint16 and back_force_uint16 variables
+	double joint_rad = ((double)joint_position*(2.0*M_PI)/16384.0); // TODO: subtract offset from calibration here
+	double joint_rad_per_sec = ((double)(joint_velocity-8192)*(2.0*M_PI)/16384.0);
+
+	robot->setJointEncoderPosition(joint_rad,static_cast<JointName>(id-20));
+	robot->setJointEncoderVelocity(joint_rad_per_sec,static_cast<JointName>(id-20));
+	
+}
+
 // void* rx_UDP( void * arg ){
 
 // 	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);

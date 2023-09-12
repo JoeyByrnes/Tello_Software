@@ -19,6 +19,7 @@
 #include <signal.h>
 #include <vector>
 #include <chrono>
+#include <filesystem>
 #include "owl.hpp"
 
 #include "math.h"
@@ -38,6 +39,8 @@
 #include "mocap.h"
 
 #include <pcanfd.h>
+
+namespace fs = std::filesystem;
 
 #define TWOPI 6.28318530718
 #define ENCODER_TO_RADIANS ((double)(12.5/32768.0))
@@ -174,6 +177,13 @@ extern double usbcam_recording;
 
 extern bool auto_mode;
 extern MatrixXd lfv_dsp_start;
+
+extern bool log_data_ready;
+extern std::string log_folder;
+extern VectorXd x_out, u_out, q_out, qd_out,full_tau_out, tau_out, tau_ext_out, lfv_out, lfdv_out,lfv_comm_out,lfdv_comm_out, t_n_FSM_out, impulse_out, meas_grf_out, xDCM_out;
+extern double last_log_time;
+extern Human_dyn_data hdd_out;
+extern Traj_planner_dyn_data tpdd_out;
 
 extern OWL::Context owl;
 extern Vector3d CoM_pos;
@@ -551,6 +561,62 @@ void run_tello_pd_DEMO()
 	pthread_mutex_unlock(&mutex_CAN_recv);
 }
 
+void* hw_logging( void * arg )
+{
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	void* dynamic_robot_ptr = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
+
+	printf('g',"Logging task running.\n");
+
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
+    usleep(1000000);
+
+    struct timespec next;
+    clock_gettime(CLOCK_MONOTONIC, &next);
+    while(true)
+    {
+        handle_start_of_periodic_task(next);
+        while(!log_data_ready) usleep(50);
+        log_data_ready = false;
+
+        if(t_n_FSM_out(0) != last_log_time){
+            last_log_time = t_n_FSM_out(0);
+            // logging:
+            dash_utils::writeVectorToCsv(x_out,"x.csv");
+            dash_utils::writeVectorToCsv(u_out,"u.csv");
+            dash_utils::writeVectorToCsv(tau_out,"tau.csv");
+            // dash_utils::writeVectorToCsv(full_tau_out,"full_sw_st_tau.csv");
+            dash_utils::writeVectorToCsv(tau_ext_out,"tau_ext.csv");
+
+            dash_utils::writeVectorToCsv(q_out,"q.csv");
+            dash_utils::writeVectorToCsv(qd_out,"qd.csv");
+
+            dash_utils::writeVectorToCsv(lfv_out,"lfv.csv");
+            dash_utils::writeVectorToCsv(lfdv_out,"lfdv.csv");
+
+            dash_utils::writeVectorToCsv(lfv_comm_out,"lfv_comm.csv");
+            dash_utils::writeVectorToCsv(lfdv_comm_out,"lfdv_comm.csv");
+
+            dash_utils::writeVectorToCsv(t_n_FSM_out,"t_and_FSM.csv");
+
+            dash_utils::writeHumanDynDataToCsv(hdd_out,"human_dyn_data.csv");
+            dash_utils::writeTrajPlannerDataToCsv(tpdd_out,"traj_planner_dyn_data.csv");
+
+            // dash_utils::writeVectorToCsv(impulse_out,"external_forces.csv");
+
+            // dash_utils::writeVectorToCsv(meas_grf_out,"meas_grf_out.csv");
+
+            // dash_utils::writeVectorToCsv(xDCM_out,"xDCM.csv");
+            
+        }
+        // end logging
+        usleep(50);
+		// handle_end_of_periodic_task(next,period);
+	}
+    return  0;
+}
+
 void balance_pd(MatrixXd lfv_hip)
 {
 	RoboDesignLab::TaskPDConfig swing_pd_config, posture_pd_config;
@@ -600,8 +666,8 @@ void balance_pd(MatrixXd lfv_hip)
 
 	VectorXd kp_vec_joint_swing(10);
 	VectorXd kd_vec_joint_swing(10);
-	kp_vec_joint_swing << 64, 500, 500,500,64, 64, 500, 500,500,64;
-	kd_vec_joint_swing <<  5, 10, 10,10,5,  5, 10, 10,10,5;
+	kp_vec_joint_swing << 64, 500, 1000,1000,500, 64, 500, 1000,1000,500;
+	kd_vec_joint_swing <<  2, 2, 2,2,2,  2, 2, 2,2,2;
 
 	swing_pd_config.setJointKp(kp_vec_joint_swing);
 	swing_pd_config.setJointKd(kd_vec_joint_swing);
@@ -634,11 +700,11 @@ void balance_pd(MatrixXd lfv_hip)
 
 	// cout << tau_LR.transpose() << endl;
 	VectorXd torques_left  = tello->swing_stance_mux(tau_LR.head(5), swing_leg_torques.head(5),
-														0.004,tello->controller->get_isSwingToStanceRight(), 
+														0.000,tello->controller->get_isSwingToStanceRight(), 
 														tello->controller->get_time()-tello->controller->get_transitionStartRight(), 
 														0);
 	VectorXd torques_right = tello->swing_stance_mux(tau_LR.tail(5), swing_leg_torques.tail(5),
-														0.004,tello->controller->get_isSwingToStanceLeft(),
+														0.000,tello->controller->get_isSwingToStanceLeft(),
 														tello->controller->get_time()-tello->controller->get_transitionStartLeft(), 
 														1);
 	VectorXd tau_LR_muxed(10);
@@ -649,7 +715,7 @@ void balance_pd(MatrixXd lfv_hip)
 
 
 	double joint_kp = 8.0;
-	double joint_kd = 0.45;
+	double joint_kd = 0.00;
 	VectorXd kp_vec_joint = VectorXd::Ones(10)*(joint_kp+gain_adjustment);
 	VectorXd kd_vec_joint = VectorXd::Ones(10)*joint_kd;
 
@@ -668,8 +734,17 @@ void balance_pd(MatrixXd lfv_hip)
 	double motor_kp = 0;
 	double motor_kd = 400;
 	VectorXd kp_vec_motor(10);// = VectorXd::Ones(10)*motor_kp;
-	kp_vec_motor << 600,200,200,200,200,600,200,200,200,200;
+	kp_vec_motor << 0,0,0,0,0,0,0,0,0,0;
+
 	VectorXd kd_vec_motor = VectorXd::Ones(10)*motor_kd;
+	if(tello->controller->get_FSM()==1)
+	{
+		kd_vec_motor << 400,400,400,400,400,300,300,300,300,300;
+	}
+	if(tello->controller->get_FSM()==-1)
+	{
+		kd_vec_motor << 300,300,300,300,300,400,400,400,400,400;
+	}
 
 	vel_desired = VectorXd::Zero(12);
 
@@ -728,6 +803,8 @@ void run_balance_controller()
 
 	if(tare_mocap_pos)
 	{
+		MatrixXd lfv_tare = tello->controller->get_lfv_world();
+		VectorXd center = calculateSupportCenter(lfv_tare.row(0),lfv_tare.row(1),lfv_tare.row(2),lfv_tare.row(3));
 		mocap_offset = CoM_pos;
 	}
 	mocap_offset(2) = 0;
@@ -791,6 +868,9 @@ void run_balance_controller()
 
 	// cout << "RPY Error: " << "     R: " << tello->_rpy(0)-CoM_rpy(0) << "     P: " << tello->_rpy(1)-CoM_rpy(1) << "     Y: " << 0-CoM_rpy(2) << "                \r";
 	// cout.flush();
+
+	// cout << "GRFs: " << tello->_GRFs.left_front << ",  " << tello->_GRFs.right_back << ",  " << tello->_GRFs.right_front << ",  " << tello->_GRFs.right_back << endl;
+	// cout << "FSM: " << tello->controller->get_FSM() << "GRFs: " << tello->_GRFs.left_front << ",  " << tello->_GRFs.right_back << ",  " << tello->_GRFs.right_front << ",  " << tello->_GRFs.right_back << endl;
 
 	VectorXd task_velocities = tello->joint_vel_to_task_vel(tello->getJointVelocities(),tello->getJointPositions());
 
@@ -880,6 +960,28 @@ void run_balance_controller()
 	direct_lfv_hip.row(1) = task_pos.segment<3>(9);
 	direct_lfv_hip.row(2) = task_pos.segment<3>(0);
 	direct_lfv_hip.row(3) = task_pos.segment<3>(3); // DATA VERIFIED
+
+	// SET LOG DATA HERE:
+	x_out = tello->controller->get_x();
+	u_out = tello->controller->get_GRFs();
+	tau_out = tello->controller->get_joint_torques();
+	tau_ext_out = tello->controller->get_tau_ext();
+	q_out = dash_utils::flatten(tello->controller->get_q());
+	qd_out = dash_utils::flatten(tello->controller->get_qd());
+
+	lfv_out = dash_utils::flatten(tello->controller->get_lfv_world());
+	lfdv_out = dash_utils::flatten(tello->controller->get_lfdv_world());
+
+	lfv_comm_out = dash_utils::flatten(tello->controller->get_lfv_comm_world());
+	lfdv_comm_out = dash_utils::flatten(tello->controller->get_lfdv_comm_world());
+
+	t_n_FSM_out = Eigen::Vector2d(tello->controller->get_time(),tello->controller->get_FSM());
+
+	hdd_out = tello->controller->get_human_dyn_data();
+	tpdd_out = tello->controller->get_traj_planner_dyn_data();
+	log_data_ready = true;
+
+	// END SETTING LOG DATA HERE
 	
 	// tello->set_imu_data_for_ekf(imu_data);
 	// tello->set_gnd_contact_data_for_ekf(gnd_contacts);
@@ -1147,32 +1249,32 @@ void init_6dof_test()
 {
 	string dummy;
 	double sim_time;
-	char DoF = 'r';
+	// char DoF = 'r';
 	MatrixXd lfv0 = tello->controller->get_lfv0();
 	SRB_Params srb_params = tello->controller->get_SRB_params();
 	Traj_planner_dyn_data traj_planner_dyn_data = tello->controller->get_traj_planner_dyn_data();
 	Human_params human_params = tello->controller->get_human_params();
 	VectorXd x0 = tello->controller->get_x0();
-	dash_planner::SRB_6DoF_Test(dummy,sim_time,srb_params,lfv0,DoF,1);
+	// dash_planner::SRB_6DoF_Test(dummy,sim_time,srb_params,lfv0,DoF,1);
 
 	auto_mode = true;
-	// printf("Walking Selected\n\n");
-	// // Option 2: Walking using LIP angular momentum regulation about contact point
-	// // user input (walking speed and step frequency)
-	// double des_walking_speed = 0;
-	// // double des_walking_step_period = 0.2;
-	// // end user input
-	// std::string recording_file_name = "Walking";
-	// srb_params.planner_type = 1; 
-	// // srb_params.T = des_walking_step_period;
-	// VectorXd t_traj, v_traj;
-	// double t_beg_stepping_time, t_end_stepping_time;
-	// dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
-	// srb_params.vx_des_t = t_traj;
-	// srb_params.vx_des_vx = v_traj;
-	// srb_params.t_beg_stepping = 5;
-	// srb_params.t_end_stepping = 6;
-	// sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
+	printf("Walking Selected\n\n");
+	// Option 2: Walking using LIP angular momentum regulation about contact point
+	// user input (walking speed and step frequency)
+	double des_walking_speed = 0;
+	// double des_walking_step_period = 0.2;
+	// end user input
+	std::string recording_file_name = "Walking";
+	srb_params.planner_type = 1; 
+	// srb_params.T = des_walking_step_period;
+	VectorXd t_traj, v_traj;
+	double t_beg_stepping_time, t_end_stepping_time;
+	dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
+	srb_params.vx_des_t = t_traj;
+	srb_params.vx_des_vx = v_traj;
+	srb_params.t_beg_stepping = 5;
+	srb_params.t_end_stepping = 1e10;
+	sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
 
 	// Initialize trajectory planner data
     dash_planner::SRB_Init_Traj_Planner_Data(traj_planner_dyn_data, srb_params, human_params, x0, lfv0);
@@ -1435,6 +1537,21 @@ int main(int argc, char *argv[]) {
 	
 	printf("CAN Channels opened: %s \n",(channels).c_str());
 
+	// Path to the directory
+    fs::path directoryPath = "/media/tello/logging_usb/Tello_HW_Logs/";
+
+    // Check if the directory exists
+    if (fs::exists(directoryPath)) {
+        log_folder = createLogFolder("/media/tello/logging_usb/Tello_HW_Logs/");
+		if(log_folder.empty())
+		{
+			log_folder = createLogFolder("/home/tello/tello_outputs/temp_logs");
+		}
+    } else {
+        log_folder = createLogFolder("/home/tello/tello_outputs/temp_logs");
+    }
+    dash_utils::setOutputFolder(log_folder);
+
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd1),"rx_bus1",TASK_CONSTANT_DELAY, 50);
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd2),"rx_bus2",TASK_CONSTANT_DELAY, 50);
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd3),"rx_bus3",TASK_CONSTANT_DELAY, 50);
@@ -1445,7 +1562,8 @@ int main(int argc, char *argv[]) {
 	// tello->addPeriodicTask(&BNO055_Comms, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, NULL, "bno_imu_task", TASK_CONSTANT_DELAY, 1000);
 	// tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
 	tello->addPeriodicTask(&motion_capture, SCHED_FIFO, 99, UPX_ISOLATED_CORE_3_THREAD_1, (void*)(NULL),"Mocap_Task",TASK_CONSTANT_PERIOD, 1000);
-	
+	tello->addPeriodicTask(&hw_logging, SCHED_FIFO, 99, UPX_ISOLATED_CORE_3_THREAD_2, (void*)(NULL),"hw_logging_task",TASK_CONSTANT_PERIOD, 1000);
+
 	usleep(1000);
 	
 	while(1){

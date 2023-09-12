@@ -169,3 +169,9 @@ double ema_filter(const Eigen::VectorXd& vel, double smoothingFactor)
 
     return smoothedVel(n - 1);
 }
+
+Vector3d calculateSupportCenter(const Vector3d& v1, const Vector3d& v2, const Vector3d& v3, const Vector3d& v4) {
+    Vector3d center = (v1 + v2 + v3 + v4) / 4.0;
+    
+    return center;
+}

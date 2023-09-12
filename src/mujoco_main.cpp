@@ -3175,7 +3175,7 @@ void* visualize_robot( void * arg )
 
         int jointID = mj_name2id(m, mjOBJ_JOINT, "left_anklev");
 
-        std::cout << "Joint ID for left_anklev: " << jointID << std::endl;
+        // std::cout << "Joint ID for left_anklev: " << jointID << std::endl;
 
         d->qpos[hip_yaw_l_idx_viz] = vd.q_desired[0];
         d->qpos[hip_roll_l_idx_viz] = vd.q_desired[1];
@@ -3187,6 +3187,8 @@ void* visualize_robot( void * arg )
         d->qpos[hip_pitch_r_idx_viz] = vd.q_desired[7];
         d->qpos[knee_pitch_r_idx_viz] = vd.q_desired[8];
         d->qpos[ankle_pitch_r_idx_viz] = vd.q_desired[9];
+
+        
         // pthread_mutex_unlock(&sim_mutex);
         // pthread_mutex_unlock(&sim_step_mutex);
 

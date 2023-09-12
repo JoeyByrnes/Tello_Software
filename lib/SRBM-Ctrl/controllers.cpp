@@ -606,6 +606,409 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
 
 }
 
+void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v3(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm, MatrixXd& lfddv_comm, Human_dyn_data& human_dyn_data, 
+                                        SRB_Params srb_params, Human_params human_params, Traj_planner_dyn_data& traj_planner_dyn_data, 
+                                        int FSM, double t, VectorXd x, MatrixXd lfv, MatrixXd lfdv, VectorXd tau_ext, VectorXd u)
+{
+    // Get robot parameters
+    double mR = srb_params.m; 
+    double hR = srb_params.hLIP; 
+    double ft_l = srb_params.foot_length;
+    double lmaxR = srb_params.lmaxR;
+    double g = srb_params.g; 
+    double xDCMH_deadband = srb_params.xDCMH_deadband;
+    double KxDCMH = srb_params.KxDCMH;
+    double Kx_DCM_mult = srb_params.Kx_DCM_mult;
+    double Ky_DCM_mult = srb_params.Ky_DCM_mult;
+    double T_DSP = srb_params.T_DSP;
+
+    // Get human parameters
+    double mH = human_params.m; 
+    double hH = human_params.hLIP; 
+
+    // Get trajectory planner data
+    double t_sw_start = traj_planner_dyn_data.t_sw_start;
+    double t_dsp_start = traj_planner_dyn_data.t_dsp_start;
+    double swing_T_scaler = srb_params.swing_time_scaler;
+    double T_step = traj_planner_dyn_data.T_step;
+    if(use_adaptive_step_time) T_step = traj_planner_dyn_data.T_step_predicted*swing_T_scaler;
+    double sigma1H = traj_planner_dyn_data.sigma1H;
+    double swx0 = traj_planner_dyn_data.sw_beg_step[0];
+    double swy0 = traj_planner_dyn_data.sw_beg_step[1];
+    double swz0 = traj_planner_dyn_data.sw_beg_step[2];
+
+    double stx0 = traj_planner_dyn_data.st_beg_step[0];
+    double sty0 = traj_planner_dyn_data.st_beg_step[1];
+    double stz0 = traj_planner_dyn_data.st_beg_step[2];
+
+    double fyH0 = traj_planner_dyn_data.human_leg_joystick_pos_beg_step[1];
+    double fzH0 = traj_planner_dyn_data.human_leg_joystick_pos_beg_step[2];
+    Vector2d x_plus_HWRM = traj_planner_dyn_data.x_plus_HWRM;
+
+    // Get human dynamic data
+    double xH = human_dyn_data.xH; 
+    double dxH = human_dyn_data.dxH; 
+    double yH = human_dyn_data.yH; 
+    double dyH = human_dyn_data.dyH;
+    double pyH = human_dyn_data.pyH; 
+    double fyH_R = human_dyn_data.fyH_R;
+    double fzH_R = human_dyn_data.fzH_R;
+    double fyH_L = human_dyn_data.fyH_L;
+    double fzH_L = human_dyn_data.fzH_L;
+    double fdyH_R = human_dyn_data.fdyH_R;
+    double fdzH_R = human_dyn_data.fdzH_R;
+    double fdyH_L = human_dyn_data.fdyH_L;
+    double fdzH_L = human_dyn_data.fdzH_L;
+
+    // Initialize local variables
+    double FyH, xR, dxR, yR, dyR, FxH_spring, FxR_ext = 0.0, FyR_ext = 0.0;
+    double t_step, s, wR, wH, K_DCM, ks, xR_LIP, yH_LIP;
+    double xDCMR_local, xDCMR, xDCMH, yDCMR, yDCMH;
+    double x_HWRM, dx_HWRM, xDCM_HWRM, Fx_HWRM; 
+    double x_HWRM_pre_impact, dx_HWRM_pre_impact, uk_HWRM, x0_HWRM_next_step, dx0_HWRM_next_step, xDCM_HWRM_next_step;
+    double pxR_lim_lb, pxR_lim_ub, Ts;
+    double p_star, v_star;
+    VectorXd xk_HWRM_des(2), xk_HWRM(2), xkp1_HWRM(2);
+    MatrixXd A_S2S(2, 2);
+    VectorXd B_S2S(2);
+    Vector3d LIPR_params, LIPH_params;
+    
+    // Step time variable
+    if (abs(FSM) == 1) { // SSP
+        t_step = t - t_sw_start;
+    } else { // DSP
+        t_step = t - t_dsp_start;
+    }
+    // Compute phase variable
+    s = t_step / T_step;     
+
+    // cout << "x_HWRM: " << x_HWRM << "     dx_HWRM: " << dx_HWRM << "    t_step: " << t_step;
+
+    // Get SRB states
+    xR = x(0);
+    dxR = x(3);
+    yR = x(1) - traj_planner_dyn_data.y_LIP_offset;
+    dyR = x(4);
+
+    // Compute LIP natural frequencies
+    wR = std::sqrt(g / hR);
+    wH = std::sqrt(g / hH);
+
+    // Create LIP parameter vectors for human and robot
+    LIPR_params << mR, hR, wR;
+    LIPH_params << mH, hH, wH;
+
+    // DCM tracking gain and spring stiffness theoretical values
+    K_DCM = mR * hR * wR * wR;
+    ks = mH * wH * wH;
+
+    // Human (frontal) and robot (sagittal) LIPs
+    xR_LIP = xR - stx0;
+    yH_LIP = yH - pyH;
+
+    // DCM calculations
+    xDCMR = xR + (dxR / wR);
+    xDCMR_local = xR_LIP + (dxR / wR);
+    double xCCMR_local = xR_LIP - (dxR / wR); // need to add as calculation
+    xDCMH = xH + (dxH / wH);
+    yDCMR = yR + (dyR / wR);
+    yDCMH = yH + (dyH / wH);
+
+    // Human (frontal) CoM force
+    FyH = mH * wH * wH * yH_LIP;   
+
+    // HWRM Dynamics
+
+    double F_HMI;
+    // H-LIP Model
+    if (abs(FSM) == 1) { // SSP
+
+        // calculate position vectors from end-effector (s) to CoM
+        MatrixXd r_mat(3, 4);
+        for (int i = 0; i < 4; i++) {
+            r_mat.col(i) = lfv.row(i).transpose() - x.segment<3>(0); // << first three values are pc_curr
+        }
+
+        // get control inputs
+        MatrixXd GRF_mat_curr = Eigen::Map<MatrixXd>(u.data(), 3, 4);
+        MatrixXd r_mat_curr = r_mat;
+
+        Matrix3d I_3 = Matrix3d::Identity();
+        VectorXd net_external_wrench = VectorXd::Zero(6);
+        for (int u_idx = 0; u_idx < 4; u_idx++) {
+            Vector3d u_i = GRF_mat_curr.col(u_idx);
+            Vector3d r_i = r_mat_curr.col(u_idx);
+            Matrix3d hatMap_r_i;
+            hatMap_r_i << 0, -r_i(2), r_i(1),
+                        r_i(2), 0, -r_i(0),
+                        -r_i(1), r_i(0), 0;
+            MatrixXd I_3_hatmap_r_i(6,3);
+            I_3_hatmap_r_i.block(0,0,3,3) = I_3;
+            I_3_hatmap_r_i.block(3,0,3,3) = hatMap_r_i;
+            net_external_wrench = net_external_wrench + I_3_hatmap_r_i* u_i;
+        }
+
+        Vector2d stance_grfs;
+
+        if(FSM == 1) // Left SSP
+        {
+            stance_grfs << GRF_mat_curr(2,2), stance_grfs << GRF_mat_curr(2,3); // left foot z forces
+        }
+
+        if(FSM == -1) // Right SSP
+        {
+            stance_grfs << GRF_mat_curr(2,0), stance_grfs << GRF_mat_curr(2,1); // right foot z forces
+        }
+
+        double frontContactPosition = 0.06; // Front contact point position in meters
+        double backContactPosition = -0.06; // Back contact point position in meters
+
+        // Calculate the total force and moment about the origin
+        double totalForce = stance_grfs.sum();
+        double moment = stance_grfs[1] * backContactPosition - stance_grfs[0] * frontContactPosition;
+
+        // Calculate the center of pressure along the x-axis
+        double copX = moment / totalForce;
+
+
+        double pxR_CZMP = copX; // x distance from center of stance foot to CoP
+        double tau = net_external_wrench(3); // moment from gfrs about y axis
+        double pxR_CCMP = pxR_CZMP + (tau / mR*g); // need to calculate using robot control: pxR_CCMP = pxR_CZMP + (tau / mR*g)
+        double dxR_pre_impact = (1.0 / 2.0) * wR * ((xDCMR_local - pxR_CCMP) * exp(wR * (Ts - t_step)) - (xCCMR_local - pxR_CCMP) * exp(-1.0 * wR * (Ts - t_step)));
+
+        // SSP HWRM dynamics
+        dash_dyn::HLIP_SSP_dyn(x_HWRM, dx_HWRM, t_step, wR, x_plus_HWRM(0), x_plus_HWRM(1));
+
+        // Error dynamics (map DCM error dynamics to human motion variables)
+        double sigma1R = wR*(1.0 / (tanh((Ts/2.0)*wR))); // calculate right after knowing new predicted step time
+        double c_prime = (1.0 / tanh(Ts*wR)); // calculate right after knowing new predicted step time
+        double alpha = (1.0 - (sigma1R / wR)*c_prime) / (1.0 + (sigma1R / wR)); // calculate right after knowing new predicted step time
+        double e_DCM_pre_impact = ((c_prime - 1.0) / (alpha * wR)) * (dx_HWRM_pre_impact - dxR_pre_impact); // error dynamics for virtual MSD
+
+        // Virtual mass-spring-damper system -- compute F_HMI
+        double wn = wH; // natural frequency of virtual MSD -- assume same as natural frequency of human LIP
+        double zeta = 0.1; // damping ratio of virtual MSD -- tune as needed
+        double k = mH * wH * wH; // spring stiffness
+        double b = 2 * mH * zeta * wn; // damping coefficient
+        F_HMI = -1.0 * (k * e_DCM_pre_impact) - (b * dxH); // haptic force feedback to human in sagittal plane
+
+    } else { // DSP
+
+        // DSP HWRM dynamics
+        dash_dyn::HLIP_DSP_dyn(x_HWRM, dx_HWRM, t_step, x_plus_HWRM(0), x_plus_HWRM(1));
+
+        // Condition to switch from H-LIP model to actual human pilot LIP
+
+        // Based on robot's static stability 
+        pxR_lim_lb = lfv.col(0).minCoeff(); pxR_lim_ub = lfv.col(0).maxCoeff();
+
+        // Use actual Human DCM to stabilize robot around zero velocity
+        // if ((xDCMR > pxR_lim_lb && xDCMR < pxR_lim_ub) && (t_step > T_DSP)) {
+        //     x_HWRM = xH;
+        //     dx_HWRM = dxH;
+        // }
+        F_HMI = 0.0;
+
+    }    
+    
+    // Compute HWRM DCM
+    xDCM_HWRM = x_HWRM + (dx_HWRM / wR);    
+
+    // HWRM force profile
+    Fx_HWRM = mR * wR * wR * x_HWRM;
+
+    // LISA spring force (apply to actual human)
+    // Equal to the opposite GRF of the HWRM
+    FxH_spring = 0.0;//-1.0 * Fx_HWRM;   
+
+    // Update HWRM dynamics in traj_planner_dyn_data
+    traj_planner_dyn_data.x_HWRM = x_HWRM;
+    traj_planner_dyn_data.dx_HWRM = dx_HWRM;
+
+    //cout << "FSM: "<< FSM << "    t_step: " << t - t_sw_start << "    x_plus_HWRM: " << x_plus_HWRM.transpose() << "    x_minus_HWRM: " << traj_planner_dyn_data.x_HWRM << " " << traj_planner_dyn_data.dx_HWRM <<  "    uk_HWRM: " << traj_planner_dyn_data.uk_HWRM << endl;
+    
+
+    // Sagittal Plane Control (x-direction)
+    // Dynamic Bilateral Teleoperation
+
+    // Enforce dynamic similarity of human walking
+    // reference LIP model and robot LIP model
+    VectorXd xLIPR_dyn(2);
+    xLIPR_dyn << xDCMR_local, dxR;
+    VectorXd xLIPH_dyn(2);
+    xLIPH_dyn << xDCM_HWRM, dx_HWRM;
+    double FxR_ext_est = FxR_ext;
+    double Kx_DCM = Kx_DCM_mult * K_DCM;
+    double FxH_hmi;
+    bilateral_teleop_law(LIPR_params, LIPR_params, xLIPR_dyn, xLIPH_dyn, Fx_HWRM, FxR_ext_est, Kx_DCM, FxR, FxH_hmi);
+    human_dyn_data.FxH_hmi = FxH_hmi;
+    human_dyn_data.FxH_spring = FxH_spring;
+
+    FxH_hmi_out = F_HMI; // V3: used to be FxH_hmi
+    FxH_spring_out = FxH_spring;
+
+    // -------------------------------------------------------------------------
+
+    // Frontal Plane Control (y-direction)
+    // Dynamic Bilateral Teleoperation
+
+    // Enforce dynamic similarity of actual human
+    // LIP model and robot LIP model
+    VectorXd yLIPR_dyn(2);
+    yLIPR_dyn << yDCMR, dyR;
+    VectorXd yLIPH_dyn(2);
+    yLIPH_dyn << yDCMH, dyH;
+    double FyR_ext_est = FyR_ext;
+    double Ky_DCM = Ky_DCM_mult * K_DCM;
+    double FyH_hmi;
+    bilateral_teleop_law(LIPR_params, LIPH_params, yLIPR_dyn, yLIPH_dyn, FyH, FyR_ext_est, Ky_DCM, FyR, FyH_hmi);
+    human_dyn_data.FyH_hmi = FyH_hmi;
+
+    FyH_hmi_out = FyH_hmi;
+    // -------------------------------------------------------------------------
+
+    // In dynamic telelocomotion framework swing-leg trajectories are generated
+    // two ways: using human motion capture/re-targeting in the frontal plane
+    // and using step placement law that reduces the normalized DCM of the human
+    // walking reference LIP and robot LIP at step transitions
+
+    // initialize commanded end-effector positions (DSP)
+    lfv_comm = lfv_dsp_start;
+    lfv_comm.col(2).setConstant(-srb_params.hLIP);
+    lfdv_comm.setZero();
+
+    // swing-leg trajectories
+    if (abs(FSM) == 1) { // SSP
+
+        // x-direction step placement strategy
+
+        // dynamic step time variable
+        Ts = T_step;  
+
+        // Teleoperation Law Mapping (end-of-step DCM)
+        // Corresponds, along with previous step frequency, to a desired stable P1 orbit for the HWRM
+        if (abs(xDCMH) > xDCMH_deadband) {
+            // scale human DCM command and use CoM as surrogate for DCM
+            xDCMH = KxDCMH * xH;     
+        }
+
+        // check if step is taking longer than predicted
+        // if (s > 1.0) {
+        //     Ts = t_step;
+        // }      
+
+        double sigma1R = wR*(1.0/(tanh((Ts/2.0)*wR)));
+
+        double xDCMH_shifted;
+        if
+        (xDCMH > 0) xDCMH_shifted = xDCMH - xDCMH_deadband;
+        else xDCMH_shifted = xDCMH + xDCMH_deadband;
+
+        // Desired P1 orbit from human mapping
+        double tdsp = T_DSP;
+        double tssp = Ts;
+        double u_star = 0.5*(tdsp+tssp);
+        p_star = xDCMH_shifted / (1.0 + (sigma1R / wR)); // V3: changed to signma1R wR
+        v_star = wR * (xDCMH_shifted - p_star);
+
+        // p_star = u_star/(2.0+tdsp*sigma1H);
+        // v_star = sigma1H*p_star;
+
+        if(abs(xDCMH) < xDCMH_deadband){
+            p_star = 0.0;
+            v_star = 0.0;
+        }
+        
+        xk_HWRM_des << p_star, v_star;
+
+        // Calculate estimated pre-impact state of HWRM 
+        dash_dyn::HLIP_SSP_dyn(x_HWRM_pre_impact, dx_HWRM_pre_impact, Ts, wR, x_plus_HWRM(0), x_plus_HWRM(1));
+        xk_HWRM << x_HWRM_pre_impact, dx_HWRM_pre_impact;
+
+        // Optimal control policy for HWRM-LIP (based on S2S dynamics)
+        dash_ctrl::opt_stepping_controller(uk_HWRM, xk_HWRM, xk_HWRM_des, Ts, T_DSP, wR);
+        traj_planner_dyn_data.uk_HWRM = uk_HWRM;
+
+        // cout << "    Controller uk_HWRM: " << uk_HWRM << endl;
+
+        // S2S Dynamics (next-step)
+        dash_dyn::HLIP_S2S_Dyn(A_S2S, B_S2S, Ts, T_DSP, wR);
+        xkp1_HWRM = A_S2S * xk_HWRM + B_S2S * uk_HWRM;
+
+        // Compute predicted begining-of-next step CoM values (back-calculate based on S2S dynamics)
+        dash_dyn::HLIP_dyn_xk2x0(x0_HWRM_next_step, dx0_HWRM_next_step, xkp1_HWRM, wR, Ts);
+    
+        // Predicted beginning of next step DCM of HWRM
+        xDCM_HWRM_next_step = x0_HWRM_next_step + (dx0_HWRM_next_step / wR);         
+
+        // minimize error in dynamic similarity between human walking reference
+        // LIP model and robot LIP model at step transitions (feedback)
+        double l_fb = xDCMR_local - xDCM_HWRM_next_step;
+
+        // assume constant CoM velocity through DSP (feedforward)
+        double l_ff = dxR*T_DSP;
+
+        // overall step length
+        double l_cl = l_fb + l_ff;
+
+        // step length magnitude
+        double l_mag = abs(l_cl);
+
+        // step direction
+        double l_dir = 0.0;
+        if (l_cl > 0.0)
+            l_dir = 1.0;
+        else
+            l_dir = -1.0;
+
+        // desired swing-leg x-position at the end of the step
+        double swxf = 0.0;
+        if (l_mag > lmaxR)
+            swxf = stx0 + l_dir*lmaxR;
+        else
+            swxf = stx0 + l_cl;
+
+        // generate x-direction swing-leg trajectory through the step
+        VectorXd swx_traj(2);
+        if (s < 1) 
+            swx_traj = dash_utils::sw_leg_ref_xy(s, swx0, swxf);
+        else {
+            swx_traj[0] = swxf;
+            swx_traj[1] = 0.0;
+        }
+
+        // update commanded task space trajectories
+
+        // set desired end-effector positions based on desired x-direction step
+        // placement and tracking normalized human end-effector dynamics
+        if (FSM == 1) { // SSP_L
+            // x-position trajectories
+            lfv_comm(0,0) = swx_traj[0] + (1.0/2.0)*ft_l; lfv_comm(1,0) = swx_traj[0] - (1.0/2.0)*ft_l;
+            lfdv_comm(0,0) = swx_traj[1]; lfdv_comm(1,0) = lfdv_comm(0,0);
+            // y-position trajectories
+            lfv_comm(0,1) = swy0 + (hR/hH)*(fyH_R - fyH0); lfv_comm(1,1) = lfv_comm(0,1);
+            lfdv_comm(0,1) = (wR/wH)*fdyH_R*0.0; lfdv_comm(1,1) = lfdv_comm(0,1);
+            // z-position trajectories
+            lfv_comm(0,2) = swz0 + (hR/hH)*(fzH_R - fzH0); lfv_comm(1,2) = lfv_comm(0,2);
+            lfdv_comm(0,2) = (wR/wH)*fdzH_R*0.0; lfdv_comm(1,2) = lfdv_comm(0,2);
+        }
+        else if (FSM == -1) { // SSP_R
+        // x-position trajectories
+            lfv_comm(2,0) = swx_traj(0) + 0.5*ft_l; lfv_comm(3,0) = swx_traj(0) - 0.5*ft_l;
+            lfdv_comm(2,0) = swx_traj(1); lfdv_comm(3,0) = lfdv_comm(2,0);
+            // y-position trajectories
+            lfv_comm(2,1) = swy0 - (hR/hH)*(fyH_L - fyH0); lfv_comm(3,1) = lfv_comm(2,1);
+            lfdv_comm(2,1) = (wR/wH)*fdyH_L*0.0; lfdv_comm(3,1) = lfdv_comm(2,1);
+            // z-position trajectories
+            lfv_comm(2,2) = swz0 + (hR/hH)*(fzH_L - fzH0); lfv_comm(3,2) = lfv_comm(2,2);
+            lfdv_comm(2,2) = (wR/wH)*fdzH_L*0.0; lfdv_comm(3,2) = lfdv_comm(2,2);
+        }
+        // update commanded task space trajectories
+        sw_teleop_step_strategy(lfv_comm, lfdv_comm, lfddv_comm, srb_params, human_params, traj_planner_dyn_data, human_dyn_data, FSM, s, swxf, lfv, lfdv, x);
+    } 
+
+}
+
 void dash_ctrl::bilateral_teleop_law(VectorXd LIPR_params, VectorXd LIPH_params, VectorXd LIPR_dyn, VectorXd LIPH_dyn, 
                             double FH, double FR_ext_est, double FB_gain, double& FR, double& FH_hmi)
 {

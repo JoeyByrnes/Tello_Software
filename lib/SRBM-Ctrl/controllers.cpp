@@ -663,11 +663,12 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v3(double& FxR, double& FyR,
     // Initialize local variables
     double FyH, xR, dxR, yR, dyR, FxH_spring, FxR_ext = 0.0, FyR_ext = 0.0;
     double t_step, s, wR, wH, K_DCM, ks, xR_LIP, yH_LIP;
-    double xDCMR_local, xDCMR, xDCMH, yDCMR, yDCMH;
+    double xDCMR_local, xCCMR_local, xDCMR, xDCMH, yDCMR, yDCMH;
     double x_HWRM, dx_HWRM, xDCM_HWRM, Fx_HWRM; 
     double x_HWRM_pre_impact, dx_HWRM_pre_impact, uk_HWRM, x0_HWRM_next_step, dx0_HWRM_next_step, xDCM_HWRM_next_step;
     double pxR_lim_lb, pxR_lim_ub, Ts;
     double p_star, v_star;
+    double F_HMI = 0.0;
     VectorXd xk_HWRM_des(2), xk_HWRM(2), xkp1_HWRM(2);
     MatrixXd A_S2S(2, 2);
     VectorXd B_S2S(2);
@@ -706,10 +707,10 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v3(double& FxR, double& FyR,
     xR_LIP = xR - stx0;
     yH_LIP = yH - pyH;
 
-    // DCM calculations
+    // DCM & CCM calculations
     xDCMR = xR + (dxR / wR);
     xDCMR_local = xR_LIP + (dxR / wR);
-    double xCCMR_local = xR_LIP - (dxR / wR); // need to add as calculation
+    xCCMR_local = xR_LIP - (dxR / wR); 
     xDCMH = xH + (dxH / wH);
     yDCMR = yR + (dyR / wR);
     yDCMH = yH + (dyH / wH);
@@ -718,79 +719,11 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v3(double& FxR, double& FyR,
     FyH = mH * wH * wH * yH_LIP;   
 
     // HWRM Dynamics
-
-    double F_HMI;
     // H-LIP Model
     if (abs(FSM) == 1) { // SSP
 
-        // calculate position vectors from end-effector (s) to CoM
-        MatrixXd r_mat(3, 4);
-        for (int i = 0; i < 4; i++) {
-            r_mat.col(i) = lfv.row(i).transpose() - x.segment<3>(0); // << first three values are pc_curr
-        }
-
-        // get control inputs
-        MatrixXd GRF_mat_curr = Eigen::Map<MatrixXd>(u.data(), 3, 4);
-        MatrixXd r_mat_curr = r_mat;
-
-        Matrix3d I_3 = Matrix3d::Identity();
-        VectorXd net_external_wrench = VectorXd::Zero(6);
-        for (int u_idx = 0; u_idx < 4; u_idx++) {
-            Vector3d u_i = GRF_mat_curr.col(u_idx);
-            Vector3d r_i = r_mat_curr.col(u_idx);
-            Matrix3d hatMap_r_i;
-            hatMap_r_i << 0, -r_i(2), r_i(1),
-                        r_i(2), 0, -r_i(0),
-                        -r_i(1), r_i(0), 0;
-            MatrixXd I_3_hatmap_r_i(6,3);
-            I_3_hatmap_r_i.block(0,0,3,3) = I_3;
-            I_3_hatmap_r_i.block(3,0,3,3) = hatMap_r_i;
-            net_external_wrench = net_external_wrench + I_3_hatmap_r_i* u_i;
-        }
-
-        Vector2d stance_grfs;
-
-        if(FSM == 1) // Left SSP
-        {
-            stance_grfs << GRF_mat_curr(2,2), stance_grfs << GRF_mat_curr(2,3); // left foot z forces
-        }
-
-        if(FSM == -1) // Right SSP
-        {
-            stance_grfs << GRF_mat_curr(2,0), stance_grfs << GRF_mat_curr(2,1); // right foot z forces
-        }
-
-        double frontContactPosition = 0.06; // Front contact point position in meters
-        double backContactPosition = -0.06; // Back contact point position in meters
-
-        // Calculate the total force and moment about the origin
-        double totalForce = stance_grfs.sum();
-        double moment = stance_grfs[1] * backContactPosition - stance_grfs[0] * frontContactPosition;
-
-        // Calculate the center of pressure along the x-axis
-        double copX = moment / totalForce;
-
-
-        double pxR_CZMP = copX; // x distance from center of stance foot to CoP
-        double tau = net_external_wrench(3); // moment from gfrs about y axis
-        double pxR_CCMP = pxR_CZMP + (tau / mR*g); // need to calculate using robot control: pxR_CCMP = pxR_CZMP + (tau / mR*g)
-        double dxR_pre_impact = (1.0 / 2.0) * wR * ((xDCMR_local - pxR_CCMP) * exp(wR * (Ts - t_step)) - (xCCMR_local - pxR_CCMP) * exp(-1.0 * wR * (Ts - t_step)));
-
         // SSP HWRM dynamics
-        dash_dyn::HLIP_SSP_dyn(x_HWRM, dx_HWRM, t_step, wR, x_plus_HWRM(0), x_plus_HWRM(1));
-
-        // Error dynamics (map DCM error dynamics to human motion variables)
-        double sigma1R = wR*(1.0 / (tanh((Ts/2.0)*wR))); // calculate right after knowing new predicted step time
-        double c_prime = (1.0 / tanh(Ts*wR)); // calculate right after knowing new predicted step time
-        double alpha = (1.0 - (sigma1R / wR)*c_prime) / (1.0 + (sigma1R / wR)); // calculate right after knowing new predicted step time
-        double e_DCM_pre_impact = ((c_prime - 1.0) / (alpha * wR)) * (dx_HWRM_pre_impact - dxR_pre_impact); // error dynamics for virtual MSD
-
-        // Virtual mass-spring-damper system -- compute F_HMI
-        double wn = wH; // natural frequency of virtual MSD -- assume same as natural frequency of human LIP
-        double zeta = 0.1; // damping ratio of virtual MSD -- tune as needed
-        double k = mH * wH * wH; // spring stiffness
-        double b = 2 * mH * zeta * wn; // damping coefficient
-        F_HMI = -1.0 * (k * e_DCM_pre_impact) - (b * dxH); // haptic force feedback to human in sagittal plane
+        dash_dyn::HLIP_SSP_dyn(x_HWRM, dx_HWRM, t_step, wR, x_plus_HWRM(0), x_plus_HWRM(1));        
 
     } else { // DSP
 
@@ -807,7 +740,6 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v3(double& FxR, double& FyR,
         //     x_HWRM = xH;
         //     dx_HWRM = dxH;
         // }
-        F_HMI = 0.0;
 
     }    
     
@@ -1005,6 +937,74 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v3(double& FxR, double& FyR,
         }
         // update commanded task space trajectories
         sw_teleop_step_strategy(lfv_comm, lfdv_comm, lfddv_comm, srb_params, human_params, traj_planner_dyn_data, human_dyn_data, FSM, s, swxf, lfv, lfdv, x);
+
+        // haptic feedback to human **************************************************************
+        // if this works well we should make into a function!!!!!!!!!!!!!!!!!
+
+        // calculate position vectors from end-effector (s) to CoM
+        MatrixXd r_mat(3, 4);
+        for (int i = 0; i < 4; i++) {
+            r_mat.col(i) = lfv.row(i).transpose() - x.segment<3>(0); // << first three values are pc_curr
+        }
+
+        // get control inputs
+        MatrixXd GRF_mat_curr = Eigen::Map<MatrixXd>(u.data(), 3, 4);
+        MatrixXd r_mat_curr = r_mat;
+
+        Matrix3d I_3 = Matrix3d::Identity();
+        VectorXd net_external_wrench = VectorXd::Zero(6);
+        for (int u_idx = 0; u_idx < 4; u_idx++) {
+            Vector3d u_i = GRF_mat_curr.col(u_idx);
+            Vector3d r_i = r_mat_curr.col(u_idx);
+            Matrix3d hatMap_r_i;
+            hatMap_r_i << 0, -r_i(2), r_i(1),
+                        r_i(2), 0, -r_i(0),
+                        -r_i(1), r_i(0), 0;
+            MatrixXd I_3_hatmap_r_i(6,3);
+            I_3_hatmap_r_i.block(0,0,3,3) = I_3;
+            I_3_hatmap_r_i.block(3,0,3,3) = hatMap_r_i;
+            net_external_wrench = net_external_wrench + I_3_hatmap_r_i* u_i;
+        }
+
+        Vector2d stance_grfs;
+
+        if(FSM == 1) // Left SSP
+        {
+            stance_grfs << GRF_mat_curr(2,2), stance_grfs << GRF_mat_curr(2,3); // left foot z forces
+        }
+
+        if(FSM == -1) // Right SSP
+        {
+            stance_grfs << GRF_mat_curr(2,0), stance_grfs << GRF_mat_curr(2,1); // right foot z forces
+        }
+
+        double frontContactPosition = 0.06; // Front contact point position in meters
+        double backContactPosition = -0.06; // Back contact point position in meters
+
+        // Calculate the total force and moment about the origin
+        double totalForce = stance_grfs.sum();
+        double moment = stance_grfs[1] * backContactPosition - stance_grfs[0] * frontContactPosition;
+
+        // Calculate the center of pressure along the x-axis
+        double copX = moment / totalForce;
+        double pxR_CZMP = copX; // x distance from center of stance foot to CoP
+        double tau = net_external_wrench(3); // moment from gfrs about y axis
+        double pxR_CCMP = pxR_CZMP + (tau / mR*g); // need to calculate using robot control: pxR_CCMP = pxR_CZMP + (tau / mR*g)
+        double dxR_pre_impact = (1.0 / 2.0) * wR * ((xDCMR_local - pxR_CCMP) * exp(wR * (Ts - t_step)) - (xCCMR_local - pxR_CCMP) * exp(-1.0 * wR * (Ts - t_step)));
+
+        // Error dynamics (map DCM error dynamics to human motion variables)
+        double c_prime = (1.0 / tanh(Ts*wR)); // coth(Tw)
+        double alpha = (1.0 - (sigma1R / wR)*c_prime) / (1.0 + (sigma1R / wR)); // from periodic orbit mapping
+        double e_DCM_pre_impact = ((c_prime - 1.0) / (alpha * wR)) * (dx_HWRM_pre_impact - dxR_pre_impact); // error dynamics for virtual MSD
+
+        // Virtual mass-spring-damper system -- compute F_HMI
+        double wn = wH; // natural frequency of virtual MSD -- assume same as natural frequency of human LIP
+        double zeta = 0.1; // damping ratio of virtual MSD -- tune as needed
+        double k = mH * wH * wH; // spring stiffness
+        double b = 2.0 * mH * zeta * wn; // damping coefficient
+        F_HMI = -1.0 * (k * e_DCM_pre_impact) - (b * dxH); // haptic force feedback to human in sagittal plane  
+        FxH_hmi_out = F_HMI; // update      
+
     } 
 
 }

@@ -103,6 +103,8 @@ int pos_sample_index = 0;
 
 VectorXd left_toe_vel_mj(6), right_toe_vel_mj(6), left_heel_vel_mj(6), right_heel_vel_mj(6);
 
+uint64_t render_counter = 0;
+
 int camera_cnt = 0;
 
 char error[1000];
@@ -1561,10 +1563,14 @@ void* mujoco_Update_1KHz( void * arg )
         // set the background color to white
         
         // update scene and render
-        pthread_mutex_lock(&sim_mutex);
-        mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
-        pthread_mutex_unlock(&sim_mutex);
-        mjr_render(viewport, &scn, &con);
+        if(render_counter%33 == 0)
+        {
+            pthread_mutex_lock(&sim_mutex);
+            mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
+            pthread_mutex_unlock(&sim_mutex);
+            mjr_render(viewport, &scn, &con);
+        }
+        
         sim_ready_for_control = true;
         // render ImGui GUI
         ImVec4 dark_navy = hex2ImVec4(0x082032);
@@ -2203,16 +2209,22 @@ void* mujoco_Update_1KHz( void * arg )
         }
         
         ImGui::PopFont();
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        if(render_counter%33 == 0)
+        {
+            ImGui::Render();
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-        // swap OpenGL buffers (blocking call due to v-sync)
-        
-        glfwSwapBuffers(window);
-        
-        // process pending GUI events, call GLFW callbacks
-        glfwPollEvents();
-
+            // swap OpenGL buffers (blocking call due to v-sync)
+            
+            glfwSwapBuffers(window);
+            
+            // process pending GUI events, call GLFW callbacks
+            glfwPollEvents();
+        }
+        else{
+            ImGui::EndFrame();
+        }
+        render_counter++;
 
         //handle UDP transmit here:
 		Human_dyn_data hdd = telloLocal->controller->get_human_dyn_data();
@@ -2247,7 +2259,7 @@ void* mujoco_Update_1KHz( void * arg )
         //dash_utils::print_timer();
         hdd.FyH_hmi = y_force;
         hdd.FxH_hmi = x_force;
-        hdd.FxH_spring = (human_x_zero - tello->controller->get_human_dyn_data().xH)*1000;
+        hdd.FxH_spring = s_force;
         
 		if(telloLocal->controller->is_human_ctrl_enabled() && !controller_unstable)
 		{
@@ -3616,15 +3628,14 @@ void* plotting( void * arg )
             // plt::legend();
             // plt::pause(0.001);
 
-            // VELOCITY and Position DATA ==================================================================================
+            // HMI FORCE ===================================================================================================
+
             x.push_back(tello->controller->get_time());
             // y1.push_back(dpc_curr(0));
             // y2.push_back(dpc_curr(1));
             // y3.push_back(dpc_curr(2));
 
-            y4.push_back(CoM_vel(0));
-            y5.push_back(CoM_vel(1));
-            y6.push_back(CoM_vel(2));
+            y1.push_back(FxH_hmi_out);
 
             // // y7.push_back(pc_curr(0));
             // // y8.push_back(pc_curr(1));
@@ -3656,20 +3667,65 @@ void* plotting( void * arg )
                 // plt::subplot(3, 1, 1);
             //     plt::title("CoM X Velocity True vs Estimated");
             //     plt::named_plot("True dX", x, y1, "r-");
-                plt::named_plot("Est. dX", x, y4, "r-");
-            //     plt::legend();
-            //     plt::subplot(3, 1, 2);
-            //     plt::title("CoM X Velocity True vs Estimated");
-            //     plt::named_plot("True dY", x, y2, "r-");
-                plt::named_plot("Est.  dY", x, y5, "g-");
-            //     plt::legend();
-            //     plt::subplot(3, 1, 3);
-            //     plt::title("CoM X Velocity True vs Estimated");
-            //     plt::named_plot("True dZ", x, y3, "r-");
-                plt::named_plot("Est. dZ", x, y6, "b-");
+                plt::named_plot("HMI FORCE X", x, y1, "b");
                 plt::legend();
                 plt::pause(0.001);
             // }
+
+            // VELOCITY and Position DATA ==================================================================================
+            // x.push_back(tello->controller->get_time());
+            // // y1.push_back(dpc_curr(0));
+            // // y2.push_back(dpc_curr(1));
+            // // y3.push_back(dpc_curr(2));
+
+            // y4.push_back(CoM_vel(0));
+            // y5.push_back(CoM_vel(1));
+            // y6.push_back(CoM_vel(2));
+
+            // // // y7.push_back(pc_curr(0));
+            // // // y8.push_back(pc_curr(1));
+            // // // y9.push_back(pc_curr(2));
+
+            // // // y10.push_back(tello->get_filter_state().getPosition()(0));
+            // // // y11.push_back(tello->get_filter_state().getPosition()(1));
+            // // // y12.push_back(CoM_z_last);
+
+            // // if(tello->controller->get_time() - last_plot_time > 0.1){
+            // //     last_plot_time = tello->controller->get_time();
+            //     plt::rcparams({{"legend.loc","lower left"}});
+            //     plt::clf();
+            // //     // plt::subplot(3, 2, 1);
+            // //     // plt::title("CoM X Position True vs EKF");
+            // //     // plt::named_plot("True X", x, y7, "r-");
+            // //     // plt::named_plot("EKF X", x, y10, "b-");
+            // //     // plt::legend();
+            // //     // plt::subplot(3, 2, 3);
+            // //     // plt::title("CoM Y Position True vs EKF");
+            // //     // plt::named_plot("True Y", x, y8, "r-");
+            // //     // plt::named_plot("EKF Y", x, y11, "b-");
+            // //     // plt::legend();
+            // //     // plt::subplot(3, 2, 5);
+            // //     // plt::title("CoM Z Position True vs Kinematics");
+            // //     // plt::named_plot("True Z", x, y9, "r-");
+            // //     // plt::named_plot("Kin Z", x, y12, "b-");
+            // //     // plt::legend();
+            //     // plt::subplot(3, 1, 1);
+            // //     plt::title("CoM X Velocity True vs Estimated");
+            // //     plt::named_plot("True dX", x, y1, "r-");
+            //     plt::named_plot("Est. dX", x, y4, "r-");
+            // //     plt::legend();
+            // //     plt::subplot(3, 1, 2);
+            // //     plt::title("CoM X Velocity True vs Estimated");
+            // //     plt::named_plot("True dY", x, y2, "r-");
+            //     plt::named_plot("Est.  dY", x, y5, "g-");
+            // //     plt::legend();
+            // //     plt::subplot(3, 1, 3);
+            // //     plt::title("CoM X Velocity True vs Estimated");
+            // //     plt::named_plot("True dZ", x, y3, "r-");
+            //     plt::named_plot("Est. dZ", x, y6, "b-");
+            //     plt::legend();
+            //     plt::pause(0.001);
+            // // }
             
 
             // ACCELEROMETER DATA: ==============================================================================

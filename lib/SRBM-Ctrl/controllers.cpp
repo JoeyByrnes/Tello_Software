@@ -970,12 +970,12 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v3(double& FxR, double& FyR,
 
         if(FSM == 1) // Left SSP
         {
-            stance_grfs << GRF_mat_curr(2,2), stance_grfs << GRF_mat_curr(2,3); // left foot z forces
+            stance_grfs << GRF_mat_curr(2,2), GRF_mat_curr(2,3); // left foot z forces
         }
 
         if(FSM == -1) // Right SSP
         {
-            stance_grfs << GRF_mat_curr(2,0), stance_grfs << GRF_mat_curr(2,1); // right foot z forces
+            stance_grfs << GRF_mat_curr(2,0), GRF_mat_curr(2,1); // right foot z forces
         }
 
         double frontContactPosition = 0.06; // Front contact point position in meters
@@ -983,13 +983,13 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v3(double& FxR, double& FyR,
 
         // Calculate the total force and moment about the origin
         double totalForce = stance_grfs.sum();
-        double moment = stance_grfs[1] * backContactPosition - stance_grfs[0] * frontContactPosition;
+        double moment = stance_grfs[1] * backContactPosition + stance_grfs[0] * frontContactPosition;
 
         // Calculate the center of pressure along the x-axis
         double copX = moment / totalForce;
         double pxR_CZMP = copX; // x distance from center of stance foot to CoP
         double tau = net_external_wrench(3); // moment from gfrs about y axis
-        double pxR_CCMP = pxR_CZMP + (tau / mR*g); // need to calculate using robot control: pxR_CCMP = pxR_CZMP + (tau / mR*g)
+        double pxR_CCMP = pxR_CZMP + (tau / (mR*g)); // need to calculate using robot control: pxR_CCMP = pxR_CZMP + (tau / mR*g)
         double dxR_pre_impact = (1.0 / 2.0) * wR * ((xDCMR_local - pxR_CCMP) * exp(wR * (Ts - t_step)) - (xCCMR_local - pxR_CCMP) * exp(-1.0 * wR * (Ts - t_step)));
 
         // Error dynamics (map DCM error dynamics to human motion variables)
@@ -1003,7 +1003,10 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v3(double& FxR, double& FyR,
         double k = mH * wH * wH; // spring stiffness
         double b = 2.0 * mH * zeta * wn; // damping coefficient
         F_HMI = -1.0 * (k * e_DCM_pre_impact) - (b * dxH); // haptic force feedback to human in sagittal plane  
-        FxH_hmi_out = F_HMI; // update      
+        FxH_hmi_out = F_HMI; // update   
+        traj_planner_dyn_data.dx_HWRM_pre_impact = dx_HWRM_pre_impact;
+        traj_planner_dyn_data.dxR_pre_impact = dxR_pre_impact;
+        // cout << "Fx_HMI: " << FxH_hmi_out << "  \t(Ts-t_step): " << (Ts - t_step) << "  \tCoP: " << copX << "  \te_DCM_pre_impact: " << e_DCM_pre_impact << "  \tdxR_pre_impact: " << dxR_pre_impact << "  \txDCMR_local: " << xDCMR_local << "  \txCCMR_local: " << xCCMR_local << "  \tpxR_CCMP: " << pxR_CCMP << endl;
 
     } 
 

@@ -95,7 +95,7 @@ void dash_dyn::HLIP_S2S_Dyn(MatrixXd& A, VectorXd& B, double T_SSP, double T_DSP
 
     // State-Transition Matrix: A
     A << ch, T_DSP * ch + (1.0 / w) * sh,
-        w * sh, ch + T_DSP * sh;
+        w * sh, ch + (T_DSP * w * sh);
 
     // Input-Mapping Vector: B
     B << -ch, -w * sh;

@@ -577,7 +577,7 @@ void dash_utils::writeTrajPlannerDataToCsv(const Traj_planner_dyn_data& data, co
         file << "human_leg_joystick_pos_beg_step_x,human_leg_joystick_pos_beg_step_y,human_leg_joystick_pos_beg_step_z,";
         file << "sigma1H,left_in_contact,right_in_contact,left_off_gnd_cnt,right_off_gnd_cnt,";
         file << "x_HWRM,dx_HWRM,x_plus_HWRM_x,x_plus_HWRM_y,uk_HWRM,";
-        file << "st_beg_step_x,st_beg_step_y,st_beg_step_z,y_LIP_offset,step_z_offset_R,step_z_offset_L,human_FSM,AH_predicted,AH_actual,T_predicted,T_actual" << newline;
+        file << "st_beg_step_x,st_beg_step_y,st_beg_step_z,y_LIP_offset,step_z_offset_R,step_z_offset_L,human_FSM,AH_predicted,AH_actual,T_predicted,T_actual,dx_HWRM_pre_impact,dxR_pre_impact" << newline;
         first_log_run_tpdd = false;
     }
     file << (data.stepping_flg ? 1 : 0) << delimiter
@@ -620,7 +620,9 @@ void dash_utils::writeTrajPlannerDataToCsv(const Traj_planner_dyn_data& data, co
          << data.AH_step_predicted << delimiter
          << data.AH_step_actual << delimiter
          << data.T_step_predicted << delimiter
-         << data.T_step_actual << newline;
+         << data.T_step_actual << delimiter
+         << data.dx_HWRM_pre_impact << delimiter
+         << data.dxR_pre_impact << newline;
 
     file.close();
 }

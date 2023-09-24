@@ -45,7 +45,13 @@ namespace fs = std::filesystem;
 #define TWOPI 6.28318530718
 #define ENCODER_TO_RADIANS ((double)(12.5/32768.0))
 #define RADIANS_TO_DEGREES ((double)(180.0/M_PI))
-#define KNEE_OFFSET_ENC 503
+#define KNEE_OFFSET_ENC 503 // 11 degrees
+
+#define LeftLeg_OuterBus
+#define LeftLeg_InnerBus
+#define RightLeg_OuterBus
+#define RightLeg_InnerBus
+
 
 RoboDesignLab::DynamicRobot* tello;
 bool calibrate_IMU_bias = false;
@@ -90,10 +96,12 @@ union candata
 };
 candata send_idx;
 
-unsigned int pcd1 = PCAN_PCIBUS1;
-unsigned int pcd2 = PCAN_PCIBUS2;
-unsigned int pcd3 = PCAN_PCIBUS3;
-unsigned int pcd4 = PCAN_PCIBUS4;
+unsigned int pcd1 = PCAN_PCIBUS5;	// PCAN_PCIBUS5	// PCAN_PCIBUS1
+unsigned int pcd2 = PCAN_PCIBUS6;	// PCAN_PCIBUS6	// PCAN_PCIBUS2
+unsigned int pcd3 = PCAN_PCIBUS7;	// PCAN_PCIBUS7	// PCAN_PCIBUS3
+unsigned int pcd4 = PCAN_PCIBUS8;	// PCAN_PCIBUS8	// PCAN_PCIBUS4
+unsigned int pcd5 = PCAN_PCIBUS1;	// PCAN_PCIBUS1	// PCAN_PCIBUS5
+unsigned int pcd6 = PCAN_PCIBUS2;	// PCAN_PCIBUS2	// PCAN_PCIBUS6
 
 int enable_motors = 0;
 
@@ -1033,16 +1041,16 @@ static void* update_1kHz( void * arg )
 	int priority = param.sched_priority;
 	printf("Main Update thread running on core %d, with priority %d\n", core, priority);
     
-	tello->motors[0] = new CheetahMotor(0x01,PCAN_PCIBUS1);
-	tello->motors[1] = new CheetahMotor(0x02,PCAN_PCIBUS1);
-	tello->motors[2] = new CheetahMotor(0x03,PCAN_PCIBUS2);
-	tello->motors[3] = new CheetahMotor(0x04,PCAN_PCIBUS1);
-	tello->motors[4] = new CheetahMotor(0x05,PCAN_PCIBUS2);
-	tello->motors[5] = new CheetahMotor(0x06,PCAN_PCIBUS3);
-	tello->motors[6] = new CheetahMotor(0x07,PCAN_PCIBUS4);
-	tello->motors[7] = new CheetahMotor(0x08,PCAN_PCIBUS3);
-	tello->motors[8] = new CheetahMotor(0x09,PCAN_PCIBUS4);
-	tello->motors[9] = new CheetahMotor(0x0A,PCAN_PCIBUS3);
+	tello->motors[0] = new CheetahMotor(0x01,PCAN_PCIBUS5);
+	tello->motors[1] = new CheetahMotor(0x02,PCAN_PCIBUS5);
+	tello->motors[2] = new CheetahMotor(0x03,PCAN_PCIBUS6);
+	tello->motors[3] = new CheetahMotor(0x04,PCAN_PCIBUS5);
+	tello->motors[4] = new CheetahMotor(0x05,PCAN_PCIBUS6);
+	tello->motors[5] = new CheetahMotor(0x06,PCAN_PCIBUS7);
+	tello->motors[6] = new CheetahMotor(0x07,PCAN_PCIBUS8);
+	tello->motors[7] = new CheetahMotor(0x08,PCAN_PCIBUS7);
+	tello->motors[8] = new CheetahMotor(0x09,PCAN_PCIBUS8);
+	tello->motors[9] = new CheetahMotor(0x0A,PCAN_PCIBUS7);
 
 	for(int i=0;i<10;i++)
 	{
@@ -1249,32 +1257,32 @@ void init_6dof_test()
 {
 	string dummy;
 	double sim_time;
-	// char DoF = 'r';
+	char DoF = 'x';
 	MatrixXd lfv0 = tello->controller->get_lfv0();
 	SRB_Params srb_params = tello->controller->get_SRB_params();
 	Traj_planner_dyn_data traj_planner_dyn_data = tello->controller->get_traj_planner_dyn_data();
 	Human_params human_params = tello->controller->get_human_params();
 	VectorXd x0 = tello->controller->get_x0();
-	// dash_planner::SRB_6DoF_Test(dummy,sim_time,srb_params,lfv0,DoF,1);
+	dash_planner::SRB_6DoF_Test(dummy,sim_time,srb_params,lfv0,DoF,1);
 
-	auto_mode = true;
-	printf("Walking Selected\n\n");
-	// Option 2: Walking using LIP angular momentum regulation about contact point
-	// user input (walking speed and step frequency)
-	double des_walking_speed = 0;
-	// double des_walking_step_period = 0.2;
-	// end user input
-	std::string recording_file_name = "Walking";
-	srb_params.planner_type = 1; 
-	// srb_params.T = des_walking_step_period;
-	VectorXd t_traj, v_traj;
-	double t_beg_stepping_time, t_end_stepping_time;
-	dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
-	srb_params.vx_des_t = t_traj;
-	srb_params.vx_des_vx = v_traj;
-	srb_params.t_beg_stepping = 5;
-	srb_params.t_end_stepping = 1e10;
-	sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
+	// auto_mode = true;
+	// printf("Walking Selected\n\n");
+	// // Option 2: Walking using LIP angular momentum regulation about contact point
+	// // user input (walking speed and step frequency)
+	// double des_walking_speed = 0;
+	// // double des_walking_step_period = 0.2;
+	// // end user input
+	// std::string recording_file_name = "Walking";
+	// srb_params.planner_type = 1; 
+	// // srb_params.T = des_walking_step_period;
+	// VectorXd t_traj, v_traj;
+	// double t_beg_stepping_time, t_end_stepping_time;
+	// dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
+	// srb_params.vx_des_t = t_traj;
+	// srb_params.vx_des_vx = v_traj;
+	// srb_params.t_beg_stepping = 5;
+	// srb_params.t_end_stepping = 1e10;
+	// sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
 
 	// Initialize trajectory planner data
     dash_planner::SRB_Init_Traj_Planner_Data(traj_planner_dyn_data, srb_params, human_params, x0, lfv0);
@@ -1507,16 +1515,20 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Initialize Peak Systems CAN adapters
-	TPCANStatus s1,s2,s3,s4;
+	TPCANStatus s1,s2,s3,s4,s5,s6;
     s1 = CAN_Initialize(pcd1, PCAN_BAUD_1M, 0, 0, 0);
     s2 = CAN_Initialize(pcd2, PCAN_BAUD_1M, 0, 0, 0);
 	s3 = CAN_Initialize(pcd3, PCAN_BAUD_1M, 0, 0, 0);
-	s4 = CAN_Initialize(pcd4, PCAN_BAUD_1M, 0, 0, 0);
+	s4 = CAN_Initialize(pcd4, PCAN_BAUD_1M, 0, 0, 0); 
+	s5 = CAN_Initialize(pcd5, PCAN_BAUD_1M, 0, 0, 0);
+	s6 = CAN_Initialize(pcd6, PCAN_BAUD_1M, 0, 0, 0);
 	std::string channels = "";
 	if(!s1)channels+="1, ";
 	if(!s2)channels+="2, ";
 	if(!s3)channels+="3, ";
-	if(!s4)channels+="4";
+	if(!s4)channels+="4, ";
+	if(!s5)channels+="5, ";
+	if(!s6)channels+="6";
 
 	if(channels.empty()){
 		printf('r',"No CAN channels could be opened, did you mean to run in simulation mode? \033[0;38;5;208m(y/n)\n");
@@ -1556,6 +1568,8 @@ int main(int argc, char *argv[]) {
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd2),"rx_bus2",TASK_CONSTANT_DELAY, 50);
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd3),"rx_bus3",TASK_CONSTANT_DELAY, 50);
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd4),"rx_bus4",TASK_CONSTANT_DELAY, 50);
+	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd5),"rx_bus4",TASK_CONSTANT_DELAY, 50);
+	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd6),"rx_bus5",TASK_CONSTANT_DELAY, 50);
 	// tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 	tello->addPeriodicTask(&IMU_Comms, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_2, NULL, "imu_task", TASK_CONSTANT_DELAY, 1000);
 	tello->addPeriodicTask(&update_1kHz, SCHED_FIFO, 99, UPX_ISOLATED_CORE_1_THREAD_2, NULL, "update_task",TASK_CONSTANT_PERIOD, 1000);

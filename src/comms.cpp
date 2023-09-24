@@ -89,6 +89,10 @@ void* rx_CAN( void * arg ){
 					// 	std::cout.flush();
 					// }
 				}
+				else if(id > 20)
+				{
+					process_joint_encoder_data(Message, tello);
+				}
 				pthread_mutex_unlock(&mutex_CAN_recv);
 
 			}
@@ -155,18 +159,28 @@ void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* rob
 	}
 }
 
+
+//								11805  2126				4435 <- this number had to be manually edited so much, this is the source of the motor pos error
+double joint_zeros[10] = {0,5567,11845,2160,9942,0,2640,4540,15462,13725};
+double joint_directions[10] =      { 1,-1,1,1,-1,    1,-1,-1,-1,1};
+double joint_measured_zero_offsets[10] = {0,0,0.171042,0.191986,0,0,0,0.171042,-0.191986,0};
 void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot){
 	
 	uint8_t id = Message.DATA[0];
 	uint16_t joint_position = (Message.DATA[1] << 8) | Message.DATA[2];
-	uint16_t joint_velocity = (Message.DATA[3] << 8) | Message.DATA[4];
+
+	// uint16_t joint_velocity = (Message.DATA[3] << 8) | Message.DATA[4];
 
 	// Given front_force_uint16 and back_force_uint16 variables
-	double joint_rad = ((double)joint_position*(2.0*M_PI)/16384.0); // TODO: subtract offset from calibration here
-	double joint_rad_per_sec = ((double)(joint_velocity-8192)*(2.0*M_PI)/16384.0);
+	double joint_rad = joint_directions[id-20]*((((double)joint_position-joint_zeros[id-20]) *(2.0*M_PI)/16384.0) + joint_measured_zero_offsets[id-20]);
+	// double joint_rad_per_sec = ((double)(joint_velocity-8192)*(2.0*M_PI)/16384.0);
 
 	robot->setJointEncoderPosition(joint_rad,static_cast<JointName>(id-20));
-	robot->setJointEncoderVelocity(joint_rad_per_sec,static_cast<JointName>(id-20));
+	// robot->setJointEncoderVelocity(joint_rad_per_sec,static_cast<JointName>(id-20));
+	if(id==27)
+	{
+		cout << "ID: " << ((int)id) << ",   joint_position: " << joint_position << "             \r";
+	}
 	
 }
 

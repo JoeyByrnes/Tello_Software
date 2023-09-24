@@ -530,6 +530,17 @@ Eigen::VectorXd DynamicRobot::getJointPositions()
     Eigen::VectorXd joint_pos_left = this->motor_pos_to_joint_pos(motor_positions_left);
     Eigen::VectorXd joint_pos_right = this->motor_pos_to_joint_pos(motor_positions_right);
     joint_config << joint_pos_left, joint_pos_right;
+
+    // overwrite joint positions with joint encoder measurements:
+    joint_config[1] = joint_encoder_positions[1];
+    joint_config[2] = joint_encoder_positions[2];
+    joint_config[3] = joint_encoder_positions[3];
+    joint_config[4] = joint_encoder_positions[4];
+
+    joint_config[6] = joint_encoder_positions[6];
+    joint_config[7] = joint_encoder_positions[7];
+    joint_config[8] = joint_encoder_positions[8];
+    joint_config[9] = joint_encoder_positions[9];
     return joint_config;
 }
 Eigen::VectorXd DynamicRobot::getJointVelocities()

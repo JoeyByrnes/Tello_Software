@@ -464,9 +464,9 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.lmaxR = 0.5; // maximum step length in m
 
         // controller 
-        srb_params.Kp_xR = 240.0; // P gain for x-direction tracking
+        srb_params.Kp_xR = 500.0; // P gain for x-direction tracking
         srb_params.Kd_xR = 5.0; // D gain for x-direction tracking
-        srb_params.Kp_yR = 1500.0; // P gain for y-direction tracking
+        srb_params.Kp_yR = 500.0; // P gain for y-direction tracking
         srb_params.Kd_yR = 5.0; // D gain for y-direction tracking
         srb_params.Kp_zR = 2500.0; // P gain for z-direction tracking
         srb_params.Kd_zR = 120.0; // D gain for z-direction tracking

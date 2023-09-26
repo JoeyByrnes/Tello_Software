@@ -57,16 +57,23 @@ bool button_right = false;
 double lastx = 0;
 double lasty = 0;
 
-extern int hip_motor1_r_idx ;
-extern int hip_motor1_l_idx ;
-extern int hip_motor2_r_idx ;
-extern int hip_motor2_l_idx ;
-extern int hip_motor3_r_idx ;
-extern int hip_motor3_l_idx ;
-extern int knee_motor_r_idx ;
-extern int knee_motor_l_idx ;
-extern int ankle_motor_r_idx;
-extern int ankle_motor_l_idx;
+// Recording
+extern FILE* screen_record_pipe;
+extern pid_t screen_rec_pid;
+extern bool recording_in_progress;
+extern bool usb_recording_in_progress;
+
+//Logging
+extern bool log_data_ready;
+extern bool sim_step_completed;
+extern std::string log_folder;
+extern VectorXd x_out, u_out, q_out, qd_out,full_tau_out, tau_out, tau_ext_out, lfv_out, lfdv_out,lfv_comm_out,lfdv_comm_out, t_n_FSM_out, impulse_out, meas_grf_out, xDCM_out;
+extern VectorXd target_pos_out;
+extern VectorXd target_vel_out;
+extern double last_log_time;
+extern Human_dyn_data hdd_out;
+extern Traj_planner_dyn_data tpdd_out;
+
 
 // Callbacks
 
@@ -741,4 +748,205 @@ void moveJoint2(double currentTime, double startTime, double endTime, double sta
         double smoothT = cubicEaseInOut(t);
         result = startPoint + (direction * smoothT * std::abs(endPoint - startPoint));
     }
+}
+
+
+void* logging( void * arg )
+{
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	void* dynamic_robot_ptr = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
+
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
+    usleep(1000000);
+
+    struct timespec next;
+    clock_gettime(CLOCK_MONOTONIC, &next);
+    while(true)
+    {
+        handle_start_of_periodic_task(next);
+        while(!log_data_ready || !sim_step_completed) usleep(50);
+        log_data_ready = false;
+        sim_step_completed = false;
+
+        if(t_n_FSM_out(0) != last_log_time){
+            last_log_time = t_n_FSM_out(0);
+            // logging:
+            dash_utils::writeVectorToCsv(x_out,"x.csv");
+            dash_utils::writeVectorToCsv(u_out,"u.csv");
+            dash_utils::writeVectorToCsv(tau_out,"tau.csv");
+            dash_utils::writeVectorToCsv(full_tau_out,"full_sw_st_tau.csv");
+            dash_utils::writeVectorToCsv(tau_ext_out,"tau_ext.csv");
+
+            dash_utils::writeVectorToCsv(q_out,"q.csv");
+            dash_utils::writeVectorToCsv(qd_out,"qd.csv");
+
+            dash_utils::writeVectorToCsv(lfv_out,"lfv.csv");
+            dash_utils::writeVectorToCsv(lfdv_out,"lfdv.csv");
+
+            dash_utils::writeVectorToCsv(lfv_comm_out,"lfv_comm.csv");
+            dash_utils::writeVectorToCsv(lfdv_comm_out,"lfdv_comm.csv");
+
+            dash_utils::writeVectorToCsv(t_n_FSM_out,"t_and_FSM.csv");
+
+            dash_utils::writeHumanDynDataToCsv(hdd_out,"human_dyn_data.csv");
+            dash_utils::writeTrajPlannerDataToCsv(tpdd_out,"traj_planner_dyn_data.csv");
+
+            dash_utils::writeVectorToCsv(impulse_out,"external_forces.csv");
+
+            dash_utils::writeVectorToCsv(meas_grf_out,"meas_grf_out.csv");
+
+            dash_utils::writeVectorToCsv(xDCM_out,"xDCM.csv");
+
+            VectorXd target_data(6);
+            target_data << target_pos_out, target_vel_out;
+            dash_utils::writeVectorToCsv(target_data,"target_pos.csv");
+            
+        }
+        // end logging
+        usleep(50);
+		// handle_end_of_periodic_task(next,period);
+	}
+    cout << "Human Playback Complete" << endl;
+    return  0;
+}
+int recording_cnt = 0;
+void* screenRecord( void * arg )
+{
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	void* dynamic_robot_ptr = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
+
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
+    std::string cnt_str;
+
+    usleep(1000000);
+    std::string text = executeCommand("xwininfo -root -tree | grep \"Tello Mujoco\"");
+    size_t paren_position = text.find(')');
+    text = text.substr(paren_position+1);
+    cout << "TEXT: " << text << endl;
+    std::string win_pos;
+    std::string win_size;
+
+    std::regex sizeRegex(R"(\b(\d+x\d+)\b)");
+    std::regex posRegex(R"( \+(\d+)\+(\d+))");
+
+    std::smatch sizeMatch, posMatch;
+
+    if (std::regex_search(text, sizeMatch, sizeRegex)) {
+        win_size = sizeMatch[1].str();
+        std::cout << "win_size: " << win_size << std::endl;
+    }
+
+    if (std::regex_search(text, posMatch, posRegex)) {
+        win_pos = posMatch[1].str() + "," + posMatch[2].str();
+        std::cout << "win_pos: " << win_pos << std::endl;
+    }
+
+    if(sim_conf.en_auto_record)
+        screen_recording = true;
+
+    // screen_rec_pid = fork();
+    while(1)
+    {
+
+        while(!screen_recording || recording_in_progress || !(sim_conf.en_screen_recording)) usleep (1000);
+        // screen_rec_pid = fork();
+        if (!recording_in_progress) {
+
+            std::string text = executeCommand("xwininfo -root -tree | grep \"Tello Mujoco\"");
+            size_t paren_position = text.find(')');
+            text = text.substr(paren_position+1);
+            cout << "TEXT: " << text << endl;
+            std::string win_pos;
+            std::string win_size;
+
+            std::regex sizeRegex(R"(\b(\d+x\d+)\b)");
+            std::regex posRegex(R"( \+(\d+)\+(\d+))");
+
+            std::smatch sizeMatch, posMatch;
+
+            if (std::regex_search(text, sizeMatch, sizeRegex)) {
+                win_size = sizeMatch[1].str();
+                std::cout << "win_size: " << win_size << std::endl;
+            }
+
+            if (std::regex_search(text, posMatch, posRegex)) {
+                win_pos = posMatch[1].str() + "," + posMatch[2].str();
+                std::cout << "win_pos: " << win_pos << std::endl;
+            }
+
+            // Parsing str1
+            std::istringstream iss1(win_size);
+            std::string token1;
+            int size_x, size_y;
+
+            std::getline(iss1, token1, 'x');
+            size_x = std::stoi(token1);
+
+            std::getline(iss1, token1);
+            size_y = std::stoi(token1)+72;
+
+            // Parsing str2
+            std::istringstream iss2(win_pos);
+            std::string token2;
+            int pos_x, pos_y;
+
+            std::getline(iss2, token2, ',');
+            pos_x = std::stoi(token2);
+
+            std::getline(iss2, token2);
+            pos_y = std::stoi(token2)-72;
+
+            std::ostringstream oss1;
+            oss1 << size_x << 'x' << size_y;
+            std::string window_size = oss1.str();
+
+            std::ostringstream oss2;
+            oss2 << pos_x << ',' << pos_y;
+            std::string window_pos = oss2.str();
+
+            cout << "pos x: " << pos_x << "   pos y: " << pos_y << "   size x: " << size_x << "   size y: " << size_y << endl;
+            recording_in_progress = true;
+            // Child process - execute FFmpeg command
+            cnt_str = to_string(recording_cnt);
+            //execl("/usr/bin/ffmpeg", "ffmpeg", "-f", "x11grab", "-video_size", "3840x2160", /*"-loglevel", "quiet",*/ "-framerate", "30", "-i", ":1+eDP-1-1", "-c:v", "h264_nvenc", "-qp", "0", "ScreenCapture.mp4", NULL);
+            //cout << "recording to: " << log_folder+"ScreenCapture_"+cnt_str+".mp4" << endl;
+            system(("taskset -c 14 ffmpeg -f x11grab -video_size "+window_size+" -loglevel quiet -framerate 30 -i $DISPLAY+"+window_pos+" -c:v h264_nvenc -qp 0 " + log_folder+"ScreenCapture_"+cnt_str+".mp4").c_str());
+            recording_cnt++;
+        }
+        usleep(10000);
+    }
+
+    return  0;
+}
+int usb_recording_cnt = 0;
+void* usbCamRecord( void * arg )
+{
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	void* dynamic_robot_ptr = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
+
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
+    std::string cnt_str;
+    // screen_rec_pid = fork();
+    usleep(1000000);
+    if(sim_conf.en_auto_record)
+        usbcam_recording = true;
+    while(1)
+    {
+
+        while(!usbcam_recording || usb_recording_in_progress || !(sim_conf.en_HMI_recording)) usleep (1000);
+        // screen_rec_pid = fork();
+        if (!usb_recording_in_progress) {
+            usb_recording_in_progress = true;
+            // Child process - execute FFmpeg command
+            cnt_str = to_string(usb_recording_cnt);
+            system(("taskset -c 15 ffmpeg -f v4l2 -loglevel quiet -framerate 30 -video_size 800x600 -input_format mjpeg -i /dev/video4 -c:v copy " + log_folder+"usb_camera_"+cnt_str+".mp4").c_str());
+            usb_recording_cnt++;
+        }
+        usleep(10000);
+    }
+
+    return  0;
 }

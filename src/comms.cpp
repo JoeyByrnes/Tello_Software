@@ -177,10 +177,10 @@ void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* r
 
 	robot->setJointEncoderPosition(joint_rad,static_cast<JointName>(id-20));
 	// robot->setJointEncoderVelocity(joint_rad_per_sec,static_cast<JointName>(id-20));
-	if(id==27)
-	{
-		cout << "ID: " << ((int)id) << ",   joint_position: " << joint_position << "             \r";
-	}
+	// if(id==27)
+	// {
+	// 	cout << "ID: " << ((int)id) << ",   joint_position: " << joint_position << "             \r";
+	// }
 	
 }
 

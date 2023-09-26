@@ -307,6 +307,8 @@ namespace RoboDesignLab {
         void set_q_data_for_ekf(MatrixXd q){_ekf_q = q;}
         MatrixXd get_q_data_for_ekf(){return _ekf_q;}
 
+        Eigen::VectorXd get_CoP(); 
+
         // Quaterniond getFootOrientation(const Vector3d& lf1, const Vector3d& lf2, const Vector3d& knee);
 
         void addGravityCompensation();

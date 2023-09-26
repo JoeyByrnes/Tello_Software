@@ -1074,4 +1074,17 @@ void DynamicRobot::set_filter_state(RobotState state)
     filter.setState(state);
 }
 
+Eigen::VectorXd DynamicRobot::get_CoP() 
+{
+    Eigen::VectorXd CoP(3);
+    CoP.setZero();
+
+    // calculation based on GRFs and moment
+    Eigen::MatrixXd pi = this->controller->get_lfv_world().transpose();
+    Eigen::VectorXd fiz(4);
+    fiz << this->_GRFs.right_front, this->_GRFs.right_back, this->_GRFs.left_front, this->_GRFs.left_back;
+    CoP = (pi.col(0) * fiz(0) + pi.col(1) * fiz(1) + pi.col(2) * fiz(2) + pi.col(3) * fiz(3)) / fiz.sum();
+
+    return CoP;
+}
 

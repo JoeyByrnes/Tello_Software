@@ -4,6 +4,7 @@
 #include <random>
 #include <filesystem>
 #include <stb_image.h>
+#include <regex>
 
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods);
 void window_close_callback(GLFWwindow* window);
@@ -27,5 +28,8 @@ void readProfilesFromJson(const std::string& filename, std::vector<userProfile>&
 void updateActiveUserInJson(const std::string& filename, const std::string& newActiveUser);
 double moveJoint(double currentTime, double startTime, double endTime, double startPoint, double endPoint);
 void moveJoint2(double currentTime, double startTime, double endTime, double startPoint, double endPoint, double& result);
+void* logging( void * arg );
+void* screenRecord( void * arg );
+void* usbCamRecord( void * arg );
 
 #endif

@@ -54,7 +54,7 @@ void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_t
             // sinusoidal trajectory parameters
             recording_file_name = "Y";
             printf("Running Y (Side2Side) Test\n");
-            amplitude = (0.6*abs(lfv(0,1)))/(sqrt(2));
+            amplitude = (1.0*abs(lfv(0,1)))/(sqrt(2));
             omega = 0.5;
             phase = 0.0;
             sim_time = num_tests*(2.0*M_PI/omega);

@@ -40,6 +40,7 @@
 #include <implot.h>
 #include <glm/glm.hpp>
 #include <filesystem>
+#include "IconsFontAwesome5.h"
 
 #include "rt_nonfinite.h"
 #include "step_z_curve_fit.h"
@@ -57,7 +58,62 @@
 // PS4 Controller  includes:
 #include "Driver/DualShock4.h"
 #include "Driver/DataPacket/DataPacket.h"
-#include "Driver/DualShock4Connector.h"
+#include "Driver/DualShock4Connector.h"\
+
+// robot states indices
+#define torso_x_idx         (int)0
+#define torso_y_idx         (int)1
+#define torso_z_idx         (int)2
+#define torso_roll_idx      (int)3
+#define torso_pitch_idx     (int)4
+#define torso_yaw_idx       (int)5
+#define hip_yaw_r_idx       (int)6
+#define hip_roll_r_idx      (int)7
+#define hip_pitch_r_idx     (int)8
+#define knee_pitch_r_idx    (int)9
+#define ankle_pitch_r_idx   (int)10
+#define hip_yaw_l_idx       (int)11
+#define hip_roll_l_idx      (int)12
+#define hip_pitch_l_idx     (int)13
+#define knee_pitch_l_idx    (int)14
+#define ankle_pitch_l_idx   (int)15
+
+// robot actuators indices
+#define hip_motor1_r_idx    (int)0
+#define hip_motor1_l_idx    (int)1
+#define hip_motor2_r_idx    (int)2
+#define hip_motor2_l_idx    (int)3
+#define hip_motor3_r_idx    (int)4
+#define hip_motor3_l_idx    (int)5
+#define knee_motor_r_idx    (int)6
+#define knee_motor_l_idx    (int)7
+#define ankle_motor_r_idx   (int)8
+#define ankle_motor_l_idx   (int)9
+
+
+// robot states indices
+#define hip_yaw_r_idx_viz       (int)16
+#define hip_roll_r_idx_viz      (int)17
+#define hip_pitch_r_idx_viz     (int)18
+#define knee_pitch_r_idx_viz    (int)19
+#define ankle_pitch_r_idx_viz   (int)20
+#define hip_yaw_l_idx_viz       (int)21
+#define hip_roll_l_idx_viz      (int)22
+#define hip_pitch_l_idx_viz     (int)23
+#define knee_pitch_l_idx_viz    (int)24
+#define ankle_pitch_l_idx_viz   (int)25
+
+// robot actuators indices
+#define hip_motor1_r_idx_viz  (int)(10+0)
+#define hip_motor1_l_idx_viz  (int)(10+1)
+#define hip_motor2_r_idx_viz  (int)(10+2)
+#define hip_motor2_l_idx_viz  (int)(10+3)
+#define hip_motor3_r_idx_viz  (int)(10+4)
+#define hip_motor3_l_idx_viz  (int)(10+5)
+#define knee_motor_r_idx_viz  (int)(10+6)
+#define knee_motor_l_idx_viz  (int)(10+7)
+#define ankle_motor_r_idx_viz (int)(10+8)
+#define ankle_motor_l_idx_viz (int)(10+9)
 
 
 struct VisualizationData {
@@ -275,12 +331,12 @@ void* plotting( void * arg );
 void* plot_human_data( void * arg );
 void* PS4_Controller( void * arg );
 void* Human_Playback( void * arg );
-void* logging( void * arg );
 void* sim_step_task( void * arg );
-void* screenRecord( void * arg );
-void* usbCamRecord( void * arg );
 void* Animate_Log( void * arg );
 void* visualize_robot( void * arg );
 void* curve_fitting( void * arg );
+ImVec4 hex2ImVec4(int hex);
+void* visualization_render_thread( void * arg );
+void initializeSRBMCtrl();
 
 #endif

@@ -229,8 +229,6 @@ class SRBMController {
       dash_utils::updateAndShift(step_time_history,val);
     }
 
-
-
     // Duration measurement functions for debugging
     void start_timer();
     void end_timer();

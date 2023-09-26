@@ -472,7 +472,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.Kd_zR = 120.0; // D gain for z-direction tracking
         srb_params.Kp_phiR = 280.00; // P gain for roll tracking
         srb_params.Kd_phiR = 5.0; // D gain for roll tracking
-        srb_params.Kp_thetaR = 80.00; // P gain for pitch tracking
+        srb_params.Kp_thetaR = 280.00; // P gain for pitch tracking
         srb_params.Kd_thetaR = 5.0; // D gain for pitch tracking
         srb_params.Kp_psiR = 10.00; // P gain for yaw tracking
         srb_params.Kd_psiR = 3.0; // D gain for yaw tracking

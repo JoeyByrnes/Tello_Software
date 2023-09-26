@@ -37,6 +37,7 @@
 #include "mujoco_main.h"
 #include "state_estimator.h"
 #include "mocap.h"
+#include "tello_locomotion.h"
 
 #include <pcanfd.h>
 
@@ -65,6 +66,8 @@ bool no_posture_ctrl = false;
 bool start_controller_time = false;
 bool tare_mocap_pos = false;
 Vector3d mocap_offset = Vector3d::Zero();
+
+int balancing_motor_kd = 600;
 
 int udp_data_ready = 0;
 char udp_control_packet[UDP_MAXLINE];
@@ -204,185 +207,8 @@ VisualizationData vizData;
 void init_6dof_test();
 void signal_callback_handler(int signum);
 
-void handle_UDP_Commands(){
-	if(udp_data_ready)
-	{
-		udp_data_ready = 0;
-		uint16_t pos_cmds[10];
-		int idx = 0;
-		for(int i=0;i<20;i+=2){
-			pos_cmds[idx] = ( (udp_control_packet[i+1]<<8)&0xFF00 | (udp_control_packet[i+2])&0x00FF );
-			idx++;
-		}
-		for(int i=0;i<10;i++){
-			uint16_t pos_set = (uint16_t)((int)encoder_offsets[i] + (int)(24*((int)pos_cmds[i]-180))*motor_directions[i]);
-			tello->motors[i]->setPos(pos_set);
-		}
-		enable_motors = udp_control_packet[0];
-		if(enable_motors){
-			for(int i=0;i<10;i++){
-				tello->motors[i]->enableMotor();
-			}
-		}
-		else{
-			for(int i=0;i<10;i++){
-				tello->motors[i]->disableMotor();
-			}
-		}
-	}
-}
-void handle_Motion_Recording(){
+// see past git commits for the old functionality that was here (motion recording, udp joint jogging, etc.)
 
-	if(!recording_initialized){
-		printf("Recording...\n");
-		motion_log = new std::ofstream(MOTION_LOG_NAME, std::ios::trunc);
-		if (!motion_log->is_open()) {
-			std::cerr << "Error: unable to open file '" << MOTION_LOG_NAME << "' for writing." << std::endl;
-			return;
-		}
-		
-		recording_initialized = 1;
-	}
-	// record here:
-	for(int i=0;i<10;i++){
-		*motion_log << encoders[i] << " ";
-		motion_log->flush();
-	}
-	*motion_log << std::endl;
-
-}
-void handle_Motion_Playback(){
-	if(!playback_initialized){
-		printf("Playing Motion...\n");
-		
-		motion_log_in = new std::ifstream(MOTION_LOG_NAME);
-		if (!motion_log_in->is_open()) {
-			std::cerr << "Error: unable to open file '" << MOTION_LOG_NAME << "'." << std::endl;
-			return;
-		}
-		scheduleEnable();
-		playback_initialized = 1;
-	}
-	std::string line;
-	std::getline(*motion_log_in, line);
-	std::vector<int> values;
-    std::stringstream ss(line);
-    int value;
-    while (ss >> value) {
-      values.push_back(value);
-    }
-    if (values.size() != 10) {
-	  fsm_state = 0;
-	  printf("End of recording");
-	  playback_initialized = 0;
-    }
-	else{
-		int idx = 0;
-		for (int i : values) {
-			//std::cout << i << " " << std::flush;
-			tello->motors[idx++]->setPos((uint16_t)i);
-		}
-		if(motor_kp < playback_kp){
-			motor_kp = motor_kp+1;
-			tello->set_kp_kd_all_motors(motor_kp,motor_kd);
-		}
-	}
-}
-
-void handle_motor_init(){
-	int init_sum = 0;
-	for(int i=0;i<10;i++){
-		if(fabs(encoder_positions[i] - motor_zeros[i])  < 50) 
-		{
-			motor_initialized[i] = 1;
-		}
-		else
-		{
-			if(encoder_positions[i] < motor_zeros[i])
-			{
-				tello->motors[i]->setPos(encoder_positions[i]+10);
-			}
-			else
-			{
-				tello->motors[i]->setPos(encoder_positions[i]-10);
-			}
-
-		}
-		init_sum += motor_initialized[i];
-	}
-	if(init_sum == 10){
-		fsm_state = 0;
-		tello->set_kp_kd_all_motors(200,100);
-	}
-}
-
-int init_sum = 0;
-
-void moveMotors(int* positions){
-	for(int i=0;i<10;i++){
-		if(init_sum < 10){
-			if(fabs(encoder_positions[i] - positions[i])  < 50) 
-			{
-				motor_move_complete[i] = 1;
-			}
-			else
-			{
-				if(encoder_positions[i] < positions[i]){
-					tello->motors[i]->setPos(encoder_positions[i]+10);
-				}
-				else{
-					tello->motors[i]->setPos(encoder_positions[i]-10);
-				}
-			}
-			init_sum = 0;
-			for(int x=0;x<10;x++){
-				init_sum += motor_move_complete[x];
-			}
-		}
-		else{
-			tello->motors[i]->setPos(positions[i]);
-		}
-	}
-	if(init_sum == 10){
-		//fsm_state = 0;
-		//set_kp_kd_all(1200,600);
-		//for(int x=0; x<10; x++) motor_move_complete[x] = 0;
-	}
-}
-
-Eigen::Matrix<double,5,1> jointsL, jointsR;
-Eigen::VectorXd motorsL, motorsR;
-Eigen::VectorXd joint_pos_desired(10);
-void updateJointPositions()
-{
-	jointsL(0) = 0.0		*DEGREES_TO_RADIANS;
-	jointsL(1) = 0.0		*DEGREES_TO_RADIANS;
-	jointsL(2) = 0.0		*DEGREES_TO_RADIANS;
-	jointsL(3) = 25.0		*DEGREES_TO_RADIANS; // must be above 11
-	jointsL(4) = 0.0		*DEGREES_TO_RADIANS; 
-	motorsL = fcn_ik_q_2_p(jointsL);
-
-	jointsR(0) = 0.0		*DEGREES_TO_RADIANS;
-	jointsR(1) = 0.0		*DEGREES_TO_RADIANS;
-	jointsR(2) = 0.0		*DEGREES_TO_RADIANS;
-	jointsR(3) = 25.0		*DEGREES_TO_RADIANS; // must be above 11
-	jointsR(4) = 0.0		*DEGREES_TO_RADIANS; 
-	motorsR = fcn_ik_q_2_p(jointsR);
-
-	joint_pos_desired << jointsL, jointsR;
-	VectorXd motors = ik_joints_to_motors(joint_pos_desired);
-
-	motor_targets[0] = tello->motor_pos_model_to_real(0, motors(0));
-	motor_targets[1] = tello->motor_pos_model_to_real(1, motors(1));
-	motor_targets[2] = tello->motor_pos_model_to_real(2, motors(2));
-	motor_targets[3] = tello->motor_pos_model_to_real(3, motors(3));
-	motor_targets[4] = tello->motor_pos_model_to_real(4, motors(4));
-	motor_targets[5] = tello->motor_pos_model_to_real(5, motors(5));
-	motor_targets[6] = tello->motor_pos_model_to_real(6, motors(6));
-	motor_targets[7] = tello->motor_pos_model_to_real(7, motors(7));
-	motor_targets[8] = tello->motor_pos_model_to_real(8, motors(8));
-	motor_targets[9] = tello->motor_pos_model_to_real(9, motors(9));
-}
 int sample_index = 0;
 VectorXd pitch_deg_buffer(200);
 double x_off_prev = 0;
@@ -625,6 +451,271 @@ void* hw_logging( void * arg )
     return  0;
 }
 
+std::string removeTextAfterLastSlashHW(const std::string& str) {
+    std::size_t lastSlashPos = str.find_last_of('/');
+    if (lastSlashPos != std::string::npos) {
+        return str.substr(0, lastSlashPos + 1);
+    }
+    return str;
+}
+
+// bool playback_error = false;
+// double robot_init_foot_width = 0.175;
+void* Human_Playback_Hardware( void * arg )
+{
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	void* dynamic_robot_ptr = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
+
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
+
+    std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-09-39-sway-slow/human_dyn_data.csv";
+
+
+    std::string logPath = removeTextAfterLastSlashHW(active_log);
+
+    std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile(active_log);
+
+    std::vector<Vector2d> time_vec = dash_utils::readTimeDataFromFile(logPath + "t_and_FSM.csv");
+
+    int hdd_cnt=0;
+
+    Eigen::VectorXd xHvec(100);
+    Eigen::VectorXd dxHvec(100);
+    Eigen::VectorXd pxHvec(100);
+    Eigen::VectorXd yHvec(100);
+    Eigen::VectorXd dyHvec(100);
+    Eigen::VectorXd pyHvec(100);
+    Eigen::VectorXd fxH_Rvec(100);
+    Eigen::VectorXd fyH_Rvec(100);
+    Eigen::VectorXd fzH_Rvec(100);
+    Eigen::VectorXd fxH_Lvec(100);
+    Eigen::VectorXd fyH_Lvec(100);
+    Eigen::VectorXd fzH_Lvec(100);
+    Eigen::VectorXd fdxH_Rvec(100);
+    Eigen::VectorXd fdyH_Rvec(100);
+    Eigen::VectorXd fdzH_Rvec(100);
+    Eigen::VectorXd fdxH_Lvec(100);
+    Eigen::VectorXd fdyH_Lvec(100);
+    Eigen::VectorXd fdzH_Lvec(100);
+    Eigen::VectorXd FxH_hmi_vec(100);
+    Eigen::VectorXd FyH_hmi_vec(100);
+    Eigen::VectorXd FxH_spring_vec(100);
+    double xHval;
+    double dxHval;
+    double pxHval;
+    double yHval;
+    double dyHval;
+    double pyHval;
+    double fxH_Rval;
+    double fyH_Rval;
+    double fzH_Rval;
+    double fxH_Lval;
+    double fyH_Lval;
+    double fzH_Lval;
+    double fdxH_Rval;
+    double fdyH_Rval;
+    double fdzH_Rval;
+    double fdxH_Lval;
+    double fdyH_Lval;
+    double fdzH_Lval;
+    double FxH_hmi_val;
+    double FyH_hmi_val;
+    double FxH_spring_val;
+    int dyn_data_idx = 0;
+   
+    struct timespec next;
+    clock_gettime(CLOCK_MONOTONIC, &next);
+	if(hdd_vec.size() == 0)
+	{
+		// playback_error = true;
+	}
+    while(!tello->controller->is_human_ctrl_enabled())
+    {
+		usleep(100);
+	}
+	std::cout << "INITIALIZING HUMAN PLAYBACK" << std::endl;
+	while(hdd_cnt < hdd_vec.size())
+	{
+		handle_start_of_periodic_task(next);
+		if(hdd_cnt == 0)
+		{
+			double hR = tello->controller->get_SRB_params().hLIP;
+			double hH = tello->controller->get_human_params().hLIP; 
+			Human_dyn_data hdd0 = hdd_vec[0];
+			double fyH_R = hdd0.fyH_R;
+			double fyH_L = hdd0.fyH_L;
+
+			double joystick_base_separation = 1.525;
+			double foot_center_to_joystick = FOOT_2_JOYSTICK;
+			double human_foot_width = joystick_base_separation - 2*foot_center_to_joystick - fyH_R - fyH_L;
+			// robot_init_foot_width = human_foot_width*(hR/hH);
+
+		}
+		if(tello->controller->is_human_ctrl_enabled())
+		{
+			//dash_utils::print_human_dyn_data(hdd_vec[hdd_cnt]);
+			// if(PS4_connected) hdd_vec[hdd_cnt].xH = xH_Commanded;
+			Human_dyn_data human_dyn_data = hdd_vec[hdd_cnt];
+			
+			double time = time_vec[hdd_cnt](0);
+			
+			// =======================================================================================================
+			
+
+
+			// =======================================================================================================
+			if(time <= tello->controller->get_time())
+			{
+				std::cout << "PLAYBAKCK TIME: " << time << std::endl;
+				xHvec.tail(99) = xHvec.head(99).eval();
+				xHvec[0] = human_dyn_data.xH;
+
+				dxHvec.tail(99) = dxHvec.head(99).eval();
+				dxHvec[0] = human_dyn_data.dxH;
+
+				pxHvec.tail(99) = pxHvec.head(99).eval();
+				pxHvec[0] = human_dyn_data.pxH;
+
+				yHvec.tail(99) = yHvec.head(99).eval();
+				yHvec[0] = human_dyn_data.yH;
+
+				dyHvec.tail(99) = dyHvec.head(99).eval();
+				dyHvec[0] = human_dyn_data.dyH;
+
+				pyHvec.tail(99) = pyHvec.head(99).eval();
+				pyHvec[0] = human_dyn_data.pyH;
+
+				fxH_Rvec.tail(99) = fxH_Rvec.head(99).eval();
+				fxH_Rvec[0] = human_dyn_data.fxH_R;
+
+				fyH_Rvec.tail(99) = fyH_Rvec.head(99).eval();
+				fyH_Rvec[0] = human_dyn_data.fyH_R;
+
+				fzH_Rvec.tail(99) = fzH_Rvec.head(99).eval();
+				fzH_Rvec[0] = human_dyn_data.fzH_R;
+
+				fxH_Lvec.tail(99) = fxH_Lvec.head(99).eval();
+				fxH_Lvec[0] = human_dyn_data.fxH_L;
+
+				fyH_Lvec.tail(99) = fyH_Lvec.head(99).eval();
+				fyH_Lvec[0] = human_dyn_data.fyH_L;
+
+				fzH_Lvec.tail(99) = fzH_Lvec.head(99).eval();
+				fzH_Lvec[0] = human_dyn_data.fzH_L;
+
+				fdxH_Rvec.tail(99) = fdxH_Rvec.head(99).eval();
+				fdxH_Rvec[0] = human_dyn_data.fdxH_R;
+
+				fdyH_Rvec.tail(99) = fdyH_Rvec.head(99).eval();
+				fdyH_Rvec[0] = human_dyn_data.fdyH_R;
+
+				fdzH_Rvec.tail(99) = fdzH_Rvec.head(99).eval();
+				fdzH_Rvec[0] = human_dyn_data.fdzH_R;
+
+				fdxH_Lvec.tail(99) = fdxH_Lvec.head(99).eval();
+				fdxH_Lvec[0] = human_dyn_data.fdxH_L;
+
+				fdyH_Lvec.tail(99) = fdyH_Lvec.head(99).eval();
+				fdyH_Lvec[0] = human_dyn_data.fdyH_L;
+
+				fdzH_Lvec.tail(99) = fdzH_Lvec.head(99).eval();
+				fdzH_Lvec[0] = human_dyn_data.fdzH_L;
+
+				FxH_hmi_vec.tail(99) = FxH_hmi_vec.head(99).eval();
+				FxH_hmi_vec[0] = human_dyn_data.FxH_hmi;
+
+				FyH_hmi_vec.tail(99) = FyH_hmi_vec.head(99).eval();
+				FyH_hmi_vec[0] = human_dyn_data.FyH_hmi;
+
+				FxH_spring_vec.tail(99) = FxH_spring_vec.head(99).eval();
+				FxH_spring_vec[0] = human_dyn_data.FxH_spring;
+
+				xHval = dash_utils::smoothData(xHvec, 0.1/*alpha*/);
+				dxHval = dash_utils::smoothData(dxHvec, 0.1/*alpha*/);
+				pxHval = dash_utils::smoothData(pxHvec, 0.1/*alpha*/);
+				yHval = dash_utils::smoothData(yHvec, 0.1/*alpha*/);
+				dyHval = dash_utils::smoothData(dyHvec, 0.1/*alpha*/);
+				pyHval = dash_utils::smoothData(pyHvec, 0.1/*alpha*/);
+				fxH_Rval = dash_utils::smoothData(fxH_Rvec, 0.2/*alpha*/);
+				fyH_Rval = dash_utils::smoothData(fyH_Rvec, 0.2/*alpha*/);
+				fzH_Rval = dash_utils::smoothData(fzH_Rvec, 0.2/*alpha*/);
+				fxH_Lval = dash_utils::smoothData(fxH_Lvec, 0.2/*alpha*/);
+				fyH_Lval = dash_utils::smoothData(fyH_Lvec, 0.2/*alpha*/);
+				fzH_Lval = dash_utils::smoothData(fzH_Lvec, 0.2/*alpha*/);
+				fdxH_Rval = dash_utils::smoothData(fdxH_Rvec, 4.0/*alpha*/);
+				fdyH_Rval = dash_utils::smoothData(fdyH_Rvec, 4.0/*alpha*/);
+				fdzH_Rval = dash_utils::smoothData(fdzH_Rvec, 4.0/*alpha*/);
+				fdxH_Lval = dash_utils::smoothData(fdxH_Lvec, 4.0/*alpha*/);
+				fdyH_Lval = dash_utils::smoothData(fdyH_Lvec, 4.0/*alpha*/);
+				fdzH_Lval = dash_utils::smoothData(fdzH_Lvec, 4.0/*alpha*/);
+				FxH_hmi_val = dash_utils::smoothData(FxH_hmi_vec, 0.1/*alpha*/);
+				FyH_hmi_val = dash_utils::smoothData(FyH_hmi_vec, 0.1/*alpha*/);
+				FxH_spring_val = dash_utils::smoothData(FxH_spring_vec, 0.1/*alpha*/);
+
+				human_dyn_data.xH = xHval;
+				human_dyn_data.dxH = dxHval;
+				human_dyn_data.pxH = pxHval;
+				human_dyn_data.yH = yHval;
+				human_dyn_data.dyH = dyHval;
+				human_dyn_data.pyH = pyHval;
+				human_dyn_data.fxH_R = fxH_Rval;
+				human_dyn_data.fyH_R = fyH_Rval;
+				human_dyn_data.fzH_R = fzH_Rval;
+				human_dyn_data.fxH_L = fxH_Lval;
+				human_dyn_data.fyH_L = fyH_Lval;
+				human_dyn_data.fzH_L = fzH_Lval;
+				human_dyn_data.fdxH_R = fdxH_Rval;
+				human_dyn_data.fdyH_R = fdyH_Rval;
+				human_dyn_data.fdzH_R = fdzH_Rval;
+				human_dyn_data.fdxH_L = fdxH_Lval;
+				human_dyn_data.fdyH_L = fdyH_Lval;
+				human_dyn_data.fdzH_L = fdzH_Lval;
+				human_dyn_data.FxH_hmi = FxH_hmi_val;
+				human_dyn_data.FyH_hmi = FyH_hmi_val;
+				human_dyn_data.FxH_spring = FxH_spring_val;
+
+				tello->controller->updateStepZHistoryL(fzH_Lval);
+				tello->controller->updateStepZHistoryR(fzH_Rval);
+				tello->controller->updateStepTimeHistory(time);
+
+				Traj_planner_dyn_data tpdds = tello->controller->get_traj_planner_dyn_data();
+				tpdds.step_z_history_L = tello->controller->getStepZHistoryL();
+				tpdds.step_z_history_R = tello->controller->getStepZHistoryR();
+				if(tpdds.human_FSM != 0)
+					tpdds.curr_SSP_sample_count = tpdds.curr_SSP_sample_count + 1;
+				tello->controller->set_traj_planner_step_data(tpdds);
+
+				// VectorXd alphas(21);
+				// alphas.setConstant(4.0);
+				// Human_dyn_data temp = dash_utils::smooth_human_dyn_data(human_dyn_data,hdd_pb_filter,alphas);
+				// human_dyn_data = temp;
+
+				tello->controller->set_human_dyn_data_without_forces(human_dyn_data);
+				hdd_cnt += 1;
+			}
+			// if(hdd_cnt == hdd_vec.size()-1) hdd_cnt--;
+			//cout << "applying HDD struct # " << hdd_cnt << endl;
+		}
+		
+		double g = tello->controller->get_SRB_params().g;
+		double hR = tello->controller->get_SRB_params().hLIP;
+		double hH = tello->controller->get_human_params().hLIP;
+		double wR = std::sqrt(g / hR);
+		double wH = std::sqrt(g / hH);
+		int periodScaled = (int)(((double)period)*(wH/wR));
+		handle_end_of_periodic_task(next,50);
+	}
+	hdd_cnt = 0;
+	tello->controller->disable_human_ctrl();
+	cout << "Human Playback Complete" << endl;
+	Traj_planner_dyn_data tpdd = tello->controller->get_traj_planner_dyn_data();
+	tpdd.stepping_flg = false;
+	tello->controller->set_traj_planner_dyn_data(tpdd);
+   
+    return  0;
+}
+
 void balance_pd(MatrixXd lfv_hip)
 {
 	RoboDesignLab::TaskPDConfig swing_pd_config, posture_pd_config;
@@ -740,7 +831,7 @@ void balance_pd(MatrixXd lfv_hip)
 	kp_vec_joint(9) = joint_kp + gain_adjustment;
 	
 	double motor_kp = 0;
-	double motor_kd = 400;
+	double motor_kd = balancing_motor_kd;
 	VectorXd kp_vec_motor(10);// = VectorXd::Ones(10)*motor_kp;
 	kp_vec_motor << 0,0,0,0,0,0,0,0,0,0;
 
@@ -866,6 +957,11 @@ void run_balance_controller()
 		vizData.q_measured[i] = q_measured_eig(i);
 		vizData.q_desired[i] = q_desired_eig(i);
 	}
+
+	VectorXd cop_eig = tello->get_CoP();
+	vizData.CoP[0] = cop_eig[0];
+	vizData.CoP[1] = cop_eig[1];
+	vizData.CoP[2] = cop_eig[2];
 	// cout << "Hip Pitch Diff: " << q_measured_eig(2)-q_measured_eig(7) << "    Knee Pitch Diff: " << q_measured_eig(3)-q_measured_eig(8) << endl;
 
 	// cout << "Time: " << t << "     X: " << pc_curr(0) << "     Y: " << pc_curr(1) << "     Z: " << pc_curr(2) << "                \r";
@@ -1141,16 +1237,13 @@ static void* update_1kHz( void * arg )
 				// do nothing
 				break;
 			case 1:
-				tello->set_kp_kd_all_motors(400,200);
-				handle_UDP_Commands();
+				// state removed
 				break;
 			case 2:
-				pthread_mutex_lock(&mutex_CAN_recv);
-				handle_Motion_Recording();
-				pthread_mutex_unlock(&mutex_CAN_recv);
+				// state removed
 				break;
 			case 3:
-				handle_Motion_Playback();
+				// state removed
 				break;
 			case 4:
 				run_tello_pd();
@@ -1257,13 +1350,13 @@ void init_6dof_test()
 {
 	string dummy;
 	double sim_time;
-	char DoF = 'x';
+	char DoF = 'y';
 	MatrixXd lfv0 = tello->controller->get_lfv0();
 	SRB_Params srb_params = tello->controller->get_SRB_params();
 	Traj_planner_dyn_data traj_planner_dyn_data = tello->controller->get_traj_planner_dyn_data();
 	Human_params human_params = tello->controller->get_human_params();
 	VectorXd x0 = tello->controller->get_x0();
-	dash_planner::SRB_6DoF_Test(dummy,sim_time,srb_params,lfv0,DoF,1);
+	// dash_planner::SRB_6DoF_Test(dummy,sim_time,srb_params,lfv0,DoF,1);
 
 	// auto_mode = true;
 	// printf("Walking Selected\n\n");
@@ -1283,6 +1376,12 @@ void init_6dof_test()
 	// srb_params.t_beg_stepping = 5;
 	// srb_params.t_end_stepping = 1e10;
 	// sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
+
+	printf("Telelop Selected\n\n");
+	std::string recording_file_name = "Telelop";
+	srb_params.planner_type = 2; 
+	srb_params.init_type = 1;
+	sim_time = 1e5;
 
 	// Initialize trajectory planner data
     dash_planner::SRB_Init_Traj_Planner_Data(traj_planner_dyn_data, srb_params, human_params, x0, lfv0);
@@ -1385,7 +1484,6 @@ int main(int argc, char *argv[]) {
 		printf('o',"with NICE Priority: %d\n\n",prio);
 	}
 
-	SIM_START:
 	tello = new RoboDesignLab::DynamicRobot();
 	if(simulation_mode != 0) tello->isSimulation = true;
 	for(int i = 0; i<10; i++){ // not in the constructor becuase I want to change how this works
@@ -1431,10 +1529,10 @@ int main(int argc, char *argv[]) {
 		tello->addPeriodicTask(&sim_step_task, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_1, (void*)(NULL),"sim_step_task",TASK_CONSTANT_PERIOD, 998);
 		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&tello_controller, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"tello_ctrl",TASK_CONSTANT_PERIOD, 1000);
-		tello->addPeriodicTask(&curve_fitting, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_2, (void*)(NULL),"tello_ctrl",TASK_CONSTANT_PERIOD, 1000);
+		tello->addPeriodicTask(&curve_fitting, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_2, (void*)(NULL),"curve_fitting",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 500);
-		tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
-		// tello->addPeriodicTask(&Human_Playback, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"human_playback_task",TASK_CONSTANT_PERIOD, 1000);
+		// tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
+		tello->addPeriodicTask(&Human_Playback, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"human_playback_task",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&Animate_Log, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"human_playback_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&logging, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"logging_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&screenRecord, SCHED_FIFO, 1, ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
@@ -1476,9 +1574,9 @@ int main(int argc, char *argv[]) {
 		// SIMULATION MODE (Interfaces with Mujoco instead of real sensors)
 		printf('o',"Software running in Visualization Mode.\n\n");
 		tello->addPeriodicTask(&sim_step_task, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_1, (void*)(NULL),"sim_step_task",TASK_CONSTANT_PERIOD, 998);
-		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 10000);
+		tello->addPeriodicTask(&visualization_render_thread, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 500);
-		tello->addPeriodicTask(&visualize_robot, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"animate_task",TASK_CONSTANT_PERIOD, 500);
+		tello->addPeriodicTask(&visualize_robot, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"animate_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&screenRecord, SCHED_FIFO, 1, ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&usbCamRecord, SCHED_FIFO, 0, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, 6, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
@@ -1536,10 +1634,8 @@ int main(int argc, char *argv[]) {
 		std::cin >> sim_choice;
 		if(sim_choice == 'y')
 		{
-			simulation_mode = 1;
-			printf('o',"\n\033[0;38;5;208mTo run simulation mode directly, use the argument \033[1;33m--simulation \033[0;38;5;208mor \033[1;33m-s\n\n");
+			printf('o',"\n\033[0;38;5;208mTo run simulation mode, use the argument \033[1;33m--simulation \033[0;38;5;208mor \033[1;33m-s\n\n");
 			//printf('o',"\033[38;5;208mIf running in VS Code, uncomment the following line in platformio.ini:\n\033[32m; upload_command = pio run -t exec -a \"-s\"\n\n");
-			goto SIM_START;
 		}
 		else{
 			printf('r',"Check CAN connection and driver and resolve issue before running again.\n");
@@ -1578,14 +1674,17 @@ int main(int argc, char *argv[]) {
 	tello->addPeriodicTask(&motion_capture, SCHED_FIFO, 99, UPX_ISOLATED_CORE_3_THREAD_1, (void*)(NULL),"Mocap_Task",TASK_CONSTANT_PERIOD, 1000);
 	tello->addPeriodicTask(&hw_logging, SCHED_FIFO, 99, UPX_ISOLATED_CORE_3_THREAD_2, (void*)(NULL),"hw_logging_task",TASK_CONSTANT_PERIOD, 1000);
 
+	tello->addPeriodicTask(&Human_Playback_Hardware, SCHED_FIFO, 90, UPX_ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"human_playback_HW_task",TASK_CONSTANT_PERIOD, 1000);
+	tello->addPeriodicTask(&curve_fitting, SCHED_FIFO, 99, UPX_ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"curve_fitting",TASK_CONSTANT_PERIOD, 1000);
+
 	usleep(1000);
 	
 	while(1){
 		printf('u',"\n\nTello Software Menu:\n");
-		printf("u : Enter UDP Control Mode\n");
-		printf("r : Enter Motion Recording Mode\n");
-		printf("e : Exit Motion Recording Mode\n");
-		printf("p : Enter Motion Playback Mode\n");
+		printf("j : Enable Motors and init Joint Positions\n");
+		printf("a : Start Balancing (make sure tello is on ground first)\n");
+		printf("h : Enable Human Playback\n");
+		printf("6 : Start 6Dof test (or walking depending on build)\n");
 		printf("i : Enter Idle Mode\n\n");
 		Eigen::Matrix<double,5,1> jointsLeft, jointsRight;
 		Eigen::VectorXd motorsLeft, motorsRight;
@@ -1598,14 +1697,6 @@ int main(int argc, char *argv[]) {
 		char choice;
 		std::cin >> choice;
 		switch(choice){
-			case 'C':
-				calibrate_IMU_bias = true;
-				printf("Calibrating IMU\n");
-				break;
-			case 'D':
-				move_up_down = !move_up_down;
-				printf("Running Move Up-Down\n");
-				break;
 			case 'w':
 				gain_adjustment+=4.0;
 				printf("New Adj. : %f \n", gain_adjustment);
@@ -1614,7 +1705,6 @@ int main(int argc, char *argv[]) {
 				if(gain_adjustment>=4.0){
 					gain_adjustment-=4.0;
 				}
-				
 				printf("New Adj. : %f \n", gain_adjustment);
 				break;
 			case 'm':
@@ -1630,6 +1720,19 @@ int main(int argc, char *argv[]) {
 				scheduleEnable();
 
 				break;
+			case 'l':
+				balancing_motor_kd = 300;
+				printf("\n Set Balanicng Motor Kd to 300. \n");
+				break;
+			case 'h':
+				now1 = std::chrono::system_clock::now();  // Get the current time
+				micros1 = std::chrono::time_point_cast<std::chrono::microseconds>(now1);  // Round down to nearest microsecond
+				since_epoch1 = micros1.time_since_epoch();  // Get duration since epoch
+				t_program_start = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch1).count() / 1000000.0;  // Convert to double with resolution of microseconds
+				start_controller_time = true;
+				tello->controller->enable_human_ctrl();
+				printf("\n Enabling Human Control (playback only). \n");
+				break;
 			case 'B':
 				fsm_state = 6;
 				tare_mocap_pos = true;
@@ -1640,11 +1743,6 @@ int main(int argc, char *argv[]) {
 				no_posture_ctrl = true;
 				printf("\nBalance Torques only:\n");
 
-				break;
-			case 'M':
-				scheduleEnable();
-				run_motors_for_balancing = true;
-				tare_mocap_pos = true;
 				break;
 			case 'a':
 				fsm_state = 6;
@@ -1657,11 +1755,6 @@ int main(int argc, char *argv[]) {
 				since_epoch1 = micros1.time_since_epoch();  // Get duration since epoch
 				t_program_start = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch1).count() / 1000000.0;  // Convert to double with resolution of microseconds
 				break;
-			case 't':
-				printf("\nEKF Position Tared:\n");
-				tare_efk_pos = true;
-				tare_mocap_pos = true;
-				break;
 			case '6':
 				printf("\nStart 6DoF Test:\n");
 				now1 = std::chrono::system_clock::now();  // Get the current time
@@ -1670,59 +1763,9 @@ int main(int argc, char *argv[]) {
 				t_program_start = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch1).count() / 1000000.0;  // Convert to double with resolution of microseconds
 				start_controller_time = true;
 				break;
-			case 'R':
-				fsm_state = 5;
-				printf("\nTask Space Testing Mode:\n");
-				//scheduleEnable();
-				tello->motors[5]->enableMotor();
-				tello->motors[6]->enableMotor();
-				tello->motors[7]->enableMotor();
-				tello->motors[8]->enableMotor();
-				tello->motors[9]->enableMotor();
-
-				break;
 			case 'd':
 				scheduleDisable();
 				printf("\nDisabling\n");
-				break;
-			case 'u':
-				fsm_state = 1;
-				printf("\nEntering UDP Mode\n");
-				break;
-			case 'r':
-				fsm_state = 2;
-				printf("\nEntering Motion Recording Mode\n");
-				scheduleDisable();
-				break;
-			case 'p':
-				fsm_state = 3;
-				printf("\nEntering Motion Playback Mode\n");
-				scheduleEnable();
-				break;
-			case 'e':
-				if(fsm_state == 2){
-					fsm_state = 0;
-					printf("\nEnding Recording.\n");
-					usleep(10000);
-					motion_log->close();
-					printf("Recording Written to file.\n");
-					recording_initialized = 0;
-					printf("\nEntering Idle Mode\n");
-					break;
-				}
-				else if(fsm_state == 3){
-					fsm_state = 0;
-					printf("\nEnding Playback.\n");
-					usleep(10000);
-					motion_log_in->close();
-					playback_initialized = 0;
-					printf("\nEntering Idle Mode\n");
-					break;
-				}
-				else{
-					scheduleEnable();
-					printf("\nEnabling\n");
-				}
 				break;
 			default:
 				fsm_state = 0;

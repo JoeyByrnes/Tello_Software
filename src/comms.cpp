@@ -160,10 +160,9 @@ void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* rob
 }
 
 
-//								11805  2126				4435 <- this number had to be manually edited so much, this is the source of the motor pos error
-double joint_zeros[10] = {0,5567,11845,2160,9942,0,2640,4540,15462,13725};
+double joint_zeros[10] = {0,5580,11080,3551,9975,0,2616,4335,14975,13518};
 double joint_directions[10] =      { 1,-1,1,1,-1,    1,-1,-1,-1,1};
-double joint_measured_zero_offsets[10] = {0,0,0.171042,0.191986,0,0,0,0.171042,-0.191986,0};
+double joint_measured_zero_offsets[10] = {0,0,-0.171042,0.3861,0,0,0,0.171042,-0.3861,0};
 void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot){
 	
 	uint8_t id = Message.DATA[0];
@@ -177,9 +176,9 @@ void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* r
 
 	robot->setJointEncoderPosition(joint_rad,static_cast<JointName>(id-20));
 	// robot->setJointEncoderVelocity(joint_rad_per_sec,static_cast<JointName>(id-20));
-	// if(id==27)
+	// if(id==28)
 	// {
-	// 	cout << "ID: " << ((int)id) << ",   joint_position: " << joint_position << "             \r";
+	// 	cout << "ID: " << ((int)id) << ",   joint_position-zero: " << joint_position << "             \r";
 	// }
 	
 }

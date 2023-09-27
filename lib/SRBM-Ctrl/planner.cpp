@@ -348,13 +348,13 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     // cout << FSM_prev << "\t grf_check:" << (grf_rf < Fz_min && grf_rb < Fz_min ) << "\t next_SSP: " << next_SSP << "\t t_check" << (t > 0 && t_dsp > 0.080) << endl;
     if (FSM_prev == 0) // currently in DSP
     {
-        if ( (grf_rf < Fz_min || grf_rb < Fz_min ) && t > 0 && t_dsp > 0.025 && (next_SSP==1) && (zHr > 0.007 || auto_mode)) // enter SSP_L
+        if ( (grf_rf < Fz_min && grf_rb < Fz_min ) && t > 0 && t_dsp > 0.025 /*&& (next_SSP==1)*/ && (zHr > 0.007 || auto_mode)) // enter SSP_L
         {
             cout << "Setting FSM to 1" << endl;
             FSM_next = 1;
             traj_planner_dyn_data.step_z_offset_L = human_dyn_data.fzH_L;
         }
-        else if ( (grf_lf < Fz_min || grf_lb < Fz_min ) && t > 0 && t_dsp > 0.025 && (next_SSP==-1) && (zHl > 0.007 || auto_mode)) // enter SSP_R 
+        else if ( (grf_lf < Fz_min && grf_lb < Fz_min ) && t > 0 && t_dsp > 0.025 /*&& (next_SSP==-1)*/ && (zHl > 0.007 || auto_mode)) // enter SSP_R 
         {
             cout << "Setting FSM to -1" << endl;
             FSM_next = -1;     
@@ -367,7 +367,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == 1) // currently in SSP_L
     {
-        if ( (grf_rf > 0.01 || grf_rb > 0.01 ) && s > 0.1) // enter DSP
+        if ( (grf_rf > 10 || grf_rb > 10 ) && s > 0.1) // enter DSP
         {
             cout << "Setting FSM from 1 to 0" << endl;
             FSM_next = 0;
@@ -379,7 +379,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == -1) // currently in SSP_R
     {
-        if ( (grf_lf > 0.01 || grf_lb > 0.01 ) && s > 0.1) // enter DSP
+        if ( (grf_lf > 10 || grf_lb > 10 ) && s > 0.1) // enter DSP
         {
             cout << "Setting FSM from -1 to 0" << endl;
             FSM_next = 0;

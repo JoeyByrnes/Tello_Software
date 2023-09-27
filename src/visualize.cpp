@@ -355,7 +355,7 @@ void* visualization_render_thread( void * arg )
 
 
     // create a vector of all the plot pngs for selecting playback option
-    std::string plotfolderPath = "/home/joey/Desktop/tello_outputs/Favorite_Logs/Plots";
+    std::string plotfolderPath = "/home/joey/Desktop/tello_outputs/Hardware_Motion_Library/Plots";
     std::vector<std::string> pngFiles;
     std::vector<GLuint> image_textures;
     std::vector<std::string> image_names;
@@ -371,7 +371,7 @@ void* visualization_render_thread( void * arg )
             LoadTextureFromFile((plotfolderPath+"/"+name).c_str(), &tex, &im_width, &im_height);
             image_textures.push_back(tex);
             image_names.push_back(name.substr(0, name.length() - 4));
-            hddFiles.push_back("/home/joey/Desktop/tello_outputs/Favorite_Logs/"+name.substr(0, name.length() - 4)+"/human_dyn_data.csv");
+            hddFiles.push_back("/home/joey/Desktop/tello_outputs/Hardware_Motion_Library/"+name.substr(0, name.length() - 4)+"/human_dyn_data.csv");
         }
     }
 

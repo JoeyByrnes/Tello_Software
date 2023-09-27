@@ -469,7 +469,7 @@ void* Human_Playback_Hardware( void * arg )
 
 	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
 
-    std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-09-39-sway-slow/human_dyn_data.csv";
+    std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-17-59-single step/human_dyn_data.csv";
 
 
     std::string logPath = removeTextAfterLastSlashHW(active_log);
@@ -567,7 +567,7 @@ void* Human_Playback_Hardware( void * arg )
 			// =======================================================================================================
 			if(time <= tello->controller->get_time())
 			{
-				std::cout << "PLAYBAKCK TIME: " << time << std::endl;
+				std::cout << "PLAYBACK TIME: " << time << std::endl;
 				xHvec.tail(99) = xHvec.head(99).eval();
 				xHvec[0] = human_dyn_data.xH;
 
@@ -975,6 +975,11 @@ void run_balance_controller()
 
 	// cout << "GRFs: " << tello->_GRFs.left_front << ",  " << tello->_GRFs.right_back << ",  " << tello->_GRFs.right_front << ",  " << tello->_GRFs.right_back << endl;
 	// cout << "FSM: " << tello->controller->get_FSM() << "GRFs: " << tello->_GRFs.left_front << ",  " << tello->_GRFs.right_back << ",  " << tello->_GRFs.right_front << ",  " << tello->_GRFs.right_back << endl;
+
+	if(tello->controller->get_FSM() == 1)
+	{
+		cout << "RIGHT LEG IN SWING" << endl;
+	}
 
 	VectorXd task_velocities = tello->joint_vel_to_task_vel(tello->getJointVelocities(),tello->getJointPositions());
 

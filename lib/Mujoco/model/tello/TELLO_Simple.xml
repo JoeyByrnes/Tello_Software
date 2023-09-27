@@ -27,7 +27,7 @@
 
 		<body name = 'torso' pos = '0 0 0'> 
 
-			<inertial mass = "11.84" pos = "0 0 0" fullinertia = "0.0443 0.0535 0.0214 0 0 0" />
+			<inertial mass = "11.84" pos = "0 0 0" fullinertia = "0.0443 0.0516 0.0214 0 0 0" />
 			<joint axis = "1 0 0" pos = "0 0 0" name = "move_x" type = "slide" limited = "false"/>
 			<joint axis = "0 1 0" pos = "0 0 0" name = "move_y" type = "slide" limited = "false"/>
 			<joint axis = "0 0 1" pos = "0 0 0" name = "move_z" type = "slide" limited = "false"/>

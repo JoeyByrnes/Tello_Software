@@ -143,11 +143,13 @@
 				  <joint name="right_ankle" pos="0 0 0" axis="0 -1 0" limited = "true" range = "-0.785398 0.785398" armature=" 0.006" damping="1"/>
 				  <geom name = "rfoot" type="mesh" material ='MatPlane3' rgba="0.549 0.565 0.580 1" mesh="right_foot" euler="0 0 3.14159265359" contype='0'/>
                   <geom name = "rfootb" type="mesh" material ='MatPlane4' rgba="0.2 0.2 0.2 1" mesh="right_foot-black" euler="0 0 3.14159265359" contype='0'/>
- 				  <geom name = "right_foot_heel" pos = "-0.06 0 -0.0535"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
-				  <geom name = "right_foot_toe" pos = "0.06 0 -0.0535"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
+ 				  <geom name = "right_foot_heel" pos = "-0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
+				  <geom name = "right_foot_toe" pos = "0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
 
-				  <geom name = "rfh" pos = "-0.06 0 -0.0535"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
-				  <geom name = "rft" pos = "0.06 0 -0.0535"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+				  <geom name = "rfh" pos = "-0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+				  <geom name = "rft" pos = "0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+				  <geom pos = "0.05 0 -0.04986" type="box" size="0.015 0.01 0.00175" rgba="0 0 0 1" contype='0'/>
+				  <geom pos = "-0.05 0 -0.04986" type="box" size="0.015 0.01 0.00175" rgba="0 0 0 1" contype='0'/>
                   <!-- <geom type='capsule' size='0.01' fromto='-0.06 0 0.0385 0.06 0 0.0385' class='collision-right'/> -->
 				  
 				</body>
@@ -194,11 +196,13 @@
 				  <joint name="left_ankle" pos="0 0 0" axis="0 -1 0" limited = "true" range = "-0.785398 0.785398" armature=" 0.006" damping="1"/>
 				  <geom name = "lfoot" type="mesh" material ='MatPlane3' rgba="0.549 0.565 0.580 1" mesh="left_foot" euler="0 0 3.14159265359" contype='0'/>
                   <geom name = "lfootb" type="mesh" material ='MatPlane4' rgba="0.2 0.2 0.2 1" mesh="left_foot-black" euler="0 0 3.14159265359" contype='0'/>
- 				  <geom name = "left_foot_heel" pos = "-0.06 0 -0.0535"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>
-				  <geom name = "left_foot_toe" pos = "0.06 0 -0.0535"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>
+ 				  <geom name = "left_foot_heel" pos = "-0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>
+				  <geom name = "left_foot_toe" pos = "0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>
 
-				  <geom name = "lfh" pos = "-0.06 0 -0.0535"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
-				  <geom name = "lft" pos = "0.06 0 -0.0535"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+				  <geom name = "lfh" pos = "-0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+				  <geom name = "lft" pos = "0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+				  <geom pos = "0.05 0 -0.04986" type="box" size="0.015 0.01 0.00175" rgba="0 0 0 1" contype='0'/>
+				  <geom pos = "-0.05 0 -0.04986" type="box" size="0.015 0.01 0.00175" rgba="0 0 0 1" contype='0'/>
                   <!-- <geom type='capsule' size='0.01' fromto='-0.06 0 0.0385 0.06 0 0.0385' class='collision-left'/> -->
 				  
 				</body>
@@ -255,6 +259,8 @@
 				  <joint name="right_anklev" pos="0 0 0" axis="0 -1 0" limited = "true" range = "-0.785398 0.785398" armature=" 0.006" damping="1"/>
 				  <geom name = "rfootv" type="mesh" material ='MatPlane3' rgba="1 0 1 0.15" mesh="right_foot" euler="0 0 3.14159265359" contype='0'/>
                   <geom name = "rfootbv" type="mesh" material ='MatPlane4' rgba="1 0 1 0.15" mesh="right_foot-black" euler="0 0 3.14159265359" contype='0'/>
+				  <geom pos = "0.05 0 -0.04986" type="box" size="0.015 0.01 0.00175" rgba="1 0 1 0.15" contype='0'/>
+				  <geom pos = "-0.05 0 -0.04986" type="box" size="0.015 0.01 0.00175" rgba="1 0 1 0.15" contype='0'/>
                   <!-- <geom type='capsule' size='0.01' fromto='-0.06 0 0.0385 0.06 0 0.0385' class='collision-right'/> -->
 				  
 				</body>
@@ -299,7 +305,9 @@
 				  <joint name="left_anklev" pos="0 0 0" axis="0 -1 0" limited = "true" range = "-0.785398 0.785398" armature=" 0.006" damping="1"/>
 				  <geom name = "lfootv" type="mesh" material ='MatPlane3' rgba="1 0 1 0.15" mesh="left_foot" euler="0 0 3.14159265359" contype='0'/>
                   <geom name = "lfootbv" type="mesh" material ='MatPlane4' rgba="1 0 1 0.15" mesh="left_foot-black" euler="0 0 3.14159265359" contype='0'/>
-				  
+				  <geom pos = "0.05 0 -0.04986" type="box" size="0.015 0.01 0.00175" rgba="1 0 1 0.15" contype='0'/>
+				  <geom pos = "-0.05 0 -0.04986" type="box" size="0.015 0.01 0.00175" rgba="1 0 1 0.15" contype='0'/>
+
 				</body>
 				
 			  </body>
@@ -315,7 +323,9 @@
 	<body name="CoP" mocap="true" pos="0 0 -0.58" >
         <geom name="cop-visual" type="sphere" size="0.01 0.01 0.01" rgba="1 0 0 0.5" contype='0'/>
     </body>
-
+	<!-- <body name="meas-plane-1" mocap="true" pos="0 0 -0.245" >
+		<geom pos = "-0.05 0 -0.04986" type="box" size="0.0001 1 1" rgba="0 1 0 0.5" contype='0'/>
+	</body> -->
 	<!--|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||-->
 	<!--|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||-->
 

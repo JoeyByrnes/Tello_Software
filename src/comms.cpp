@@ -133,6 +133,8 @@ void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* rob
 	uint16_t back_force_uint16 = (Message.DATA[1] << 8) | Message.DATA[2];
 	uint16_t front_force_uint16 = (Message.DATA[3] << 8) | Message.DATA[4];
 
+	// cout << "GOT LOADCELL DATA, ID=" << (int)id << endl;
+
 	// Given front_force_uint16 and back_force_uint16 variables
 	double front_force = (double)((int)front_force_uint16 - 32768)/100.0;
 	double back_force = (double)((int)back_force_uint16 - 32768)/100.0;
@@ -162,7 +164,7 @@ void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* rob
 
 double joint_zeros[10] = {0,5580,11080,3551,9975,0,2616,4335,14975,13518};
 double joint_directions[10] =      { 1,-1,1,1,-1,    1,-1,-1,-1,1};
-double joint_measured_zero_offsets[10] = {0,0,-0.171042,0.3861,0,0,0,0.171042,-0.3861,0};
+double joint_measured_zero_offsets[10] = {0,0,-0.15708,0.382,0,0,0,0.15708,-0.382,0};
 void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot){
 	
 	uint8_t id = Message.DATA[0];

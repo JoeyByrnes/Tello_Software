@@ -459,7 +459,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.xDCMH_deadband = 0.10; // deadband for applying gain for human DCM in m
         srb_params.KxDCMH = 1.5; // gain for human DCM
         srb_params.Kx_DCM_mult = 3.0; // multiplier of K_DCM for sagittal plane control
-        srb_params.Ky_DCM_mult = 6.0; // multiplier of K_DCM for frontal plane control
+        srb_params.Ky_DCM_mult = 3.0; // multiplier of K_DCM for frontal plane control
         srb_params.T_DSP = 0.0750; // assumed duration of DSP in s
         srb_params.lmaxR = 0.5; // maximum step length in m
 
@@ -468,8 +468,8 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.Kd_xR = 5.0; // D gain for x-direction tracking
         srb_params.Kp_yR = 500.0; // P gain for y-direction tracking
         srb_params.Kd_yR = 5.0; // D gain for y-direction tracking
-        srb_params.Kp_zR = 2500.0; // P gain for z-direction tracking
-        srb_params.Kd_zR = 120.0; // D gain for z-direction tracking
+        srb_params.Kp_zR = 500.0; // P gain for z-direction tracking
+        srb_params.Kd_zR = 5.0; // D gain for z-direction tracking
         srb_params.Kp_phiR = 280.00; // P gain for roll tracking
         srb_params.Kd_phiR = 5.0; // D gain for roll tracking
         srb_params.Kp_thetaR = 280.00; // P gain for pitch tracking

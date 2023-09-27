@@ -67,7 +67,7 @@ bool start_controller_time = false;
 bool tare_mocap_pos = false;
 Vector3d mocap_offset = Vector3d::Zero();
 
-int balancing_motor_kd = 600;
+int balancing_motor_kd = 800;
 
 int udp_data_ready = 0;
 char udp_control_packet[UDP_MAXLINE];
@@ -469,7 +469,7 @@ void* Human_Playback_Hardware( void * arg )
 
 	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
 
-    std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-17-59-single step/human_dyn_data.csv";
+    std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-12-35-slow-stepping/human_dyn_data.csv";
 
 
     std::string logPath = removeTextAfterLastSlashHW(active_log);
@@ -567,7 +567,7 @@ void* Human_Playback_Hardware( void * arg )
 			// =======================================================================================================
 			if(time <= tello->controller->get_time())
 			{
-				std::cout << "PLAYBACK TIME: " << time << std::endl;
+				// std::cout << "PLAYBACK TIME: " << time << std::endl;
 				xHvec.tail(99) = xHvec.head(99).eval();
 				xHvec[0] = human_dyn_data.xH;
 
@@ -736,7 +736,7 @@ void balance_pd(MatrixXd lfv_hip)
 	// Vector3d target_back_right_accel = tello->controller->get_lfddv_comm_hip().row(1);
 
 	VectorXd vel_desired(12);
-	vel_desired  << 0,0,0,0,0,0,0,0,0,0,0,0;//target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel;
+	vel_desired  << target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel; //0,0,0,0,0,0,0,0,0,0,0,0; //
 
 	VectorXd pos_desired(12);
 	pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
@@ -754,7 +754,7 @@ void balance_pd(MatrixXd lfv_hip)
 	swing_pd_config.use_single_jacoian = false;
 	swing_pd_config.side = BOTH_LEGS;
 
-	swing_pd_config.ignore_joint_velocity = true;
+	swing_pd_config.ignore_joint_velocity = false;
 	swing_pd_config.task_ff_force = VectorXd::Zero(12);
 	swing_pd_config.setTaskPosDesired(target_front_left, target_back_left, target_front_right, target_back_right);
 	swing_pd_config.setTaskVelDesired(target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel);
@@ -765,8 +765,8 @@ void balance_pd(MatrixXd lfv_hip)
 
 	VectorXd kp_vec_joint_swing(10);
 	VectorXd kd_vec_joint_swing(10);
-	kp_vec_joint_swing << 64, 500, 1000,1000,500, 64, 500, 1000,1000,500;
-	kd_vec_joint_swing <<  2, 2, 2,2,2,  2, 2, 2,2,2;
+	kp_vec_joint_swing << 8, 8, 8,8,8, 8, 8, 8,8,8;
+	kd_vec_joint_swing <<  1, 1, 1,1,1,  1, 1, 1,1,1;
 
 	swing_pd_config.setJointKp(kp_vec_joint_swing);
 	swing_pd_config.setJointKd(kd_vec_joint_swing);
@@ -775,7 +775,7 @@ void balance_pd(MatrixXd lfv_hip)
 	swing_leg_torques = tello->taskPD2(swing_pd_config);
 
 	posture_pd_config = swing_pd_config;
-	posture_pd_config.ignore_joint_velocity = true;
+	posture_pd_config.ignore_joint_velocity = false;
 	posture_pd_config.side = BOTH_LEGS;
  
 	posture_pd_config.task_ff_force = VectorXd::Zero(12);
@@ -838,11 +838,11 @@ void balance_pd(MatrixXd lfv_hip)
 	VectorXd kd_vec_motor = VectorXd::Ones(10)*motor_kd;
 	if(tello->controller->get_FSM()==1)
 	{
-		kd_vec_motor << 400,400,400,400,400,300,300,300,300,300;
+		kd_vec_motor << 600,600,600,600,600,400,400,400,400,400;
 	}
 	if(tello->controller->get_FSM()==-1)
 	{
-		kd_vec_motor << 300,300,300,300,300,400,400,400,400,400;
+		kd_vec_motor << 400,400,400,400,400,600,600,600,600,600;
 	}
 
 	vel_desired = VectorXd::Zero(12);
@@ -886,7 +886,9 @@ void balance_pd(MatrixXd lfv_hip)
 	task_pd_config.setJointKd(kd_vec_joint);
 	task_pd_config.motor_kp = kp_vec_motor;
 	task_pd_config.motor_kd = kd_vec_motor;
-	task_pd_config.joint_ff_torque = tau_LR; // was jointFFTorque
+	task_pd_config.joint_ff_torque = tau_LR_muxed; // was jointFFTorque
+
+	// cout << "FSM: " << tello->controller->get_FSM() << ",   tau: " << tau_LR_muxed.transpose() << endl;
 	
 	tello->taskPD(task_pd_config);
 }
@@ -975,11 +977,6 @@ void run_balance_controller()
 
 	// cout << "GRFs: " << tello->_GRFs.left_front << ",  " << tello->_GRFs.right_back << ",  " << tello->_GRFs.right_front << ",  " << tello->_GRFs.right_back << endl;
 	// cout << "FSM: " << tello->controller->get_FSM() << "GRFs: " << tello->_GRFs.left_front << ",  " << tello->_GRFs.right_back << ",  " << tello->_GRFs.right_front << ",  " << tello->_GRFs.right_back << endl;
-
-	if(tello->controller->get_FSM() == 1)
-	{
-		cout << "RIGHT LEG IN SWING" << endl;
-	}
 
 	VectorXd task_velocities = tello->joint_vel_to_task_vel(tello->getJointVelocities(),tello->getJointPositions());
 
@@ -1174,6 +1171,15 @@ static void* update_1kHz( void * arg )
 			pos_initialized+=position_initialized[i];
 		}
 		pthread_mutex_unlock(&mutex_CAN_recv);
+		for(int i=0;i<10;i++)
+		{
+			tello->motors[i]->setKp(50);
+			tello->motors[i]->setKd(50);
+			tello->motors[i]->setVel(0);
+			tello->motors[i]->setff(0);
+			tello->motors[i]->setPos(32768); // (Zero)
+			tello->motors[i]->disableMotor();
+		}
 		usleep(1000);
 	}
 	// all_motors_initialized = 1;
@@ -1386,7 +1392,7 @@ void init_6dof_test()
 	std::string recording_file_name = "Telelop";
 	srb_params.planner_type = 2; 
 	srb_params.init_type = 1;
-	sim_time = 1e5;
+	sim_time = 1e100;
 
 	// Initialize trajectory planner data
     dash_planner::SRB_Init_Traj_Planner_Data(traj_planner_dyn_data, srb_params, human_params, x0, lfv0);

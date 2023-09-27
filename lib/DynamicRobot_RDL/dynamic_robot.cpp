@@ -663,7 +663,7 @@ void DynamicRobot::jointPD(JointPDConfig joint_conf)
 
     // Use inverse kinematics to calculate motor PD
     VectorXd motor_pos_desired = this->joint_pos_to_motor_pos(joint_conf.joint_pos_desired);
-    VectorXd motor_vel_desired = VectorXd::Zero(10);//this->joint_vel_to_motor_vel(vel_desired);
+    VectorXd motor_vel_desired = this->joint_vel_to_motor_vel(joint_conf.joint_vel_desired, joint_positions); // VectorXd::Zero(10);
 
     VectorXd motor_pos_desired_real(10);
     for(int i=0; i<10; i++){
@@ -709,7 +709,7 @@ void DynamicRobot::taskPD(TaskPDConfig task_conf)
 
     // Use inverse kinematics to calculate joint pd
     VectorXd joint_pos_desired = this->task_pos_to_joint_pos(task_conf.task_pos_desired);
-    VectorXd joint_vel_desired = VectorXd::Zero(10);//this->task_vel_to_joint_vel(task_conf.task_vel_desired); //VectorXd::Zero(10);
+    VectorXd joint_vel_desired = this->task_vel_to_joint_vel(task_conf.task_vel_desired, joint_positions); //VectorXd::Zero(10);
 
     JointPDConfig joint_conf;
     joint_conf.joint_ff_torque = joint_torques+task_conf.joint_ff_torque;

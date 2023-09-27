@@ -345,18 +345,19 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     
     
     int FSM_next;
-    // cout << FSM_prev << "\t grf_check:" << (grf_rf < Fz_min && grf_rb < Fz_min ) << "\t next_SSP: " << next_SSP << "\t t_check" << (t > 0 && t_dsp > 0.080) << endl;
+    // cout << "FSM: "<<(int)FSM_prev << "\t grf_check: " << (grf_rf < Fz_min && grf_rb < Fz_min ) << "\t next_SSP: " << next_SSP << "\t t_check: " << (t > 0 && t_dsp > 0.080) << "\t zHr Check: " << (zHr > 0.007) << endl;
+    // cout << "grf_rf: " << grf_rf << " \t grf_rb: " << grf_rb << "\t grf_lf: " << grf_lf << "\t grf_lb: " << grf_lb << endl;
     if (FSM_prev == 0) // currently in DSP
     {
-        if ( (grf_rf < Fz_min && grf_rb < Fz_min ) && t > 0 && t_dsp > 0.025 /*&& (next_SSP==1)*/ && (zHr > 0.007 || auto_mode)) // enter SSP_L
+        if ( (grf_rf < Fz_min && grf_rb < Fz_min ) && t > 0 && t_dsp > 0.025 && (next_SSP==1) && (zHr > 0.007 || auto_mode)) // enter SSP_L
         {
-            cout << "Setting FSM to 1" << endl;
+            cout << "Setting FSM from 0 to 1" << endl;
             FSM_next = 1;
             traj_planner_dyn_data.step_z_offset_L = human_dyn_data.fzH_L;
         }
-        else if ( (grf_lf < Fz_min && grf_lb < Fz_min ) && t > 0 && t_dsp > 0.025 /*&& (next_SSP==-1)*/ && (zHl > 0.007 || auto_mode)) // enter SSP_R 
+        else if ( (grf_lf < Fz_min && grf_lb < Fz_min ) && t > 0 && t_dsp > 0.025 && (next_SSP==-1) && (zHl > 0.007 || auto_mode)) // enter SSP_R 
         {
-            cout << "Setting FSM to -1" << endl;
+            cout << "Setting FSM from 0 to -1" << endl;
             FSM_next = -1;     
            traj_planner_dyn_data.step_z_offset_R = human_dyn_data.fzH_R;
         }
@@ -424,7 +425,8 @@ void dash_planner::SRB_Init_Traj_Planner_Data(Traj_planner_dyn_data& traj_planne
     traj_planner_dyn_data.t_dsp_start = 0.0; // DSP time (0 to T)
     
     // Only planner_type = LIP_ang_mom_reg
-    traj_planner_dyn_data.next_SSP = 0; // next SSP (SSP_L = 1 or SSP_R = -1)
+    traj_planner_dyn_data.next_SSP = 1; // next SSP (SSP_L = 1 or SSP_R = -1)
+    cout << "INITIALIZING NEXT SSP TO ONE" << endl;
     traj_planner_dyn_data.step_width = (abs(lf2CoM0_mat(1, 0)) + abs(lf2CoM0_mat(1, 3))); // desired step width (updated at the start depending on initial feet width)
     traj_planner_dyn_data.st2CoM_beg_step = VectorXd::Zero(position_vec_size); // stance-leg/foot position at the beginning-of-step relative to CoM
     traj_planner_dyn_data.sw2CoM_beg_step = VectorXd::Zero(position_vec_size); // swing-leg/foot position at the beginning-of-step relative to CoM
@@ -592,14 +594,14 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
 
     // Comment out stepping if planner_type = none
     if (planner_type == 0) {
-        t_beg_stepping = 1e5;
-        t_end_stepping = 1e6;
+        t_beg_stepping = 1e90;
+        t_end_stepping = 1e100;
     }
 
     // Enable stepping/walking if planner_type = Human_Dyn_Telelocomotion
     if (planner_type == 2) {
         traj_planner_dyn_data.stepping_flg = true;
-        t_end_stepping = 1e6;
+        t_end_stepping = 1e100;
         if(first_time_planner)
         {
             traj_planner_dyn_data.next_SSP = 1;
@@ -713,6 +715,7 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
             if (t > t_end_stepping) {
                 traj_planner_dyn_data.stepping_flg = false;
                 traj_planner_dyn_data.next_SSP = 0;
+                cout << "STEPPING OVER, SETTING NEXT_SSP TO ZERO" << endl;
             }
         }
     }

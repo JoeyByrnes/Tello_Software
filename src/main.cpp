@@ -67,7 +67,7 @@ bool start_controller_time = false;
 bool tare_mocap_pos = false;
 Vector3d mocap_offset = Vector3d::Zero();
 
-int balancing_motor_kd = 800;
+int balancing_motor_kd = 1200;
 
 int udp_data_ready = 0;
 char udp_control_packet[UDP_MAXLINE];
@@ -204,6 +204,8 @@ extern VectorXd CoM_quat;
 extern ctrlData cd_shared;
 VisualizationData vizData;
 
+double robot_init_foot_width_HW;
+
 void init_6dof_test();
 void signal_callback_handler(int signum);
 
@@ -263,6 +265,7 @@ void run_tello_pd()
 
 	double x_off = 0.000;
 
+	target(1) = robot_init_foot_width_HW/2.0 - 0.125;
 	
 	Vector3d target_front_left(foot_len_half+target(0)+x_off, target(1), target(2)-(pitch_degrees/3500.0));
 	Vector3d target_back_left(-foot_len_half+target(0)+x_off, target(1), target(2)+(pitch_degrees/3500.0));
@@ -469,12 +472,27 @@ void* Human_Playback_Hardware( void * arg )
 
 	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
 
-    std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-12-35-slow-stepping/human_dyn_data.csv";
+    // std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-09-39-sway-slow/human_dyn_data.csv";
+	std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-20-25-one-step-wide/human_dyn_data.csv";
+	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-17-59-single step/human_dyn_data.csv";
+	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-18-38-two steps/human_dyn_data.csv";
+	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-12-35-slow-stepping/human_dyn_data.csv";
 
 
     std::string logPath = removeTextAfterLastSlashHW(active_log);
 
     std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile(active_log);
+
+	double hR = tello->controller->get_SRB_params().hLIP;
+	double hH = tello->controller->get_human_params().hLIP; 
+	Human_dyn_data hdd0 = hdd_vec[0];
+	double fyH_R = hdd0.fyH_R;
+	double fyH_L = hdd0.fyH_L;
+
+	double joystick_base_separation = 1.525;
+	double foot_center_to_joystick = FOOT_2_JOYSTICK;
+	double human_foot_width = joystick_base_separation - 2*foot_center_to_joystick - fyH_R - fyH_L;
+	robot_init_foot_width_HW = human_foot_width*(hR/hH);
 
     std::vector<Vector2d> time_vec = dash_utils::readTimeDataFromFile(logPath + "t_and_FSM.csv");
 
@@ -765,7 +783,7 @@ void balance_pd(MatrixXd lfv_hip)
 
 	VectorXd kp_vec_joint_swing(10);
 	VectorXd kd_vec_joint_swing(10);
-	kp_vec_joint_swing << 8, 8, 8,8,8, 8, 8, 8,8,8;
+	kp_vec_joint_swing << 8, 8, 50,50,8, 8, 8, 50,50,8;
 	kd_vec_joint_swing <<  1, 1, 1,1,1,  1, 1, 1,1,1;
 
 	swing_pd_config.setJointKp(kp_vec_joint_swing);
@@ -799,11 +817,11 @@ void balance_pd(MatrixXd lfv_hip)
 
 	// cout << tau_LR.transpose() << endl;
 	VectorXd torques_left  = tello->swing_stance_mux(tau_LR.head(5), swing_leg_torques.head(5),
-														0.000,tello->controller->get_isSwingToStanceRight(), 
+														0.010,tello->controller->get_isSwingToStanceRight(), 
 														tello->controller->get_time()-tello->controller->get_transitionStartRight(), 
 														0);
 	VectorXd torques_right = tello->swing_stance_mux(tau_LR.tail(5), swing_leg_torques.tail(5),
-														0.000,tello->controller->get_isSwingToStanceLeft(),
+														0.010,tello->controller->get_isSwingToStanceLeft(),
 														tello->controller->get_time()-tello->controller->get_transitionStartLeft(), 
 														1);
 	VectorXd tau_LR_muxed(10);
@@ -1732,8 +1750,8 @@ int main(int argc, char *argv[]) {
 
 				break;
 			case 'l':
-				balancing_motor_kd = 300;
-				printf("\n Set Balanicng Motor Kd to 300. \n");
+				balancing_motor_kd = 600;
+				printf("\n Set Balanicng Motor Kd to 600. \n");
 				break;
 			case 'h':
 				now1 = std::chrono::system_clock::now();  // Get the current time

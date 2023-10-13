@@ -178,7 +178,7 @@ void* visualize_robot( void * arg )
 
 
         //CoP visualization:
-        d->mocap_pos[6] = -vd.CoP[0];    // CoP viz X
+        d->mocap_pos[6] = vd.CoP[0];    // CoP viz X
         d->mocap_pos[7] = vd.CoP[1];  // CoP viz Y 
 
         handle_end_of_periodic_task(next,period);      

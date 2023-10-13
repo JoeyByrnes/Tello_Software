@@ -349,15 +349,15 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     // cout << "grf_rf: " << grf_rf << " \t grf_rb: " << grf_rb << "\t grf_lf: " << grf_lf << "\t grf_lb: " << grf_lb << endl;
     if (FSM_prev == 0) // currently in DSP
     {
-        if ( (grf_rf < Fz_min && grf_rb < Fz_min ) && t > 0 && t_dsp > 0.025 && (next_SSP==1) && (zHr > 0.007 || auto_mode)) // enter SSP_L
+        if ( (grf_rf < Fz_min && grf_rb < Fz_min ) && t > 1 && t_dsp > 0.025 && (next_SSP==1) && (zHr > 0.007 || auto_mode)) // enter SSP_L
         {
-            cout << "Setting FSM from 0 to 1" << endl;
+            cout << "Setting FSM from 0 to 1,   time: " << t << endl;
             FSM_next = 1;
             traj_planner_dyn_data.step_z_offset_L = human_dyn_data.fzH_L;
         }
-        else if ( (grf_lf < Fz_min && grf_lb < Fz_min ) && t > 0 && t_dsp > 0.025 && (next_SSP==-1) && (zHl > 0.007 || auto_mode)) // enter SSP_R 
+        else if ( (grf_lf < Fz_min && grf_lb < Fz_min ) && t > 1 && t_dsp > 0.025 && (next_SSP==-1) && (zHl > 0.007 || auto_mode)) // enter SSP_R 
         {
-            cout << "Setting FSM from 0 to -1" << endl;
+            cout << "Setting FSM from 0 to -1,   time: " << t << endl;
             FSM_next = -1;     
            traj_planner_dyn_data.step_z_offset_R = human_dyn_data.fzH_R;
         }
@@ -368,9 +368,9 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == 1) // currently in SSP_L
     {
-        if ( (grf_rf > 10 || grf_rb > 10 ) && s > 0.1) // enter DSP
+        if ( (grf_rf > 20 || grf_rb > 20 ) && s > 0.85) // enter DSP
         {
-            cout << "Setting FSM from 1 to 0" << endl;
+            cout << "Setting FSM from 1 to 0,   time: " << t << endl;
             FSM_next = 0;
         }
         else // stay in SSP_L
@@ -380,9 +380,9 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == -1) // currently in SSP_R
     {
-        if ( (grf_lf > 10 || grf_lb > 10 ) && s > 0.1) // enter DSP
+        if ( (grf_lf > 20 || grf_lb > 20 ) && s > 0.85) // enter DSP
         {
-            cout << "Setting FSM from -1 to 0" << endl;
+            cout << "Setting FSM from -1 to 0,   time: " << t << endl;
             FSM_next = 0;
         }
         else // stay in SSP_R

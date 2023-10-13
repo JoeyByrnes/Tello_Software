@@ -11,6 +11,8 @@
 #define LEFT_EE_IDX 2 // idx of front left line foot pt
 #define LEG_DOF 5 // leg number of degrees of freedom
 
+#define CoM_X_Offset 0.005
+
 using namespace Eigen;
 
 namespace  dash_kin

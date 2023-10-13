@@ -176,6 +176,7 @@ Vector3d EA;
 Vector3d dEA;
 VectorXd jointFFTorque = VectorXd::Zero(10);
 bool use_filter_pc = false;
+extern MatrixXd lfv0, lfdv0; // defined in mujoco_main, shared with main and planner. TODO: CHANGE THIS ASAP
 
 int sockfd_tx;
 char hmi_tx_buffer[100];
@@ -442,7 +443,7 @@ void* hw_logging( void * arg )
 
             // dash_utils::writeVectorToCsv(impulse_out,"external_forces.csv");
 
-            // dash_utils::writeVectorToCsv(meas_grf_out,"meas_grf_out.csv");
+            dash_utils::writeVectorToCsv(meas_grf_out,"meas_grf_out.csv");
 
             // dash_utils::writeVectorToCsv(xDCM_out,"xDCM.csv");
             
@@ -473,11 +474,12 @@ void* Human_Playback_Hardware( void * arg )
 	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
 
     // std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-09-39-sway-slow/human_dyn_data.csv";
-	std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-20-25-one-step-wide/human_dyn_data.csv";
+	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-20-25-one-step-wide/human_dyn_data.csv";
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-17-59-single step/human_dyn_data.csv";
-	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-18-38-two steps/human_dyn_data.csv";
-	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-12-35-slow-stepping/human_dyn_data.csv";
-
+	std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-18-38-two steps/human_dyn_data.csv";
+	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-12-35-slow-stepping/human_dyn_data.csv"; 
+	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-15-43-wide leg stepping/human_dyn_data.csv";
+	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-11-43-sway-then-2-steps/human_dyn_data.csv";
 
     std::string logPath = removeTextAfterLastSlashHW(active_log);
 
@@ -783,7 +785,7 @@ void balance_pd(MatrixXd lfv_hip)
 
 	VectorXd kp_vec_joint_swing(10);
 	VectorXd kd_vec_joint_swing(10);
-	kp_vec_joint_swing << 8, 8, 50,50,8, 8, 8, 50,50,8;
+	kp_vec_joint_swing << 8, 8, 80,80,80, 8, 8, 80,80,80;
 	kd_vec_joint_swing <<  1, 1, 1,1,1,  1, 1, 1,1,1;
 
 	swing_pd_config.setJointKp(kp_vec_joint_swing);
@@ -817,11 +819,11 @@ void balance_pd(MatrixXd lfv_hip)
 
 	// cout << tau_LR.transpose() << endl;
 	VectorXd torques_left  = tello->swing_stance_mux(tau_LR.head(5), swing_leg_torques.head(5),
-														0.010,tello->controller->get_isSwingToStanceRight(), 
+														0.000,tello->controller->get_isSwingToStanceRight(), 
 														tello->controller->get_time()-tello->controller->get_transitionStartRight(), 
 														0);
 	VectorXd torques_right = tello->swing_stance_mux(tau_LR.tail(5), swing_leg_torques.tail(5),
-														0.010,tello->controller->get_isSwingToStanceLeft(),
+														0.000,tello->controller->get_isSwingToStanceLeft(),
 														tello->controller->get_time()-tello->controller->get_transitionStartLeft(), 
 														1);
 	VectorXd tau_LR_muxed(10);
@@ -854,16 +856,23 @@ void balance_pd(MatrixXd lfv_hip)
 	kp_vec_motor << 0,0,0,0,0,0,0,0,0,0;
 
 	VectorXd kd_vec_motor = VectorXd::Ones(10)*motor_kd;
+
+	int kd_swing = 300;
+	int kd_stance = balancing_motor_kd;
 	if(tello->controller->get_FSM()==1)
 	{
-		kd_vec_motor << 600,600,600,600,600,400,400,400,400,400;
+		kd_vec_motor << kd_stance,kd_stance,kd_stance,kd_stance,kd_stance,kd_swing,kd_swing,kd_swing,kd_swing,kd_swing;
 	}
 	if(tello->controller->get_FSM()==-1)
 	{
-		kd_vec_motor << 400,400,400,400,400,600,600,600,600,600;
+		kd_vec_motor << kd_swing,kd_swing,kd_swing,kd_swing,kd_swing,kd_stance,kd_stance,kd_stance,kd_stance,kd_stance;
+	}
+	if(tello->controller->get_FSM()==0)
+	{
+		kd_vec_motor << kd_stance,kd_stance,kd_stance,kd_stance,kd_stance,kd_stance,kd_stance,kd_stance,kd_stance,kd_stance;
 	}
 
-	vel_desired = VectorXd::Zero(12);
+	// vel_desired = VectorXd::Zero(12);
 
 	// Vector3d target_front_left = lfv_hip.row(2);
 	// Vector3d target_back_left = lfv_hip.row(3);
@@ -920,13 +929,16 @@ void run_balance_controller()
 	tello->controller->set_time(t);
 	
 
-	if(tare_mocap_pos)
-	{
-		MatrixXd lfv_tare = tello->controller->get_lfv_world();
-		VectorXd center = calculateSupportCenter(lfv_tare.row(0),lfv_tare.row(1),lfv_tare.row(2),lfv_tare.row(3));
-		mocap_offset = CoM_pos;
-	}
-	mocap_offset(2) = 0;
+	// if(tare_mocap_pos)
+	// {
+	// 	MatrixXd lfv_tare = tello->controller->get_lfv_world();
+	// 	VectorXd center = calculateSupportCenter(lfv_tare.row(0),lfv_tare.row(1),lfv_tare.row(2),lfv_tare.row(3));
+	// 	mocap_offset = CoM_pos;
+	// 	cout << "CoM Pos: " << CoM_pos.transpose() << "     Center: " << center.transpose() << endl;
+	// 	mocap_offset(0) = -center(0);
+	// 	mocap_offset(1) = -center(1);
+	// }
+	// mocap_offset(2) = 0;
 
 	// Set up code for switching to Tello_locomotion_ctrl() here:
 	// ctrlData cd_local = cd_shared;
@@ -941,9 +953,17 @@ void run_balance_controller()
 	Vector3d EA_curr = CoM_rpy; // from mocap
 	Vector3d dEA_curr = tello->_gyro; // from IMU
 
-	Vector3d pc_des = tello->controller->get_SRB_state_ref().col(0).head(3);
+	Vector3d pc_des, EA_des;
 
-	Vector3d EA_des = tello->controller->get_SRB_state_ref().col(0).tail(3);
+	if(tello->controller->get_SRB_params().planner_type == 2)
+	{
+		pc_des = pc_curr;
+		EA_des = EA_curr;
+	}
+	else{
+		pc_des = tello->controller->get_SRB_state_ref().col(0).head(3);
+		EA_des = tello->controller->get_SRB_state_ref().col(0).tail(3);
+	}
 	
 	vizData.CoM_pos_measured[0] = pc_curr[0];
 	vizData.CoM_pos_measured[1] = pc_curr[1];
@@ -977,6 +997,9 @@ void run_balance_controller()
 		vizData.q_measured[i] = q_measured_eig(i);
 		vizData.q_desired[i] = q_desired_eig(i);
 	}
+
+	// MatrixXd lfv_tare1 = tello->controller->get_lfv_world();
+	// VectorXd center = calculateSupportCenter(lfv_tare1.row(0),lfv_tare1.row(1),lfv_tare1.row(2),lfv_tare1.row(3));
 
 	VectorXd cop_eig = tello->get_CoP();
 	vizData.CoP[0] = cop_eig[0];
@@ -1016,13 +1039,35 @@ void run_balance_controller()
 	VectorXd gnd_contacts = VectorXd::Ones(4);
 
 	VectorXd tau = tello->controller->update(pc_curr, dpc_curr, EA_curr, dEA_curr,q ,qd ,t);
+	if(tare_mocap_pos) tau.setZero();
 	VectorXd tau_LR(10);
     tau_LR << tau.tail(5), tau.head(5);
 	if(apply_balance_torques) jointFFTorque = tau_LR;
 
 	if(tare_mocap_pos)
 	{
+		MatrixXd lfv_tare = tello->controller->get_lfv_world();
+		VectorXd center = calculateSupportCenter(lfv_tare.row(0),lfv_tare.row(1),lfv_tare.row(2),lfv_tare.row(3));
+		// mocap_offset = CoM_pos;
+		// cout << "CoM Pos: " << CoM_pos.transpose() << "     Center: " << center.transpose() << endl;
+		mocap_offset(0) = center(0);
+		mocap_offset(1) = center(1);
+		mocap_offset(2) = 0;
+
+		pc_curr = CoM_pos-mocap_offset; // from mocap
+		dpc_curr = CoM_vel; // from mocap
+		EA_curr = CoM_rpy; // from mocap
+		dEA_curr = tello->_gyro; // from IMU
+		joint_pos_vec = tello->getJointPositions();
+		q = MatrixXd::Zero(2,5);
+		q.row(0) = joint_pos_vec.tail(5);
+		q.row(1) = joint_pos_vec.head(5);
+		VectorXd joint_vel_vec = tello->getJointVelocities();
+		qd = MatrixXd::Zero(2,5);
+		tello->controller->update(pc_curr, dpc_curr, EA_curr, dEA_curr,q ,qd ,t);
+
 		tello->controller->set_lfv0(tello->controller->get_lfv_world());
+		::lfv0 = tello->controller->get_lfv0();
 		lfv_dsp_start = tello->controller->get_lfv0();
 		tare_mocap_pos = false;
 	}
@@ -1101,9 +1146,17 @@ void run_balance_controller()
 
 	t_n_FSM_out = Eigen::Vector2d(tello->controller->get_time(),tello->controller->get_FSM());
 
+	meas_grf_out = VectorXd(4);
+	meas_grf_out << tello->_GRFs.left_front,tello->_GRFs.left_back,tello->_GRFs.right_front,tello->_GRFs.right_back;
+
 	hdd_out = tello->controller->get_human_dyn_data();
 	tpdd_out = tello->controller->get_traj_planner_dyn_data();
 	log_data_ready = true;
+
+	VectorXd ul = tello->controller->get_GRFs();
+	VectorXd gl = meas_grf_out;
+
+	// cout << ul(8) << ", " << ul(11) << ", " << ul(2) << ", " << ul(5) << ", " << gl(0) << ", " << gl(1) << ", " << gl(2) << ", " << gl(3) << ", " << endl;
 
 	// END SETTING LOG DATA HERE
 	
@@ -1706,7 +1759,7 @@ int main(int argc, char *argv[]) {
 	tello->addPeriodicTask(&Human_Playback_Hardware, SCHED_FIFO, 90, UPX_ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"human_playback_HW_task",TASK_CONSTANT_PERIOD, 1000);
 	tello->addPeriodicTask(&curve_fitting, SCHED_FIFO, 99, UPX_ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"curve_fitting",TASK_CONSTANT_PERIOD, 1000);
 
-	usleep(1000);
+	usleep(4000);
 	
 	while(1){
 		printf('u',"\n\nTello Software Menu:\n");
@@ -1750,8 +1803,8 @@ int main(int argc, char *argv[]) {
 
 				break;
 			case 'l':
-				balancing_motor_kd = 600;
-				printf("\n Set Balanicng Motor Kd to 600. \n");
+				balancing_motor_kd = 1000;
+				printf("\n Set Balanicng Motor Kd to 800. \n");
 				break;
 			case 'h':
 				now1 = std::chrono::system_clock::now();  // Get the current time
@@ -1763,8 +1816,8 @@ int main(int argc, char *argv[]) {
 				printf("\n Enabling Human Control (playback only). \n");
 				break;
 			case 'B':
-				fsm_state = 6;
-				tare_mocap_pos = true;
+				tello->controller->set_lfv0(tello->controller->get_lfv_world());
+				lfv_dsp_start = tello->controller->get_lfv0();
 				printf("\nBalance Controller:\n");
 
 				break;

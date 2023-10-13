@@ -1581,7 +1581,7 @@ void dash_kin::SRB_FK(MatrixXd& torso_vertices, MatrixXd& right_leg, MatrixXd& l
     // HTMcom2hr(1,3) = -W/2.0;
     // HTMcom2hr(2,3) = -CoM2H_z_dist;
     HTMcom2hr.block(0,0,3,3) = Eigen::Matrix3d::Identity();
-    HTMcom2hr.block(0,3,3,1) = Eigen::Vector3d(0, -W/2.0, -CoM2H_z_dist);
+    HTMcom2hr.block(0,3,3,1) = Eigen::Vector3d(CoM_X_Offset, -W/2.0, -CoM2H_z_dist);
     HTMcom2hr.block(3,0,1,4) = Vector4d(0,0,0,1).transpose();
 
     Eigen::Matrix4d HTMwd2hr = HTMwd2com * HTMcom2hr;
@@ -1839,12 +1839,12 @@ MatrixXd dash_kin::SRB_IK(SRB_Params srb_params, VectorXd CoM, MatrixXd R, Matri
     // HTMwd2com << R_curr, pc_curr, 0, 0, 0, 1;
 
     HTMcom2hr.block(0,0,3,3) = Eigen::Matrix3d::Identity();
-    HTMcom2hr.block(0,3,3,1) = Eigen::Vector3d(0, -W/2.0, -CoM2H_z_dist);
+    HTMcom2hr.block(0,3,3,1) = Eigen::Vector3d(CoM_X_Offset, -W/2.0, -CoM2H_z_dist);
     HTMcom2hr.block(3,0,1,4) = Vector4d(0,0,0,1).transpose();
     // HTMcom2hr << Eigen::Matrix3d::Identity(), Eigen::Vector3d(0, -W/2, -CoM2H_z_dist), 0, 0, 0, 1;
 
     HTMcom2hl.block(0,0,3,3) = Eigen::Matrix3d::Identity();
-    HTMcom2hl.block(0,3,3,1) = Eigen::Vector3d(0, W/2.0, -CoM2H_z_dist);
+    HTMcom2hl.block(0,3,3,1) = Eigen::Vector3d(CoM_X_Offset, W/2.0, -CoM2H_z_dist);
     HTMcom2hl.block(3,0,1,4) = Vector4d(0,0,0,1).transpose();
     // HTMcom2hl << Eigen::Matrix3d::Identity(), Eigen::Vector3d(0, W/2, -CoM2H_z_dist), 0, 0, 0, 1;
 

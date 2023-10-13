@@ -130,8 +130,8 @@ void process_motor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot)
 void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot){
 	
 	uint8_t id = Message.DATA[0];
-	uint16_t back_force_uint16 = (Message.DATA[1] << 8) | Message.DATA[2];
-	uint16_t front_force_uint16 = (Message.DATA[3] << 8) | Message.DATA[4];
+	uint16_t front_force_uint16 = (Message.DATA[1] << 8) | Message.DATA[2];
+	uint16_t back_force_uint16 = (Message.DATA[3] << 8) | Message.DATA[4];
 
 	// cout << "GOT LOADCELL DATA, ID=" << (int)id << endl;
 

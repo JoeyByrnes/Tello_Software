@@ -259,7 +259,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.xDCMH_deadband = 0.10; // deadband for applying gain for human DCM in m
         srb_params.KxDCMH = 1.5; // gain for human DCM
         srb_params.Kx_DCM_mult = 3.0; // multiplier of K_DCM for sagittal plane control
-        srb_params.Ky_DCM_mult = 3.0; // multiplier of K_DCM for frontal plane control
+        srb_params.Ky_DCM_mult = 2.5; // multiplier of K_DCM for frontal plane control
         srb_params.T_DSP = 0.0750; // assumed duration of DSP in s
         srb_params.lmaxR = 0.5; // maximum step length in m
 
@@ -405,7 +405,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.mu = 1.0; // coefficient of friction value
 
         // SRB specific
-        srb_params.m = 8; // robot mass in kg // was 23 for mujoco // real robot is 15.8Kg
+        srb_params.m = 8.0; // robot mass in kg // was 23 for mujoco // real robot is 15.8Kg
         srb_params.hLIP = 0.58; // nominal robot LIP height
         srb_params.Ib = Matrix3d::Identity();
         srb_params.Ib(0,0) = 0.4874;
@@ -457,25 +457,27 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.zcl = 0.04; // swing-leg max height in m
         // planner_type = Human_Dyn_Telelocomotion 
         srb_params.xDCMH_deadband = 0.10; // deadband for applying gain for human DCM in m
-        srb_params.KxDCMH = 1.5; // gain for human DCM
-        srb_params.Kx_DCM_mult = 3.0; // multiplier of K_DCM for sagittal plane control
-        srb_params.Ky_DCM_mult = 1.0; // multiplier of K_DCM for frontal plane control
+        srb_params.KxDCMH = 2.0; // gain for human DCM
+        srb_params.Kx_DCM_mult = 1.0; // multiplier of K_DCM for sagittal plane control
+        srb_params.Ky_DCM_mult = 1.75; // multiplier of K_DCM for frontal plane control
         srb_params.T_DSP = 0.0750; // assumed duration of DSP in s
         srb_params.lmaxR = 0.5; // maximum step length in m
 
         // controller 
-        srb_params.Kp_xR = 500.0; // P gain for x-direction tracking
-        srb_params.Kd_xR = 5.0; // D gain for x-direction tracking
+        srb_params.Kp_xR = 150.0; // P gain for x-direction tracking
+        srb_params.Kd_xR = 300.0; // D gain for x-direction tracking
         srb_params.Kp_yR = 500.0; // P gain for y-direction tracking
         srb_params.Kd_yR = 5.0; // D gain for y-direction tracking
-        srb_params.Kp_zR = 300.0; // P gain for z-direction tracking
+        srb_params.Kp_zR = 400.0; // P gain for z-direction tracking
         srb_params.Kd_zR = 5.0; // D gain for z-direction tracking
-        srb_params.Kp_phiR = 280.00; // P gain for roll tracking
+
+        srb_params.Kp_phiR = 100.00; // P gain for roll tracking
         srb_params.Kd_phiR = 5.0; // D gain for roll tracking
-        srb_params.Kp_thetaR = 280.00; // P gain for pitch tracking
+        srb_params.Kp_thetaR = 10.00; // P gain for pitch tracking
         srb_params.Kd_thetaR = 5.0; // D gain for pitch tracking
         srb_params.Kp_psiR = 10.00; // P gain for yaw tracking
         srb_params.Kd_psiR = 3.0; // D gain for yaw tracking
+
         srb_params.QP_opt_sol_type = 2; // quadprog = 0, quadprog (active-set) = 1, qpOASES = 2 --> DEFAULT
         srb_params.W_wrench = 100.0; // cost function weight for satisfying desired net wrench
         srb_params.W_u_minus_u0_norm = 1.0; // cost function weight for penalizing large GRFs that differ too much from the previous (helps with large internal forces that cancel)

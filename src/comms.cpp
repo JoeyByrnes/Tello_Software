@@ -40,6 +40,11 @@ VectorXd fdxH_L_vec = VectorXd(100);
 VectorXd fdyH_L_vec = VectorXd(100);
 VectorXd fdzH_L_vec = VectorXd(100);
 
+VectorXd grf_lf = VectorXd(100);
+VectorXd grf_rf = VectorXd(100);
+VectorXd grf_lb = VectorXd(100);
+VectorXd grf_rb = VectorXd(100);
+
 // Human_dyn_data_filter hdd_filter;
 
 
@@ -144,25 +149,48 @@ void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* rob
 			robot->_GRF_biases.left_front = front_force;
 			robot->_GRF_biases.left_back = back_force;
 			robot->_left_loadcells_calibrated = true;
+			cout << "Left GRF Offsets:  Front: " << front_force << "   Back: " << back_force << endl;
 		}
 		// write to left foot
-		robot->_GRFs.left_front = -(front_force - robot->_GRF_biases.left_front);
-		robot->_GRFs.left_back = -(back_force - robot->_GRF_biases.left_back);
+
+		grf_lf.tail(99) = grf_lf.head(99).eval();
+		grf_lf[0] = -(front_force - robot->_GRF_biases.left_front);
+
+		grf_lb.tail(99) = grf_lb.head(99).eval();
+		grf_lb[0] = -(back_force - robot->_GRF_biases.left_back);
+
+		float lf = dash_utils::smoothData(grf_lf, 0.2/*alpha*/);
+		float lb = dash_utils::smoothData(grf_lb, 0.2/*alpha*/);
+
+
+		robot->_GRFs.left_front = lf;
+		robot->_GRFs.left_back = lb;
 	}
 	if(id == 19){
 		if(!robot->_right_loadcells_calibrated){
 			robot->_GRF_biases.right_front = front_force;
 			robot->_GRF_biases.right_back = back_force;
 			robot->_right_loadcells_calibrated = true;
+			cout << "Right GRF Offsets:  Front: " << front_force << "   Back: " << back_force << endl;
 		}
 		// write to right foot
-		robot->_GRFs.right_front = -(front_force - robot->_GRF_biases.right_front);
-		robot->_GRFs.right_back = -(back_force - robot->_GRF_biases.right_back);
+
+		grf_rf.tail(99) = grf_rf.head(99).eval();
+		grf_rf[0] = -(front_force - robot->_GRF_biases.right_front);
+
+		grf_rb.tail(99) = grf_rb.head(99).eval();
+		grf_rb[0] = -(back_force - robot->_GRF_biases.right_back);
+
+		float rf = dash_utils::smoothData(grf_rf, 0.2/*alpha*/);
+		float rb = dash_utils::smoothData(grf_rb, 0.2/*alpha*/);
+
+		robot->_GRFs.right_front = rf;
+		robot->_GRFs.right_back = rb;
 	}
 }
 
-
-double joint_zeros[10] = {0,5580,11080,3551,9975,0,2616,4335,14975,13518};
+															//14975 //13518
+double joint_zeros[10] = {0,5580,11090,2633,9975,0,2616,4376,15047,13600};
 double joint_directions[10] =      { 1,-1,1,1,-1,    1,-1,-1,-1,1};
 double joint_measured_zero_offsets[10] = {0,0,-0.15708,0.382,0,0,0,0.15708,-0.382,0};
 void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot){
@@ -178,7 +206,7 @@ void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* r
 
 	robot->setJointEncoderPosition(joint_rad,static_cast<JointName>(id-20));
 	// robot->setJointEncoderVelocity(joint_rad_per_sec,static_cast<JointName>(id-20));
-	// if(id==28)
+	// if(id==22)
 	// {
 	// 	cout << "ID: " << ((int)id) << ",   joint_position-zero: " << joint_position << "             \r";
 	// }

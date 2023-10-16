@@ -259,7 +259,7 @@ void run_tello_pd()
 	if(h_offset < 0){
 		delta_task = 0.02;
 	}
-	Vector3d target(0, 0.01, -0.58+0.088);
+	Vector3d target(0, 0.00, -0.58+0.088);
 
 	double foot_len_half = 0.060;
 	double pitch_degrees = tello_ypr[1];
@@ -350,7 +350,7 @@ void run_tello_pd_DEMO()
 	if(h_offset < 0){
 		delta_task = 0.02;
 	}
-	Vector3d target(0, 0, -0.460);
+	Vector3d target(-0.005, 0, -0.460);
 
 	double foot_len_half = 0.060;
 	Vector3d target_front_left(foot_len_half+target(0), target(1), target(2));
@@ -476,9 +476,9 @@ void* Human_Playback_Hardware( void * arg )
     // std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-09-39-sway-slow/human_dyn_data.csv";
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-20-25-one-step-wide/human_dyn_data.csv";
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-17-59-single step/human_dyn_data.csv";
-	std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-18-38-two steps/human_dyn_data.csv";
+	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-18-38-two steps/human_dyn_data.csv";
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-12-35-slow-stepping/human_dyn_data.csv"; 
-	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-15-43-wide leg stepping/human_dyn_data.csv";
+	std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-15-43-wide leg stepping/human_dyn_data.csv";
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-11-43-sway-then-2-steps/human_dyn_data.csv";
 
     std::string logPath = removeTextAfterLastSlashHW(active_log);
@@ -585,6 +585,7 @@ void* Human_Playback_Hardware( void * arg )
 
 
 			// =======================================================================================================
+
 			if(time <= tello->controller->get_time())
 			{
 				// std::cout << "PLAYBACK TIME: " << time << std::endl;
@@ -785,7 +786,7 @@ void balance_pd(MatrixXd lfv_hip)
 
 	VectorXd kp_vec_joint_swing(10);
 	VectorXd kd_vec_joint_swing(10);
-	kp_vec_joint_swing << 8, 8, 80,80,80, 8, 8, 80,80,80;
+	kp_vec_joint_swing << 32, 64, 100,100,150, 32, 64, 100,100,150;
 	kd_vec_joint_swing <<  1, 1, 1,1,1,  1, 1, 1,1,1;
 
 	swing_pd_config.setJointKp(kp_vec_joint_swing);
@@ -806,7 +807,7 @@ void balance_pd(MatrixXd lfv_hip)
 	posture_pd_config.setTaskKa(0,0,0);
 	VectorXd kp_vec_joint_posture(10);
 	VectorXd kd_vec_joint_posture(10);
-	kp_vec_joint_posture << 32, 64, 0,0,0, 32, 64, 0,0,0;
+	kp_vec_joint_posture << 16, 16, 0,0,0, 16, 16, 0,0,0;
 	kd_vec_joint_posture <<  0, 0, 0,0,0,  0, 0, 0,0,0;
 	posture_pd_config.setJointKp(kp_vec_joint_posture);
 	posture_pd_config.setJointKd(kd_vec_joint_posture);
@@ -1034,8 +1035,8 @@ void run_balance_controller()
 	q.row(1) = joint_pos_vec.head(5);
 	VectorXd joint_vel_vec = tello->getJointVelocities();
 	MatrixXd qd = MatrixXd::Zero(2,5);
-	// qd.row(0) = joint_vel_vec.tail(5);
-	// qd.row(1) = joint_vel_vec.head(5);
+	qd.row(0) = joint_vel_vec.tail(5);
+	qd.row(1) = joint_vel_vec.head(5);
 	VectorXd gnd_contacts = VectorXd::Ones(4);
 
 	VectorXd tau = tello->controller->update(pc_curr, dpc_curr, EA_curr, dEA_curr,q ,qd ,t);
@@ -1144,10 +1145,10 @@ void run_balance_controller()
 	lfv_comm_out = dash_utils::flatten(tello->controller->get_lfv_comm_world());
 	lfdv_comm_out = dash_utils::flatten(tello->controller->get_lfdv_comm_world());
 
-	t_n_FSM_out = Eigen::Vector2d(tello->controller->get_time(),tello->controller->get_FSM());
+	t_n_FSM_out = Eigen::Vector2d(tello->controller->get_time(),tello->controller->get_FSM()*50.0);
 
-	meas_grf_out = VectorXd(4);
-	meas_grf_out << tello->_GRFs.left_front,tello->_GRFs.left_back,tello->_GRFs.right_front,tello->_GRFs.right_back;
+	meas_grf_out = VectorXd(6);
+	meas_grf_out << tello->_GRFs.left_front,tello->_GRFs.left_back,tello->_GRFs.right_front,tello->_GRFs.right_back,tello->_GRFs.left_front+tello->_GRFs.left_back,tello->_GRFs.right_front+tello->_GRFs.right_back;
 
 	hdd_out = tello->controller->get_human_dyn_data();
 	tpdd_out = tello->controller->get_traj_planner_dyn_data();
@@ -1445,18 +1446,18 @@ void init_6dof_test()
 	// // Option 2: Walking using LIP angular momentum regulation about contact point
 	// // user input (walking speed and step frequency)
 	// double des_walking_speed = 0;
-	// // double des_walking_step_period = 0.2;
+	// double des_walking_step_period = 0.2;
 	// // end user input
 	// std::string recording_file_name = "Walking";
 	// srb_params.planner_type = 1; 
-	// // srb_params.T = des_walking_step_period;
+	// srb_params.T = des_walking_step_period;
 	// VectorXd t_traj, v_traj;
 	// double t_beg_stepping_time, t_end_stepping_time;
 	// dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
 	// srb_params.vx_des_t = t_traj;
 	// srb_params.vx_des_vx = v_traj;
 	// srb_params.t_beg_stepping = 5;
-	// srb_params.t_end_stepping = 1e10;
+	// srb_params.t_end_stepping = 10;
 	// sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
 
 	printf("Telelop Selected\n\n");
@@ -1728,11 +1729,11 @@ int main(int argc, char *argv[]) {
 	printf("CAN Channels opened: %s \n",(channels).c_str());
 
 	// Path to the directory
-    fs::path directoryPath = "/media/tello/logging_usb/Tello_HW_Logs/";
+    fs::path directoryPath = "/media/tello/195D6F104DF71306/Tello_HW_Logs/";
 
     // Check if the directory exists
     if (fs::exists(directoryPath)) {
-        log_folder = createLogFolder("/media/tello/logging_usb/Tello_HW_Logs/");
+        log_folder = createLogFolder("/media/tello/195D6F104DF71306/Tello_HW_Logs/");
 		if(log_folder.empty())
 		{
 			log_folder = createLogFolder("/home/tello/tello_outputs/temp_logs");
@@ -1780,7 +1781,7 @@ int main(int argc, char *argv[]) {
 		std::cin >> choice;
 		switch(choice){
 			case 'w':
-				gain_adjustment+=4.0;
+				gain_adjustment+=20.0;
 				printf("New Adj. : %f \n", gain_adjustment);
 				break;
 			case 'q':
@@ -1803,8 +1804,8 @@ int main(int argc, char *argv[]) {
 
 				break;
 			case 'l':
-				balancing_motor_kd = 1000;
-				printf("\n Set Balanicng Motor Kd to 800. \n");
+				balancing_motor_kd = 400;
+				printf("\n Set Balanicng Motor Kd to 700. \n");
 				break;
 			case 'h':
 				now1 = std::chrono::system_clock::now();  // Get the current time

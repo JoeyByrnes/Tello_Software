@@ -1592,7 +1592,7 @@ void dash_kin::SRB_FK(MatrixXd& torso_vertices, MatrixXd& right_leg, MatrixXd& l
     // HTMcom2hl(1,3) = W/2.0;
     // HTMcom2hl(2,3) = -CoM2H_z_dist;
     HTMcom2hl.block(0,0,3,3) = Eigen::Matrix3d::Identity();
-    HTMcom2hl.block(0,3,3,1) = Eigen::Vector3d(0, W/2.0, -CoM2H_z_dist);
+    HTMcom2hl.block(0,3,3,1) = Eigen::Vector3d(CoM_X_Offset, W/2.0, -CoM2H_z_dist);
     HTMcom2hl.block(3,0,1,4) = Vector4d(0,0,0,1).transpose();
 
     Eigen::Matrix4d HTMwd2hl = HTMwd2com * HTMcom2hl;

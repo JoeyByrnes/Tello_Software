@@ -163,7 +163,7 @@ void* motion_capture( void * arg )
               
               CoM_rpy = quaternionToEuler(quaternion);
               CoM_quat << r->pose[3], r->pose[6], r->pose[4], r->pose[5];
-              CoM_pos = Vector3d(r->pose[2]/1000.0, r->pose[0]/1000.0, r->pose[1]/1000.0-0.58+0.0292);
+              CoM_pos = Vector3d(r->pose[2]/1000.0, r->pose[0]/1000.0, r->pose[1]/1000.0-0.58+0.0272); //0.0292
               if(!(r->pose[2] == 0.0 && r->pose[0] == 0.0 && r->pose[1] == 0.0))
               {
                 stream_started = true;

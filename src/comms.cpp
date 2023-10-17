@@ -14,6 +14,10 @@ extern int udp_data_ready;
 extern char udp_control_packet[UDP_MAXLINE];
 
 extern pthread_mutex_t mutex_CAN_recv;
+extern pthread_mutex_t mutex_UDP_recv;
+
+extern HW_CTRL_Data hw_control_data;
+
 extern int can_data_ready_to_save;
 
 extern vn::math::vec3f tello_ypr;
@@ -28,7 +32,9 @@ bool yaw_offset_recorded = false;
 long long print_index = 0;
 
 extern simConfig sim_conf;
-double robot_init_foot_width=0.175;
+extern double robot_init_foot_width_HW;
+double robot_init_foot_width = 0.175;
+extern bool use_current_foot_width;
 
 extern double xH_Commanded;
 
@@ -300,6 +306,16 @@ int dyn_data_idx = 0;
 
 extern double dtime;
 
+// Function to copy button data from a uint8_t buffer back into the struct
+void DeserializeVizControlData(const uint8_t* buffer, size_t bufferSize, HW_CTRL_Data& data) {
+    if (bufferSize < sizeof(HW_CTRL_Data)) {
+        // Handle buffer size error
+        return;
+    }
+
+    memcpy(&data, buffer, sizeof(HW_CTRL_Data));
+}
+
 void* rx_UDP( void * arg ){
 
 	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
@@ -394,176 +410,205 @@ void* rx_UDP( void * arg ){
 		socklen_t * len1;
 		// dash_utils::print_timer();
 		// dash_utils::start_timer();
+		struct sockaddr_in sender_addr;  // Temporary variable to capture sender's address
+		socklen_t sender_addr_len = sizeof(sender_addr);
 
 		n = recvfrom(sockfd, (char *)rx_buffer, 100,
-			MSG_WAITALL, ( struct sockaddr *) &cliaddr,
-			len1 );
-		uint8_t checksum = 0;
-		for(int i=0;i<n-1;i++){
-			checksum += rx_buffer[i]&0xFF;
-		}
-		// if(checksum == rx_buffer[n-1])
-		// {
-			Human_dyn_data human_dyn_data;
-		// }
-		
-		if(tello->controller->is_human_ctrl_enabled())
-		{
-			dash_utils::unpack_data_from_hmi(human_dyn_data,(uint8_t*)rx_buffer);
+			MSG_WAITALL, (struct sockaddr*)&sender_addr, &sender_addr_len);
+
+
+		if (strcmp(inet_ntoa(sender_addr.sin_addr), HMI_IP_ADDRESS) == 0) {
+            
+			uint8_t checksum = 0;
+			for(int i=0;i<n-1;i++){
+				checksum += rx_buffer[i]&0xFF;
+			}
+			// if(checksum == rx_buffer[n-1])
+			// {
+				Human_dyn_data human_dyn_data;
+			// }
 			
+			if(tello->controller->is_human_ctrl_enabled())
+			{
+				dash_utils::unpack_data_from_hmi(human_dyn_data,(uint8_t*)rx_buffer);
+				
+			}
+			else
+			{
+				Human_params hp;
+				dash_init::Human_Init(hp,human_dyn_data);
+
+				// code for initializing foot width
+				Human_dyn_data hdd;
+				dash_utils::unpack_data_from_hmi(hdd,(uint8_t*)rx_buffer);
+
+				double hR = tello->controller->get_SRB_params().hLIP;
+				double hH = hp.hLIP; 
+				double fyH_home = hp.fyH_home;
+
+				double fyH_R = hdd.fyH_R;
+				double fyH_L = hdd.fyH_L;
+
+				double joystick_base_separation = 1.525;
+				double foot_center_to_joystick = FOOT_2_JOYSTICK;
+
+				// double pyH_lim_lb = -1 * human_nom_ft_width + (fyH_R - fyH_home);
+				// double pyH_lim_ub = human_nom_ft_width - (fyH_L - fyH_home);
+				double human_foot_width = joystick_base_separation - 2*foot_center_to_joystick - fyH_R - fyH_L;
+				if(use_current_foot_width)
+				{
+					robot_init_foot_width_HW = human_foot_width*(hR/hH);
+					use_current_foot_width = false;
+				}
+
+				robot_init_foot_width = human_foot_width*(hR/hH);
+				// cout << "Robot Width: " << robot_init_foot_width << "    Human Width: " << human_foot_width << "    R: "<< fyH_R << "    L: "<< fyH_L << endl;
+			}
+			
+			// =======================================================================================================
+					
+			xHvec.tail(99) = xHvec.head(99).eval();
+			xHvec[0] = human_dyn_data.xH;
+
+			dxHvec.tail(99) = dxHvec.head(99).eval();
+			dxHvec[0] = human_dyn_data.dxH;
+
+			pxHvec.tail(99) = pxHvec.head(99).eval();
+			pxHvec[0] = human_dyn_data.pxH;
+
+			yHvec.tail(99) = yHvec.head(99).eval();
+			yHvec[0] = human_dyn_data.yH;
+
+			dyHvec.tail(99) = dyHvec.head(99).eval();
+			dyHvec[0] = human_dyn_data.dyH;
+
+			pyHvec.tail(99) = pyHvec.head(99).eval();
+			pyHvec[0] = human_dyn_data.pyH;
+
+			fxH_Rvec.tail(99) = fxH_Rvec.head(99).eval();
+			fxH_Rvec[0] = human_dyn_data.fxH_R;
+
+			fyH_Rvec.tail(99) = fyH_Rvec.head(99).eval();
+			fyH_Rvec[0] = human_dyn_data.fyH_R;
+
+			fzH_Rvec.tail(99) = fzH_Rvec.head(99).eval();
+			fzH_Rvec[0] = human_dyn_data.fzH_R;
+
+			fxH_Lvec.tail(99) = fxH_Lvec.head(99).eval();
+			fxH_Lvec[0] = human_dyn_data.fxH_L;
+
+			fyH_Lvec.tail(99) = fyH_Lvec.head(99).eval();
+			fyH_Lvec[0] = human_dyn_data.fyH_L;
+
+			fzH_Lvec.tail(99) = fzH_Lvec.head(99).eval();
+			fzH_Lvec[0] = human_dyn_data.fzH_L;
+
+			fdxH_Rvec.tail(99) = fdxH_Rvec.head(99).eval();
+			fdxH_Rvec[0] = human_dyn_data.fdxH_R;
+
+			fdyH_Rvec.tail(99) = fdyH_Rvec.head(99).eval();
+			fdyH_Rvec[0] = human_dyn_data.fdyH_R;
+
+			fdzH_Rvec.tail(99) = fdzH_Rvec.head(99).eval();
+			fdzH_Rvec[0] = human_dyn_data.fdzH_R;
+
+			fdxH_Lvec.tail(99) = fdxH_Lvec.head(99).eval();
+			fdxH_Lvec[0] = human_dyn_data.fdxH_L;
+
+			fdyH_Lvec.tail(99) = fdyH_Lvec.head(99).eval();
+			fdyH_Lvec[0] = human_dyn_data.fdyH_L;
+
+			fdzH_Lvec.tail(99) = fdzH_Lvec.head(99).eval();
+			fdzH_Lvec[0] = human_dyn_data.fdzH_L;
+
+			FxH_hmi_vec.tail(99) = FxH_hmi_vec.head(99).eval();
+			FxH_hmi_vec[0] = human_dyn_data.FxH_hmi;
+
+			FyH_hmi_vec.tail(99) = FyH_hmi_vec.head(99).eval();
+			FyH_hmi_vec[0] = human_dyn_data.FyH_hmi;
+
+			FxH_spring_vec.tail(99) = FxH_spring_vec.head(99).eval();
+			FxH_spring_vec[0] = human_dyn_data.FxH_spring;
+
+			xHval = dash_utils::smoothData(xHvec, 0.1/*alpha*/);
+			dxHval = dash_utils::smoothData(dxHvec, 2.0/*alpha*/);
+			pxHval = dash_utils::smoothData(pxHvec, 0.1/*alpha*/);
+			yHval = dash_utils::smoothData(yHvec, 0.1/*alpha*/);
+			dyHval = dash_utils::smoothData(dyHvec, 2.0/*alpha*/);
+			pyHval = dash_utils::smoothData(pyHvec, 0.1/*alpha*/);
+			fxH_Rval = dash_utils::smoothData(fxH_Rvec, 0.2/*alpha*/);
+			fyH_Rval = dash_utils::smoothData(fyH_Rvec, 0.2/*alpha*/);
+			fzH_Rval = dash_utils::smoothData(fzH_Rvec, 0.2/*alpha*/);
+			fxH_Lval = dash_utils::smoothData(fxH_Lvec, 0.2/*alpha*/);
+			fyH_Lval = dash_utils::smoothData(fyH_Lvec, 0.2/*alpha*/);
+			fzH_Lval = dash_utils::smoothData(fzH_Lvec, 0.2/*alpha*/);
+			fdxH_Rval = dash_utils::smoothData(fdxH_Rvec, 4.0/*alpha*/);
+			fdyH_Rval = dash_utils::smoothData(fdyH_Rvec, 4.0/*alpha*/);
+			fdzH_Rval = dash_utils::smoothData(fdzH_Rvec, 4.0/*alpha*/);
+			fdxH_Lval = dash_utils::smoothData(fdxH_Lvec, 4.0/*alpha*/);
+			fdyH_Lval = dash_utils::smoothData(fdyH_Lvec, 4.0/*alpha*/);
+			fdzH_Lval = dash_utils::smoothData(fdzH_Lvec, 4.0/*alpha*/);
+			FxH_hmi_val = dash_utils::smoothData(FxH_hmi_vec, 0.1/*alpha*/);
+			FyH_hmi_val = dash_utils::smoothData(FyH_hmi_vec, 0.1/*alpha*/);
+			FxH_spring_val = dash_utils::smoothData(FxH_spring_vec, 0.1/*alpha*/);
+
+			human_dyn_data.xH = xHval;
+			human_dyn_data.dxH = dxHval;
+			human_dyn_data.pxH = pxHval;
+			human_dyn_data.yH = yHval;
+			human_dyn_data.dyH = dyHval;
+			human_dyn_data.pyH = pyHval;
+			human_dyn_data.fxH_R = fxH_Rval;
+			human_dyn_data.fyH_R = fyH_Rval;
+			human_dyn_data.fzH_R = fzH_Rval;
+			human_dyn_data.fxH_L = fxH_Lval;
+			human_dyn_data.fyH_L = fyH_Lval;
+			human_dyn_data.fzH_L = fzH_Lval;
+			human_dyn_data.fdxH_R = fdxH_Rval;
+			human_dyn_data.fdyH_R = fdyH_Rval;
+			human_dyn_data.fdzH_R = fdzH_Rval;
+			human_dyn_data.fdxH_L = fdxH_Lval;
+			human_dyn_data.fdyH_L = fdyH_Lval;
+			human_dyn_data.fdzH_L = fdzH_Lval;
+			human_dyn_data.FxH_hmi = FxH_hmi_val;
+			human_dyn_data.FyH_hmi = FyH_hmi_val;
+			human_dyn_data.FxH_spring = FxH_spring_val;
+
+			tello->controller->updateStepZHistoryL(fzH_Lval);
+			tello->controller->updateStepZHistoryR(fzH_Rval);
+			tello->controller->updateStepTimeHistory(dtime);
+
+			Traj_planner_dyn_data tpdds = tello->controller->get_traj_planner_dyn_data();
+			tpdds.step_z_history_L = tello->controller->getStepZHistoryL();
+			tpdds.step_z_history_R = tello->controller->getStepZHistoryR();
+			if(tpdds.human_FSM != 0)
+				tpdds.curr_SSP_sample_count = tpdds.curr_SSP_sample_count + 1;
+			tello->controller->set_traj_planner_step_data(tpdds);
+			
+			// =======================================================================================================
+
+			if(!(sim_conf.en_playback_mode))
+			{
+				tello->controller->set_human_dyn_data_without_forces(human_dyn_data);
+			}
 		}
-		else
-		{
-			Human_params hp;
-			dash_init::Human_Init(hp,human_dyn_data);
-
-			// code for initializing foot width
-			Human_dyn_data hdd;
-			dash_utils::unpack_data_from_hmi(hdd,(uint8_t*)rx_buffer);
-
-			double hR = tello->controller->get_SRB_params().hLIP;
-			double hH = hp.hLIP; 
-			double fyH_home = hp.fyH_home;
-
-			double fyH_R = hdd.fyH_R;
-			double fyH_L = hdd.fyH_L;
-
-			double joystick_base_separation = 1.525;
-    		double foot_center_to_joystick = FOOT_2_JOYSTICK;
-
-			// double pyH_lim_lb = -1 * human_nom_ft_width + (fyH_R - fyH_home);
-			// double pyH_lim_ub = human_nom_ft_width - (fyH_L - fyH_home);
-			double human_foot_width = joystick_base_separation - 2*foot_center_to_joystick - fyH_R - fyH_L;
-			robot_init_foot_width = human_foot_width*(hR/hH);
-			// cout << "Robot Width: " << robot_init_foot_width << "    Human Width: " << human_foot_width << "    R: "<< fyH_R << "    L: "<< fyH_L << endl;
-		}
-		
-		// =======================================================================================================
-                
-		xHvec.tail(99) = xHvec.head(99).eval();
-		xHvec[0] = human_dyn_data.xH;
-
-		dxHvec.tail(99) = dxHvec.head(99).eval();
-		dxHvec[0] = human_dyn_data.dxH;
-
-		pxHvec.tail(99) = pxHvec.head(99).eval();
-		pxHvec[0] = human_dyn_data.pxH;
-
-		yHvec.tail(99) = yHvec.head(99).eval();
-		yHvec[0] = human_dyn_data.yH;
-
-		dyHvec.tail(99) = dyHvec.head(99).eval();
-		dyHvec[0] = human_dyn_data.dyH;
-
-		pyHvec.tail(99) = pyHvec.head(99).eval();
-		pyHvec[0] = human_dyn_data.pyH;
-
-		fxH_Rvec.tail(99) = fxH_Rvec.head(99).eval();
-		fxH_Rvec[0] = human_dyn_data.fxH_R;
-
-		fyH_Rvec.tail(99) = fyH_Rvec.head(99).eval();
-		fyH_Rvec[0] = human_dyn_data.fyH_R;
-
-		fzH_Rvec.tail(99) = fzH_Rvec.head(99).eval();
-		fzH_Rvec[0] = human_dyn_data.fzH_R;
-
-		fxH_Lvec.tail(99) = fxH_Lvec.head(99).eval();
-		fxH_Lvec[0] = human_dyn_data.fxH_L;
-
-		fyH_Lvec.tail(99) = fyH_Lvec.head(99).eval();
-		fyH_Lvec[0] = human_dyn_data.fyH_L;
-
-		fzH_Lvec.tail(99) = fzH_Lvec.head(99).eval();
-		fzH_Lvec[0] = human_dyn_data.fzH_L;
-
-		fdxH_Rvec.tail(99) = fdxH_Rvec.head(99).eval();
-		fdxH_Rvec[0] = human_dyn_data.fdxH_R;
-
-		fdyH_Rvec.tail(99) = fdyH_Rvec.head(99).eval();
-		fdyH_Rvec[0] = human_dyn_data.fdyH_R;
-
-		fdzH_Rvec.tail(99) = fdzH_Rvec.head(99).eval();
-		fdzH_Rvec[0] = human_dyn_data.fdzH_R;
-
-		fdxH_Lvec.tail(99) = fdxH_Lvec.head(99).eval();
-		fdxH_Lvec[0] = human_dyn_data.fdxH_L;
-
-		fdyH_Lvec.tail(99) = fdyH_Lvec.head(99).eval();
-		fdyH_Lvec[0] = human_dyn_data.fdyH_L;
-
-		fdzH_Lvec.tail(99) = fdzH_Lvec.head(99).eval();
-		fdzH_Lvec[0] = human_dyn_data.fdzH_L;
-
-		FxH_hmi_vec.tail(99) = FxH_hmi_vec.head(99).eval();
-		FxH_hmi_vec[0] = human_dyn_data.FxH_hmi;
-
-		FyH_hmi_vec.tail(99) = FyH_hmi_vec.head(99).eval();
-		FyH_hmi_vec[0] = human_dyn_data.FyH_hmi;
-
-		FxH_spring_vec.tail(99) = FxH_spring_vec.head(99).eval();
-		FxH_spring_vec[0] = human_dyn_data.FxH_spring;
-
-		xHval = dash_utils::smoothData(xHvec, 0.1/*alpha*/);
-		dxHval = dash_utils::smoothData(dxHvec, 2.0/*alpha*/);
-		pxHval = dash_utils::smoothData(pxHvec, 0.1/*alpha*/);
-		yHval = dash_utils::smoothData(yHvec, 0.1/*alpha*/);
-		dyHval = dash_utils::smoothData(dyHvec, 2.0/*alpha*/);
-		pyHval = dash_utils::smoothData(pyHvec, 0.1/*alpha*/);
-		fxH_Rval = dash_utils::smoothData(fxH_Rvec, 0.2/*alpha*/);
-		fyH_Rval = dash_utils::smoothData(fyH_Rvec, 0.2/*alpha*/);
-		fzH_Rval = dash_utils::smoothData(fzH_Rvec, 0.2/*alpha*/);
-		fxH_Lval = dash_utils::smoothData(fxH_Lvec, 0.2/*alpha*/);
-		fyH_Lval = dash_utils::smoothData(fyH_Lvec, 0.2/*alpha*/);
-		fzH_Lval = dash_utils::smoothData(fzH_Lvec, 0.2/*alpha*/);
-		fdxH_Rval = dash_utils::smoothData(fdxH_Rvec, 4.0/*alpha*/);
-		fdyH_Rval = dash_utils::smoothData(fdyH_Rvec, 4.0/*alpha*/);
-		fdzH_Rval = dash_utils::smoothData(fdzH_Rvec, 4.0/*alpha*/);
-		fdxH_Lval = dash_utils::smoothData(fdxH_Lvec, 4.0/*alpha*/);
-		fdyH_Lval = dash_utils::smoothData(fdyH_Lvec, 4.0/*alpha*/);
-		fdzH_Lval = dash_utils::smoothData(fdzH_Lvec, 4.0/*alpha*/);
-		FxH_hmi_val = dash_utils::smoothData(FxH_hmi_vec, 0.1/*alpha*/);
-		FyH_hmi_val = dash_utils::smoothData(FyH_hmi_vec, 0.1/*alpha*/);
-		FxH_spring_val = dash_utils::smoothData(FxH_spring_vec, 0.1/*alpha*/);
-
-		human_dyn_data.xH = xHval;
-		human_dyn_data.dxH = dxHval;
-		human_dyn_data.pxH = pxHval;
-		human_dyn_data.yH = yHval;
-		human_dyn_data.dyH = dyHval;
-		human_dyn_data.pyH = pyHval;
-		human_dyn_data.fxH_R = fxH_Rval;
-		human_dyn_data.fyH_R = fyH_Rval;
-		human_dyn_data.fzH_R = fzH_Rval;
-		human_dyn_data.fxH_L = fxH_Lval;
-		human_dyn_data.fyH_L = fyH_Lval;
-		human_dyn_data.fzH_L = fzH_Lval;
-		human_dyn_data.fdxH_R = fdxH_Rval;
-		human_dyn_data.fdyH_R = fdyH_Rval;
-		human_dyn_data.fdzH_R = fdzH_Rval;
-		human_dyn_data.fdxH_L = fdxH_Lval;
-		human_dyn_data.fdyH_L = fdyH_Lval;
-		human_dyn_data.fdzH_L = fdzH_Lval;
-		human_dyn_data.FxH_hmi = FxH_hmi_val;
-		human_dyn_data.FyH_hmi = FyH_hmi_val;
-		human_dyn_data.FxH_spring = FxH_spring_val;
-
-		tello->controller->updateStepZHistoryL(fzH_Lval);
-		tello->controller->updateStepZHistoryR(fzH_Rval);
-		tello->controller->updateStepTimeHistory(dtime);
-
-		Traj_planner_dyn_data tpdds = tello->controller->get_traj_planner_dyn_data();
-		tpdds.step_z_history_L = tello->controller->getStepZHistoryL();
-		tpdds.step_z_history_R = tello->controller->getStepZHistoryR();
-		if(tpdds.human_FSM != 0)
-			tpdds.curr_SSP_sample_count = tpdds.curr_SSP_sample_count + 1;
-		tello->controller->set_traj_planner_step_data(tpdds);
-		
-		// =======================================================================================================
-
-		if(!(sim_conf.en_playback_mode))
-		{
-			tello->controller->set_human_dyn_data_without_forces(human_dyn_data);
-		}
+		else if (strcmp(inet_ntoa(sender_addr.sin_addr), VIZ_IP_ADDRESS) == 0) {
+            // Call the deserialize function on the data
+            pthread_mutex_lock(&mutex_UDP_recv);
+            DeserializeVizControlData((const uint8_t*)rx_buffer, n, hw_control_data);
+			pthread_mutex_unlock(&mutex_UDP_recv);
+			// cout << "Client: " << inet_ntoa(sender_addr.sin_addr) << "      \r";
+			// cout 
+			// 	<< "  tare: " << hw_ctrl_data.tare_hmi 
+			// 	<< "  startL: " << hw_ctrl_data.start_legs 
+			// 	<< "  balance: " << hw_ctrl_data.balance 
+			// 	<< "  teleop: " << hw_ctrl_data.enable_teleop 
+			// 	<< "  e-stop: " << hw_ctrl_data.emergency_stop 
+			// 	<< "  hmi gain: " << hw_ctrl_data.hmi_gain 
+			// 	<< "                    \r";
+			// cout.flush();
+            // ... process the button data from VIZ ...
+        }
 		//dash_utils::print_human_dyn_data(human_dyn_data);
 
 		// udp_data_ready = 0;

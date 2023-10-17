@@ -74,6 +74,17 @@ extern pthread_mutex_t sim_step_mutex;
 extern pthread_mutex_t tello_ctrl_mutex;
 extern pthread_mutex_t tau_share_mutex;
 
+extern HW_CTRL_Data hw_control_data;
+
+void SerializeVizControlData(const HW_CTRL_Data& data, uint8_t* buffer, size_t bufferSize) {
+    if (bufferSize < sizeof(HW_CTRL_Data)) {
+        // Handle buffer size error
+        return;
+    }
+
+    memcpy(buffer, &data, sizeof(HW_CTRL_Data));
+}
+
 void* visualize_robot( void * arg )
 {
     pause_sim = false;
@@ -303,11 +314,12 @@ void* visualization_render_thread( void * arg )
 		perror("socket creation failed");
 		exit(EXIT_FAILURE);
 	}
+    cout << "UDP TRANSMIT SOCKET CREATED" << endl;
 	memset(&servaddr_tx, 0, sizeof(servaddr_tx));
 	// Filling server information
 	servaddr_tx.sin_family = AF_INET;
-	servaddr_tx.sin_port = htons(UDP_TRANSMIT_PORT);
-	servaddr_tx.sin_addr.s_addr = inet_addr(HMI_IP_ADDRESS);
+	servaddr_tx.sin_port = htons(UDP_RECEIVE_PORT);
+	servaddr_tx.sin_addr.s_addr = inet_addr(TELLO_IP_ADDRESS);
 	// ens UDP setup here: =============================================================================
 
     // Plotting:
@@ -386,6 +398,14 @@ void* visualization_render_thread( void * arg )
     {
         handle_start_of_periodic_task(next);
 		// BEGIN LOOP CODE FOR MUJOCO ===================================================================
+
+        hw_control_data.tare_hmi = false;
+        hw_control_data.start_legs = false;
+        hw_control_data.balance = false;
+        hw_control_data.emergency_stop = false;
+        hw_control_data.enable_teleop = false;
+        hw_control_data.start_dcm_tracking = false;
+        // hw_control_data.set_full_joint_kp = false;
         
         // set local tello object here:
         pthread_mutex_lock(&tello_ctrl_mutex);
@@ -393,7 +413,7 @@ void* visualization_render_thread( void * arg )
         pthread_mutex_unlock(&tello_ctrl_mutex);
 
 
-        std::string text = "\tTello Realtime Visualization of Hardware    |    Time: " + std::to_string(d->time)+ "\t";
+        std::string text = "Tello Realtime Visualization of Hardware";
         glfwSetWindowTitle(window, text.c_str());
 
         // get framebuffer viewport
@@ -463,14 +483,14 @@ void* visualization_render_thread( void * arg )
         if (ImGui::BeginMenu(" " ICON_FA_BARS " "))
         {
             ImGui::Separator();
-            ImGui::Checkbox(" " ICON_FA_FILE_CSV "  Enable Data Logging   ", &(sim_conf.en_data_logging));
+            ImGui::Checkbox(" " ICON_FA_FILE_CSV "  Enable Data Logging   ", &(hw_control_data.enable_datalogging));
             ImGui::Separator();
-            ImGui::Checkbox(" " ICON_FA_PLAY "  Enable Playback Mode   ", &(sim_conf.en_playback_mode));
+            // ImGui::Checkbox(" " ICON_FA_PLAY "  Enable Playback Mode   ", &(sim_conf.en_playback_mode));
+            // ImGui::Separator();
+            ImGui::Checkbox(" " ICON_FA_DICE_TWO "  Enable V2 Controller   ", &(hw_control_data.enable_v2_controller));
+            en_v2_ctrl = hw_control_data.enable_v2_controller;
             ImGui::Separator();
-            ImGui::Checkbox(" " ICON_FA_DICE_TWO "  Enable V2 Controller   ", &(sim_conf.en_v2_controller));
-            en_v2_ctrl = sim_conf.en_v2_controller;
-            ImGui::Separator();
-            ImGui::Checkbox(" " ICON_FA_USER_ALT_SLASH "  Boot to Auto Mode (Restart Required)   ", &(sim_conf.en_autonomous_mode_on_boot));
+            ImGui::Checkbox(" " ICON_FA_USER_ALT_SLASH "  Boot to Auto Mode (Restart Required)   ", &(hw_control_data.auto_mode));
             ImGui::Separator();
             ImGui::PopStyleColor();
             ImGui::Separator();
@@ -482,14 +502,14 @@ void* visualization_render_thread( void * arg )
             // ImGui::Checkbox(human_label.c_str(), &(sim_conf.en_human_control));
             // tello->controller->enable_human_dyn_data = sim_conf.en_human_control;
             // ImGui::Separator();  
-            ImGui::Checkbox(" " ICON_FA_SIGN_IN_ALT "  Enable X Haptic Force   ", &(sim_conf.en_x_haptic_force));
+            ImGui::Checkbox(" " ICON_FA_SIGN_IN_ALT "  Enable X Haptic Force   ", &(hw_control_data.enable_x_force));
             ImGui::Separator();
-            ImGui::Checkbox(" " ICON_FA_ARROWS_ALT_H "  Enable Force Feedback   ", &sim_conf.en_force_feedback);      // Edit bools storing our window open/close state
+            ImGui::Checkbox(" " ICON_FA_ARROWS_ALT_H "  Enable Force Feedback   ", &hw_control_data.enable_force_feedback);      // Edit bools storing our window open/close state
             ImGui::Separator();//init_foot_width
-            ImGui::Checkbox(" " ICON_FA_HARD_HAT "  Enable Safety Monitor   ", &sim_conf.en_safety_monitor);      // Edit bools storing our window open/close state
+            ImGui::Checkbox(" " ICON_FA_HARD_HAT "  Enable Safety Monitor   ", &hw_control_data.enable_safety_monitor);      // Edit bools storing our window open/close state
             ImGui::Separator();
-            ImGui::Checkbox(" " ICON_FA_GAMEPAD "  Enable PS4 Controller   ", &sim_conf.en_ps4_controller);      // Edit bools storing our window open/close state
-            ImGui::Separator();
+            // ImGui::Checkbox(" " ICON_FA_GAMEPAD "  Enable PS4 Controller   ", &sim_conf.en_ps4_controller);      // Edit bools storing our window open/close state
+            // ImGui::Separator();
             ImGui::PopStyleColor();
             ImGui::Separator();
             ImGui::PushStyleColor(ImGuiCol_Separator,grey5);  
@@ -710,28 +730,16 @@ void* visualization_render_thread( void * arg )
             // ImGui::Separator();
             // ImGui::Checkbox(" Real-Time   ", &realtime_enabled);
             if(sim_conf.en_full_hmi_controls || sim_conf.en_playback_mode){
-
-                std::string human_label;
-                if(sim_conf.en_playback_mode) human_label = "  Enable HMI Playback   ";
-                else human_label = "  Enable HMI Communication   ";
-                ImGui::Checkbox(human_label.c_str(), &sim_conf.en_human_control);
                 
 
                 if(!(sim_conf.en_playback_mode))
                 {
-                    ImGui::Separator();//init_foot_width
                     ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
                     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
                     ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
-                    if (ImGui::Button(" " ICON_FA_WEIGHT " Tare CoM  ")) {
-                        zero_human = true;
-                        human_x_zero = tello->controller->get_human_dyn_data().xH;
+                    if (ImGui::Button(" " ICON_FA_WEIGHT " Tare HMI  ")) {
+                        hw_control_data.tare_hmi = true;
                     }
-                    else{
-                        zero_human = false;
-                    }VectorXd x0;
-MatrixXd q0;
-std::string recording_file_name;
                     ImGui::PopStyleColor(3);
                 }
                 
@@ -739,39 +747,82 @@ std::string recording_file_name;
                 ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
-                if (ImGui::Button(" " ICON_FA_RULER " Init Foot Width  ")) {
-                    init_foot_width = true;
-                    MatrixXd new_lfv0(4,3);
-                    MatrixXd new_q0(2,5);
-                    dash_init::init_foot_width(robot_init_foot_width,telloLocal->controller->get_human_params(),
-                                                telloLocal->controller->get_SRB_params(),new_lfv0,q0);
-                    Traj_planner_dyn_data tpdd_foot_z = tello->controller->get_traj_planner_dyn_data();
-                    tpdd_foot_z.step_z_offset_R = tello->controller->get_human_dyn_data().fzH_R;
-                    tpdd_foot_z.step_z_offset_L = tello->controller->get_human_dyn_data().fzH_L;
-                    tello->controller->set_traj_planner_human_foot_z_offsets(tpdd_foot_z);
-                    tello->controller->set_lfv0(new_lfv0);
-                    tello->controller->set_q0(q0);
-                    // initializeLegs();
-                    if(pause_sim)
-                        mj_forward(m,d);
+                if (ImGui::Button(" " ICON_FA_PLAY " Start Legs  " )) {
+                    hw_control_data.start_legs = true;
                 }
-                else{
-                    init_foot_width = false;
-                }
-                
                 ImGui::PopStyleColor(3);
+
+                ImGui::Separator();//init_foot_width
+                ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
+                if (ImGui::Button(" " ICON_FA_ARROW_ALT_CIRCLE_UP " Full Kp  " )) {
+                    hw_control_data.set_full_joint_kp = true;
+                }
+                ImGui::PopStyleColor(3);
+
+
+                ImGui::Separator();//init_foot_width
+                ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
+                if (ImGui::Button(" " ICON_FA_MALE " Balance  ")) {
+                    hw_control_data.balance = true;
+                }
+                ImGui::PopStyleColor(3);
+
+                ImGui::Separator();//init_foot_width
+                ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
+                if (ImGui::Button(" " ICON_FA_ANGLE_RIGHT " Track DCM  " )) {
+                    hw_control_data.start_dcm_tracking = true;
+                }
+                ImGui::PopStyleColor(3);
+
+                ImGui::Separator();//init_foot_width
+                
+                if (!hw_control_data.enable_teleop)
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
+                    if (ImGui::Button(" " ICON_FA_PEOPLE_ARROWS " Teleop  ")) {
+                        hw_control_data.enable_teleop = true;
+                    }
+                }
+                else
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.45f, 0.0f, 0.45f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.65f, 0.0f, 0.65f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.25f, 0.0f, 0.25f, 1.0f));
+                    if (ImGui::Button(" " ICON_FA_TIMES "  Teleop  ")) {
+                        hw_control_data.enable_teleop = false;
+                    }
+                }
+
+                ImGui::PopStyleColor(3);
+
                 ImGui::Separator();
                 if(!(sim_conf.en_playback_mode))
                 {
-                    ImGui::SetNextItemWidth(250.0f*screenScale);
+                    ImGui::SetNextItemWidth(200.0f*screenScale);
                     ImGui::PushStyleColor(ImGuiCol_FrameBg,grey2);
                     ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,grey2);
                     ImGui::PushStyleColor(ImGuiCol_SliderGrab,black);
                     ImGui::PushStyleColor(ImGuiCol_SliderGrabActive,black);
-                    ImGui::SliderFloat(" HMI Gain", &master_gain, 0.0f, 1.0f);
+                    ImGui::SliderFloat(" HMI Gain", &hw_control_data.hmi_gain, 0.0f, 1.0f);
                     ImGui::Separator();
                     ImGui::PopStyleColor(4);
                 }
+                ImGui::PushStyleColor(ImGuiCol_Button, red);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, redHover);
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, redActive);
+                if (ImGui::Button("  " ICON_FA_TIMES_CIRCLE " E-STOP   ")) {
+                    hw_control_data.emergency_stop = true;
+                }
+                ImGui::PopStyleColor(3);
+                ImGui::Separator();//init_foot_width
             }
             else{
                 ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
@@ -1036,13 +1087,16 @@ std::string recording_file_name;
         // last_Yf = FyH_hmi_out;
         // last_springf = FxH_spring_out;
 
-        
+        uint8_t tx_buffer[sizeof(HW_CTRL_Data)];
+        SerializeVizControlData(hw_control_data, tx_buffer, sizeof(tx_buffer));
+        ssize_t send_result = sendto(sockfd_tx, tx_buffer, sizeof(tx_buffer), 0, (struct sockaddr *)&servaddr_tx, sizeof(servaddr_tx));
+        // cout << "Sent " << (int)send_result << " bytes over UDP" << endl;
 
         // set tello data here:
-        pthread_mutex_lock(&tello_ctrl_mutex);
-        tello->controller->set_hmi_forces(hdd);
-        tello->controller->enable_human_dyn_data = sim_conf.en_human_control;
-        pthread_mutex_unlock(&tello_ctrl_mutex);
+        // pthread_mutex_lock(&tello_ctrl_mutex);
+        // tello->controller->set_hmi_forces(hdd);
+        // tello->controller->enable_human_dyn_data = sim_conf.en_human_control;
+        // pthread_mutex_unlock(&tello_ctrl_mutex);
         
 		// END LOOP CODE FOR MUJOCO =====================================================================
 		handle_end_of_periodic_task(next,period);

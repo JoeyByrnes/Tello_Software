@@ -3,27 +3,27 @@
         {
             "Height": 1.15,
             "Weight": 75,
-            "name": "Joey",
+            "name": "JB",
             "srb_file": "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user-pd-configs/srb_pd_config_joey.json"
         },
         {
             "Height": 1.15,
             "Weight": 75,
-            "name": "Joey (auto)",
+            "name": "JB (A)",
             "srb_file": "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user-pd-configs/srb_pd_config_joey_autonomous.json"
         },
         {
             "Height": 1.2,
             "Weight": 75,
-            "name": "Guillermo",
+            "name": "GC",
             "srb_file": "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user-pd-configs/srb_pd_config_guillermo.json"
         },
         {
             "Height": 1.2,
             "Weight": 75,
-            "name": "Guillermo (auto)",
+            "name": "GC (A)",
             "srb_file": "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user-pd-configs/srb_pd_config_guillermo_autonomous.json"
         }
     ],
-    "active_user": "Joey"
+    "active_user": "JB"
 }

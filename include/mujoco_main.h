@@ -127,6 +127,27 @@ struct VisualizationData {
     float GRFs[3];
 };
 
+// Define the packed struct for button data
+#pragma pack(1)
+struct HW_CTRL_Data {
+    bool tare_hmi;
+    bool start_legs;
+    bool balance;
+    bool enable_teleop;
+    float hmi_gain;
+    bool emergency_stop;
+    bool enable_datalogging;
+    bool enable_v2_controller;
+    bool auto_mode;
+    bool enable_x_force;
+    bool enable_force_feedback;
+    bool enable_safety_monitor;
+    float human_x_zero;
+    bool set_full_joint_kp;
+    bool start_dcm_tracking;
+};
+#pragma pack()
+
 
 struct userProfile {
     std::string name;

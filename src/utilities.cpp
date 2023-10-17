@@ -175,3 +175,4 @@ Vector3d calculateSupportCenter(const Vector3d& v1, const Vector3d& v2, const Ve
     
     return center;
 }
+

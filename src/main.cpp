@@ -140,6 +140,7 @@ double motor_kd = 50;
 double playback_kp = 4.0;
 
 pthread_mutex_t mutex_CAN_recv = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_UDP_recv = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t EKF_mutex = PTHREAD_MUTEX_INITIALIZER;
 int can_data_ready_to_save = 1;
 int disabled = 1;
@@ -178,9 +179,11 @@ VectorXd jointFFTorque = VectorXd::Zero(10);
 bool use_filter_pc = false;
 extern MatrixXd lfv0, lfdv0; // defined in mujoco_main, shared with main and planner. TODO: CHANGE THIS ASAP
 
+int sockfd;
 int sockfd_tx;
 char hmi_tx_buffer[100];
 struct sockaddr_in servaddr_tx;
+struct sockaddr_in	 servaddr;
 
 struct termios originalSettings;
 
@@ -204,8 +207,13 @@ extern Vector3d CoM_vel;
 extern VectorXd CoM_quat;
 extern ctrlData cd_shared;
 VisualizationData vizData;
+HW_CTRL_Data hw_control_data;
 
-double robot_init_foot_width_HW;
+bool last_enable_teleop = false;
+bool last_last_enable_teleop = false;
+
+double robot_init_foot_width_HW = 0.175;
+bool use_current_foot_width = false;
 
 void init_6dof_test();
 void signal_callback_handler(int signum);
@@ -259,7 +267,7 @@ void run_tello_pd()
 	if(h_offset < 0){
 		delta_task = 0.02;
 	}
-	Vector3d target(0, 0.00, -0.58+0.088);
+	Vector3d target(-0.010, 0.00, -0.58+0.088-0.005);
 
 	double foot_len_half = 0.060;
 	double pitch_degrees = tello_ypr[1];
@@ -268,10 +276,10 @@ void run_tello_pd()
 
 	target(1) = robot_init_foot_width_HW/2.0 - 0.125;
 	
-	Vector3d target_front_left(foot_len_half+target(0)+x_off, target(1), target(2)-(pitch_degrees/3500.0));
-	Vector3d target_back_left(-foot_len_half+target(0)+x_off, target(1), target(2)+(pitch_degrees/3500.0));
-	Vector3d target_front_right(foot_len_half+target(0)+x_off, -target(1), target(2)-(pitch_degrees/3500.0));
-	Vector3d target_back_right(-foot_len_half+target(0)+x_off, -target(1), target(2)+(pitch_degrees/3500.0));
+	Vector3d target_front_left(foot_len_half+target(0)+x_off, target(1), target(2));
+	Vector3d target_back_left(-foot_len_half+target(0)+x_off, target(1), target(2));
+	Vector3d target_front_right(foot_len_half+target(0)+x_off, -target(1), target(2));
+	Vector3d target_back_right(-foot_len_half+target(0)+x_off, -target(1), target(2));
 
 	VectorXd pos_desired(12);
 	pos_desired << target_front_left, target_back_left, target_front_right, target_back_right;
@@ -476,9 +484,9 @@ void* Human_Playback_Hardware( void * arg )
     // std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-09-39-sway-slow/human_dyn_data.csv";
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-20-25-one-step-wide/human_dyn_data.csv";
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-17-59-single step/human_dyn_data.csv";
-	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-18-38-two steps/human_dyn_data.csv";
+	std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-18-38-two steps/human_dyn_data.csv";
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-12-35-slow-stepping/human_dyn_data.csv"; 
-	std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-15-43-wide leg stepping/human_dyn_data.csv";
+	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-15-43-wide leg stepping/human_dyn_data.csv";
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-11-43-sway-then-2-steps/human_dyn_data.csv";
 
     std::string logPath = removeTextAfterLastSlashHW(active_log);
@@ -735,6 +743,88 @@ void* Human_Playback_Hardware( void * arg )
 	tello->controller->set_traj_planner_dyn_data(tpdd);
    
     return  0;
+}
+
+
+extern double last_Xf;
+extern double last_Yf;
+extern double last_springf;
+extern bool controller_unstable;
+extern bool realtime_enabled;
+extern bool simulation_ready_to_run;
+
+extern VectorXd y_forces;
+extern VectorXd x_forces;
+extern VectorXd s_forces;
+extern double y_force, x_force, s_force;
+extern int force_idx;
+extern double FxH_hmi_out, FxH_spring_out, FyH_hmi_out;
+
+void send_HMI_forces()
+{
+	Human_dyn_data hdd = tello->controller->get_human_dyn_data();
+	if(hw_control_data.enable_safety_monitor)
+	{
+		if( (fabs(hdd.FxH_hmi - last_Xf) > 100) || (fabs(hdd.FyH_hmi - last_Yf) > 100) || (fabs(hdd.FxH_spring - last_springf) > 100)){
+			controller_unstable = true;
+		}
+	}
+	// if( (fabs(hdd.FyH_hmi - last_Yf) > 100) ){
+	//     controller_unstable = true;
+	// }
+	last_Xf = FxH_hmi_out;
+	last_Yf = FyH_hmi_out;
+	last_springf = FxH_spring_out;
+
+	// hdd.FyH_hmi = 20*sin(sin_cnt);
+	// sin_cnt+= 0.016;
+	// if(sin_cnt >= 2*M_PI) sin_cnt = 0;
+	// sin_val = hdd.FyH_hmi;
+	x_forces.tail(99) = x_forces.head(99).eval();
+	x_forces[0] = FxH_hmi_out;
+	y_forces.tail(99) = y_forces.head(99).eval();
+	y_forces[0] = FyH_hmi_out;
+	s_forces.tail(99) = s_forces.head(99).eval();
+	s_forces[0] = FxH_spring_out;
+
+	//dash_utils::start_timer();
+	x_force = dash_utils::smoothData(x_forces,0.8);
+	y_force = dash_utils::smoothData(y_forces,0.8);
+	s_force = dash_utils::smoothData(s_forces,0.8);
+	//dash_utils::print_timer();
+	hdd.FyH_hmi = y_force;
+	hdd.FxH_hmi = x_force;
+	hdd.FxH_spring = s_force;
+	
+	if(tello->controller->is_human_ctrl_enabled() && !controller_unstable)
+	{
+		if( !(hw_control_data.enable_x_force) )
+		{
+			hdd.FxH_hmi = 0;
+		}
+		// hdd.FyH_hmi = 0;
+		// hdd.FxH_spring = 0;
+	}
+	else
+	{
+		hdd.FxH_hmi = 0;
+		hdd.FyH_hmi = 0;
+		hdd.FxH_spring = 0;
+	}
+	// cout << "Fx: " << hdd.FxH_hmi << "  Fy: " << hdd.FyH_hmi << endl;
+	// dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,sim_conf.en_force_feedback,zero_human,master_gain);
+	// int n = sendto(sockfd_tx, hmi_tx_buffer, 20,MSG_CONFIRM, 
+	// 	   (const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
+
+	dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,hw_control_data.enable_force_feedback,hw_control_data.tare_hmi,hw_control_data.hmi_gain);
+	int n = sendto(sockfd, hmi_tx_buffer, 24,MSG_CONFIRM, 
+			(const struct sockaddr *) &servaddr, sizeof(servaddr));
+
+	// cout << "sent " << n << " bytes to HMI" << endl;
+
+	// set tello data here:
+	tello->controller->set_hmi_forces(hdd);
+	tello->controller->enable_human_dyn_data = hw_control_data.enable_teleop;
 }
 
 void balance_pd(MatrixXd lfv_hip)
@@ -1196,6 +1286,98 @@ void run_balance_controller()
 	}
 }
 
+void process_hw_control_packet()
+{
+	if(hw_control_data.emergency_stop)
+	{
+		scheduleDisable();
+		fsm_state = 0;
+	}
+	// process hw_ctrl_data here
+	if(hw_control_data.start_legs)
+	{
+		use_current_foot_width = true;
+		if(fsm_state == 0)
+		{
+			fsm_state = 4;
+			printf("\nEnabled Joint Control.\n");
+			scheduleEnable();
+		}
+
+	}
+	if(hw_control_data.set_full_joint_kp)
+	{
+		if(fsm_state == 4)
+		{
+			if(gain_adjustment < 140)
+			{
+				gain_adjustment = gain_adjustment + 0.1;
+			}
+		}
+	}
+	if(hw_control_data.balance)
+	{
+		if(fsm_state == 4)
+		{
+			if( (tello->_GRFs.left_front + tello->_GRFs.left_back) > 10 && (tello->_GRFs.right_front + tello->_GRFs.right_back) > 10)
+			{
+				std::chrono::_V2::system_clock::time_point now2;
+				std::chrono::time_point<std::chrono::_V2::system_clock, std::chrono::microseconds> micros2;
+				std::chrono::microseconds since_epoch2;
+
+				fsm_state = 6;
+				run_motors_for_balancing = true;
+				apply_balance_torques = true;
+				no_posture_ctrl = true;
+				tare_mocap_pos = true;
+				now2 = std::chrono::system_clock::now();  // Get the current time
+				micros2 = std::chrono::time_point_cast<std::chrono::microseconds>(now2);  // Round down to nearest microsecond
+				since_epoch2 = micros2.time_since_epoch();  // Get duration since epoch
+				t_program_start = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch2).count() / 1000000.0;  // Convert to double with resolution of microseconds
+				balancing_motor_kd = 400;
+			}
+			else{
+				cout << "Robot needs to be standing by itself to enable balancing. If it is, check the loadcell connections." << endl;
+			}
+		}
+	}
+	if(hw_control_data.start_dcm_tracking)
+	{
+		if( (fsm_state == 6) )
+		{
+			std::chrono::_V2::system_clock::time_point now2;
+			std::chrono::time_point<std::chrono::_V2::system_clock, std::chrono::microseconds> micros2;
+			std::chrono::microseconds since_epoch2;
+			now2 = std::chrono::system_clock::now();  // Get the current time
+			micros2 = std::chrono::time_point_cast<std::chrono::microseconds>(now2);  // Round down to nearest microsecond
+			since_epoch2 = micros2.time_since_epoch();  // Get duration since epoch
+			t_program_start = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch2).count() / 1000000.0;  // Convert to double with resolution of microseconds
+			start_controller_time = true;
+		}
+	}
+	if(hw_control_data.enable_teleop)
+	{
+		if( (fsm_state == 6) && (last_enable_teleop == 0) )
+		{
+			std::chrono::_V2::system_clock::time_point now2;
+			std::chrono::time_point<std::chrono::_V2::system_clock, std::chrono::microseconds> micros2;
+			std::chrono::microseconds since_epoch2;
+			now2 = std::chrono::system_clock::now();  // Get the current time
+			micros2 = std::chrono::time_point_cast<std::chrono::microseconds>(now2);  // Round down to nearest microsecond
+			since_epoch2 = micros2.time_since_epoch();  // Get duration since epoch
+			t_program_start = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch2).count() / 1000000.0;  // Convert to double with resolution of microseconds
+			start_controller_time = true;
+			tello->controller->enable_human_ctrl();
+		}
+	}
+	// if(!hw_control_data.enable_teleop && last_enable_teleop)
+	// {
+	// 	tello->controller->disable_human_ctrl();
+	// }
+	
+	last_enable_teleop = hw_control_data.enable_teleop;
+}
+
 static void* update_1kHz( void * arg )
 {
 	startTimer();
@@ -1273,9 +1455,9 @@ static void* update_1kHz( void * arg )
 	uint16_t pos_cmds[10];
 
 	// set up UDP transmit here: =======================================================================
-	int sockfd;
-	char hmi_tx_buffer[100];
-	struct sockaddr_in	 servaddr;
+	
+	// char hmi_tx_buffer[100];
+	// struct sockaddr_in	 servaddr;
 	// Creating socket file descriptor
 	if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
 		perror("socket creation failed");
@@ -1362,6 +1544,9 @@ static void* update_1kHz( void * arg )
 		int n = sendto(sockfd_viz, viz_tx_buffer, 152,MSG_CONFIRM, 
 			   (const struct sockaddr *) &servaddr_viz, sizeof(servaddr_viz));
 
+		send_HMI_forces();
+
+		process_hw_control_packet();
 
 		pthread_mutex_lock(&mutex_CAN_recv);
 		if(disableScheduled){
@@ -1657,7 +1842,7 @@ int main(int argc, char *argv[]) {
 		// SIMULATION MODE (Interfaces with Mujoco instead of real sensors)
 		printf('o',"Software running in Visualization Mode.\n\n");
 		tello->addPeriodicTask(&sim_step_task, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_1, (void*)(NULL),"sim_step_task",TASK_CONSTANT_PERIOD, 998);
-		tello->addPeriodicTask(&visualization_render_thread, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 1000);
+		tello->addPeriodicTask(&visualization_render_thread, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 30000);
 		// tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 500);
 		tello->addPeriodicTask(&visualize_robot, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"animate_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&screenRecord, SCHED_FIFO, 1, ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
@@ -1749,7 +1934,7 @@ int main(int argc, char *argv[]) {
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd4),"rx_bus4",TASK_CONSTANT_DELAY, 50);
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd5),"rx_bus4",TASK_CONSTANT_DELAY, 50);
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd6),"rx_bus5",TASK_CONSTANT_DELAY, 50);
-	// tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
+	tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_2, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 	tello->addPeriodicTask(&IMU_Comms, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_2, NULL, "imu_task", TASK_CONSTANT_DELAY, 1000);
 	tello->addPeriodicTask(&update_1kHz, SCHED_FIFO, 99, UPX_ISOLATED_CORE_1_THREAD_2, NULL, "update_task",TASK_CONSTANT_PERIOD, 1000);
 	// tello->addPeriodicTask(&BNO055_Comms, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, NULL, "bno_imu_task", TASK_CONSTANT_DELAY, 1000);
@@ -1757,7 +1942,7 @@ int main(int argc, char *argv[]) {
 	tello->addPeriodicTask(&motion_capture, SCHED_FIFO, 99, UPX_ISOLATED_CORE_3_THREAD_1, (void*)(NULL),"Mocap_Task",TASK_CONSTANT_PERIOD, 1000);
 	tello->addPeriodicTask(&hw_logging, SCHED_FIFO, 99, UPX_ISOLATED_CORE_3_THREAD_2, (void*)(NULL),"hw_logging_task",TASK_CONSTANT_PERIOD, 1000);
 
-	tello->addPeriodicTask(&Human_Playback_Hardware, SCHED_FIFO, 90, UPX_ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"human_playback_HW_task",TASK_CONSTANT_PERIOD, 1000);
+	// tello->addPeriodicTask(&Human_Playback_Hardware, SCHED_FIFO, 90, UPX_ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"human_playback_HW_task",TASK_CONSTANT_PERIOD, 1000);
 	tello->addPeriodicTask(&curve_fitting, SCHED_FIFO, 99, UPX_ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"curve_fitting",TASK_CONSTANT_PERIOD, 1000);
 
 	usleep(4000);

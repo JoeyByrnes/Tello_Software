@@ -182,8 +182,9 @@ void* motion_capture( void * arg )
               auto now = std::chrono::system_clock::now();  // Get the current time
               auto micros = std::chrono::time_point_cast<std::chrono::microseconds>(now);  // Round down to nearest microsecond
               auto since_epoch = micros.time_since_epoch();  // Get duration since epoch
-              double dt = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch).count() / 1000000.0 - time_last;  // Convert to double with resolution of microseconds
-
+              double time_now = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch).count() / 1000000.0;  // Convert to double with resolution of microseconds
+              double dt = time_now - time_last;  // Convert to double with resolution of microseconds
+              time_last = time_now;
               Vector3d CoM_vel_raw = (CoM_pos - CoM_pos_last)/dt;
               CoM_pos_last = CoM_pos;
               CoM_x_vels.tail(99) = CoM_x_vels.head(99).eval();

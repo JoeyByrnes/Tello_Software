@@ -4,12 +4,12 @@
     "en_autonomous_mode_on_boot": false,
     "en_data_logging": true,
     "en_force_feedback": true,
-    "en_live_variable_view": false,
+    "en_live_variable_view": true,
     "en_playback_mode": false,
     "en_ps4_controller": false,
     "en_realtime_plot": false,
     "en_safety_monitor": false,
     "en_screen_recording": true,
     "en_v2_controller": false,
-    "en_x_haptic_force": true
+    "en_x_haptic_force": false
 }

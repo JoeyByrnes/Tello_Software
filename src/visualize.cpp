@@ -403,7 +403,7 @@ void* visualization_render_thread( void * arg )
         hw_control_data.start_legs = false;
         hw_control_data.balance = false;
         hw_control_data.emergency_stop = false;
-        hw_control_data.enable_teleop = false;
+        // hw_control_data.enable_teleop = false;
         hw_control_data.start_dcm_tracking = false;
         // hw_control_data.set_full_joint_kp = false;
         
@@ -756,8 +756,19 @@ void* visualization_render_thread( void * arg )
                 ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
-                if (ImGui::Button(" " ICON_FA_ARROW_ALT_CIRCLE_UP " Full Kp  " )) {
+                if (ImGui::Button(" " ICON_FA_ARROW_ALT_CIRCLE_UP " Kp  " )) {
                     hw_control_data.set_full_joint_kp = true;
+                    hw_control_data.set_min_joint_kp = false;
+                }
+                ImGui::PopStyleColor(3);
+
+                ImGui::Separator();//init_foot_width
+                ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
+                if (ImGui::Button(" " ICON_FA_ARROW_ALT_CIRCLE_DOWN " Kp  " )) {
+                    hw_control_data.set_min_joint_kp = true;
+                    hw_control_data.set_full_joint_kp = false;
                 }
                 ImGui::PopStyleColor(3);
 

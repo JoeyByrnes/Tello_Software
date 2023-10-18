@@ -144,6 +144,7 @@ struct HW_CTRL_Data {
     bool enable_safety_monitor;
     float human_x_zero;
     bool set_full_joint_kp;
+    bool set_min_joint_kp;
     bool start_dcm_tracking;
 };
 #pragma pack()

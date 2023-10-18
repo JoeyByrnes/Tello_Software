@@ -523,10 +523,10 @@ void dash_planner::SRB_Traj_Planner(
             dash_ctrl::LIP_ang_mom_strat(FxR, FyR, lfv_comm, lfdv_comm, lfddv_comm, srb_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv);
         } else if (planner_type == 2) { // Human Whole-Body Dynamic Telelocomotion
             // Human pilot is the planner
-            if( en_v2_ctrl )
+            // if( en_v2_ctrl )
                 dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(FxR, FyR, lfv_comm, lfdv_comm, lfddv_comm, human_dyn_data, srb_params, human_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv, tau_ext);  
-            else
-                dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v3(FxR, FyR, lfv_comm, lfdv_comm, lfddv_comm, human_dyn_data, srb_params, human_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv, tau_ext, u);
+            // else
+            //     dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v3(FxR, FyR, lfv_comm, lfdv_comm, lfddv_comm, human_dyn_data, srb_params, human_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv, tau_ext, u);
         }
         
         // SRB state reference (regulate all around SRB states around zero)

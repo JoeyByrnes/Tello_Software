@@ -431,7 +431,7 @@ void* rx_UDP( void * arg ){
 			if(tello->controller->is_human_ctrl_enabled())
 			{
 				dash_utils::unpack_data_from_hmi(human_dyn_data,(uint8_t*)rx_buffer);
-				
+				// cout << "Using Human Data" << endl;
 			}
 			else
 			{
@@ -587,10 +587,10 @@ void* rx_UDP( void * arg ){
 			
 			// =======================================================================================================
 
-			if(!(sim_conf.en_playback_mode))
-			{
+			// if(!(sim_conf.en_playback_mode))
+			// {
 				tello->controller->set_human_dyn_data_without_forces(human_dyn_data);
-			}
+			// }
 		}
 		else if (strcmp(inet_ntoa(sender_addr.sin_addr), VIZ_IP_ADDRESS) == 0) {
             // Call the deserialize function on the data

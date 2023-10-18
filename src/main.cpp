@@ -760,6 +760,8 @@ extern double y_force, x_force, s_force;
 extern int force_idx;
 extern double FxH_hmi_out, FxH_spring_out, FyH_hmi_out;
 
+double ang = 0;
+
 void send_HMI_forces()
 {
 	Human_dyn_data hdd = tello->controller->get_human_dyn_data();
@@ -792,6 +794,8 @@ void send_HMI_forces()
 	y_force = dash_utils::smoothData(y_forces,0.8);
 	s_force = dash_utils::smoothData(s_forces,0.8);
 	//dash_utils::print_timer();
+	// y_force = 60.0*sin(ang);
+	// ang = ang+0.0005;
 	hdd.FyH_hmi = y_force;
 	hdd.FxH_hmi = x_force;
 	hdd.FxH_spring = s_force;
@@ -1315,6 +1319,16 @@ void process_hw_control_packet()
 			}
 		}
 	}
+	if(hw_control_data.set_min_joint_kp)
+	{
+		if(fsm_state == 4)
+		{
+			if(gain_adjustment > 2.0)
+			{
+				gain_adjustment = gain_adjustment - 0.1;
+			}
+		}
+	}
 	if(hw_control_data.balance)
 	{
 		if(fsm_state == 4)
@@ -1355,7 +1369,7 @@ void process_hw_control_packet()
 			start_controller_time = true;
 		}
 	}
-	if(hw_control_data.enable_teleop)
+	if(hw_control_data.enable_teleop && (last_enable_teleop == 0))
 	{
 		if( (fsm_state == 6) && (last_enable_teleop == 0) )
 		{
@@ -1368,6 +1382,7 @@ void process_hw_control_packet()
 			t_program_start = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch2).count() / 1000000.0;  // Convert to double with resolution of microseconds
 			start_controller_time = true;
 			tello->controller->enable_human_ctrl();
+			ang = 0;
 		}
 	}
 	// if(!hw_control_data.enable_teleop && last_enable_teleop)
@@ -1846,7 +1861,7 @@ int main(int argc, char *argv[]) {
 		// tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 500);
 		tello->addPeriodicTask(&visualize_robot, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"animate_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&screenRecord, SCHED_FIFO, 1, ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
-		// tello->addPeriodicTask(&usbCamRecord, SCHED_FIFO, 0, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
+		tello->addPeriodicTask(&usbCamRecord, SCHED_FIFO, 0, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, 6, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&motion_capture, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"Mocap_Task",TASK_CONSTANT_PERIOD, 1000);
 		while(1){ usleep(1000); }

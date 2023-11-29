@@ -146,6 +146,17 @@ struct HW_CTRL_Data {
     bool set_full_joint_kp;
     bool set_min_joint_kp;
     bool start_dcm_tracking;
+
+    int knee_offset_left;
+    int hip_offset_left;
+    int ankle_offset_left;
+    int knee_offset_right;
+    int hip_offset_right;
+    int ankle_offset_right;
+
+    float roll_adjust;
+    float pitch_adjust;
+    float yaw_adjust;
 };
 #pragma pack()
 

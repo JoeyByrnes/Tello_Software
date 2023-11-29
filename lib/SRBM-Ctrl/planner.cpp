@@ -234,6 +234,8 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     double lf2z = lfv(1,2) + CoMz_init;
     double lf4z = lfv(3,2) + CoMz_init;
 
+    // cout << "lf1z: " << lf1z  << "   lf2z: " << lf2z << "   lf3z: " << lf3z  << "   lf4z: " << lf4z  << endl;
+
     // get GRFs (front line foot pt)
     double u1z = u(2);
     double u3z = u(8);
@@ -368,7 +370,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == 1) // currently in SSP_L
     {
-        if ( (grf_rf + grf_rb > 10 ) && s > 0.5) // enter DSP
+        if ( ( (grf_rf + grf_rb > 3 ) || (lf1z <= 0.003 || lf2z <= 0.003) ) && s > 0.6) // enter DSP
         {
             cout << "Setting FSM from 1 to 0,   time: " << t << endl;
             FSM_next = 0;
@@ -380,7 +382,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == -1) // currently in SSP_R
     {
-        if ( (grf_lf + grf_lb > 10 ) && s > 0.5) // enter DSP
+        if ( ( (grf_lf + grf_lb > 3 ) || (lf3z <= 0.003 || lf4z <= 0.003) ) && s > 0.6) // enter DSP
         {
             cout << "Setting FSM from -1 to 0,   time: " << t << endl;
             FSM_next = 0;
@@ -426,7 +428,7 @@ void dash_planner::SRB_Init_Traj_Planner_Data(Traj_planner_dyn_data& traj_planne
     
     // Only planner_type = LIP_ang_mom_reg
     traj_planner_dyn_data.next_SSP = 1; // next SSP (SSP_L = 1 or SSP_R = -1)
-    cout << "INITIALIZING NEXT SSP TO ONE" << endl;
+    // cout << "INITIALIZING NEXT SSP TO ONE" << endl;
     traj_planner_dyn_data.step_width = (abs(lf2CoM0_mat(1, 0)) + abs(lf2CoM0_mat(1, 3))); // desired step width (updated at the start depending on initial feet width)
     traj_planner_dyn_data.st2CoM_beg_step = VectorXd::Zero(position_vec_size); // stance-leg/foot position at the beginning-of-step relative to CoM
     traj_planner_dyn_data.sw2CoM_beg_step = VectorXd::Zero(position_vec_size); // swing-leg/foot position at the beginning-of-step relative to CoM

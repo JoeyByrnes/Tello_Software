@@ -27,8 +27,9 @@ extern bool ramp_toggle;
 
 extern bool sim_window_close_requested;
 
-extern double screen_recording;
-extern double usbcam_recording;
+extern bool screen_recording;
+extern bool usbcam_recording;
+extern bool usbcam_hw_recording;
 extern bool pause_sim;
 
 double rfz;
@@ -62,6 +63,7 @@ extern FILE* screen_record_pipe;
 extern pid_t screen_rec_pid;
 extern bool recording_in_progress;
 extern bool usb_recording_in_progress;
+extern bool usb_recording_HW_in_progress;
 
 //Logging
 extern bool log_data_ready;
@@ -180,6 +182,7 @@ void window_close_callback(GLFWwindow* window)
     std::cout << "Closing the Simulation." << std::endl;
     screen_recording = false;
     usbcam_recording = false;
+    usbcam_hw_recording = false;
     system("killall -2 ffmpeg");
     cout << endl << endl << "Please wait while the recordings are stopped." << endl;
     for(int i=0;i<20;i++)
@@ -221,7 +224,7 @@ void mouse_move(GLFWwindow* window, double xpos, double ypos)
 
     last_xpos = xpos;
     last_ypos = ypos;
-    if(ypos < 300) return;
+    if(ypos < 700) return;
     if(sim_conf.en_realtime_plot && xpos < plot_width) return;
 
     if(showPlotMenu && xpos > (width-900)) return;
@@ -942,8 +945,39 @@ void* usbCamRecord( void * arg )
             usb_recording_in_progress = true;
             // Child process - execute FFmpeg command
             cnt_str = to_string(usb_recording_cnt);
-            system(("taskset -c 15 ffmpeg -f v4l2 -loglevel quiet -framerate 30 -video_size 800x600 -input_format mjpeg -i /dev/video4 -c:v copy " + log_folder+"usb_camera_"+cnt_str+".mp4").c_str());
+            system(("taskset -c 15 ffmpeg -f v4l2 -loglevel quiet -framerate 30 -video_size 1024x768 -input_format mjpeg -i /dev/video4 -vf \"transpose=1\"  -c:v h264_nvenc " + log_folder+"usb_camera_"+cnt_str+".mp4").c_str());
             usb_recording_cnt++;
+        }
+        usleep(10000);
+    }
+
+    return  0;
+}
+
+int usb_recording_cnt_hw = 0;
+void* usbCamRecord_HW( void * arg )
+{
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	void* dynamic_robot_ptr = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
+
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
+    std::string cnt_str;
+    // screen_rec_pid = fork();
+    usleep(1000000);
+    if(sim_conf.en_auto_record)
+        usbcam_hw_recording = true;
+    while(1)
+    {
+
+        while(!usbcam_hw_recording || usb_recording_HW_in_progress || !(sim_conf.en_HMI_recording)) usleep (1000);
+        // screen_rec_pid = fork();
+        if (!usb_recording_HW_in_progress) {
+            usb_recording_HW_in_progress = true;
+            // Child process - execute FFmpeg command
+            cnt_str = to_string(usb_recording_cnt_hw);
+            system(("taskset -c 13 ffmpeg -f v4l2 -loglevel quiet -framerate 30 -video_size 1024x768 -input_format mjpeg -i /dev/video6 -vf \"transpose=2\"  -c:v h264_nvenc  " + log_folder+"hw_usb_camera_"+cnt_str+".mp4").c_str());
+            usb_recording_cnt_hw++;
         }
         usleep(10000);
     }

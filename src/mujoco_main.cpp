@@ -26,6 +26,7 @@ FILE* screen_record_pipe;
 pid_t screen_rec_pid = -1;
 bool recording_in_progress = false;
 bool usb_recording_in_progress = false;
+bool usb_recording_HW_in_progress = false;
 
 extern struct termios originalSettings;
 
@@ -39,6 +40,7 @@ bool zero_human = false;
 float master_gain = 0;
 bool screen_recording = false;
 bool usbcam_recording = false;
+bool usbcam_hw_recording = false;
 bool en_v2_ctrl = false;
 bool en_safety_monitor = false;
 bool bookmarked = false;
@@ -1188,7 +1190,7 @@ void* mujoco_Update_1KHz( void * arg )
         {
             if(bookmarked) ImGui::PopStyleColor();
             ImGui::Separator();
-            if(!pause_sim || screen_recording || usbcam_recording)
+            if(!pause_sim || screen_recording || usbcam_recording || usbcam_hw_recording)
             {
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0.4f, 1.0f)); // Set button color to grey
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.4f, 0.4f, 1.0f)); // Set button color to grey
@@ -1206,7 +1208,7 @@ void* mujoco_Update_1KHz( void * arg )
             {
                 if (ImGui::Button(" " ICON_FA_COPY " Copy log folder to favorites ")) // Submit button
                 {
-                    if(pause_sim && !screen_recording && !usbcam_recording)
+                    if(pause_sim && !screen_recording && !usbcam_recording && ! usbcam_hw_recording)
                     {
                         std::string command = "cp -R " + log_folder + " /home/joey/Desktop/tello_outputs/Favorite_Logs/";
                         system(command.c_str());
@@ -1293,6 +1295,7 @@ void* mujoco_Update_1KHz( void * arg )
                 
                 recording_in_progress = false;
                 usb_recording_in_progress = false;
+                usb_recording_HW_in_progress = false;
             }
             ImGui::PopStyleColor(3);
         }
@@ -1307,6 +1310,7 @@ void* mujoco_Update_1KHz( void * arg )
             if (ImGui::Button(" " ICON_FA_VIDEO " ")) {
                 screen_recording = true;
                 usbcam_recording = true;
+                usbcam_hw_recording = true;
             }
             ImGui::PopStyleColor(3);
         }
@@ -1321,10 +1325,12 @@ void* mujoco_Update_1KHz( void * arg )
             if (ImGui::Button(" " ICON_FA_VIDEO_SLASH " ")) {
                 screen_recording = false;
                 usbcam_recording = false;
+                usbcam_hw_recording = false;
                 system("killall -2 ffmpeg");
                 
                 recording_in_progress = false;
                 usb_recording_in_progress = false;
+                usb_recording_HW_in_progress = false;
                 
                 usleep(2000);
             }
@@ -1728,6 +1734,7 @@ void* mujoco_Update_1KHz( void * arg )
 	}
     screen_recording = false;
     usbcam_recording = false;
+    usbcam_hw_recording = false;
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
     system("killall -2 ffmpeg");

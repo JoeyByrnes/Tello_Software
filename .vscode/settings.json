@@ -156,5 +156,6 @@
         "matrix": "cpp",
         "types": "cpp",
         "callback": "cpp"
-    }
+    },
+    "cmake.configureOnOpen": false
 }

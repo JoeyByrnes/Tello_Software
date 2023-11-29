@@ -23,8 +23,6 @@ extern struct termios originalSettings;
 extern bool pause_sim;
 extern std::string log_folder;
 extern simConfig sim_conf;
-extern bool screen_recording;
-extern bool usbcam_recording;
 
 extern double vx_desired_ps4;
 extern double vy_desired_ps4;
@@ -33,6 +31,7 @@ extern bool zero_human;
 extern float master_gain;
 extern bool screen_recording;
 extern bool usbcam_recording;
+extern bool usbcam_hw_recording;
 extern bool en_v2_ctrl;
 extern bool en_safety_monitor;
 extern bool bookmarked;
@@ -117,6 +116,7 @@ void* visualize_robot( void * arg )
         std::cerr << "Failed to bind socket." << std::endl;
         close(sockfd);
     }
+
 
     struct timespec next;
     clock_gettime(CLOCK_MONOTONIC, &next);
@@ -236,6 +236,15 @@ void* visualization_render_thread( void * arg )
             human_params.m = activeUser.weight;
         }
     }
+
+    hw_control_data.hip_offset_left = 0;
+    hw_control_data.hip_offset_right = 0;
+
+    hw_control_data.knee_offset_left = 0;
+    hw_control_data.knee_offset_right = 0;
+
+    hw_control_data.ankle_offset_left = 0;
+    hw_control_data.ankle_offset_right = 0;
 
 
     // INITIALIZE SRBM CONTROLLER ========================================================
@@ -575,7 +584,7 @@ void* visualization_render_thread( void * arg )
         {
             if(bookmarked) ImGui::PopStyleColor();
             ImGui::Separator();
-            if(!pause_sim || screen_recording || usbcam_recording)
+            if(!pause_sim || screen_recording || usbcam_recording || usbcam_hw_recording)
             {
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0.4f, 1.0f)); // Set button color to grey
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.4f, 0.4f, 1.0f)); // Set button color to grey
@@ -593,7 +602,7 @@ void* visualization_render_thread( void * arg )
             {
                 if (ImGui::Button(" " ICON_FA_COPY " Copy log folder to favorites ")) // Submit button
                 {
-                    if(pause_sim && !screen_recording && !usbcam_recording)
+                    if(pause_sim && !screen_recording && !usbcam_recording && !usbcam_hw_recording)
                     {
                         std::string command = "cp -R " + log_folder + " /home/joey/Desktop/tello_outputs/Favorite_Logs/";
                         system(command.c_str());
@@ -694,6 +703,7 @@ void* visualization_render_thread( void * arg )
             if (ImGui::Button(" " ICON_FA_VIDEO " ")) {
                 screen_recording = true;
                 usbcam_recording = true;
+                usbcam_hw_recording = true;
             }
             ImGui::PopStyleColor(3);
         }
@@ -708,6 +718,7 @@ void* visualization_render_thread( void * arg )
             if (ImGui::Button(" " ICON_FA_VIDEO_SLASH " ")) {
                 screen_recording = false;
                 usbcam_recording = false;
+                usbcam_hw_recording = false;
                 system("killall -2 ffmpeg");
                 
                 recording_in_progress = false;
@@ -1006,7 +1017,7 @@ void* visualization_render_thread( void * arg )
         }
         if(sim_conf.en_live_variable_view)
         {
-            ImGui::SetNextWindowSize(ImVec2(800*screenScale, 3*60*screenScale + 3*15*screenScale +65*screenScale));
+            ImGui::SetNextWindowSize(ImVec2(800*screenScale, 5*60*screenScale + 5*15*screenScale +65*screenScale));
             ImGui::SetNextWindowPos(ImVec2(50, (35+60*screenScale)+50));
             ImGui::Begin("DebugView",nullptr,ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize);
             
@@ -1020,33 +1031,44 @@ void* visualization_render_thread( void * arg )
             ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
             ImGui::Separator();
             ImGui::PopStyleColor();
-            ImGui::Text("CoM X Velocity: %.2fm/s", telloLocal->controller->get_x()(3));
+            //ImGui::Text("CoM X Velocity: %.2fm/s", telloLocal->controller->get_x()(3));
+            ImGui::SliderInt(" R Hip ", &hw_control_data.hip_offset_right, -150, 150);
+            // ImGui::SliderFloat(" roll: ", &hw_control_data.roll_adjust, -1.5, 1.5);
             ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
             ImGui::Separator();
             ImGui::PopStyleColor();
-            ImGui::Text("CoM X Position: %.2fm", telloLocal->controller->get_x()(0));
-            // ImGui::Text("Impulse Force: %dN", (int)impulse_force_newtons);
-            // ImGui::Separator();
-            // ImGui::Text("LF: %s \tRF %s", grf_lf.c_str(),grf_rf.c_str());
-            // ImGui::Text("LB: %s \tRB %s", grf_lb.c_str(),grf_rb.c_str());
-            // VectorXd u(12);
-            // u << 0,0,tello->_GRFs.right_front,0,0,tello->_GRFs.right_back,0,0,tello->_GRFs.left_front,0,0,tello->_GRFs.left_back;
-            // VectorXd CoP = dash_utils::compute_robot_CoP(tello->controller->get_lfv_world(),u);
-            // cout << "CoP Size: " << CoP.size() << endl;
-            // ImGui::Text("CoP from Mujoco GRF: ");
-            // ImGui::Separator();
-            // ImGui::PushFont(fontSmall);
-            // std::string copviz = "L"+dash_utils::visualizeCoP(tello->controller->get_lfv_world()(2,1),CoP(1),tello->controller->get_lfv_world()(0,1))+"R";
-            // ImGui::Text(copviz.c_str());
-            // ImGui::Separator();
-            // ImGui::PopFont();
-            // ImGui::Text("CoP from QP GRF: ");
-            // ImGui::PushFont(fontSmall);
-            // VectorXd u_qp = tello->controller->get_GRFs();
-            // VectorXd CoP_qp = dash_utils::compute_robot_CoP(tello->controller->get_lfv_world(),u_qp);
-            // std::string copviz_qp = "L"+dash_utils::visualizeCoP(tello->controller->get_lfv_world()(2,1),CoP_qp(1),tello->controller->get_lfv_world()(0,1))+"R";
-            // ImGui::Text(copviz_qp.c_str());
-            // ImGui::PopFont();
+            //ImGui::Text("CoM X Position: %.2fm", telloLocal->controller->get_x()(0));
+            ImGui::SliderInt(" R Knee ", &hw_control_data.knee_offset_right, -150, 150);
+            // ImGui::SliderFloat(" pitch: ", &hw_control_data.pitch_adjust, -1.5, 1.5);
+
+            ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+
+            ImGui::SliderInt(" R Ankle ", &hw_control_data.ankle_offset_right, -150, 150);
+            // ImGui::SliderFloat(" yaw: ", &hw_control_data.yaw_adjust, -1.5, 1.5);
+
+
+            ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+            //ImGui::Text("CoM X Velocity: %.2fm/s", telloLocal->controller->get_x()(3));
+            ImGui::SliderInt(" L Hip ", &hw_control_data.hip_offset_left, -150, 150);
+            // ImGui::SliderFloat(" roll: ", &hw_control_data.roll_adjust, -1.5, 1.5);
+            ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+            //ImGui::Text("CoM X Position: %.2fm", telloLocal->controller->get_x()(0));
+            ImGui::SliderInt(" L Knee ", &hw_control_data.knee_offset_left, -150, 150);
+            // ImGui::SliderFloat(" pitch: ", &hw_control_data.pitch_adjust, -1.5, 1.5);
+
+            ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+
+            ImGui::SliderInt(" L Ankle ", &hw_control_data.ankle_offset_left, -150, 150);
+            // ImGui::SliderFloat(" yaw: ", &hw_control_data.yaw_adjust, -1.5, 1.5);
+            
             ImGui::End();
         }
         
@@ -1115,6 +1137,7 @@ void* visualization_render_thread( void * arg )
 	}
     screen_recording = false;
     usbcam_recording = false;
+    usbcam_hw_recording = false;
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
     system("killall -2 ffmpeg");

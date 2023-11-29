@@ -613,6 +613,7 @@ MotorPDConfig DynamicRobot::switchController(const MotorPDConfig& stanceCtrl, co
 
 VectorXd DynamicRobot::swing_stance_mux(VectorXd stanceTorques, VectorXd swingTorques, double duration_sec, bool isSwingToStance, double currTimeStep, int side) {
 
+    // if(isSwingToStance) duration_sec = duration_sec / 2.0;
     if(currTimeStep >= duration_sec) currTimeStep = duration_sec;
 
     VectorXd smoothedTorques(10);
@@ -626,6 +627,8 @@ VectorXd DynamicRobot::swing_stance_mux(VectorXd stanceTorques, VectorXd swingTo
     if (isSwingToStance) {
         // return stanceTorques;
         switchFactor = 1 - switchFactor;  // If transitioning from stance to swing, invert the switch factor
+
+        // return stanceTorques;
     }
     double smoothVal = sigmoid((switchFactor - 0.5) * 12);  // Scale the switch factor to be between -5 and 5, and apply sigmoid function
     if(smoothVal < 0.05) smoothVal = 0;
@@ -938,7 +941,7 @@ VectorXd DynamicRobot::taskPD2(TaskPDConfig task_conf)
     // cout << joint_forces_from_accel.transpose() << endl;
 
     JointPDConfig joint_conf;
-    joint_conf.joint_ff_torque = joint_torques;// + joint_forces_from_accel;
+    joint_conf.joint_ff_torque = joint_torques + joint_forces_from_accel;
     joint_conf.joint_pos_desired = joint_pos_desired;
     joint_conf.joint_vel_desired = joint_vel_desired;
     joint_conf.joint_kp = task_conf.joint_kp;

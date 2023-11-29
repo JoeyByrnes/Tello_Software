@@ -211,7 +211,7 @@ Eigen::VectorXd tello_leg_IK(Eigen::VectorXd& lf1, Eigen::VectorXd& lf2)
   srb_params.q2_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
   srb_params.thigh_length = 0.2286;
   srb_params.calf_length = 0.260;
-  srb_params.heel_length = 0.0516;
+  srb_params.heel_length = 0.0576;
   srb_params.foot_length = 0.060;
 
   return dash_kin::SRB_Leg_IK(srb_params,lf1,lf2);
@@ -229,7 +229,7 @@ Eigen::VectorXd tello_leg_IK_biped(const Eigen::VectorXd& task_positions)
   srb_params.q2_lim = Vector2d(-15*DEGREE_TO_RADIANS,15*DEGREE_TO_RADIANS);
   srb_params.thigh_length = 0.2286;
   srb_params.calf_length = 0.260;
-  srb_params.heel_length = 0.0516;
+  srb_params.heel_length = 0.0576;
   srb_params.foot_length = 0.060;
 
   VectorXd q_left = dash_kin::SRB_Leg_IK(srb_params,lf1_left,lf2_left);
@@ -246,7 +246,7 @@ Eigen::VectorXd tello_leg_IK_pointFoot(const Eigen::VectorXd& pos)
   srb_params.q2_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
   srb_params.thigh_length = 0.2286;
   srb_params.calf_length = 0.260;
-  srb_params.heel_length = 0.0516; // used to be 0.0485
+  srb_params.heel_length = 0.0576; // used to be 0.0485
   srb_params.foot_length = 0.060;
   VectorXd lf1 = pos + Vector3d(srb_params.foot_length,0,0);
   VectorXd lf2 = pos - Vector3d(srb_params.foot_length,0,0);
@@ -260,7 +260,7 @@ Eigen::MatrixXd fcn_Jaco_dq_2_dT_front(const Eigen::VectorXd& q){
   srb_params.q2_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
   srb_params.thigh_length = 0.2286;
   srb_params.calf_length = 0.260;
-  srb_params.heel_length = 0.0516;
+  srb_params.heel_length = 0.0576;
   srb_params.foot_length = 0.120;
 
   VectorXd p = Vector4d(srb_params.thigh_length,srb_params.calf_length,srb_params.foot_length,srb_params.heel_length);
@@ -272,7 +272,7 @@ Eigen::MatrixXd fcn_Jaco_dq_2_dT_back(const Eigen::VectorXd& q){
   srb_params.q2_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
   srb_params.thigh_length = 0.2286;
   srb_params.calf_length = 0.260;
-  srb_params.heel_length = 0.0516;
+  srb_params.heel_length = 0.0576;
   srb_params.foot_length = 0.120;
 
   VectorXd p = Vector4d(srb_params.thigh_length,srb_params.calf_length,srb_params.foot_length,srb_params.heel_length);
@@ -359,7 +359,7 @@ Eigen::VectorXd fk_joints_to_task_leg(const Eigen::VectorXd& q)
   srb_params.q2_lim = Vector2d(-65*DEGREE_TO_RADIANS,65*DEGREE_TO_RADIANS);
   srb_params.thigh_length = 0.2286;
   srb_params.calf_length = 0.260;
-  srb_params.heel_length = 0.0516;
+  srb_params.heel_length = 0.0576;
   srb_params.foot_length = 0.120;
 
   VectorXd p = Vector4d(srb_params.thigh_length,srb_params.calf_length,srb_params.foot_length,srb_params.heel_length);
@@ -579,7 +579,7 @@ MatrixXd fcn_lf1_Jv_dot(const VectorXd& eig_q, const VectorXd& eig_qd)
   double p[4];
   p[0] = 0.2286;
   p[1] = 0.260;
-  p[2] = 0.0516;
+  p[2] = 0.0576;
   p[3] = 0.060;
 
   double lf1_Jv_dot[15];
@@ -1835,6 +1835,6 @@ MatrixXd fcn_lf1_Jv_dot(const VectorXd& eig_q, const VectorXd& eig_qd)
 
 #define TELLO_THIGH_LENGTH 0.228
 #define TELLO_CALF_LENGTH 0.260
-#define TELLO_HEEL_LENGTH 0.048
+#define TELLO_HEEL_LENGTH 0.0576
 #define TELLO_FOOT_LENGTH 0.120
 

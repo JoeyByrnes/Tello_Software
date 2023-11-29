@@ -31,5 +31,6 @@ void moveJoint2(double currentTime, double startTime, double endTime, double sta
 void* logging( void * arg );
 void* screenRecord( void * arg );
 void* usbCamRecord( void * arg );
+void* usbCamRecord_HW( void * arg );
 
 #endif

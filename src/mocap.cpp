@@ -17,7 +17,13 @@ extern Vector3d CoM_vel;
 
 double time_last;
 
+int bad_data_counter = 0;
+
 extern ctrlData cd_shared;
+
+extern float roll_adjust;
+extern float pitch_adjust;
+extern float yaw_adjust;
 
 Eigen::VectorXd quaternionToEuler(const Eigen::Quaterniond& quat) {
   Eigen::VectorXd euler(3);
@@ -150,6 +156,7 @@ void* motion_capture( void * arg )
           //   cout << " rigid=" << rigids.size() << ":" << endl;
             for(OWL::Rigids::iterator r = rigids.begin(); r != rigids.end(); r++)
             {
+              if(r->id != tracker_id) continue;
               // if(r->cond > 0)
               //   cout << "  " << r->id << ") " << r->pose[0] << "," << r->pose[1] << "," << r->pose[2]
               //        << "," << r->pose[3] << "," << r->pose[4] << "," << r->pose[5] << "," << r->pose[6]
@@ -162,18 +169,38 @@ void* motion_capture( void * arg )
               // Eigen::Quaterniond rotatedQuaternion = rotateQuaternion(quaternion, alignment_error);
               
               CoM_rpy = quaternionToEuler(quaternion);
+              // Create the rotation matrix
+              Eigen::Matrix3d rotationMatrix;
+              rotationMatrix = Eigen::AngleAxisd(roll_adjust, Eigen::Vector3d::UnitX())
+                            * Eigen::AngleAxisd(pitch_adjust, Eigen::Vector3d::UnitY())
+                            * Eigen::AngleAxisd(yaw_adjust, Eigen::Vector3d::UnitZ());
+
+              // Apply the rotation matrix to CoM_rpy
+              CoM_rpy = rotationMatrix * CoM_rpy;
               CoM_quat << r->pose[3], r->pose[6], r->pose[4], r->pose[5];
-              CoM_pos = Vector3d(r->pose[2]/1000.0, r->pose[0]/1000.0, r->pose[1]/1000.0-0.58+0.0272); //0.0292
+
+              double alignment_z_offset = 0.002;
+              CoM_pos = Vector3d(r->pose[2]/1000.0, r->pose[0]/1000.0, r->pose[1]/1000.0-0.58 + alignment_z_offset); //0.0272
               if(!(r->pose[2] == 0.0 && r->pose[0] == 0.0 && r->pose[1] == 0.0))
               {
                 stream_started = true;
               }
               if(stream_started && r->pose[2] == 0.0 && r->pose[0] == 0.0 && r->pose[1] == 0.0)
               {
+                // bad_data_counter++;
                 scheduleDisable();
                 cout << "Lost Phasespace Tracking. Disabling Motors." << endl;
                 stream_started = false;
               }
+              // else{
+              //   bad_data_counter = 0;
+              // }
+              // if(bad_data_counter > 4)
+              // {
+              //   scheduleDisable();
+              //   cout << "Lost Phasespace Tracking. Disabling Motors." << endl;
+              //   stream_started = false;
+              // }
               if(first_time) 
               {
                 CoM_pos_last = CoM_pos;
@@ -185,6 +212,7 @@ void* motion_capture( void * arg )
               double time_now = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch).count() / 1000000.0;  // Convert to double with resolution of microseconds
               double dt = time_now - time_last;  // Convert to double with resolution of microseconds
               time_last = time_now;
+              // cout << "dt: " << dt << endl;
               Vector3d CoM_vel_raw = (CoM_pos - CoM_pos_last)/dt;
               CoM_pos_last = CoM_pos;
               CoM_x_vels.tail(99) = CoM_x_vels.head(99).eval();
@@ -194,7 +222,7 @@ void* motion_capture( void * arg )
               CoM_z_vels.tail(99) = CoM_z_vels.head(99).eval();
               CoM_z_vels[0] = CoM_vel_raw(2);
 
-              double dx_smoothed = smoothMocapData(CoM_x_vels,0.0);
+              double dx_smoothed = smoothMocapData(CoM_x_vels,0.1);
               double dy_smoothed = smoothMocapData(CoM_y_vels,0.1);
               double dz_smoothed = smoothMocapData(CoM_z_vels,0.1);
 

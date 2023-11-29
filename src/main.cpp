@@ -189,6 +189,7 @@ struct termios originalSettings;
 
 extern double screen_recording;
 extern double usbcam_recording;
+extern double usbcam_hw_recording;
 
 extern bool auto_mode;
 extern MatrixXd lfv_dsp_start;
@@ -274,7 +275,7 @@ void run_tello_pd()
 
 	double x_off = 0.000;
 
-	target(1) = robot_init_foot_width_HW/2.0 - 0.125;
+	target(1) = robot_init_foot_width_HW/2.0 - (tello->controller->get_SRB_params().W)/2.0; 
 	
 	Vector3d target_front_left(foot_len_half+target(0)+x_off, target(1), target(2));
 	Vector3d target_back_left(-foot_len_half+target(0)+x_off, target(1), target(2));
@@ -484,10 +485,14 @@ void* Human_Playback_Hardware( void * arg )
     // std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-09-39-sway-slow/human_dyn_data.csv";
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-20-25-one-step-wide/human_dyn_data.csv";
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-17-59-single step/human_dyn_data.csv";
-	std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-18-38-two steps/human_dyn_data.csv";
+	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-18-38-two steps/human_dyn_data.csv";
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-12-35-slow-stepping/human_dyn_data.csv"; 
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-15-43-wide leg stepping/human_dyn_data.csv";
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-11-43-sway-then-2-steps/human_dyn_data.csv";
+
+	
+	std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/10-17-23__18-08-17-first-time-multiple-steps/human_dyn_data.csv";
+
 
     std::string logPath = removeTextAfterLastSlashHW(active_log);
 
@@ -495,7 +500,7 @@ void* Human_Playback_Hardware( void * arg )
 
 	double hR = tello->controller->get_SRB_params().hLIP;
 	double hH = tello->controller->get_human_params().hLIP; 
-	Human_dyn_data hdd0 = hdd_vec[0];
+	Human_dyn_data hdd0 = hdd_vec[7500]; // 7500 for guillermo playback
 	double fyH_R = hdd0.fyH_R;
 	double fyH_L = hdd0.fyH_L;
 
@@ -845,10 +850,10 @@ void balance_pd(MatrixXd lfv_hip)
 	Vector3d target_front_right_vel = tello->controller->get_lfdv_comm_hip().row(0);
 	Vector3d target_back_right_vel = tello->controller->get_lfdv_comm_hip().row(1);
 
-	// Vector3d target_front_left_accel = tello->controller->get_lfddv_comm_hip().row(2);
-	// Vector3d target_back_left_accel = tello->controller->get_lfddv_comm_hip().row(3);
-	// Vector3d target_front_right_accel = tello->controller->get_lfddv_comm_hip().row(0);
-	// Vector3d target_back_right_accel = tello->controller->get_lfddv_comm_hip().row(1);
+	Vector3d target_front_left_accel = tello->controller->get_lfddv_comm_hip().row(2);
+	Vector3d target_back_left_accel = tello->controller->get_lfddv_comm_hip().row(3);
+	Vector3d target_front_right_accel = tello->controller->get_lfddv_comm_hip().row(0);
+	Vector3d target_back_right_accel = tello->controller->get_lfddv_comm_hip().row(1);
 
 	VectorXd vel_desired(12);
 	vel_desired  << target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel; //0,0,0,0,0,0,0,0,0,0,0,0; //
@@ -861,7 +866,7 @@ void balance_pd(MatrixXd lfv_hip)
 					0.0926, // straight leg (thigh + shin + foot) inertia seen by hip roll
 					0.0913, // straight leg (thigh + shin + foot) inertia seen by hip pitch
 					0.0174, // straight leg (shin + foot) inertia seen by knee
-					0.0030; // foot inertia seen by ankle
+					0.0030+0.03; // foot inertia seen by ankle (+ tuned value)+0.03
 	double inertia_accel_gain = 0.0;
 
 	VectorXd swing_leg_torques = VectorXd::Zero(10);
@@ -875,12 +880,12 @@ void balance_pd(MatrixXd lfv_hip)
 	swing_pd_config.setTaskVelDesired(target_front_left_vel, target_back_left_vel, target_front_right_vel, target_back_right_vel);
 	swing_pd_config.setTaskKp(0,0,0);
 	swing_pd_config.setTaskKd(0,0,0);
-	swing_pd_config.setJointKa(0);
-	swing_pd_config.setFFAccel(Vector3d::Zero(),Vector3d::Zero(),Vector3d::Zero(),Vector3d::Zero());
+	swing_pd_config.setJointKa(leg_inertia*1.0);
+	swing_pd_config.setFFAccel(target_front_left_accel,target_back_left_accel,target_front_right_accel,target_back_right_accel);
 
 	VectorXd kp_vec_joint_swing(10);
 	VectorXd kd_vec_joint_swing(10);
-	kp_vec_joint_swing << 32, 64, 100,100,150, 32, 64, 100,100,150;
+	kp_vec_joint_swing << 32, 100, 100,100,100, 32, 100, 100,100,100;
 	kd_vec_joint_swing <<  1, 1, 1,1,1,  1, 1, 1,1,1;
 
 	swing_pd_config.setJointKp(kp_vec_joint_swing);
@@ -901,10 +906,11 @@ void balance_pd(MatrixXd lfv_hip)
 	posture_pd_config.setTaskKa(0,0,0);
 	VectorXd kp_vec_joint_posture(10);
 	VectorXd kd_vec_joint_posture(10);
-	kp_vec_joint_posture << 16, 16, 0,0,0, 16, 16, 0,0,0;
+	kp_vec_joint_posture << 32, 16, 0,0,0, 32, 16, 0,0,0;
 	kd_vec_joint_posture <<  0, 0, 0,0,0,  0, 0, 0,0,0;
 	posture_pd_config.setJointKp(kp_vec_joint_posture);
 	posture_pd_config.setJointKd(kd_vec_joint_posture);
+	posture_pd_config.setJointKa(0);
 
 	VectorXd posture_ctrl_torques = tello->taskPD2(posture_pd_config);
 	
@@ -913,12 +919,12 @@ void balance_pd(MatrixXd lfv_hip)
 	tau_LR = jointFFTorque + posture_ctrl_torques;
 
 	// cout << tau_LR.transpose() << endl;
-	VectorXd torques_left  = tello->swing_stance_mux(tau_LR.head(5), swing_leg_torques.head(5),
-														0.000,tello->controller->get_isSwingToStanceRight(), 
+	VectorXd torques_left  = tello->swing_stance_mux(tau_LR.head(5), swing_leg_torques.head(5), 
+														0.020,tello->controller->get_isSwingToStanceRight(), 
 														tello->controller->get_time()-tello->controller->get_transitionStartRight(), 
 														0);
 	VectorXd torques_right = tello->swing_stance_mux(tau_LR.tail(5), swing_leg_torques.tail(5),
-														0.000,tello->controller->get_isSwingToStanceLeft(),
+														0.020,tello->controller->get_isSwingToStanceLeft(),
 														tello->controller->get_time()-tello->controller->get_transitionStartLeft(), 
 														1);
 	VectorXd tau_LR_muxed(10);
@@ -952,7 +958,7 @@ void balance_pd(MatrixXd lfv_hip)
 
 	VectorXd kd_vec_motor = VectorXd::Ones(10)*motor_kd;
 
-	int kd_swing = 300;
+	int kd_swing = 200;
 	int kd_stance = balancing_motor_kd;
 	if(tello->controller->get_FSM()==1)
 	{
@@ -1014,7 +1020,7 @@ void balance_pd(MatrixXd lfv_hip)
 	
 	tello->taskPD(task_pd_config);
 }
-
+extern double p_star_shared;
 void run_balance_controller()
 {
 	auto now = std::chrono::system_clock::now();  // Get the current time
@@ -1052,6 +1058,11 @@ void run_balance_controller()
 
 	if(tello->controller->get_SRB_params().planner_type == 2)
 	{
+		double hR = tello->controller->get_SRB_params().hLIP;
+		double hH = tello->controller->get_human_params().hLIP;
+		// pc_des = Vector3d(	p_star_shared,
+		// 					tello->controller->get_human_dyn_data().yH*(hR/hH),
+		// 					0);
 		pc_des = pc_curr;
 		EA_des = EA_curr;
 	}
@@ -1111,8 +1122,8 @@ void run_balance_controller()
 	// cout << "RPY Error: " << "     R: " << tello->_rpy(0)-CoM_rpy(0) << "     P: " << tello->_rpy(1)-CoM_rpy(1) << "     Y: " << 0-CoM_rpy(2) << "                \r";
 	// cout.flush();
 
-	// cout << "GRFs: " << tello->_GRFs.left_front << ",  " << tello->_GRFs.right_back << ",  " << tello->_GRFs.right_front << ",  " << tello->_GRFs.right_back << endl;
-	// cout << "FSM: " << tello->controller->get_FSM() << "GRFs: " << tello->_GRFs.left_front << ",  " << tello->_GRFs.right_back << ",  " << tello->_GRFs.right_front << ",  " << tello->_GRFs.right_back << endl;
+	
+	// cout << "FSM: " << tello->controller->get_FSM() << "GRFs: " << tello->_GRFs.left_front << ",  " << tello->_GRFs.left_back << ",  " << tello->_GRFs.right_front << ",  " << tello->_GRFs.right_back << endl;
 
 	VectorXd task_velocities = tello->joint_vel_to_task_vel(tello->getJointVelocities(),tello->getJointPositions());
 
@@ -1348,7 +1359,7 @@ void process_hw_control_packet()
 				micros2 = std::chrono::time_point_cast<std::chrono::microseconds>(now2);  // Round down to nearest microsecond
 				since_epoch2 = micros2.time_since_epoch();  // Get duration since epoch
 				t_program_start = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch2).count() / 1000000.0;  // Convert to double with resolution of microseconds
-				balancing_motor_kd = 400;
+				balancing_motor_kd = 200;
 			}
 			else{
 				cout << "Robot needs to be standing by itself to enable balancing. If it is, check the loadcell connections." << endl;
@@ -1538,6 +1549,9 @@ static void* update_1kHz( void * arg )
 				// do nothing
 				break;
 		}
+
+		// cout << "GRFs: " << /*tello->_GRFs.left_front << ",  " << tello->_GRFs.left_back << ",  " <<*/ tello->_GRFs.right_front << ",  " << tello->_GRFs.right_back << "              \r" ;
+		// cout.flush();
 		//handle UDP transmit here:
 		Human_dyn_data hdd = tello->controller->get_human_dyn_data();
 		if(tello->controller->is_human_ctrl_enabled())
@@ -1589,6 +1603,7 @@ void signal_callback_handler(int signum){
     owl.close();
 	screen_recording = false;
 	usbcam_recording = false;
+	usbcam_hw_recording = false;
 	system("killall -2 ffmpeg");
 	usleep(2000000);
 	tcsetattr(STDIN_FILENO, TCSANOW, &originalSettings);
@@ -1660,7 +1675,7 @@ void init_6dof_test()
 	// srb_params.t_end_stepping = 10;
 	// sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
 
-	printf("Telelop Selected\n\n");
+	// printf("Telelop Selected\n\n");
 	std::string recording_file_name = "Telelop";
 	srb_params.planner_type = 2; 
 	srb_params.init_type = 1;
@@ -1861,7 +1876,8 @@ int main(int argc, char *argv[]) {
 		// tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 500);
 		tello->addPeriodicTask(&visualize_robot, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"animate_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&screenRecord, SCHED_FIFO, 1, ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
-		tello->addPeriodicTask(&usbCamRecord, SCHED_FIFO, 0, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
+		tello->addPeriodicTask(&usbCamRecord, SCHED_FIFO, 0, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"HMI_recording_task",TASK_CONSTANT_PERIOD, 1000);
+		tello->addPeriodicTask(&usbCamRecord_HW, SCHED_FIFO, 2, ISOLATED_CORE_3_THREAD_2, (void*)(NULL),"HW_recording_task",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, 6, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&motion_capture, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"Mocap_Task",TASK_CONSTANT_PERIOD, 1000);
 		while(1){ usleep(1000); }
@@ -1957,7 +1973,7 @@ int main(int argc, char *argv[]) {
 	tello->addPeriodicTask(&motion_capture, SCHED_FIFO, 99, UPX_ISOLATED_CORE_3_THREAD_1, (void*)(NULL),"Mocap_Task",TASK_CONSTANT_PERIOD, 1000);
 	tello->addPeriodicTask(&hw_logging, SCHED_FIFO, 99, UPX_ISOLATED_CORE_3_THREAD_2, (void*)(NULL),"hw_logging_task",TASK_CONSTANT_PERIOD, 1000);
 
-	// tello->addPeriodicTask(&Human_Playback_Hardware, SCHED_FIFO, 90, UPX_ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"human_playback_HW_task",TASK_CONSTANT_PERIOD, 1000);
+	tello->addPeriodicTask(&Human_Playback_Hardware, SCHED_FIFO, 90, UPX_ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"human_playback_HW_task",TASK_CONSTANT_PERIOD, 1000);
 	tello->addPeriodicTask(&curve_fitting, SCHED_FIFO, 99, UPX_ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"curve_fitting",TASK_CONSTANT_PERIOD, 1000);
 
 	usleep(4000);
@@ -2004,8 +2020,8 @@ int main(int argc, char *argv[]) {
 
 				break;
 			case 'l':
-				balancing_motor_kd = 400;
-				printf("\n Set Balanicng Motor Kd to 700. \n");
+				balancing_motor_kd = 300;
+				printf("\n Set Balanicng Motor Kd to 300. \n"); // was 600 to 700
 				break;
 			case 'h':
 				now1 = std::chrono::system_clock::now();  // Get the current time
@@ -2020,6 +2036,11 @@ int main(int argc, char *argv[]) {
 				tello->controller->set_lfv0(tello->controller->get_lfv_world());
 				lfv_dsp_start = tello->controller->get_lfv0();
 				printf("\nBalance Controller:\n");
+
+				break;
+			case 't':
+				tare_mocap_pos = true;
+				printf("\nMocap Pos Tared:\n");
 
 				break;
 			case 'b':

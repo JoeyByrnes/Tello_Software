@@ -38,6 +38,17 @@ extern bool use_current_foot_width;
 
 extern double xH_Commanded;
 
+int r_h=0;
+int r_k=0;
+int r_a=0;
+int l_h=0;
+int l_k=0;
+int l_a=0;
+
+float roll_adjust = 0;
+float pitch_adjust = 0;
+float yaw_adjust = 0;
+
 
 VectorXd fdxH_R_vec = VectorXd(100);
 VectorXd fdyH_R_vec = VectorXd(100);
@@ -195,11 +206,19 @@ void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* rob
 	}
 }
 
-															//14975 //13518
-double joint_zeros[10] = {0,5580,11090,2633,9975,0,2616,4376,15047,13600};
+															
+double joint_zeros[10] = {0,5528,11090-65,2758+50,4240+55,0,2603,4367+25,15047+0,5530-60}; //{0,5528,11090,2808,4290-15,0,2603,4367,15047+25,5530-30};
 double joint_directions[10] =      { 1,-1,1,1,-1,    1,-1,-1,-1,1};
 double joint_measured_zero_offsets[10] = {0,0,-0.15708,0.382,0,0,0,0.15708,-0.382,0};
 void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot){
+
+	joint_zeros[2] = 11090-65 + l_h;
+	joint_zeros[3] = 2758+50 + l_k;
+	joint_zeros[4] = 4240+55 + l_a;
+
+	joint_zeros[7] = 4367+25 + r_h;
+	joint_zeros[8] = 15047+0 + r_k;
+	joint_zeros[9] = 5530-60 + r_a;
 	
 	uint8_t id = Message.DATA[0];
 	uint16_t joint_position = (Message.DATA[1] << 8) | Message.DATA[2];
@@ -597,6 +616,18 @@ void* rx_UDP( void * arg ){
             pthread_mutex_lock(&mutex_UDP_recv);
             DeserializeVizControlData((const uint8_t*)rx_buffer, n, hw_control_data);
 			pthread_mutex_unlock(&mutex_UDP_recv);
+			l_h = hw_control_data.hip_offset_left;
+			l_k = hw_control_data.knee_offset_left;
+			l_a = hw_control_data.ankle_offset_left;
+
+			r_h = hw_control_data.hip_offset_right;
+			r_k = hw_control_data.knee_offset_right;
+			r_a = hw_control_data.ankle_offset_right;
+			// cout << "Hip: " << hw_control_data.hip_offset_right << endl;
+
+			roll_adjust = hw_control_data.roll_adjust;
+			pitch_adjust = hw_control_data.pitch_adjust;
+			yaw_adjust = hw_control_data.yaw_adjust;
 			// cout << "Client: " << inet_ntoa(sender_addr.sin_addr) << "      \r";
 			// cout 
 			// 	<< "  tare: " << hw_ctrl_data.tare_hmi 

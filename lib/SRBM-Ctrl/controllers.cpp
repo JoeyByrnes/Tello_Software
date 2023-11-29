@@ -13,6 +13,8 @@ extern double yaw_desired_ps4;
 
 extern bool use_adaptive_step_time;
 
+double p_star_shared;
+
 double fzH0_min_L = 1000;
 double fzH0_min_R = 1000;
 
@@ -471,7 +473,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
     // walking reference LIP and robot LIP at step transitions
 
     // initialize commanded end-effector positions (DSP)
-    lfv_comm = lfv_dsp_start;
+    lfv_comm = lfv;//lfv_dsp_start;
     lfv_comm.col(2).setConstant(-srb_params.hLIP);
     lfdv_comm.setZero();
 
@@ -507,6 +509,8 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
         double u_star = 0.5*(tdsp+tssp);
         p_star = xDCMH_shifted / (1.0 + (sigma1H / wH));
         v_star = wH * (xDCMH_shifted - p_star);
+
+        p_star_shared = p_star;
 
         // p_star = u_star/(2.0+tdsp*sigma1H);
         // v_star = sigma1H*p_star;

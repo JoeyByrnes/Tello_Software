@@ -250,7 +250,7 @@ void* curve_fitting( void * arg )
         coder::array<double, 2U> y_data = dash_utils::eigenVectorToCoderArray(ydata);
         step_z_curve_fit(x_data, y_data, x0, lb, ub, &AH, &end_time);
         
-        
+
         if(end_time < 0.05) end_time = prev_step_duration;
         timevec.tail(99) = timevec.head(99).eval();
         timevec[0] = end_time;

@@ -149,6 +149,16 @@ void process_motor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot)
 
 }
 
+// Define calibration counters and Eigen matrices globally
+constexpr int MAX_SAMPLES = 100;
+int left_samples_counter = 0;
+int right_samples_counter = 0;
+
+Eigen::VectorXd grf_lf1(MAX_SAMPLES);
+Eigen::VectorXd grf_lb1(MAX_SAMPLES);
+Eigen::VectorXd grf_rf1(MAX_SAMPLES);
+Eigen::VectorXd grf_rb1(MAX_SAMPLES);
+
 void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot){
 	
 	uint8_t id = Message.DATA[0];
@@ -162,12 +172,24 @@ void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* rob
 	double back_force = (double)((int)back_force_uint16 - 32768)/100.0;
 
 	if(id == 18){
-		if(!robot->_left_loadcells_calibrated){
-			robot->_GRF_biases.left_front = front_force;
-			robot->_GRF_biases.left_back = back_force;
-			robot->_left_loadcells_calibrated = true;
-			cout << "Left GRF Offsets:  Front: " << front_force << "   Back: " << back_force << endl;
-		}
+		if (!robot->_left_loadcells_calibrated) {
+            // Append forces to Eigen matrices
+            grf_lf1[left_samples_counter] = front_force;
+            grf_lb1[left_samples_counter] = back_force;
+
+            // Increment sample count
+            left_samples_counter++;
+
+            if (left_samples_counter == MAX_SAMPLES) {
+                // Calculate average for calibration offset
+                robot->_GRF_biases.left_front = grf_lf1.mean();
+                robot->_GRF_biases.left_back = grf_lb1.mean();
+
+                robot->_left_loadcells_calibrated = true;
+                cout << "Left GRF Offsets:  Front: " << robot->_GRF_biases.left_front
+                     << "   Back: " << robot->_GRF_biases.left_back << endl;
+            }
+        }
 		// write to left foot
 
 		grf_lf.tail(99) = grf_lf.head(99).eval();
@@ -184,12 +206,24 @@ void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* rob
 		robot->_GRFs.left_back = lb;
 	}
 	if(id == 19){
-		if(!robot->_right_loadcells_calibrated){
-			robot->_GRF_biases.right_front = front_force;
-			robot->_GRF_biases.right_back = back_force;
-			robot->_right_loadcells_calibrated = true;
-			cout << "Right GRF Offsets:  Front: " << front_force << "   Back: " << back_force << endl;
-		}
+		if (!robot->_right_loadcells_calibrated) {
+            // Append forces to Eigen matrices
+            grf_rf1(right_samples_counter) = front_force;
+            grf_rb1(right_samples_counter) = back_force;
+
+            // Increment sample count
+            right_samples_counter++;
+
+            if (right_samples_counter == MAX_SAMPLES) {
+                // Calculate average for calibration offset
+                robot->_GRF_biases.right_front = grf_rf1.mean();
+                robot->_GRF_biases.right_back = grf_rb1.mean();
+
+                robot->_right_loadcells_calibrated = true;
+                cout << "Right GRF Offsets:  Front: " << robot->_GRF_biases.right_front
+                     << "   Back: " << robot->_GRF_biases.right_back << endl;
+            }
+        }
 		// write to right foot
 
 		grf_rf.tail(99) = grf_rf.head(99).eval();
@@ -212,13 +246,13 @@ double joint_directions[10] =      { 1,-1,1,1,-1,    1,-1,-1,-1,1};
 double joint_measured_zero_offsets[10] = {0,0,-0.15708,0.382,0,0,0,0.15708,-0.382,0};
 void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot){
 
-	joint_zeros[2] = 11090-65 + l_h;
+	joint_zeros[2] = 11090-65-10 + l_h;
 	joint_zeros[3] = 2758+50 + l_k;
-	joint_zeros[4] = 4240+55 + l_a;
+	joint_zeros[4] = 4240+55-60 + l_a;
 
 	joint_zeros[7] = 4367+25 + r_h;
-	joint_zeros[8] = 15047+0 + r_k;
-	joint_zeros[9] = 5530-60 + r_a;
+	joint_zeros[8] = 15047+0-15 + r_k;
+	joint_zeros[9] = 5530-60+60 + r_a;
 	
 	uint8_t id = Message.DATA[0];
 	uint16_t joint_position = (Message.DATA[1] << 8) | Message.DATA[2];

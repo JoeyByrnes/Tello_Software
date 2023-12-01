@@ -370,7 +370,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == 1) // currently in SSP_L
     {
-        if ( ( (grf_rf + grf_rb > 3 ) || (lf1z <= 0.003 || lf2z <= 0.003) ) && s > 0.6) // enter DSP
+        if ( ( (grf_rf + grf_rb > 20 ) && (lf1z <= 0.005 || lf2z <= 0.005) ) && s > 0.25) // enter DSP
         {
             cout << "Setting FSM from 1 to 0,   time: " << t << endl;
             FSM_next = 0;
@@ -382,7 +382,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == -1) // currently in SSP_R
     {
-        if ( ( (grf_lf + grf_lb > 3 ) || (lf3z <= 0.003 || lf4z <= 0.003) ) && s > 0.6) // enter DSP
+        if ( ( (grf_lf + grf_lb > 20-12 ) && (lf3z <= 0.005 || lf4z <= 0.005) ) && s > 0.25) // enter DSP
         {
             cout << "Setting FSM from -1 to 0,   time: " << t << endl;
             FSM_next = 0;

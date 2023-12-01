@@ -866,7 +866,7 @@ void balance_pd(MatrixXd lfv_hip)
 					0.0926, // straight leg (thigh + shin + foot) inertia seen by hip roll
 					0.0913, // straight leg (thigh + shin + foot) inertia seen by hip pitch
 					0.0174, // straight leg (shin + foot) inertia seen by knee
-					0.0030+0.03; // foot inertia seen by ankle (+ tuned value)+0.03
+					0.0030+0.02; // foot inertia seen by ankle (+ tuned value)+0.03
 	double inertia_accel_gain = 0.0;
 
 	VectorXd swing_leg_torques = VectorXd::Zero(10);
@@ -885,8 +885,8 @@ void balance_pd(MatrixXd lfv_hip)
 
 	VectorXd kp_vec_joint_swing(10);
 	VectorXd kd_vec_joint_swing(10);
-	kp_vec_joint_swing << 32, 100, 100,100,100, 32, 100, 100,100,100;
-	kd_vec_joint_swing <<  1, 1, 1,1,1,  1, 1, 1,1,1;
+	kp_vec_joint_swing << 32, 50, 50,50,50, 32, 50, 50,50,50;
+	kd_vec_joint_swing <<  0.5, 0.5, 0.5,0.5,0.5,  0.5, 0.5, 0.5,0.5,0.5;
 
 	swing_pd_config.setJointKp(kp_vec_joint_swing);
 	swing_pd_config.setJointKd(kd_vec_joint_swing);
@@ -906,7 +906,7 @@ void balance_pd(MatrixXd lfv_hip)
 	posture_pd_config.setTaskKa(0,0,0);
 	VectorXd kp_vec_joint_posture(10);
 	VectorXd kd_vec_joint_posture(10);
-	kp_vec_joint_posture << 32, 16, 0,0,0, 32, 16, 0,0,0;
+	kp_vec_joint_posture << 32, 32, 0,0,0, 32, 32, 0,0,0;
 	kd_vec_joint_posture <<  0, 0, 0,0,0,  0, 0, 0,0,0;
 	posture_pd_config.setJointKp(kp_vec_joint_posture);
 	posture_pd_config.setJointKd(kd_vec_joint_posture);
@@ -920,11 +920,11 @@ void balance_pd(MatrixXd lfv_hip)
 
 	// cout << tau_LR.transpose() << endl;
 	VectorXd torques_left  = tello->swing_stance_mux(tau_LR.head(5), swing_leg_torques.head(5), 
-														0.020,tello->controller->get_isSwingToStanceRight(), 
+														0.03,tello->controller->get_isSwingToStanceRight(), 
 														tello->controller->get_time()-tello->controller->get_transitionStartRight(), 
 														0);
 	VectorXd torques_right = tello->swing_stance_mux(tau_LR.tail(5), swing_leg_torques.tail(5),
-														0.020,tello->controller->get_isSwingToStanceLeft(),
+														0.03,tello->controller->get_isSwingToStanceLeft(),
 														tello->controller->get_time()-tello->controller->get_transitionStartLeft(), 
 														1);
 	VectorXd tau_LR_muxed(10);
@@ -958,7 +958,7 @@ void balance_pd(MatrixXd lfv_hip)
 
 	VectorXd kd_vec_motor = VectorXd::Ones(10)*motor_kd;
 
-	int kd_swing = 200;
+	int kd_swing = 300;
 	int kd_stance = balancing_motor_kd;
 	if(tello->controller->get_FSM()==1)
 	{
@@ -1327,7 +1327,10 @@ void process_hw_control_packet()
 			if(gain_adjustment < 140)
 			{
 				gain_adjustment = gain_adjustment + 0.1;
+				// tello->_right_loadcells_calibrated = false;
+				// tello->_left_loadcells_calibrated = false;
 			}
+			
 		}
 	}
 	if(hw_control_data.set_min_joint_kp)

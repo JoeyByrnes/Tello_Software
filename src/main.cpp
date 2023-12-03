@@ -196,7 +196,7 @@ extern MatrixXd lfv_dsp_start;
 
 extern bool log_data_ready;
 extern std::string log_folder;
-extern VectorXd x_out, u_out, q_out, qd_out,full_tau_out, tau_out, tau_ext_out, lfv_out, lfdv_out,lfv_comm_out,lfdv_comm_out, t_n_FSM_out, impulse_out, meas_grf_out, xDCM_out;
+extern VectorXd x_out, u_out, q_out, qd_out,full_tau_out, tau_out, tau_ext_out, lfv_out, lfdv_out,lfv_comm_out,lfdv_comm_out, t_n_FSM_out, impulse_out, meas_grf_out, xDCM_out, yDCM_out;
 extern double last_log_time;
 extern Human_dyn_data hdd_out;
 extern Traj_planner_dyn_data tpdd_out;
@@ -454,7 +454,8 @@ void* hw_logging( void * arg )
 
             dash_utils::writeVectorToCsv(meas_grf_out,"meas_grf_out.csv");
 
-            // dash_utils::writeVectorToCsv(xDCM_out,"xDCM.csv");
+            dash_utils::writeVectorToCsv(xDCM_out,"xDCM.csv");
+			dash_utils::writeVectorToCsv(yDCM_out,"yDCM.csv");
             
         }
         // end logging
@@ -482,7 +483,6 @@ void* Human_Playback_Hardware( void * arg )
 
 	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
 
-    // std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-09-39-sway-slow/human_dyn_data.csv";
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-20-25-one-step-wide/human_dyn_data.csv";
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-17-59-single step/human_dyn_data.csv";
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-18-38-two steps/human_dyn_data.csv";
@@ -491,7 +491,9 @@ void* Human_Playback_Hardware( void * arg )
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-11-43-sway-then-2-steps/human_dyn_data.csv";
 
 	
-	std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/10-17-23__18-08-17-first-time-multiple-steps/human_dyn_data.csv";
+	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/10-17-23__18-08-17-first-time-multiple-steps/human_dyn_data.csv";
+
+	std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/12-02-23__14-27-42-test-mult-periods/human_dyn_data.csv";
 
 
     std::string logPath = removeTextAfterLastSlashHW(active_log);
@@ -500,7 +502,7 @@ void* Human_Playback_Hardware( void * arg )
 
 	double hR = tello->controller->get_SRB_params().hLIP;
 	double hH = tello->controller->get_human_params().hLIP; 
-	Human_dyn_data hdd0 = hdd_vec[7500]; // 7500 for guillermo playback
+	Human_dyn_data hdd0 = hdd_vec[0]; // 7500 for original guillermo playback
 	double fyH_R = hdd0.fyH_R;
 	double fyH_L = hdd0.fyH_L;
 
@@ -1261,6 +1263,43 @@ void run_balance_controller()
 
 	VectorXd ul = tello->controller->get_GRFs();
 	VectorXd gl = meas_grf_out;
+
+
+
+	double xR = tello->controller->get_x()(0);
+	double dxR = tello->controller->get_x()(3);
+	double pxR_beg_step = tpdd_out.st_beg_step(0);
+	double xRlocal = xR - pxR_beg_step;
+	double hR = tello->controller->get_SRB_params().hLIP;
+	double g = tello->controller->get_SRB_params().g;
+	double x_HWRM = tpdd_out.x_HWRM;
+	double dx_HWRM = tpdd_out.dx_HWRM;
+	double hH = tello->controller->get_human_params().hLIP;
+
+	double wR = std::sqrt(g / hR);
+	double wH = std::sqrt(g / hH);
+
+	double xDCMRlocal = xRlocal + (dxR/wR);
+
+	double xDCMHWRM = x_HWRM + (dx_HWRM/wH);
+	Vector2d xDCM(xDCMHWRM/hH,xDCMRlocal/hR);
+
+	xDCM_out = xDCM;
+
+
+	double yR = tello->controller->get_x()(1);
+	double dyR = tello->controller->get_x()(4);
+	double pyR_beg_step = tpdd_out.st_beg_step(1);
+	double yRlocal = yR - pyR_beg_step;
+	double yH = tello->controller->get_human_dyn_data().yH;
+	double dyH = tello->controller->get_human_dyn_data().dyH;
+
+	double yDCMRlocal = yRlocal + (dyR/wR);
+
+	double yDCMHWRM = yH + (dyH/wH);
+	Vector2d yDCM(yDCMHWRM/hH,yDCMRlocal/hR);
+
+	yDCM_out = yDCM;
 
 	// cout << ul(8) << ", " << ul(11) << ", " << ul(2) << ", " << ul(5) << ", " << gl(0) << ", " << gl(1) << ", " << gl(2) << ", " << gl(3) << ", " << endl;
 

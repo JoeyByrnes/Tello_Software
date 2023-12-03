@@ -75,7 +75,7 @@ extern double FxH_hmi_out, FxH_spring_out, FyH_hmi_out;
 bool log_data_ready = false;
 bool sim_step_completed = false;
 std::string log_folder;
-VectorXd x_out, u_out, q_out, qd_out,full_tau_out, tau_out, tau_ext_out, lfv_out, lfdv_out,lfv_comm_out,lfdv_comm_out, t_n_FSM_out, impulse_out, meas_grf_out, xDCM_out;
+VectorXd x_out, u_out, q_out, qd_out,full_tau_out, tau_out, tau_ext_out, lfv_out, lfdv_out,lfv_comm_out,lfdv_comm_out, t_n_FSM_out, impulse_out, meas_grf_out, xDCM_out, yDCM_out;
 VectorXd target_pos_out = Vector3d(0,0,0);
 VectorXd target_vel_out = Vector3d(0,0,0);
 double last_log_time = -1;

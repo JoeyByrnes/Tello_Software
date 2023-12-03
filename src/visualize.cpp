@@ -293,9 +293,9 @@ void* visualization_render_thread( void * arg )
     // cam.lookat[1] = 0;
     // cam.lookat[2] = -0.2;
 
-    cam.elevation = -8;
+    cam.elevation = -18;
     cam.distance = 2.0;
-    cam.azimuth = -135;
+    cam.azimuth = -0;
     cam.lookat[0] = 0;
     cam.lookat[1] = 0;
     cam.lookat[2] = -0.1;

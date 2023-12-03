@@ -242,10 +242,12 @@ void* curve_fitting( void * arg )
         ready_for_new_curve_fit_data = true;
 
         double AH, end_time;
+        double MIN_SWING_TIME = 0.25;
+        double MAX_SWING_TIME = 0.4;
         double increasing_bound_limit = std::max((((double)xdata.size()-25)/1000.0),0.001);
-        double x0[] = { prev_step_amplitude , prev_step_duration };
-        double lb[] = { 0.01 , prev_step_duration - increasing_bound_limit };
-        double ub[] = { 0.2 , prev_step_duration + increasing_bound_limit };
+        double x0[] = { 0.03 , MAX_SWING_TIME };
+        double lb[] = { 0.01 , MAX_SWING_TIME - increasing_bound_limit};
+        double ub[] = { 0.2 , MAX_SWING_TIME };
         coder::array<double, 2U> x_data = dash_utils::eigenVectorToCoderArray(xdata);
         coder::array<double, 2U> y_data = dash_utils::eigenVectorToCoderArray(ydata);
         step_z_curve_fit(x_data, y_data, x0, lb, ub, &AH, &end_time);
@@ -263,6 +265,8 @@ void* curve_fitting( void * arg )
 
         traj_planner_dyn_data.T_step_predicted = timeval;
         traj_planner_dyn_data.AH_step_predicted = AHval;
+
+
 
         // traj_planner_dyn_data.T_step = timeval;
         pthread_mutex_lock(&tello_ctrl_mutex);

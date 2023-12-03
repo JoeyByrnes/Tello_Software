@@ -16,8 +16,8 @@ void dash_init::Human_Init(Human_params &Human_params, Human_dyn_data &Human_dyn
     // Human_params.m = 75; // human weight in kg
     // Human_params.hLIP = 1.2; // nominal human LIP height
 
-    Human_params.m = 79; // human weight in kg
-    Human_params.hLIP = 1.15; // nominal human LIP height
+    Human_params.m = 76; // human weight in kg //Guillermo = 79 //joao = 95
+    Human_params.hLIP = 1.05; // nominal human LIP height //Guillermo = 1.15 // joao = 1.17
 
     Human_params.human_nom_ft_width = 0.220; // nominal human feet width //was 0.175
     Human_params.fyH_home = (joystick_base_separation/2.0) - Human_params.human_nom_ft_width - FOOT_2_JOYSTICK; // joystick y width
@@ -459,7 +459,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.xDCMH_deadband = 0.10; // deadband for applying gain for human DCM in m
         srb_params.KxDCMH = 2.0; // gain for human DCM
         srb_params.Kx_DCM_mult = 2.0; // multiplier of K_DCM for sagittal plane control
-        srb_params.Ky_DCM_mult = 1.0; // multiplier of K_DCM for frontal plane control
+        srb_params.Ky_DCM_mult = 2.0; // multiplier of K_DCM for frontal plane control
         srb_params.T_DSP = 0.0750; // assumed duration of DSP in s
         srb_params.lmaxR = 0.5; // maximum step length in m
 
@@ -471,7 +471,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.Kp_zR = 200.0; // P gain for z-direction tracking
         srb_params.Kd_zR = 10.0; // D gain for z-direction tracking
 
-        srb_params.Kp_phiR = 50.00; // P gain for roll tracking
+        srb_params.Kp_phiR = 150.00; // P gain for roll tracking
         srb_params.Kd_phiR = 1.0; // D gain for roll tracking
         srb_params.Kp_thetaR = 50.00; // P gain for pitch tracking
         srb_params.Kd_thetaR = 1.0; // D gain for pitch tracking

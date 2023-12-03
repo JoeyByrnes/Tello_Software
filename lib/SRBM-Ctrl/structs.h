@@ -165,7 +165,7 @@ struct Traj_planner_dyn_data
     int curr_SSP_sample_count;
     VectorXd step_z_history_L = VectorXd::Zero(1000);
     VectorXd step_z_history_R = VectorXd::Zero(1000);
-    double T_step_actual=0.2;
+    double T_step_actual=0.4;
     double AH_step_actual=0.03;
     double dx_HWRM_pre_impact;
     double dxR_pre_impact;

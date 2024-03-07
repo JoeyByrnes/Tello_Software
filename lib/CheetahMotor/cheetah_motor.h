@@ -45,7 +45,7 @@ class CheetahMotor
         void setKp(uint16_t kp);
         void setKd(uint16_t kd);
         void setff(int ff);
-        void addff(int ff);
+        // void addff(int ff);
         void setVel(int vel);
 
         void setSoftLimits(int pos_min, int pos_max, int ff_min, int ff_max);

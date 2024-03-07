@@ -8,7 +8,6 @@
         {
             "name": "PlatformIO",
             "includePath": [
-                "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/src",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/DynamicRobot_RDL",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Mujoco",
@@ -19,6 +18,7 @@
                 "/usr/local/lib/python2.7/dist-packages",
                 "/usr/local/lib/python2.7/dist-packages/numpy/core/include",
                 "/usr/include/X11",
+                "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/PCAN",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Eigen/**",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Kinematics/**",
@@ -42,13 +42,15 @@
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/step_z_curve_fit/interface",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/matlab_include",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/PhaseSpace",
+                "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/soem",
+                "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/osal",
+                "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/oshw",
                 "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Tello_IMU",
                 ""
             ],
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
-                    "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/src",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/DynamicRobot_RDL",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Mujoco",
@@ -59,6 +61,7 @@
                     "/usr/local/lib/python2.7/dist-packages",
                     "/usr/local/lib/python2.7/dist-packages/numpy/core/include",
                     "/usr/include/X11",
+                    "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/PCAN",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Eigen/**",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Kinematics/**",
@@ -82,12 +85,15 @@
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/step_z_curve_fit/interface",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/matlab_include",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/PhaseSpace",
+                    "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/soem",
+                    "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/osal",
+                    "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/oshw",
                     "/home/joey/Documents/PlatformIO/Projects/Tello_Software/lib/Tello_IMU",
                     ""
                 ]
             },
             "defines": [
-                "PLATFORMIO=60111",
+                "PLATFORMIO=60113",
                 ""
             ],
             "cppStandard": "c++17",

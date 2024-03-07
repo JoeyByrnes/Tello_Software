@@ -38,6 +38,7 @@
 #include "state_estimator.h"
 #include "mocap.h"
 #include "tello_locomotion.h"
+#include "ecat_master.h"
 
 #include <pcanfd.h>
 
@@ -115,7 +116,7 @@ uint16_t encoder_positions[10];
 uint16_t encoder_offsets[10]  = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int motor_directions[10] =      { 1,-1, 1, 1,-1, 1,-1, 1, 1,-1};
 								//1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-int motor_zeros[10] = {35516,35268,33308,34190-KNEE_OFFSET_ENC,33847+KNEE_OFFSET_ENC,32721,35254,34194,34611-KNEE_OFFSET_ENC,33681+KNEE_OFFSET_ENC}; // offsets handled
+int motor_zeros[10] = {35516,35268,33308,35071-KNEE_OFFSET_ENC,32914+KNEE_OFFSET_ENC,32721,35254,34194,33045-KNEE_OFFSET_ENC,34068+KNEE_OFFSET_ENC}; // offsets handled
 int motor_init_config[10] = {35540, 36558, 31813, 38599, 31811, 32767, 36712, 32718, 38436, 33335};
 int motor_initialized[10] = {0,0,0,0,0,0,0,0,0,0};
 int motor_move_complete[10] = {0,0,0,0,0,0,0,0,0,0};
@@ -233,7 +234,7 @@ RoboDesignLab::TaskPDConfig task_pd_config;
 void run_tello_pd()
 {
 	pthread_mutex_lock(&mutex_CAN_recv);
-	double joint_kp = 12;
+	double joint_kp = 24;
 	double joint_kd = 0.6;
 	VectorXd kp_vec_joint = VectorXd::Ones(10)*(joint_kp+gain_adjustment);
 	VectorXd kd_vec_joint = VectorXd::Ones(10)*joint_kd;
@@ -491,9 +492,9 @@ void* Human_Playback_Hardware( void * arg )
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-11-43-sway-then-2-steps/human_dyn_data.csv";
 
 	
-	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/10-17-23__18-08-17-first-time-multiple-steps/human_dyn_data.csv";
+	std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/10-17-23__18-08-17-first-time-multiple-steps/human_dyn_data.csv";
 
-	std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/12-02-23__14-27-42-test-mult-periods/human_dyn_data.csv";
+	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/12-02-23__14-27-42-test-mult-periods/human_dyn_data.csv";
 
 
     std::string logPath = removeTextAfterLastSlashHW(active_log);
@@ -502,7 +503,7 @@ void* Human_Playback_Hardware( void * arg )
 
 	double hR = tello->controller->get_SRB_params().hLIP;
 	double hH = tello->controller->get_human_params().hLIP; 
-	Human_dyn_data hdd0 = hdd_vec[0]; // 7500 for original guillermo playback
+	Human_dyn_data hdd0 = hdd_vec[7500]; // 7500 for original guillermo playback
 	double fyH_R = hdd0.fyH_R;
 	double fyH_L = hdd0.fyH_L;
 
@@ -887,8 +888,8 @@ void balance_pd(MatrixXd lfv_hip)
 
 	VectorXd kp_vec_joint_swing(10);
 	VectorXd kd_vec_joint_swing(10);
-	kp_vec_joint_swing << 32, 50, 50,50,50, 32, 50, 50,50,50;
-	kd_vec_joint_swing <<  0.5, 0.5, 0.5,0.5,0.5,  0.5, 0.5, 0.5,0.5,0.5;
+	kp_vec_joint_swing << 50, 100, 100,100,100, 50, 100, 100,100,100;
+	kd_vec_joint_swing <<  0.5, 1.0, 1.0,1.0,1.0,  0.5, 1.0, 1.0,1.0,1.0;
 
 	swing_pd_config.setJointKp(kp_vec_joint_swing);
 	swing_pd_config.setJointKd(kd_vec_joint_swing);
@@ -908,7 +909,7 @@ void balance_pd(MatrixXd lfv_hip)
 	posture_pd_config.setTaskKa(0,0,0);
 	VectorXd kp_vec_joint_posture(10);
 	VectorXd kd_vec_joint_posture(10);
-	kp_vec_joint_posture << 32, 32, 0,0,0, 32, 32, 0,0,0;
+	kp_vec_joint_posture << 100, 64, 0,0,0, 100, 64, 0,0,0;
 	kd_vec_joint_posture <<  0, 0, 0,0,0,  0, 0, 0,0,0;
 	posture_pd_config.setJointKp(kp_vec_joint_posture);
 	posture_pd_config.setJointKd(kd_vec_joint_posture);
@@ -936,7 +937,7 @@ void balance_pd(MatrixXd lfv_hip)
 	// cout << tau_LR_muxed.transpose() << endl;
 
 
-	double joint_kp = 8.0;
+	double joint_kp = 16.0;
 	double joint_kd = 0.00;
 	VectorXd kp_vec_joint = VectorXd::Ones(10)*(joint_kp+gain_adjustment);
 	VectorXd kd_vec_joint = VectorXd::Ones(10)*joint_kd;
@@ -1363,7 +1364,7 @@ void process_hw_control_packet()
 	{
 		if(fsm_state == 4)
 		{
-			if(gain_adjustment < 140)
+			if(gain_adjustment < 280)
 			{
 				gain_adjustment = gain_adjustment + 0.1;
 				// tello->_right_loadcells_calibrated = false;
@@ -1446,6 +1447,15 @@ void process_hw_control_packet()
 	last_enable_teleop = hw_control_data.enable_teleop;
 }
 
+void test_motor_2()
+{
+	// printf("Commanding Motor 2\n");
+
+	tello->motors[1]->enableMotor();
+	tello->motors[1]->setff((2.0*NM_TO_MOTOR_TORQUE_CMD));
+	tello->motors[1]->updateMotor();
+}
+
 static void* update_1kHz( void * arg )
 {
 	startTimer();
@@ -1474,7 +1484,7 @@ static void* update_1kHz( void * arg )
 
 	for(int i=0;i<10;i++)
 	{
-		tello->motors[i]->setKp(50);
+		tello->motors[i]->setKp(0);
 		tello->motors[i]->setKd(50);
 		tello->motors[i]->setVel(0);
 		tello->motors[i]->setff(0);
@@ -1495,7 +1505,7 @@ static void* update_1kHz( void * arg )
 		pthread_mutex_unlock(&mutex_CAN_recv);
 		for(int i=0;i<10;i++)
 		{
-			tello->motors[i]->setKp(50);
+			tello->motors[i]->setKp(0);
 			tello->motors[i]->setKd(50);
 			tello->motors[i]->setVel(0);
 			tello->motors[i]->setff(0);
@@ -1517,6 +1527,7 @@ static void* update_1kHz( void * arg )
 		tello->motors[i]->updateMotor();
 		pthread_mutex_unlock(&mutex_CAN_recv);
 	}
+
 
 	usleep(100000); // 100ms
 
@@ -1586,6 +1597,9 @@ static void* update_1kHz( void * arg )
 				break;
 			case 6:
 				run_balance_controller();
+				break;
+			case 100:
+				// test_motor_2();
 				break;
 			default:
 				// do nothing
@@ -1869,10 +1883,10 @@ int main(int argc, char *argv[]) {
 		tello->addPeriodicTask(&sim_step_task, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_1, (void*)(NULL),"sim_step_task",TASK_CONSTANT_PERIOD, 998);
 		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&tello_controller, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"tello_ctrl",TASK_CONSTANT_PERIOD, 1000);
-		tello->addPeriodicTask(&curve_fitting, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_2, (void*)(NULL),"curve_fitting",TASK_CONSTANT_PERIOD, 1000);
+		// tello->addPeriodicTask(&curve_fitting, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_2, (void*)(NULL),"curve_fitting",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 500);
 		// tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
-		tello->addPeriodicTask(&Human_Playback, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"human_playback_task",TASK_CONSTANT_PERIOD, 1000);
+		// tello->addPeriodicTask(&Human_Playback, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"human_playback_task",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&Animate_Log, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"human_playback_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&logging, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"logging_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&screenRecord, SCHED_FIFO, 1, ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
@@ -2010,6 +2024,7 @@ int main(int argc, char *argv[]) {
 	tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_2, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 	tello->addPeriodicTask(&IMU_Comms, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_2, NULL, "imu_task", TASK_CONSTANT_DELAY, 1000);
 	tello->addPeriodicTask(&update_1kHz, SCHED_FIFO, 99, UPX_ISOLATED_CORE_1_THREAD_2, NULL, "update_task",TASK_CONSTANT_PERIOD, 1000);
+	// tello->addPeriodicTask(&ecat_comms, SCHED_FIFO, 99, UPX_ISOLATED_CORE_1_THREAD_2, NULL, "update_task",TASK_CONSTANT_PERIOD, 1000);
 	// tello->addPeriodicTask(&BNO055_Comms, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, NULL, "bno_imu_task", TASK_CONSTANT_DELAY, 1000);
 	// tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
 	tello->addPeriodicTask(&motion_capture, SCHED_FIFO, 99, UPX_ISOLATED_CORE_3_THREAD_1, (void*)(NULL),"Mocap_Task",TASK_CONSTANT_PERIOD, 1000);
@@ -2059,6 +2074,12 @@ int main(int argc, char *argv[]) {
 				fsm_state = 4;
 				printf("\nTask Space Testing Mode:\n");
 				scheduleEnable();
+
+				break;
+			case '9':
+				fsm_state = 100;
+				printf("\nMotor 2 Torque Test Mode\n");
+				// scheduleEnable();
 
 				break;
 			case 'l':

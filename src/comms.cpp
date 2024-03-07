@@ -241,18 +241,18 @@ void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* rob
 }
 
 															
-double joint_zeros[10] = {0,5528,11090-65,2758+50,4240+55,0,2603,4367+25,15047+0,5530-60}; //{0,5528,11090,2808,4290-15,0,2603,4367,15047+25,5530-30};
+double joint_zeros[10] = {0,5510,11098,2728,4260,0,2590,4351,15047,5487}; //{0,5528,11090,2808,4290-15,0,2603,4367,15047+25,5530-30};
 double joint_directions[10] =      { 1,-1,1,1,-1,    1,-1,-1,-1,1};
 double joint_measured_zero_offsets[10] = {0,0,-0.15708,0.382,0,0,0,0.15708,-0.382,0};
 void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot){
 
-	joint_zeros[2] = 11090-65-10 + l_h;
-	joint_zeros[3] = 2758+50 + l_k;
-	joint_zeros[4] = 4240+55-60 + l_a;
+	joint_zeros[2] = 11098 + l_h;
+	joint_zeros[3] = 2728 + l_k;
+	joint_zeros[4] = 4260 + l_a;
 
-	joint_zeros[7] = 4367+25 + r_h;
-	joint_zeros[8] = 15047+0-15 + r_k;
-	joint_zeros[9] = 5530-60+60 + r_a;
+	joint_zeros[7] = 4351 + r_h;
+	joint_zeros[8] = 15047 + r_k;
+	joint_zeros[9] = 5487 + r_a;
 	
 	uint8_t id = Message.DATA[0];
 	uint16_t joint_position = (Message.DATA[1] << 8) | Message.DATA[2];
@@ -265,7 +265,7 @@ void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* r
 
 	robot->setJointEncoderPosition(joint_rad,static_cast<JointName>(id-20));
 	// robot->setJointEncoderVelocity(joint_rad_per_sec,static_cast<JointName>(id-20));
-	// if(id==22)
+	// if(id==27)
 	// {
 	// 	cout << "ID: " << ((int)id) << ",   joint_position-zero: " << joint_position << "             \r";
 	// }

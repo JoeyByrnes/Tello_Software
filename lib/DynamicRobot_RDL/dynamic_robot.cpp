@@ -628,7 +628,6 @@ VectorXd DynamicRobot::swing_stance_mux(VectorXd stanceTorques, VectorXd swingTo
         // return stanceTorques;
         switchFactor = 1 - switchFactor;  // If transitioning from stance to swing, invert the switch factor
 
-        // return stanceTorques;
     }
     double smoothVal = sigmoid((switchFactor - 0.5) * 12);  // Scale the switch factor to be between -5 and 5, and apply sigmoid function
     if(smoothVal < 0.05) smoothVal = 0;
@@ -728,36 +727,36 @@ void DynamicRobot::taskPD(TaskPDConfig task_conf)
 }
 
 
-void DynamicRobot::addGravityCompensation()
-{
-    // Get joint positions and velocities
-	VectorXd joint_positions = this->getJointPositions();
-	VectorXd joint_velocities = this->getJointVelocities();
+// void DynamicRobot::addGravityCompensation()
+// {
+//     // Get joint positions and velocities
+// 	VectorXd joint_positions = this->getJointPositions();
+// 	VectorXd joint_velocities = this->getJointVelocities();
 
-    VectorXd gcf_fl = Vector3d(0, 0, -_balance_adjust);
-    VectorXd gcf_bl = Vector3d(0, 0, -_balance_adjust);
-    VectorXd gcf_fr = Vector3d(0, 0, -_balance_adjust);
-    VectorXd gcf_br = Vector3d(0, 0, -_balance_adjust);
+//     VectorXd gcf_fl = Vector3d(0, 0, -_balance_adjust);
+//     VectorXd gcf_bl = Vector3d(0, 0, -_balance_adjust);
+//     VectorXd gcf_fr = Vector3d(0, 0, -_balance_adjust);
+//     VectorXd gcf_br = Vector3d(0, 0, -_balance_adjust);
 
-    VectorXd gcf_fl_world = transformForceToWorldFrame(gcf_fl, this->_ypr);
-    VectorXd gcf_bl_world = transformForceToWorldFrame(gcf_bl, this->_ypr);
-    VectorXd gcf_fr_world = transformForceToWorldFrame(gcf_fr, this->_ypr);
-    VectorXd gcf_br_world = transformForceToWorldFrame(gcf_br, this->_ypr);
+//     VectorXd gcf_fl_world = transformForceToWorldFrame(gcf_fl, this->_ypr);
+//     VectorXd gcf_bl_world = transformForceToWorldFrame(gcf_bl, this->_ypr);
+//     VectorXd gcf_fr_world = transformForceToWorldFrame(gcf_fr, this->_ypr);
+//     VectorXd gcf_br_world = transformForceToWorldFrame(gcf_br, this->_ypr);
 
-    VectorXd gravity_comp_world(12);
-    gravity_comp_world << gcf_fl_world,gcf_bl_world,gcf_fr_world,gcf_br_world;
+//     VectorXd gravity_comp_world(12);
+//     gravity_comp_world << gcf_fl_world,gcf_bl_world,gcf_fr_world,gcf_br_world;
 
-    // Get joint torques from task forces
-    VectorXd joint_torques = this->task_force_to_joint_torque(gravity_comp_world, this->getJointPositions());
+//     // Get joint torques from task forces
+//     VectorXd joint_torques = this->task_force_to_joint_torque(gravity_comp_world, this->getJointPositions());
 
-    // Convert joint torques to motor torques
-	VectorXd motor_torques = this->joint_torque_to_motor_torque(joint_torques, this->getJointPositions());
+//     // Convert joint torques to motor torques
+// 	VectorXd motor_torques = this->joint_torque_to_motor_torque(joint_torques, this->getJointPositions());
 
-    // Add the motor torques from the Task PD as feedforward commands
-    motor_torques = _motor_direction_matrix*motor_torques;
-    // printf("Motor T: %f, %f, %f, %f, %f      \r",motor_torques[0],motor_torques[1],motor_torques[2],motor_torques[3],motor_torques[4]);
-    add_motor_torques(motor_torques);
-}
+//     // Add the motor torques from the Task PD as feedforward commands
+//     motor_torques = _motor_direction_matrix*motor_torques;
+//     // printf("Motor T: %f, %f, %f, %f, %f      \r",motor_torques[0],motor_torques[1],motor_torques[2],motor_torques[3],motor_torques[4]);
+//     add_motor_torques(motor_torques);
+// }
 
 Eigen::Vector3d DynamicRobot::transformForceToWorldFrame(const Eigen::VectorXd& force, VectorXd ypr) {
     Eigen::Matrix3d rotMat;
@@ -813,16 +812,16 @@ void DynamicRobot::set_motor_torques(Eigen::VectorXd motor_torques)
 {
     for(int i=0; i<_num_actuators; i++)
     {
-		this->motors[i]->setff(motor_torques[i]);
+		this->motors[i]->setff(((double)motor_torques[i])*NM_TO_MOTOR_TORQUE_CMD);
 	}
 }
-void DynamicRobot::add_motor_torques(Eigen::VectorXd motor_torques)
-{
-    for(int i=0; i<_num_actuators; i++)
-    {
-		this->motors[i]->addff(motor_torques[i]);
-	}
-}
+// void DynamicRobot::add_motor_torques(Eigen::VectorXd motor_torques)
+// {
+//     for(int i=0; i<_num_actuators; i++)
+//     {
+// 		this->motors[i]->addff(motor_torques[i]);
+// 	}
+// }
 
 Eigen::Vector3d DynamicRobot::updatePosFromIMU(const Eigen::Vector3d& acc, const Eigen::Vector3d& ypr, double delta_t, Eigen::Vector3d& pos, Eigen::Vector3d& vel) {
   // Compute the change in velocity due to acceleration

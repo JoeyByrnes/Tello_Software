@@ -158,9 +158,9 @@ void CheetahMotor::setff(int ff){
     _command.feedforward = 2048+ff;
 }
 
-void CheetahMotor::addff(int ff){
-    uint16_t new_ff = _command.feedforward + ff;
-    //limitTorque(new_ff);
-    _command.feedforward =new_ff;
-}
+// void CheetahMotor::addff(int ff){
+//     uint16_t new_ff = _command.feedforward + ff;
+//     //limitTorque(new_ff);
+//     _command.feedforward =new_ff;
+// }
 

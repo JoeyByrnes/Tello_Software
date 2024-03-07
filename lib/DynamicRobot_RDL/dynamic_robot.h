@@ -54,7 +54,7 @@ using namespace inekf;
 
 #define GEAR_RATIO 6.0
 #define MOTOR_KT 0.0955
-#define MAX_ACTUATOR_CURRENT 15.0
+#define MAX_ACTUATOR_CURRENT 30.0
 #define MAX_ACTUATOR_TORQUE_NM (double)(MAX_ACTUATOR_CURRENT*MOTOR_KT*GEAR_RATIO)
 #define NM_TO_MOTOR_TORQUE_CMD (double)(2048.0/MAX_ACTUATOR_TORQUE_NM)
 
@@ -311,7 +311,7 @@ namespace RoboDesignLab {
 
         // Quaterniond getFootOrientation(const Vector3d& lf1, const Vector3d& lf2, const Vector3d& knee);
 
-        void addGravityCompensation();
+        // void addGravityCompensation();
         Vector3d transformForceToWorldFrame(const Eigen::VectorXd& force, VectorXd ypr);
         
         // Actuators
@@ -322,7 +322,7 @@ namespace RoboDesignLab {
         void set_kp_kd_all_motors(uint16_t kp, uint16_t kd);
         void update_all_motors();
         void set_motor_torques(VectorXd motor_torques);
-        void add_motor_torques(VectorXd motor_torques);
+        // void add_motor_torques(VectorXd motor_torques);
         CheetahMotor* motors[10]; // move this to private soon
         int motor_directions[10]; // temporary, need to change
         MatrixXd _motor_direction_matrix;

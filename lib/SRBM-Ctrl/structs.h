@@ -108,6 +108,52 @@ struct Human_dyn_data {
     float FxH_spring;
 }__attribute__((packed, aligned(1)));
 
+struct Human_dyn_data_4LISAs {
+    float xH;
+    float dxH;
+    float pxH;
+    float yH;
+    float dyH;
+    float pyH;
+
+    float r11;
+    float r21;
+    float r31;
+    float r12;
+    float r22;
+    float r32;
+    float r13;
+    float r23;
+    float r33;
+
+    float roll;
+    float pitch;
+    float yaw;
+
+    float fxH_R;
+    float fyH_R;
+    float fzH_R;
+    float fxH_L;
+    float fyH_L;
+    float fzH_L;
+    float fdxH_R;
+    float fdyH_R;
+    float fdzH_R;
+    float fdxH_L;
+    float fdyH_L;
+    float fdzH_L;
+
+    float fx;
+    float fy;
+    float my;
+    float mz;
+
+    float fx_lim;
+    float fy_lim;
+    float my_lim;
+    float mz_lim;
+}__attribute__((packed, aligned(1)));
+
 struct Human_dyn_data_filter {
     VectorXd* xH  = new VectorXd(100);
     VectorXd* dxH  = new VectorXd(100);

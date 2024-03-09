@@ -473,7 +473,23 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
     // walking reference LIP and robot LIP at step transitions
 
     // initialize commanded end-effector positions (DSP)
-    lfv_comm = lfv;//lfv_dsp_start;
+
+    // Calculate the center of the right feet positions
+    Eigen::Vector3d right_center = lfv.topRows(2).colwise().mean();
+
+    // Calculate the center of the left feet positions
+    Eigen::Vector3d left_center = lfv.bottomRows(2).colwise().mean();
+
+    // Compute the new positions for each foot to align them properly
+    Eigen::MatrixXd lfv_straight = lfv;
+    lfv_straight.topRows(2).col(1).setConstant(right_center(1)); // Set y value for right feet
+    lfv_straight.bottomRows(2).col(1).setConstant(left_center(1)); // Set y value for left feet
+    lfv_straight(0,0) = (right_center(0) + 0.06 ); // Adjust x value for right feet
+    lfv_straight(1,0) = (right_center(0) - 0.06 ); // Adjust x value for right feet
+    lfv_straight(2,0) = (left_center(0)  + 0.06 ); // Adjust x value for left feet
+    lfv_straight(3,0) = (left_center(0)  - 0.06 ); // Adjust x value for left feet
+
+    lfv_comm = lfv_straight;//lfv_dsp_start;
     lfv_comm.col(2).setConstant(-srb_params.hLIP);
     lfdv_comm.setZero();
 

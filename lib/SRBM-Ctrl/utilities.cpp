@@ -1163,6 +1163,12 @@ void dash_utils::unpack_data_from_hmi(Human_dyn_data& data, uint8_t* buffer)
     memcpy(&data, buffer, size);
 }
 
+void dash_utils::unpack_data_from_hmi_4LISAs(Human_dyn_data_4LISAs& data, uint8_t* buffer)
+{
+    size_t size = sizeof(float) * 30; // Exclude: FxH_hmi, FyH_hmi, FxH_spring
+    memcpy(&data, buffer, size);
+}
+
 void dash_utils::pack_data_to_hmi(uint8_t* buffer, Human_dyn_data data)
 {
     float* float_buffer = reinterpret_cast<float*>(buffer);
@@ -1176,19 +1182,47 @@ void dash_utils::pack_data_to_hmi(uint8_t* buffer, Human_dyn_data data)
 
 void dash_utils::pack_data_to_hmi_with_ctrls(uint8_t* buffer, Human_dyn_data data,bool ff,bool tare,float gain)
 {
+    // float* float_buffer = reinterpret_cast<float*>(buffer);
+    // float_buffer[0] = data.FxH_hmi;
+    // float_buffer[1] = data.FyH_hmi;
+    // float_buffer[2] = data.FxH_spring;
+    // float_buffer[3] = gain;
+    // float ff_f = 0;
+    // float tare_f = 0;
+    // if(tare) tare_f = 1;
+    // if(ff) ff_f = 80;
+    // float_buffer[4] = ff_f;
+    // float_buffer[5] = tare_f;
+    // for (int i = 0; i < 24; i++) {
+    //     buffer[24] += buffer[i];
+    // }
+    Human_dyn_data_4LISAs data4LISAs = create_new_4LISAs_struct(data);
+    pack_data_to_hmi_with_ctrls_4LISAs(buffer,data4LISAs,ff,tare,gain);
+}
+
+void dash_utils::pack_data_to_hmi_with_ctrls_4LISAs(uint8_t* buffer, Human_dyn_data_4LISAs data,bool ff,bool tare,float gain)
+{
     float* float_buffer = reinterpret_cast<float*>(buffer);
-    float_buffer[0] = data.FxH_hmi;
-    float_buffer[1] = data.FyH_hmi;
-    float_buffer[2] = data.FxH_spring;
-    float_buffer[3] = gain;
+    float_buffer[0] = data.fx;
+    float_buffer[1] = data.fy;
+    float_buffer[2] = data.my;
+    float_buffer[3] = data.mz;
+
+    float_buffer[4] = 100;//data.fx_lim;
+    float_buffer[5] = 80;//data.fy_lim;
+    float_buffer[6] = 10;//data.my_lim;
+    float_buffer[7] = 10;//data.mz_lim;
+
+    float_buffer[8] = gain;
+
     float ff_f = 0;
     float tare_f = 0;
     if(tare) tare_f = 1;
     if(ff) ff_f = 80;
-    float_buffer[4] = ff_f;
-    float_buffer[5] = tare_f;
+    float_buffer[9] = tare_f;
+    float_buffer[10] = ff_f;
     for (int i = 0; i < 24; i++) {
-        buffer[24] += buffer[i];
+        buffer[40] += buffer[i];
     }
 }
 
@@ -1223,6 +1257,57 @@ void dash_utils::print_human_dyn_data(const Human_dyn_data& data)
         std::cout << "FxH_hmi: " << data.FxH_hmi << std::endl;
         std::cout << "FyH_hmi: " << data.FyH_hmi << std::endl;
         std::cout << "FxH_spring: " << data.FxH_spring << std::endl;
+        std::cout << "================================================================" << std::endl;
+        std::cout << std::endl;
+    }
+}
+
+void dash_utils::print_human_dyn_data_4LISAs(const Human_dyn_data_4LISAs& data)
+{
+    std::chrono::high_resolution_clock::time_point time_now = std::chrono::high_resolution_clock::now();
+    std::chrono::nanoseconds elapsed_time_since_print = std::chrono::duration_cast<std::chrono::nanoseconds>(time_now - last_comms_print_time);
+    double elapsed_time_since_print_ms = static_cast<double>(elapsed_time_since_print.count()) / 1000000.0;
+    if(elapsed_time_since_print_ms > 20)
+    {
+        last_comms_print_time = std::chrono::high_resolution_clock::now();
+        std::cout << "xH: " << data.xH << std::endl;
+        std::cout << "dxH: " << data.dxH << std::endl;
+        std::cout << "pxH: " << data.pxH << std::endl;
+        std::cout << "yH: " << data.yH << std::endl;
+        std::cout << "dyH: " << data.dyH << std::endl;
+        std::cout << "pyH: " << data.pyH << std::endl;
+        std::cout << "r11: " << data.r11 << std::endl;
+        std::cout << "r21: " << data.r21 << std::endl;
+        std::cout << "r31: " << data.r31 << std::endl;
+        std::cout << "r12: " << data.r12 << std::endl;
+        std::cout << "r22: " << data.r22 << std::endl;
+        std::cout << "r32: " << data.r32 << std::endl;
+        std::cout << "r13: " << data.r13 << std::endl;
+        std::cout << "r23: " << data.r23 << std::endl;
+        std::cout << "r33: " << data.r33 << std::endl;
+        std::cout << "roll: " << data.roll << std::endl;
+        std::cout << "pitch: " << data.pitch << std::endl;
+        std::cout << "yaw: " << data.yaw << std::endl;
+        std::cout << "fxH_R: " << data.fxH_R << std::endl;
+        std::cout << "fyH_R: " << data.fyH_R << std::endl;
+        std::cout << "fzH_R: " << data.fzH_R << std::endl;
+        std::cout << "fxH_L: " << data.fxH_L << std::endl;
+        std::cout << "fyH_L: " << data.fyH_L << std::endl;
+        std::cout << "fzH_L: " << data.fzH_L << std::endl;
+        std::cout << "fdxH_R: " << data.fdxH_R << std::endl;
+        std::cout << "fdyH_R: " << data.fdyH_R << std::endl;
+        std::cout << "fdzH_R: " << data.fdzH_R << std::endl;
+        std::cout << "fdxH_L: " << data.fdxH_L << std::endl;
+        std::cout << "fdyH_L: " << data.fdyH_L << std::endl;
+        std::cout << "fdzH_L: " << data.fdzH_L << std::endl;
+        std::cout << "fx: " << data.fx << std::endl;
+        std::cout << "fy: " << data.fy << std::endl;
+        std::cout << "my: " << data.my << std::endl;
+        std::cout << "mz: " << data.mz << std::endl;
+        std::cout << "fx_lim: " << data.fx_lim << std::endl;
+        std::cout << "fy_lim: " << data.fy_lim << std::endl;
+        std::cout << "my_lim: " << data.my_lim << std::endl;
+        std::cout << "mz_lim: " << data.mz_lim << std::endl;
         std::cout << "================================================================" << std::endl;
         std::cout << std::endl;
     }
@@ -1498,4 +1583,58 @@ coder::array<double, 2U> dash_utils::eigenVectorToCoderArray(const Eigen::Vector
         }
     }
     return result;
+}
+
+Human_dyn_data_4LISAs dash_utils::create_new_4LISAs_struct(const Human_dyn_data& old_data) 
+{
+    Human_dyn_data_4LISAs new_data;
+
+    // Copying data from old struct
+    new_data.xH = old_data.xH;
+    new_data.dxH = old_data.dxH;
+    new_data.pxH = old_data.pxH;
+    new_data.yH = old_data.yH;
+    new_data.dyH = old_data.dyH;
+    new_data.pyH = old_data.pyH;
+    new_data.fxH_R = old_data.fxH_R;
+    new_data.fyH_R = old_data.fyH_R;
+    new_data.fzH_R = old_data.fzH_R;
+    new_data.fxH_L = old_data.fxH_L;
+    new_data.fyH_L = old_data.fyH_L;
+    new_data.fzH_L = old_data.fzH_L;
+    new_data.fdxH_R = old_data.fdxH_R;
+    new_data.fdyH_R = old_data.fdyH_R;
+    new_data.fdzH_R = old_data.fdzH_R;
+    new_data.fdxH_L = old_data.fdxH_L;
+    new_data.fdyH_L = old_data.fdyH_L;
+    new_data.fdzH_L = old_data.fdzH_L;
+
+    // Mapping FxH_hmi to fx and Fy_hmi to fy
+    new_data.fx = old_data.FxH_hmi;
+    new_data.fy = old_data.FyH_hmi;
+
+    // Setting my, mz, my_lim, mz_lim to zero
+    new_data.my = 0.0f;
+    new_data.mz = 0.0f;
+    new_data.my_lim = 0.0f;
+    new_data.mz_lim = 0.0f;
+
+    // Setting euler angles to zero
+    new_data.roll = 0.0f;
+    new_data.pitch = 0.0f;
+    new_data.yaw = 0.0f;
+
+    // Setting rotation matrix to identity
+    Eigen::Matrix3f identity_matrix = Eigen::Matrix3f::Identity();
+    new_data.r11 = identity_matrix(0, 0);
+    new_data.r21 = identity_matrix(1, 0);
+    new_data.r31 = identity_matrix(2, 0);
+    new_data.r12 = identity_matrix(0, 1);
+    new_data.r22 = identity_matrix(1, 1);
+    new_data.r32 = identity_matrix(2, 1);
+    new_data.r13 = identity_matrix(0, 2);
+    new_data.r23 = identity_matrix(1, 2);
+    new_data.r33 = identity_matrix(2, 2);
+
+    return new_data;
 }

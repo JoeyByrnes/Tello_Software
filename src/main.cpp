@@ -489,10 +489,10 @@ void* Human_Playback_Hardware( void * arg )
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-18-38-two steps/human_dyn_data.csv";
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-12-35-slow-stepping/human_dyn_data.csv"; 
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-15-43-wide leg stepping/human_dyn_data.csv";
-	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-11-43-sway-then-2-steps/human_dyn_data.csv";
+	std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-13-25-medium-stepping/human_dyn_data.csv";
 
 	
-	std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/10-17-23__18-08-17-first-time-multiple-steps/human_dyn_data.csv";
+	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/10-17-23__18-08-17-first-time-multiple-steps/human_dyn_data.csv";
 
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/12-02-23__14-27-42-test-mult-periods/human_dyn_data.csv";
 
@@ -503,7 +503,7 @@ void* Human_Playback_Hardware( void * arg )
 
 	double hR = tello->controller->get_SRB_params().hLIP;
 	double hH = tello->controller->get_human_params().hLIP; 
-	Human_dyn_data hdd0 = hdd_vec[7500]; // 7500 for original guillermo playback
+	Human_dyn_data hdd0 = hdd_vec[0]; // 7500 for original guillermo playback
 	double fyH_R = hdd0.fyH_R;
 	double fyH_L = hdd0.fyH_L;
 
@@ -829,7 +829,7 @@ void send_HMI_forces()
 	// 	   (const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
 
 	dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,hw_control_data.enable_force_feedback,hw_control_data.tare_hmi,hw_control_data.hmi_gain);
-	int n = sendto(sockfd, hmi_tx_buffer, 24,MSG_CONFIRM, 
+	int n = sendto(sockfd, hmi_tx_buffer, 44,MSG_CONFIRM, 
 			(const struct sockaddr *) &servaddr, sizeof(servaddr));
 
 	// cout << "sent " << n << " bytes to HMI" << endl;
@@ -909,7 +909,7 @@ void balance_pd(MatrixXd lfv_hip)
 	posture_pd_config.setTaskKa(0,0,0);
 	VectorXd kp_vec_joint_posture(10);
 	VectorXd kd_vec_joint_posture(10);
-	kp_vec_joint_posture << 100, 64, 0,0,0, 100, 64, 0,0,0;
+	kp_vec_joint_posture << 200, 200, 0,0,0, 200, 200, 0,0,0;
 	kd_vec_joint_posture <<  0, 0, 0,0,0,  0, 0, 0,0,0;
 	posture_pd_config.setJointKp(kp_vec_joint_posture);
 	posture_pd_config.setJointKd(kd_vec_joint_posture);

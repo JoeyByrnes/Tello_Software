@@ -421,6 +421,11 @@ void* rx_UDP( void * arg ){
     Eigen::VectorXd yHvec(100);
     Eigen::VectorXd dyHvec(100);
     Eigen::VectorXd pyHvec(100);
+
+	Eigen::VectorXd rollVec(100);
+	Eigen::VectorXd pitchVec(100);
+	Eigen::VectorXd yawVec(100);
+
     Eigen::VectorXd fxH_Rvec(100);
     Eigen::VectorXd fyH_Rvec(100);
     Eigen::VectorXd fzH_Rvec(100);
@@ -442,6 +447,11 @@ void* rx_UDP( void * arg ){
     double yHval;
     double dyHval;
     double pyHval;
+
+	double rollVal;
+	double pitchVal;
+	double yawVal;
+	
     double fxH_Rval;
     double fyH_Rval;
     double fzH_Rval;
@@ -476,24 +486,27 @@ void* rx_UDP( void * arg ){
 			for(int i=0;i<n-1;i++){
 				checksum += rx_buffer[i]&0xFF;
 			}
-			// if(checksum == rx_buffer[n-1])
-			// {
-				Human_dyn_data human_dyn_data;
-			// }
+
+			// Human_dyn_data human_dyn_data;
+			Human_dyn_data human_dyn_data_2LISAs;
+			Human_dyn_data_4LISAs human_dyn_data;
 			
 			if(tello->controller->is_human_ctrl_enabled())
 			{
-				dash_utils::unpack_data_from_hmi(human_dyn_data,(uint8_t*)rx_buffer);
+				dash_utils::unpack_data_from_hmi_4LISAs(human_dyn_data,(uint8_t*)rx_buffer);
 				// cout << "Using Human Data" << endl;
 			}
 			else
 			{
 				Human_params hp;
-				dash_init::Human_Init(hp,human_dyn_data);
+				dash_init::Human_Init(hp,human_dyn_data_2LISAs);
 
 				// code for initializing foot width
-				Human_dyn_data hdd;
-				dash_utils::unpack_data_from_hmi(hdd,(uint8_t*)rx_buffer);
+				// Human_dyn_data hdd;
+				// dash_utils::unpack_data_from_hmi(hdd,(uint8_t*)rx_buffer);
+
+				Human_dyn_data_4LISAs hdd;
+				dash_utils::unpack_data_from_hmi_4LISAs(hdd,(uint8_t*)rx_buffer);
 
 				double hR = tello->controller->get_SRB_params().hLIP;
 				double hH = hp.hLIP; 
@@ -538,6 +551,15 @@ void* rx_UDP( void * arg ){
 			pyHvec.tail(99) = pyHvec.head(99).eval();
 			pyHvec[0] = human_dyn_data.pyH;
 
+			rollVec.tail(99) = rollVec.head(99).eval();
+			rollVec[0] = human_dyn_data.roll;
+
+			pitchVec.tail(99) = pitchVec.head(99).eval();
+			pitchVec[0] = human_dyn_data.pitch;
+
+			yawVec.tail(99) = yawVec.head(99).eval();
+			yawVec[0] = human_dyn_data.yaw;			
+
 			fxH_Rvec.tail(99) = fxH_Rvec.head(99).eval();
 			fxH_Rvec[0] = human_dyn_data.fxH_R;
 
@@ -574,14 +596,7 @@ void* rx_UDP( void * arg ){
 			fdzH_Lvec.tail(99) = fdzH_Lvec.head(99).eval();
 			fdzH_Lvec[0] = human_dyn_data.fdzH_L;
 
-			FxH_hmi_vec.tail(99) = FxH_hmi_vec.head(99).eval();
-			FxH_hmi_vec[0] = human_dyn_data.FxH_hmi;
-
-			FyH_hmi_vec.tail(99) = FyH_hmi_vec.head(99).eval();
-			FyH_hmi_vec[0] = human_dyn_data.FyH_hmi;
-
-			FxH_spring_vec.tail(99) = FxH_spring_vec.head(99).eval();
-			FxH_spring_vec[0] = human_dyn_data.FxH_spring;
+			
 
 			xHval = dash_utils::smoothData(xHvec, 0.1/*alpha*/);
 			dxHval = dash_utils::smoothData(dxHvec, 2.0/*alpha*/);
@@ -601,31 +616,27 @@ void* rx_UDP( void * arg ){
 			fdxH_Lval = dash_utils::smoothData(fdxH_Lvec, 4.0/*alpha*/);
 			fdyH_Lval = dash_utils::smoothData(fdyH_Lvec, 4.0/*alpha*/);
 			fdzH_Lval = dash_utils::smoothData(fdzH_Lvec, 4.0/*alpha*/);
-			FxH_hmi_val = dash_utils::smoothData(FxH_hmi_vec, 0.1/*alpha*/);
-			FyH_hmi_val = dash_utils::smoothData(FyH_hmi_vec, 0.1/*alpha*/);
-			FxH_spring_val = dash_utils::smoothData(FxH_spring_vec, 0.1/*alpha*/);
 
-			human_dyn_data.xH = xHval;
-			human_dyn_data.dxH = dxHval;
-			human_dyn_data.pxH = pxHval;
-			human_dyn_data.yH = yHval;
-			human_dyn_data.dyH = dyHval;
-			human_dyn_data.pyH = pyHval;
-			human_dyn_data.fxH_R = fxH_Rval;
-			human_dyn_data.fyH_R = fyH_Rval;
-			human_dyn_data.fzH_R = fzH_Rval;
-			human_dyn_data.fxH_L = fxH_Lval;
-			human_dyn_data.fyH_L = fyH_Lval;
-			human_dyn_data.fzH_L = fzH_Lval;
-			human_dyn_data.fdxH_R = fdxH_Rval;
-			human_dyn_data.fdyH_R = fdyH_Rval;
-			human_dyn_data.fdzH_R = fdzH_Rval;
-			human_dyn_data.fdxH_L = fdxH_Lval;
-			human_dyn_data.fdyH_L = fdyH_Lval;
-			human_dyn_data.fdzH_L = fdzH_Lval;
-			human_dyn_data.FxH_hmi = FxH_hmi_val;
-			human_dyn_data.FyH_hmi = FyH_hmi_val;
-			human_dyn_data.FxH_spring = FxH_spring_val;
+
+			human_dyn_data_2LISAs.xH = xHval;
+			human_dyn_data_2LISAs.dxH = dxHval;
+			human_dyn_data_2LISAs.pxH = pxHval;
+			human_dyn_data_2LISAs.yH = yHval;
+			human_dyn_data_2LISAs.dyH = dyHval;
+			human_dyn_data_2LISAs.pyH = pyHval;
+			human_dyn_data_2LISAs.fxH_R = fxH_Rval;
+			human_dyn_data_2LISAs.fyH_R = fyH_Rval;
+			human_dyn_data_2LISAs.fzH_R = fzH_Rval;
+			human_dyn_data_2LISAs.fxH_L = fxH_Lval;
+			human_dyn_data_2LISAs.fyH_L = fyH_Lval;
+			human_dyn_data_2LISAs.fzH_L = fzH_Lval;
+			human_dyn_data_2LISAs.fdxH_R = fdxH_Rval;
+			human_dyn_data_2LISAs.fdyH_R = fdyH_Rval;
+			human_dyn_data_2LISAs.fdzH_R = fdzH_Rval;
+			human_dyn_data_2LISAs.fdxH_L = fdxH_Lval;
+			human_dyn_data_2LISAs.fdyH_L = fdyH_Lval;
+			human_dyn_data_2LISAs.fdzH_L = fdzH_Lval;
+
 
 			tello->controller->updateStepZHistoryL(fzH_Lval);
 			tello->controller->updateStepZHistoryR(fzH_Rval);
@@ -642,7 +653,7 @@ void* rx_UDP( void * arg ){
 
 			// if(!(sim_conf.en_playback_mode))
 			// {
-				tello->controller->set_human_dyn_data_without_forces(human_dyn_data);
+				tello->controller->set_human_dyn_data_without_forces(human_dyn_data_2LISAs);
 			// }
 		}
 		else if (strcmp(inet_ntoa(sender_addr.sin_addr), VIZ_IP_ADDRESS) == 0) {

@@ -405,7 +405,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.mu = 1.0; // coefficient of friction value
 
         // SRB specific
-        srb_params.m = 17.0; // robot mass in kg // was 23 for mujoco // real robot is 15.8Kg
+        srb_params.m = 16.6; // robot mass in kg // was 23 for mujoco // real robot is 16.6Kg
         srb_params.hLIP = 0.58; // nominal robot LIP height
         srb_params.Ib = Matrix3d::Identity();
         srb_params.Ib(0,0) = 0.4874;
@@ -458,8 +458,8 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         // planner_type = Human_Dyn_Telelocomotion 
         srb_params.xDCMH_deadband = 0.10; // deadband for applying gain for human DCM in m
         srb_params.KxDCMH = 2.0; // gain for human DCM
-        srb_params.Kx_DCM_mult = 4.0; // multiplier of K_DCM for sagittal plane control
-        srb_params.Ky_DCM_mult = 2.0; // multiplier of K_DCM for frontal plane control
+        srb_params.Kx_DCM_mult = 1.0; // multiplier of K_DCM for sagittal plane control
+        srb_params.Ky_DCM_mult = 1.0; // multiplier of K_DCM for frontal plane control
         srb_params.T_DSP = 0.0750; // assumed duration of DSP in s
         srb_params.lmaxR = 0.5; // maximum step length in m
 
@@ -468,15 +468,15 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.Kd_xR = 2.0; // D gain for x-direction tracking
         srb_params.Kp_yR = 600.0; // P gain for y-direction tracking
         srb_params.Kd_yR = 2.0; // D gain for y-direction tracking
-        srb_params.Kp_zR = 1000.0; // P gain for z-direction tracking
+        srb_params.Kp_zR = 2000.0; // P gain for z-direction tracking
         srb_params.Kd_zR = 10.0; // D gain for z-direction tracking
 
-        srb_params.Kp_phiR = 200.00; // P gain for roll tracking
+        srb_params.Kp_phiR = 100.00; // P gain for roll tracking
         srb_params.Kd_phiR = 2.0; // D gain for roll tracking
-        srb_params.Kp_thetaR = 200.00; // P gain for pitch tracking
+        srb_params.Kp_thetaR = 400.00; // P gain for pitch tracking
         srb_params.Kd_thetaR = 2.0; // D gain for pitch tracking
         srb_params.Kp_psiR = 100.00; // P gain for yaw tracking
-        srb_params.Kd_psiR = 2.0; // D gain for yaw tracking
+        srb_params.Kd_psiR = 1.0; // D gain for yaw tracking
 
         srb_params.QP_opt_sol_type = 2; // quadprog = 0, quadprog (active-set) = 1, qpOASES = 2 --> DEFAULT
         srb_params.W_wrench = 100.0; // cost function weight for satisfying desired net wrench

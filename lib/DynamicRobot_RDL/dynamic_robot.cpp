@@ -885,6 +885,16 @@ VectorXd DynamicRobot::jointPD2(JointPDConfig joint_conf)
     // Add the motor torques from the Joint PD as feedforward commands
     motor_torques_from_joint_pd = _motor_direction_matrix*motor_torques_from_joint_pd;
 
+    // if(abs(this->controller->get_FSM()) == 1)
+    // {
+    //     printf("%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
+    //         joint_conf.joint_ff_torque(0), joint_conf.joint_ff_torque(1), joint_conf.joint_ff_torque(2),
+    //         joint_conf.joint_ff_torque(3), joint_conf.joint_ff_torque(4), joint_conf.joint_ff_torque(5),
+    //         joint_conf.joint_ff_torque(6), joint_conf.joint_ff_torque(7), joint_conf.joint_ff_torque(8),
+    //         joint_conf.joint_ff_torque(9));
+    // }
+    
+
     MotorPDConfig motor_conf;
     motor_conf.motor_ff_torque = motor_torques_from_joint_pd;
     motor_conf.motor_kp = joint_conf.motor_kp;
@@ -938,6 +948,7 @@ VectorXd DynamicRobot::taskPD2(TaskPDConfig task_conf)
 
     // cout << "Torque from FF accel:" << endl;
     // cout << joint_forces_from_accel.transpose() << endl;
+
 
     JointPDConfig joint_conf;
     joint_conf.joint_ff_torque = joint_torques + joint_forces_from_accel;

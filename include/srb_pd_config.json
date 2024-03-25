@@ -12,9 +12,9 @@
       "Kd_thetaR": 100,
       "Kp_psiR": 1000,
       "Kd_psiR": 100,
-      "Step_Period": 0.4,
+      "Step_Period": 0.2,
       "Step_Height": 0.02,
-      "Walking_Speed": 0.5,
+      "Walking_Speed": 0.0,
       "Kx_DCM_mult": 10.0,
       "Ky_DCM_mult": 5.0
     },

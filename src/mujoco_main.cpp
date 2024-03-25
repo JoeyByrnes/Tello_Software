@@ -309,6 +309,14 @@ ctrlData copyMjData(const mjModel* m, mjData*d)
     return cd;
 }
 
+void setNaNtoZeroSim(Eigen::VectorXd& vec) {
+    for (int i = 0; i < vec.size(); ++i) {
+        if (std::isnan(vec(i))) {
+            vec(i) = 0.0;
+        }
+    }
+}
+
 // void TELLO_locomotion_ctrl(const mjModel* m, mjData* d)
 void TELLO_locomotion_ctrl(ctrlData cd)
 {
@@ -492,6 +500,33 @@ void TELLO_locomotion_ctrl(ctrlData cd)
             swing_pd_config.motor_kp = VectorXd::Zero(10);
             swing_pd_config.motor_kd = VectorXd::Zero(10);
             swing_leg_torques = tello->taskPD2(swing_pd_config);
+
+            // if( abs(tello->controller->get_FSM()) == 1)
+            // {
+            //     cout << "comm: " << endl;
+            //     cout << tello->controller->get_lfv_comm_world() << endl;
+            //     cout << endl;
+            //     cout << "=============================================================================" << endl;
+            //     cout << endl;
+            //     cout << "real: " << endl;
+            //     cout << tello->controller->get_lfv_world() << endl;
+            //     cout << endl;
+            //     cout << "=============================================================================" << endl;
+            //     cout << endl;
+
+            // }
+            
+
+            // if( abs(tello->controller->get_FSM()) == 1)
+            // {
+            //     printf("%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
+            //             swing_leg_torques(0), swing_leg_torques(1), swing_leg_torques(2),
+            //             swing_leg_torques(3), swing_leg_torques(4), swing_leg_torques(5),
+            //             swing_leg_torques(6), swing_leg_torques(7), swing_leg_torques(8),
+            //             swing_leg_torques(9));
+            // }
+
+            // setNaNtoZeroSim(swing_leg_torques);
         // }
 
         posture_pd_config = swing_pd_config;
@@ -512,11 +547,27 @@ void TELLO_locomotion_ctrl(ctrlData cd)
         posture_pd_config.setJointKd(kd_vec_joint_posture);
 
         VectorXd posture_ctrl_torques = tello->taskPD2(posture_pd_config);
+
+        // setNaNtoZeroSim(posture_ctrl_torques);
         
         // END TASK PD CODE ======================================+++++++++++++++++
         VectorXd tau_LR(10);
         tau_LR << tau.tail(5), tau.head(5);
-        tau_LR = tau_LR + posture_ctrl_torques;
+
+        tau_LR = tau_LR ;//+ posture_ctrl_torques;
+
+        // printf("%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
+        //     tau_LR(0), tau_LR(1), tau_LR(2),
+        //     tau_LR(3), tau_LR(4), tau_LR(5),
+        //     tau_LR(6), tau_LR(7), tau_LR(8),
+        //     tau_LR(9));
+
+        // printf("%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
+        //     posture_ctrl_torques(0), posture_ctrl_torques(1), posture_ctrl_torques(2),
+        //     posture_ctrl_torques(3), posture_ctrl_torques(4), posture_ctrl_torques(5),
+        //     posture_ctrl_torques(6), posture_ctrl_torques(7), posture_ctrl_torques(8),
+        //     posture_ctrl_torques(9));
+
 
         VectorXd torques_left  = tello->swing_stance_mux(tau_LR.head(5), swing_leg_torques.head(5),
                                                             0.01,controller->get_isSwingToStanceRight(), 
@@ -643,7 +694,9 @@ void initializeSRBMCtrl()
         srb_params.vx_des_vx = v_traj;
         srb_params.t_beg_stepping = t_beg_stepping_time;
         srb_params.t_end_stepping = t_end_stepping_time;
+        printf("T_beg_stepping: %f, T_end_Stepping: %f \n", t_beg_stepping_time, t_end_stepping_time);
         sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
+        // sim_time = 1e5;
     }
     else
     {

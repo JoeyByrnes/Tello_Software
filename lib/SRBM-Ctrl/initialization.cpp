@@ -19,7 +19,7 @@ void dash_init::Human_Init(Human_params &Human_params, Human_dyn_data &Human_dyn
     Human_params.m = 76; // human weight in kg //Guillermo = 79 //joao = 95
     Human_params.hLIP = 1.05; // nominal human LIP height //Guillermo = 1.15 // joao = 1.17
 
-    Human_params.human_nom_ft_width = 0.220; // nominal human feet width //was 0.175
+    Human_params.human_nom_ft_width = 0.1750; // nominal human feet width //was 0.175
     Human_params.fyH_home = (joystick_base_separation/2.0) - Human_params.human_nom_ft_width - FOOT_2_JOYSTICK; // joystick y width
     Human_params.foot_2_joystick = FOOT_2_JOYSTICK;
     // Note: HMI joystick bases are 1.465m apart
@@ -197,7 +197,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
     if(simulation_mode == 1)
     {
         // simulation 
-        srb_params.dt = 0.002; // simulation time step
+        srb_params.dt = 0.001; // simulation time step
         srb_params.init_type = 0; // default = 0, teleop_setup = 1
 
         // physical constants
@@ -259,15 +259,15 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.xDCMH_deadband = 0.10; // deadband for applying gain for human DCM in m
         srb_params.KxDCMH = 1.5; // gain for human DCM
         srb_params.Kx_DCM_mult = 3.0; // multiplier of K_DCM for sagittal plane control
-        srb_params.Ky_DCM_mult = 2.5; // multiplier of K_DCM for frontal plane control
+        srb_params.Ky_DCM_mult = 1.5; // multiplier of K_DCM for frontal plane control
         srb_params.T_DSP = 0.0750; // assumed duration of DSP in s
         srb_params.lmaxR = 0.5; // maximum step length in m
 
         // controller 
         srb_params.Kp_xR = 180.8; // P gain for x-direction tracking
         srb_params.Kd_xR = 121.0; // D gain for x-direction tracking
-        srb_params.Kp_yR = 180.8; // P gain for y-direction tracking
-        srb_params.Kd_yR = 121.0; // D gain for y-direction tracking
+        srb_params.Kp_yR = 1.8; // P gain for y-direction tracking
+        srb_params.Kd_yR = 0.0; // D gain for y-direction tracking
         srb_params.Kp_zR = 180.8; // P gain for z-direction tracking
         srb_params.Kd_zR = 121.0; // D gain for z-direction tracking
         srb_params.Kp_phiR = 11.95; // P gain for roll tracking
@@ -405,7 +405,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.mu = 1.0; // coefficient of friction value
 
         // SRB specific
-        srb_params.m = 16.6; // robot mass in kg // was 23 for mujoco // real robot is 16.6Kg
+        srb_params.m = 16.8; // robot mass in kg // was 23 for mujoco // real robot is 16.6Kg
         srb_params.hLIP = 0.58; // nominal robot LIP height
         srb_params.Ib = Matrix3d::Identity();
         srb_params.Ib(0,0) = 0.4874;
@@ -424,7 +424,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
 
         // planner (all) -- perhaps move to a separate data structure later
         srb_params.planner_type = 0; // none = 0, LIP_ang_mom_reg = 1, Human_Dyn_Telelocomotion = 2
-        srb_params.T = 0.10; // single-support-phase time (step time)
+        srb_params.T = 0.250; // single-support-phase time (step time)
         // planner_type = none
         srb_params.x_sinu_traj_params << 0.0, 0.0, 0.0; // x-direction sinusoidal reference parameters
         srb_params.y_sinu_traj_params << 0.0, 0.0, 0.0; // y-direction sinusoidal reference parameters
@@ -454,7 +454,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.vx_des_vx = eigen_vx_des_vx; // desired x-direction velocity (end-of-next-step) 
         srb_params.t_beg_stepping = 5; // time to initiate stepping in s
         srb_params.t_end_stepping = 4.5; // time to end stepping in s
-        srb_params.zcl = 0.04; // swing-leg max height in m
+        srb_params.zcl = 0.02; // swing-leg max height in m
         // planner_type = Human_Dyn_Telelocomotion 
         srb_params.xDCMH_deadband = 0.10; // deadband for applying gain for human DCM in m
         srb_params.KxDCMH = 2.0; // gain for human DCM
@@ -464,14 +464,14 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.lmaxR = 0.5; // maximum step length in m
 
         // controller 
-        srb_params.Kp_xR = 200.0; // P gain for x-direction tracking
-        srb_params.Kd_xR = 2.0; // D gain for x-direction tracking
-        srb_params.Kp_yR = 600.0; // P gain for y-direction tracking
-        srb_params.Kd_yR = 2.0; // D gain for y-direction tracking
-        srb_params.Kp_zR = 2000.0; // P gain for z-direction tracking
-        srb_params.Kd_zR = 10.0; // D gain for z-direction tracking
+        srb_params.Kp_xR = 500.0; // P gain for x-direction tracking
+        srb_params.Kd_xR = 10.0; // D gain for x-direction tracking
+        srb_params.Kp_yR = 1500.0; // P gain for y-direction tracking
+        srb_params.Kd_yR = 50.0; // D gain for y-direction tracking
+        srb_params.Kp_zR = 3000.0; // P gain for z-direction tracking
+        srb_params.Kd_zR = 1.0; // D gain for z-direction tracking
 
-        srb_params.Kp_phiR = 100.00; // P gain for roll tracking
+        srb_params.Kp_phiR = 300.00; // P gain for roll tracking
         srb_params.Kd_phiR = 2.0; // D gain for roll tracking
         srb_params.Kp_thetaR = 400.00; // P gain for pitch tracking
         srb_params.Kd_thetaR = 2.0; // D gain for pitch tracking

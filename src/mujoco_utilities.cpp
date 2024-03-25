@@ -945,7 +945,7 @@ void* usbCamRecord( void * arg )
             usb_recording_in_progress = true;
             // Child process - execute FFmpeg command
             cnt_str = to_string(usb_recording_cnt);
-            system(("taskset -c 15 ffmpeg -f v4l2 -loglevel quiet -framerate 30 -video_size 1024x768 -input_format mjpeg -i /dev/video4 -vf \"transpose=1\"  -c:v h264_nvenc " + log_folder+"usb_camera_"+cnt_str+".mp4").c_str());
+            system(("taskset -c 15 ffmpeg -f v4l2 -loglevel quiet -framerate 30 -video_size 1024x768 -input_format mjpeg -i /dev/video6 -vf \"transpose=1\"  -c:v h264_nvenc " + log_folder+"usb_camera_"+cnt_str+".mp4").c_str());
             usb_recording_cnt++;
         }
         usleep(10000);
@@ -976,7 +976,7 @@ void* usbCamRecord_HW( void * arg )
             usb_recording_HW_in_progress = true;
             // Child process - execute FFmpeg command
             cnt_str = to_string(usb_recording_cnt_hw);
-            system(("taskset -c 13 ffmpeg -f v4l2 -loglevel quiet -framerate 30 -video_size 1024x768 -input_format mjpeg -i /dev/video6 -vf \"transpose=2\"  -c:v h264_nvenc  " + log_folder+"hw_usb_camera_"+cnt_str+".mp4").c_str());
+            system(("taskset -c 13 ffmpeg -f v4l2 -loglevel quiet -framerate 30 -video_size 1024x768 -input_format mjpeg -i /dev/video4 -vf \"transpose=2\"  -c:v h264_nvenc  " + log_folder+"hw_usb_camera_"+cnt_str+".mp4").c_str());
             usb_recording_cnt_hw++;
         }
         usleep(10000);

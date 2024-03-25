@@ -211,7 +211,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     // Planner info
     double swing_T_scaler = srb_params.swing_time_scaler;
     double T = traj_planner_dyn_data.T_step;
-    if(use_adaptive_step_time) T = traj_planner_dyn_data.T_step_predicted*swing_T_scaler;
+    if(use_adaptive_step_time && !auto_mode) T = traj_planner_dyn_data.T_step_predicted*swing_T_scaler;
     double t_sw_start;
     if (t != 0)
         t_sw_start = traj_planner_dyn_data.t_sw_start;
@@ -351,13 +351,13 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     // cout << "grf_rf: " << grf_rf << " \t grf_rb: " << grf_rb << "\t grf_lf: " << grf_lf << "\t grf_lb: " << grf_lb << endl;
     if (FSM_prev == 0) // currently in DSP
     {
-        if ( (grf_rf + grf_rb < Fz_min ) && t > 0.1 && t_dsp > 0.075 && (next_SSP==1) && (zHr > 0.006 || auto_mode)) // enter SSP_L
+        if ( ((grf_rf + grf_rb) < 40 ) && t > 0.1 && t_dsp > 0.1 && (next_SSP==1) && ( (zHr > 0.006) || auto_mode) ) // enter SSP_L
         {
             cout << "Setting FSM from 0 to 1,   time: " << t << endl;
             FSM_next = 1;
             traj_planner_dyn_data.step_z_offset_L = human_dyn_data.fzH_L;
         }
-        else if ( (grf_lf + grf_lb < Fz_min ) && t > 0.1 && t_dsp > 0.075 && (next_SSP==-1) && (zHl > 0.006 || auto_mode)) // enter SSP_R 
+        else if ( ((grf_lf + grf_lb) < 20 ) && t > 0.1 && t_dsp > 0.1 && (next_SSP==-1) && ( (zHl > 0.006) || auto_mode) ) // enter SSP_R 
         {
             cout << "Setting FSM from 0 to -1,   time: " << t << endl;
             FSM_next = -1;     
@@ -370,7 +370,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == 1) // currently in SSP_L
     {
-        if ( ( (grf_rf + grf_rb > 20 ) && (lf1z <= 0.005 || lf2z <= 0.005) ) && s > 0.25) // enter DSP
+        if ( ( ((grf_rf + grf_rb) > 20 ) || (lf1z <= 0.005 || lf2z <= 0.005) ) && s > 0.98) // enter DSP
         {
             cout << "Setting FSM from 1 to 0,   time: " << t << endl;
             FSM_next = 0;
@@ -382,7 +382,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == -1) // currently in SSP_R
     {
-        if ( ( (grf_lf + grf_lb > 20-12 ) && (lf3z <= 0.005 || lf4z <= 0.005) ) && s > 0.25) // enter DSP
+        if ( ( ((grf_lf + grf_lb) > 20 ) || (lf3z <= 0.005 || lf4z <= 0.005) ) && s > 0.98) // enter DSP
         {
             cout << "Setting FSM from -1 to 0,   time: " << t << endl;
             FSM_next = 0;
@@ -427,7 +427,7 @@ void dash_planner::SRB_Init_Traj_Planner_Data(Traj_planner_dyn_data& traj_planne
     traj_planner_dyn_data.t_dsp_start = 0.0; // DSP time (0 to T)
     
     // Only planner_type = LIP_ang_mom_reg
-    traj_planner_dyn_data.next_SSP = 1; // next SSP (SSP_L = 1 or SSP_R = -1)
+    traj_planner_dyn_data.next_SSP = 0; // next SSP (SSP_L = 1 or SSP_R = -1)
     // cout << "INITIALIZING NEXT SSP TO ONE" << endl;
     traj_planner_dyn_data.step_width = (abs(lf2CoM0_mat(1, 0)) + abs(lf2CoM0_mat(1, 3))); // desired step width (updated at the start depending on initial feet width)
     traj_planner_dyn_data.st2CoM_beg_step = VectorXd::Zero(position_vec_size); // stance-leg/foot position at the beginning-of-step relative to CoM
@@ -568,7 +568,7 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
     double t_sw_start = traj_planner_dyn_data.t_sw_start;
      double swing_T_scaler = srb_params.swing_time_scaler;
     double T_step = traj_planner_dyn_data.T_step;
-    if(use_adaptive_step_time) T_step = traj_planner_dyn_data.T_step_predicted*swing_T_scaler;
+    if(use_adaptive_step_time && !auto_mode) T_step = traj_planner_dyn_data.T_step_predicted*swing_T_scaler;
     double x_HWRM = traj_planner_dyn_data.x_HWRM;
     double dx_HWRM = traj_planner_dyn_data.dx_HWRM;
     double uk_HWRM = traj_planner_dyn_data.uk_HWRM;
@@ -671,6 +671,7 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
                 traj_planner_dyn_data.sw2CoM_beg_step = pc - lfv.row(sw_idx_R).transpose();  
                 traj_planner_dyn_data.xLIP_init << (pc(0) - lfv.row(st_idx_R)(0)) + (1.0/2.0)*ft_l, dx;
                 traj_planner_dyn_data.sw_beg_step = lfv.row(sw_idx_R);
+                traj_planner_dyn_data.sw_beg_step(2) = -srb_params.hLIP-0.002 ;
                 
             } else if (planner_type == 2) { // planner_type = Human_Dyn_Telelocomotion
 
@@ -799,8 +800,8 @@ void dash_planner::SRB_LIP_vel_traj(double des_walking_speed, VectorXd& t_traj, 
 {
     // Tunable waypoints (time in s)
     VectorXd t_waypts_0p1to3ms(6), t_waypts_0p4ms(6), t_waypts_0p5to6ms(6), t_waypts_0p7ms(6), t_waypts_0p8ms(6);
-    double step_end = 15;
-    t_waypts_0p1to3ms << 0.0, 4.0, 10.0, step_end, step_end+3, step_end+5;
+    double step_end = 12;
+    t_waypts_0p1to3ms << 0.0, 10.0, 11.0, step_end, step_end+1, step_end+2;
     t_waypts_0p4ms << 0.0, 1.0, 2.0, 4.0, 6.0, 7.0;
     t_waypts_0p5to6ms << 0.0, 1.0, 2.0, 4.0, 6.0, 7.5;
     t_waypts_0p7ms << 0.0, 1.0, 4.0, 6.0, 9.0, 13.0;

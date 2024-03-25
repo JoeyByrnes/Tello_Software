@@ -214,7 +214,7 @@ HW_CTRL_Data hw_control_data;
 bool last_enable_teleop = false;
 bool last_last_enable_teleop = false;
 
-double robot_init_foot_width_HW = 0.175;
+double robot_init_foot_width_HW = 0.185;//0.175;
 bool use_current_foot_width = false;
 
 void init_6dof_test();
@@ -254,7 +254,7 @@ void run_tello_pd()
 
 
 	double motor_kp = 0;
-	double motor_kd = 500;
+	double motor_kd = 300;
 	VectorXd kp_vec_motor = VectorXd::Ones(10)*motor_kp;
 	VectorXd kd_vec_motor = VectorXd::Ones(10)*motor_kd;
 
@@ -487,9 +487,9 @@ void* Human_Playback_Hardware( void * arg )
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-20-25-one-step-wide/human_dyn_data.csv";
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-17-59-single step/human_dyn_data.csv";
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-18-38-two steps/human_dyn_data.csv";
-	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-12-35-slow-stepping/human_dyn_data.csv"; 
+	std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-12-35-slow-stepping/human_dyn_data.csv"; 
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-15-43-wide leg stepping/human_dyn_data.csv";
-	std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-13-25-medium-stepping/human_dyn_data.csv";
+	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/09-25-23__01-11-43-sway-then-2-steps/human_dyn_data.csv";
 
 	
 	// std::string active_log = "/home/tello/tello_files/Hardware_Motion_Library/10-17-23__18-08-17-first-time-multiple-steps/human_dyn_data.csv";
@@ -839,6 +839,14 @@ void send_HMI_forces()
 	tello->controller->enable_human_dyn_data = hw_control_data.enable_teleop;
 }
 
+void setNaNtoZero(Eigen::VectorXd& vec) {
+    for (int i = 0; i < vec.size(); ++i) {
+        if (std::isnan(vec(i))) {
+            vec(i) = 0.0;
+        }
+    }
+}
+
 void balance_pd(MatrixXd lfv_hip)
 {
 	RoboDesignLab::TaskPDConfig swing_pd_config, posture_pd_config;
@@ -897,6 +905,8 @@ void balance_pd(MatrixXd lfv_hip)
 	swing_pd_config.motor_kd = VectorXd::Zero(10);
 	swing_leg_torques = tello->taskPD2(swing_pd_config);
 
+	// setNaNtoZero(swing_leg_torques);
+
 	posture_pd_config = swing_pd_config;
 	posture_pd_config.ignore_joint_velocity = false;
 	posture_pd_config.side = BOTH_LEGS;
@@ -909,25 +919,26 @@ void balance_pd(MatrixXd lfv_hip)
 	posture_pd_config.setTaskKa(0,0,0);
 	VectorXd kp_vec_joint_posture(10);
 	VectorXd kd_vec_joint_posture(10);
-	kp_vec_joint_posture << 200, 200, 0,0,0, 200, 200, 0,0,0;
+	kp_vec_joint_posture << 200, 300, 100,100,100, 200, 300, 100,100,100;
 	kd_vec_joint_posture <<  0, 0, 0,0,0,  0, 0, 0,0,0;
 	posture_pd_config.setJointKp(kp_vec_joint_posture);
 	posture_pd_config.setJointKd(kd_vec_joint_posture);
 	posture_pd_config.setJointKa(0);
 
 	VectorXd posture_ctrl_torques = tello->taskPD2(posture_pd_config);
+
+	setNaNtoZero(posture_ctrl_torques);
 	
 	// END TASK PD CODE ======================================+++++++++++++++++
 	VectorXd tau_LR(10);
 	tau_LR = jointFFTorque + posture_ctrl_torques;
 
-	// cout << tau_LR.transpose() << endl;
 	VectorXd torques_left  = tello->swing_stance_mux(tau_LR.head(5), swing_leg_torques.head(5), 
-														0.03,tello->controller->get_isSwingToStanceRight(), 
+														0.015,tello->controller->get_isSwingToStanceRight(), 
 														tello->controller->get_time()-tello->controller->get_transitionStartRight(), 
 														0);
 	VectorXd torques_right = tello->swing_stance_mux(tau_LR.tail(5), swing_leg_torques.tail(5),
-														0.03,tello->controller->get_isSwingToStanceLeft(),
+														0.015,tello->controller->get_isSwingToStanceLeft(),
 														tello->controller->get_time()-tello->controller->get_transitionStartLeft(), 
 														1);
 	VectorXd tau_LR_muxed(10);
@@ -1019,6 +1030,15 @@ void balance_pd(MatrixXd lfv_hip)
 	task_pd_config.motor_kd = kd_vec_motor;
 	task_pd_config.joint_ff_torque = tau_LR_muxed; // was jointFFTorque
 
+	// if( abs(tello->controller->get_FSM()) == 1)
+	// {
+	//     printf("MUXED: %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
+	//             tau_LR_muxed(0), tau_LR_muxed(1), tau_LR_muxed(2),
+	//             tau_LR_muxed(3), tau_LR_muxed(4), tau_LR_muxed(5),
+	//             tau_LR_muxed(6), tau_LR_muxed(7), tau_LR_muxed(8),
+	//             tau_LR_muxed(9));
+	// }
+
 	// cout << "FSM: " << tello->controller->get_FSM() << ",   tau: " << tau_LR_muxed.transpose() << endl;
 	
 	tello->taskPD(task_pd_config);
@@ -1056,6 +1076,8 @@ void run_balance_controller()
 	Vector3d dpc_curr = CoM_vel; // from mocap
 	Vector3d EA_curr = CoM_rpy; // from mocap
 	Vector3d dEA_curr = tello->_gyro; // from IMU
+
+	EA_curr(0) = CoM_rpy(0)-0.004;
 
 	Vector3d pc_des, EA_des;
 
@@ -1402,7 +1424,7 @@ void process_hw_control_packet()
 				micros2 = std::chrono::time_point_cast<std::chrono::microseconds>(now2);  // Round down to nearest microsecond
 				since_epoch2 = micros2.time_since_epoch();  // Get duration since epoch
 				t_program_start = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch2).count() / 1000000.0;  // Convert to double with resolution of microseconds
-				balancing_motor_kd = 200;
+				balancing_motor_kd = 300;
 			}
 			else{
 				cout << "Robot needs to be standing by itself to enable balancing. If it is, check the loadcell connections." << endl;
@@ -1435,7 +1457,8 @@ void process_hw_control_packet()
 			since_epoch2 = micros2.time_since_epoch();  // Get duration since epoch
 			t_program_start = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch2).count() / 1000000.0;  // Convert to double with resolution of microseconds
 			start_controller_time = true;
-			tello->controller->enable_human_ctrl();
+			if(!auto_mode)
+				tello->controller->enable_human_ctrl();
 			ang = 0;
 		}
 	}
@@ -1712,30 +1735,31 @@ void init_6dof_test()
 	VectorXd x0 = tello->controller->get_x0();
 	// dash_planner::SRB_6DoF_Test(dummy,sim_time,srb_params,lfv0,DoF,1);
 
-	// auto_mode = true;
-	// printf("Walking Selected\n\n");
-	// // Option 2: Walking using LIP angular momentum regulation about contact point
-	// // user input (walking speed and step frequency)
-	// double des_walking_speed = 0;
-	// double des_walking_step_period = 0.2;
-	// // end user input
-	// std::string recording_file_name = "Walking";
-	// srb_params.planner_type = 1; 
-	// srb_params.T = des_walking_step_period;
-	// VectorXd t_traj, v_traj;
-	// double t_beg_stepping_time, t_end_stepping_time;
-	// dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
-	// srb_params.vx_des_t = t_traj;
-	// srb_params.vx_des_vx = v_traj;
-	// srb_params.t_beg_stepping = 5;
-	// srb_params.t_end_stepping = 10;
-	// sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
+	auto_mode = true;
+	printf("Walking Selected\n\n");
+	// Option 2: Walking using LIP angular momentum regulation about contact point
+	// user input (walking speed and step frequency)
+	double des_walking_speed = 0.00;
+	double des_walking_step_period = 0.2;
+	// end user input
+	std::string recording_file_name = "Walking";
+	srb_params.planner_type = 1; 
+	srb_params.T = des_walking_step_period;
+	srb_params.zcl = 0.02; // step height
+	VectorXd t_traj, v_traj;
+	double t_beg_stepping_time, t_end_stepping_time;
+	dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
+	srb_params.vx_des_t = t_traj;
+	srb_params.vx_des_vx = v_traj;
+	srb_params.t_beg_stepping = t_beg_stepping_time;
+	srb_params.t_end_stepping = t_end_stepping_time;
+	sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
 
 	// printf("Telelop Selected\n\n");
-	std::string recording_file_name = "Telelop";
-	srb_params.planner_type = 2; 
+	// std::string recording_file_name = "Telelop";
+	// srb_params.planner_type = 2; 
 	srb_params.init_type = 1;
-	sim_time = 1e100;
+	// sim_time = 1e100;
 
 	// Initialize trajectory planner data
     dash_planner::SRB_Init_Traj_Planner_Data(traj_planner_dyn_data, srb_params, human_params, x0, lfv0);
@@ -1932,7 +1956,7 @@ int main(int argc, char *argv[]) {
 		// tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 500);
 		tello->addPeriodicTask(&visualize_robot, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"animate_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&screenRecord, SCHED_FIFO, 1, ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"screen_recording_task",TASK_CONSTANT_PERIOD, 1000);
-		tello->addPeriodicTask(&usbCamRecord, SCHED_FIFO, 0, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"HMI_recording_task",TASK_CONSTANT_PERIOD, 1000);
+		// tello->addPeriodicTask(&usbCamRecord, SCHED_FIFO, 0, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"HMI_recording_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&usbCamRecord_HW, SCHED_FIFO, 2, ISOLATED_CORE_3_THREAD_2, (void*)(NULL),"HW_recording_task",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&plotting, SCHED_FIFO, 99, 6, NULL, "plotting",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&motion_capture, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"Mocap_Task",TASK_CONSTANT_PERIOD, 1000);
@@ -2030,8 +2054,8 @@ int main(int argc, char *argv[]) {
 	tello->addPeriodicTask(&motion_capture, SCHED_FIFO, 99, UPX_ISOLATED_CORE_3_THREAD_1, (void*)(NULL),"Mocap_Task",TASK_CONSTANT_PERIOD, 1000);
 	tello->addPeriodicTask(&hw_logging, SCHED_FIFO, 99, UPX_ISOLATED_CORE_3_THREAD_2, (void*)(NULL),"hw_logging_task",TASK_CONSTANT_PERIOD, 1000);
 
-	tello->addPeriodicTask(&Human_Playback_Hardware, SCHED_FIFO, 90, UPX_ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"human_playback_HW_task",TASK_CONSTANT_PERIOD, 1000);
-	tello->addPeriodicTask(&curve_fitting, SCHED_FIFO, 99, UPX_ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"curve_fitting",TASK_CONSTANT_PERIOD, 1000);
+	// tello->addPeriodicTask(&Human_Playback_Hardware, SCHED_FIFO, 90, UPX_ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"human_playback_HW_task",TASK_CONSTANT_PERIOD, 1000);
+	// tello->addPeriodicTask(&curve_fitting, SCHED_FIFO, 99, UPX_ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"curve_fitting",TASK_CONSTANT_PERIOD, 1000);
 
 	usleep(4000);
 	

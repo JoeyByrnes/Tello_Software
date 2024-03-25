@@ -246,13 +246,13 @@ double joint_directions[10] =      { 1,-1,1,1,-1,    1,-1,-1,-1,1};
 double joint_measured_zero_offsets[10] = {0,0,-0.15708,0.382,0,0,0,0.15708,-0.382,0};
 void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot){
 
-	joint_zeros[2] = 11098 + l_h;
-	joint_zeros[3] = 2728 + l_k;
-	joint_zeros[4] = 4260 + l_a;
+	joint_zeros[2] = 11098 + l_h - 30;
+	joint_zeros[3] = 2728 + l_k  + 100;
+	joint_zeros[4] = 4260 + l_a  + 0;
 
-	joint_zeros[7] = 4351 + r_h;
-	joint_zeros[8] = 15047 + r_k;
-	joint_zeros[9] = 5487 + r_a;
+	joint_zeros[7] = 4351 + r_h  + 50;
+	joint_zeros[8] = 15047 + r_k - 50;
+	joint_zeros[9] = 5487 + r_a  + 0;
 	
 	uint8_t id = Message.DATA[0];
 	uint16_t joint_position = (Message.DATA[1] << 8) | Message.DATA[2];

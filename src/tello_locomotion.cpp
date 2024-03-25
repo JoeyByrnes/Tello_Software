@@ -242,12 +242,12 @@ void* curve_fitting( void * arg )
         ready_for_new_curve_fit_data = true;
 
         double AH, end_time;
-        double MIN_SWING_TIME = 0.25;
+        double MIN_SWING_TIME = 0.2;
         double MAX_SWING_TIME = 0.4;
         double increasing_bound_limit = std::max((((double)xdata.size()-25)/1000.0),0.001);
-        double x0[] = { 0.03 , MAX_SWING_TIME };
-        double lb[] = { 0.01 , MAX_SWING_TIME - increasing_bound_limit};
-        double ub[] = { 0.2 , MAX_SWING_TIME };
+        double x0[] = { 0.01 , MAX_SWING_TIME };
+        double lb[] = { 0.005 , MAX_SWING_TIME - 0.1 - increasing_bound_limit};
+        double ub[] = { 0.05 , MAX_SWING_TIME };
         coder::array<double, 2U> x_data = dash_utils::eigenVectorToCoderArray(xdata);
         coder::array<double, 2U> y_data = dash_utils::eigenVectorToCoderArray(ydata);
         step_z_curve_fit(x_data, y_data, x0, lb, ub, &AH, &end_time);

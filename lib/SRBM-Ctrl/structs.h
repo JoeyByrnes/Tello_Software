@@ -77,9 +77,9 @@ struct SRB_Params
 };
 
 struct Human_params {
-    double m;
-    double hLIP;
-    double human_nom_ft_width;
+    double m=76;
+    double hLIP = 1.05;
+    double human_nom_ft_width=0.175;
     double fyH_home;
     double foot_2_joystick;
 };

@@ -64,6 +64,11 @@ VectorXd grf_rb = VectorXd(100);
 
 // Human_dyn_data_filter hdd_filter;
 
+extern VectorXd arm_joint_pos_desired;
+
+extern VectorXd R_joystick_enc;
+extern VectorXd L_joystick_enc;
+
 
 void* rx_CAN( void * arg ){
     
@@ -241,7 +246,7 @@ void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* rob
 }
 
 															
-double joint_zeros[10] = {0,5510,11098,2728,4260,0,2590,4351,15047,5487}; //{0,5528,11090,2808,4290-15,0,2603,4367,15047+25,5530-30};
+double joint_zeros[10] = {0,5510,11098,2728,4260,0,2590,4772,15047,5487}; //{0,5528,11090,2808,4290-15,0,2603,4367,15047+25,5530-30};
 double joint_directions[10] =      { 1,-1,1,1,-1,    1,-1,-1,-1,1};
 double joint_measured_zero_offsets[10] = {0,0,-0.15708,0.382,0,0,0,0.15708,-0.382,0};
 void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot){
@@ -250,7 +255,7 @@ void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* r
 	joint_zeros[3] = 2728 + l_k  + 100;
 	joint_zeros[4] = 4260 + l_a  + 0;
 
-	joint_zeros[7] = 4351 + r_h  + 50;
+	joint_zeros[7] = 4772 + r_h  + 90;
 	joint_zeros[8] = 15047 + r_k - 50;
 	joint_zeros[9] = 5487 + r_a  + 0;
 	
@@ -369,6 +374,92 @@ void DeserializeVizControlData(const uint8_t* buffer, size_t bufferSize, HW_CTRL
     memcpy(&data, buffer, sizeof(HW_CTRL_Data));
 }
 
+void* rx_UDP_Debug( void * arg ){
+
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+    void* arg1 = std::get<1>(*arg_tuple_ptr);
+	void* arg0 = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(arg0);
+
+	//setup
+	int sockfd;
+	char rx_buffer[100];
+
+	struct sockaddr_in servaddr, cliaddr;
+		
+	// Creating socket file descriptor
+	if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
+		perror("socket creation failed");
+		exit(EXIT_FAILURE);
+	}
+		
+	memset(&servaddr, 0, sizeof(servaddr));
+	memset(&cliaddr, 0, sizeof(cliaddr));
+		
+	// Filling server information
+	servaddr.sin_family = AF_INET; // IPv4
+	servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	servaddr.sin_port = htons(54006);
+		
+	// Bind the socket with the server address
+	if ( bind(sockfd, (const struct sockaddr *)&servaddr,
+			sizeof(servaddr)) < 0 )
+	{
+		perror("bind failed");
+		exit(EXIT_FAILURE);
+	}
+
+	int core = sched_getcpu();
+	int policy;
+	sched_param param;
+    pthread_t current_thread = pthread_self();
+    int result = pthread_getschedparam(current_thread, &policy, &param);
+	int priority = param.sched_priority;
+	printf("UDP DEBUG rx thread running on core %d, with priority %d\n", core, priority);
+
+	int len, n;
+
+	while(1)
+	{
+		socklen_t * len1;
+		// dash_utils::print_timer();
+		// dash_utils::start_timer();
+		struct sockaddr_in sender_addr;  // Temporary variable to capture sender's address
+		socklen_t sender_addr_len = sizeof(sender_addr);
+
+		n = recvfrom(sockfd, (char *)rx_buffer, 100,
+			MSG_WAITALL, (struct sockaddr*)&sender_addr, &sender_addr_len);
+
+		char debug_buffer[16];
+
+		memcpy(debug_buffer, rx_buffer, sizeof(debug_buffer)); 
+
+    // Variables to hold the unpacked values
+    float left_elbow, right_elbow, left_shoulder, right_shoulder;
+
+    // Unpack the buffer
+    memcpy(&left_elbow, debug_buffer, sizeof(float));
+    memcpy(&right_elbow, debug_buffer + sizeof(float), sizeof(float));
+    memcpy(&left_shoulder, debug_buffer + 2 * sizeof(float), sizeof(float));
+    memcpy(&right_shoulder, debug_buffer + 3 * sizeof(float), sizeof(float));
+
+    // Printing unpacked values
+    std::cout << "Left Elbow: " << left_elbow << "\t";
+    std::cout << "Right Elbow: " << right_elbow << "\t";
+    std::cout << "Left Shoulder: " << left_shoulder << "\t";
+    std::cout << "Right Shoulder: " << right_shoulder << std::endl;
+
+	arm_joint_pos_desired(3) = (180.0-left_elbow)*M_PI/180.0;
+	arm_joint_pos_desired(7) = (180.0-right_elbow)*M_PI/180.0;
+
+	arm_joint_pos_desired(1) = (left_shoulder)*M_PI/180.0;
+	arm_joint_pos_desired(5) = (right_shoulder)*M_PI/180.0;
+
+	}
+
+}
+
 void* rx_UDP( void * arg ){
 
 	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
@@ -478,7 +569,6 @@ void* rx_UDP( void * arg ){
 
 		n = recvfrom(sockfd, (char *)rx_buffer, 100,
 			MSG_WAITALL, (struct sockaddr*)&sender_addr, &sender_addr_len);
-
 
 		if (strcmp(inet_ntoa(sender_addr.sin_addr), HMI_IP_ADDRESS) == 0) {
             
@@ -636,6 +726,16 @@ void* rx_UDP( void * arg ){
 			human_dyn_data_2LISAs.fdxH_L = fdxH_Lval;
 			human_dyn_data_2LISAs.fdyH_L = fdyH_Lval;
 			human_dyn_data_2LISAs.fdzH_L = fdzH_Lval;
+
+			R_joystick_enc(0) = human_dyn_data.r_shoulder_pitch;
+			R_joystick_enc(1) = human_dyn_data.r_shoulder_roll;
+			R_joystick_enc(2) = human_dyn_data.r_shoulder_yaw;
+			R_joystick_enc(3) = human_dyn_data.r_elbow;
+
+			L_joystick_enc(0) = human_dyn_data.l_shoulder_pitch;
+			L_joystick_enc(1) = human_dyn_data.l_shoulder_roll;
+			L_joystick_enc(2) = human_dyn_data.l_shoulder_yaw;
+			L_joystick_enc(3) = human_dyn_data.l_elbow;
 
 
 			tello->controller->updateStepZHistoryL(fzH_Lval);

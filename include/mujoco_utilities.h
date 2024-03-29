@@ -32,5 +32,8 @@ void* logging( void * arg );
 void* screenRecord( void * arg );
 void* usbCamRecord( void * arg );
 void* usbCamRecord_HW( void * arg );
+void getArmPositionAndVelocities(const mjModel* m, const mjData* d, Eigen::VectorXd& arm_positions, Eigen::VectorXd& arm_velocities);
+void applyArmJointTorquesMujoco(const mjModel* m, mjData* d, const Eigen::VectorXd& torques);
+void runArmControl();
 
 #endif

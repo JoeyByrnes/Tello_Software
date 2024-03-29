@@ -405,6 +405,37 @@ void applyJointTorquesMujoco(VectorXd torques)
     d->ctrl[ankle_motor_r_idx] = torques(9);
 }
 
+void applyArmJointTorquesMujoco(const mjModel* m, mjData* d, const Eigen::VectorXd& torques)
+{
+// Indices of the joints
+    int left_shoulder_pitch_joint_id = mj_name2id(m, mjOBJ_JOINT, "left_shoulder_pitch");
+    int left_shoulder_roll_joint_id = mj_name2id(m, mjOBJ_JOINT, "left_shoulder_roll");
+    int left_shoulder_yaw_joint_id = mj_name2id(m, mjOBJ_JOINT, "left_shoulder_yaw");
+    int left_elbow_joint_id = mj_name2id(m, mjOBJ_JOINT, "left_elbow");
+    int right_shoulder_pitch_joint_id = mj_name2id(m, mjOBJ_JOINT, "right_shoulder_pitch");
+    int right_shoulder_roll_joint_id = mj_name2id(m, mjOBJ_JOINT, "right_shoulder_roll");
+    int right_shoulder_yaw_joint_id = mj_name2id(m, mjOBJ_JOINT, "right_shoulder_yaw");
+    int right_elbow_joint_id = mj_name2id(m, mjOBJ_JOINT, "right_elbow");
+
+    //  // Debug print all joint IDs on a single line
+    // std::cout << "Joint IDs: " << left_shoulder_pitch_joint_id << ", " << left_shoulder_roll_joint_id << ", " 
+    //           << left_shoulder_yaw_joint_id << ", " << left_elbow_joint_id << ", " << right_shoulder_pitch_joint_id 
+    //           << ", " << right_shoulder_roll_joint_id << ", " << right_shoulder_yaw_joint_id << ", " 
+    //           << right_elbow_joint_id << std::endl;
+
+    // Set torques for each joint
+    d->ctrl[10] = torques(0);
+    d->ctrl[11] = torques(1);
+    d->ctrl[12] = torques(2);
+    d->ctrl[13] = torques(3);
+    d->ctrl[14] = torques(4);
+    d->ctrl[15] = torques(5);
+    d->ctrl[16] = torques(6);
+    d->ctrl[17] = torques(7);
+
+    // cout << "right yaw tq: " << torques(6) << endl;
+}
+
 double sigmoid(double x) { return 1 / (1 + exp(-x)); }
 
 VectorXd mux_and_smooth(VectorXd initialOutput, VectorXd finalOutput, double start_time, double end_time, double time) 
@@ -983,4 +1014,38 @@ void* usbCamRecord_HW( void * arg )
     }
 
     return  0;
+}
+
+void getArmPositionAndVelocities(const mjModel* m, const mjData* d, Eigen::VectorXd& arm_positions, Eigen::VectorXd& arm_velocities) {
+    // Indices of the joints
+    int left_shoulder_roll_joint_id = mj_name2id(m, mjOBJ_JOINT, "left_shoulder_roll");
+    int right_shoulder_roll_joint_id = mj_name2id(m, mjOBJ_JOINT, "right_shoulder_roll");
+    int left_shoulder_pitch_joint_id = mj_name2id(m, mjOBJ_JOINT, "left_shoulder_pitch");
+    int right_shoulder_pitch_joint_id = mj_name2id(m, mjOBJ_JOINT, "right_shoulder_pitch");
+    int left_shoulder_yaw_joint_id = mj_name2id(m, mjOBJ_JOINT, "left_shoulder_yaw");
+    int right_shoulder_yaw_joint_id = mj_name2id(m, mjOBJ_JOINT, "right_shoulder_yaw");
+    int left_elbow_joint_id = mj_name2id(m, mjOBJ_JOINT, "left_elbow");
+    int right_elbow_joint_id = mj_name2id(m, mjOBJ_JOINT, "right_elbow");
+
+    // Extracting joint positions
+    arm_positions.resize(8);
+    arm_positions << d->qpos[left_shoulder_pitch_joint_id],
+                     d->qpos[left_shoulder_roll_joint_id],
+                     d->qpos[left_shoulder_yaw_joint_id],
+                     d->qpos[left_elbow_joint_id],
+                     d->qpos[right_shoulder_pitch_joint_id],
+                     d->qpos[right_shoulder_roll_joint_id],
+                     d->qpos[right_shoulder_yaw_joint_id],
+                     d->qpos[right_elbow_joint_id];
+
+    // Extracting joint velocities
+    arm_velocities.resize(8);
+    arm_velocities << d->qvel[left_shoulder_pitch_joint_id],
+                      d->qvel[left_shoulder_roll_joint_id],
+                      d->qvel[left_shoulder_yaw_joint_id],
+                      d->qvel[left_elbow_joint_id],
+                      d->qvel[right_shoulder_pitch_joint_id],
+                      d->qvel[right_shoulder_roll_joint_id],
+                      d->qvel[right_shoulder_yaw_joint_id],
+                      d->qvel[right_elbow_joint_id];
 }

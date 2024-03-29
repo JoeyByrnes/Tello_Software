@@ -214,7 +214,7 @@ HW_CTRL_Data hw_control_data;
 bool last_enable_teleop = false;
 bool last_last_enable_teleop = false;
 
-double robot_init_foot_width_HW = 0.185;//0.175;
+double robot_init_foot_width_HW = 0.175;
 bool use_current_foot_width = false;
 
 void init_6dof_test();
@@ -828,7 +828,7 @@ void send_HMI_forces()
 	// int n = sendto(sockfd_tx, hmi_tx_buffer, 20,MSG_CONFIRM, 
 	// 	   (const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
 
-	dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,hw_control_data.enable_force_feedback,hw_control_data.tare_hmi,hw_control_data.hmi_gain);
+	dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,hw_control_data.enable_force_feedback,hw_control_data.tare_hmi,hw_control_data.hmi_gain, hw_control_data.tare_arms);
 	int n = sendto(sockfd, hmi_tx_buffer, 44,MSG_CONFIRM, 
 			(const struct sockaddr *) &servaddr, sizeof(servaddr));
 
@@ -896,8 +896,8 @@ void balance_pd(MatrixXd lfv_hip)
 
 	VectorXd kp_vec_joint_swing(10);
 	VectorXd kd_vec_joint_swing(10);
-	kp_vec_joint_swing << 50, 100, 100,100,100, 50, 100, 100,100,100;
-	kd_vec_joint_swing <<  0.5, 1.0, 1.0,1.0,1.0,  0.5, 1.0, 1.0,1.0,1.0;
+	kp_vec_joint_swing << 50, 200, 200,200,100, 50, 200, 200,200,100;
+	kd_vec_joint_swing <<  0.5, 0.5, 1.0,1.0,1.0,  0.5, 0.5, 1.0,1.0,1.0;
 
 	swing_pd_config.setJointKp(kp_vec_joint_swing);
 	swing_pd_config.setJointKd(kd_vec_joint_swing);
@@ -919,7 +919,7 @@ void balance_pd(MatrixXd lfv_hip)
 	posture_pd_config.setTaskKa(0,0,0);
 	VectorXd kp_vec_joint_posture(10);
 	VectorXd kd_vec_joint_posture(10);
-	kp_vec_joint_posture << 200, 300, 100,100,100, 200, 300, 100,100,100;
+	kp_vec_joint_posture << 200, 300, 200,200,100, 200, 300, 200,200,100;
 	kd_vec_joint_posture <<  0, 0, 0,0,0,  0, 0, 0,0,0;
 	posture_pd_config.setJointKp(kp_vec_joint_posture);
 	posture_pd_config.setJointKd(kd_vec_joint_posture);
@@ -972,8 +972,8 @@ void balance_pd(MatrixXd lfv_hip)
 
 	VectorXd kd_vec_motor = VectorXd::Ones(10)*motor_kd;
 
-	int kd_swing = 300;
-	int kd_stance = balancing_motor_kd;
+	int kd_swing = 500;
+	int kd_stance = 500;//balancing_motor_kd;
 	if(tello->controller->get_FSM()==1)
 	{
 		kd_vec_motor << kd_stance,kd_stance,kd_stance,kd_stance,kd_stance,kd_swing,kd_swing,kd_swing,kd_swing,kd_swing;
@@ -1690,7 +1690,7 @@ void signal_callback_handler(int signum){
 	hdd.FxH_spring = 0;
 	hdd.FxH_hmi = 0;
 	hdd.FyH_hmi = 0;
-	dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,0,0,0);
+	dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,0,0,0,0);
 	int n = sendto(sockfd_tx, hmi_tx_buffer, 24,MSG_CONFIRM, 
 			(const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
 
@@ -1739,7 +1739,7 @@ void init_6dof_test()
 	printf("Walking Selected\n\n");
 	// Option 2: Walking using LIP angular momentum regulation about contact point
 	// user input (walking speed and step frequency)
-	double des_walking_speed = 0.00;
+	double des_walking_speed = 0.0;
 	double des_walking_step_period = 0.2;
 	// end user input
 	std::string recording_file_name = "Walking";
@@ -1910,6 +1910,7 @@ int main(int argc, char *argv[]) {
 		// tello->addPeriodicTask(&curve_fitting, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_2, (void*)(NULL),"curve_fitting",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 500);
 		// tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
+		tello->addPeriodicTask(&rx_UDP_Debug, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 		// tello->addPeriodicTask(&Human_Playback, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"human_playback_task",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&Animate_Log, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"human_playback_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&logging, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"logging_task",TASK_CONSTANT_PERIOD, 1000);

@@ -277,6 +277,9 @@ namespace RoboDesignLab {
         VectorXd getJointVelocities();
         VectorXd getJointPositions();
 
+        VectorXd getArmJointVelocities();
+        VectorXd getArmJointPositions();
+
         void setJointEncoderPosition(double rad, JointName joint_name);
         void setJointEncoderVelocity(double rad, JointName joint_name);
 
@@ -290,6 +293,8 @@ namespace RoboDesignLab {
         VectorXd taskPD2(TaskPDConfig task_conf);
         VectorXd taskPD3(TaskPDConfig task_conf);
         void resetController(){delete controller; controller = new SRBMController();}
+
+        VectorXd arm_jointPD(JointPDConfig joint_conf);
 
         // InEKF Functions:
         void update_filter_IMU_data(IMU_data imu_data);
@@ -329,6 +334,17 @@ namespace RoboDesignLab {
         int motor_zeros[10];
         int motor_timeouts[10] = {0,0,0,0,0,0,0,0,0,0};
         int motor_connected[10] = {0,0,0,0,0,0,0,0,0,0};
+
+        // arms:
+        CheetahMotor* arm_motors[8];
+        int arm_motor_directions[8];
+        MatrixXd _arm_motor_direction_matrix;
+        int arm_motor_zeros[8];
+        int arm_motor_timeouts[8] = {0,0,0,0,0,0,0,0};
+        int arm_motor_connected[8] = {0,0,0,0,0,0,0,0};
+
+        VectorXd sim_arm_joint_pos = VectorXd::Zero(8);
+        VectorXd sim_arm_joint_vel = VectorXd::Zero(8);
 
 
         // Sensors

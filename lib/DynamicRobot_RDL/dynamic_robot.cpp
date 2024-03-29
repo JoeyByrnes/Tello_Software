@@ -558,6 +558,22 @@ Eigen::VectorXd DynamicRobot::getJointVelocities()
     return joint_velocities;
 }
 
+Eigen::VectorXd DynamicRobot::getArmJointPositions()
+{
+    // if(this->isSimulation)
+    // {
+        return sim_arm_joint_pos;
+    // }
+    
+}
+Eigen::VectorXd DynamicRobot::getArmJointVelocities()
+{
+    // if(this->isSimulation)
+    // {
+        return sim_arm_joint_vel;
+    // }
+}
+
 void DynamicRobot::setJointEncoderPosition(double rad, JointName joint_name)
 {
     joint_encoder_positions[joint_name] = rad;
@@ -628,6 +644,9 @@ VectorXd DynamicRobot::swing_stance_mux(VectorXd stanceTorques, VectorXd swingTo
         // return stanceTorques;
         switchFactor = 1 - switchFactor;  // If transitioning from stance to swing, invert the switch factor
 
+    }
+    else{
+        return swingTorques; // disables smoothing from stance to swing
     }
     double smoothVal = sigmoid((switchFactor - 0.5) * 12);  // Scale the switch factor to be between -5 and 5, and apply sigmoid function
     if(smoothVal < 0.05) smoothVal = 0;
@@ -961,6 +980,20 @@ VectorXd DynamicRobot::taskPD2(TaskPDConfig task_conf)
 
     return jointPD2(joint_conf);
 
+}
+
+VectorXd DynamicRobot::arm_jointPD(JointPDConfig joint_conf)
+{
+	// Get joint positions and velocities
+	VectorXd joint_positions = this->getArmJointPositions();
+	VectorXd joint_velocities = this->getArmJointVelocities();
+
+	// Calculate Joint PD
+    
+	VectorXd joint_torques = calc_pd(joint_positions,joint_velocities,joint_conf.joint_pos_desired,
+                                     joint_conf.joint_vel_desired,joint_conf.joint_kp,joint_conf.joint_kd);
+
+    return (joint_torques + joint_conf.joint_ff_torque);
 }
 
 // InEKF Functions:

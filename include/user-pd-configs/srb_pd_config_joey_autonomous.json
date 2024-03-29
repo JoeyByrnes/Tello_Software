@@ -14,7 +14,7 @@
       "Kd_psiR": 100,
       "Step_Period": 0.2,
       "Step_Height": 0.02,
-      "Walking_Speed": 0.0,
+      "Walking_Speed": 0.2,
       
       "Kx_DCM_mult": 10.0,
       "Ky_DCM_mult": 5.0,

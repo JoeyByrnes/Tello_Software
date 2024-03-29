@@ -1180,7 +1180,7 @@ void dash_utils::pack_data_to_hmi(uint8_t* buffer, Human_dyn_data data)
     }
 }
 
-void dash_utils::pack_data_to_hmi_with_ctrls(uint8_t* buffer, Human_dyn_data data,bool ff,bool tare,float gain)
+void dash_utils::pack_data_to_hmi_with_ctrls(uint8_t* buffer, Human_dyn_data data,bool ff,bool tare,float gain, bool tare_arms)
 {
     // float* float_buffer = reinterpret_cast<float*>(buffer);
     // float_buffer[0] = data.FxH_hmi;
@@ -1197,10 +1197,10 @@ void dash_utils::pack_data_to_hmi_with_ctrls(uint8_t* buffer, Human_dyn_data dat
     //     buffer[24] += buffer[i];
     // }
     Human_dyn_data_4LISAs data4LISAs = create_new_4LISAs_struct(data);
-    pack_data_to_hmi_with_ctrls_4LISAs(buffer,data4LISAs,ff,tare,gain);
+    pack_data_to_hmi_with_ctrls_4LISAs(buffer,data4LISAs,ff,tare,gain, tare_arms);
 }
 
-void dash_utils::pack_data_to_hmi_with_ctrls_4LISAs(uint8_t* buffer, Human_dyn_data_4LISAs data,bool ff,bool tare,float gain)
+void dash_utils::pack_data_to_hmi_with_ctrls_4LISAs(uint8_t* buffer, Human_dyn_data_4LISAs data,bool ff,bool tare,float gain, bool tare_arms)
 {
     float* float_buffer = reinterpret_cast<float*>(buffer);
     float_buffer[0] = data.fx;
@@ -1217,12 +1217,15 @@ void dash_utils::pack_data_to_hmi_with_ctrls_4LISAs(uint8_t* buffer, Human_dyn_d
 
     float ff_f = 0;
     float tare_f = 0;
+    float tare_arms_f = 0;
     if(tare) tare_f = 1;
+    if(tare_arms) tare_arms_f = 1;
     if(ff) ff_f = 80;
     float_buffer[9] = tare_f;
     float_buffer[10] = ff_f;
-    for (int i = 0; i < 24; i++) {
-        buffer[40] += buffer[i];
+    float_buffer[11] = tare_arms_f;
+    for (int i = 0; i < 44; i++) {
+        buffer[44] += buffer[i];
     }
 }
 

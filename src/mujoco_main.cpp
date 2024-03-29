@@ -37,6 +37,7 @@ double vx_desired_ps4 = 0;
 double vy_desired_ps4 = 0;
 bool PS4_connected = false;
 bool zero_human = false;
+bool zero_arms = false;
 float master_gain = 0;
 bool screen_recording = false;
 bool usbcam_recording = false;
@@ -185,6 +186,10 @@ SRBMController* controller;
 MatrixXd lfv0(4,3), lfdv0(4,3); // global so planner can access them for now
 
 // end SRBM-Ctrl Variables here ============================================================
+
+VectorXd arm_joint_pos_desired(8);
+VectorXd R_joystick_enc(4);
+VectorXd L_joystick_enc(4);
 
 // Define variables here so code runs faster:
 
@@ -729,6 +734,29 @@ void initializeLegs()
     d->qpos[hip_pitch_r_idx] = q0.row(0)(2);
     d->qpos[knee_pitch_r_idx] = q0.row(0)(3);
     d->qpos[ankle_pitch_r_idx] = q0.row(0)(4);
+
+    // Set joint angles for the left and right arms
+    // Assuming the indices of the joints for the arms are known, replace with actual indices
+    int left_shoulder_roll_joint_id = mj_name2id(m, mjOBJ_JOINT, "left_shoulder_roll");
+    int right_shoulder_roll_joint_id = mj_name2id(m, mjOBJ_JOINT, "right_shoulder_roll");
+    int left_shoulder_pitch_joint_id = mj_name2id(m, mjOBJ_JOINT, "left_shoulder_pitch");
+    int right_shoulder_pitch_joint_id = mj_name2id(m, mjOBJ_JOINT, "right_shoulder_pitch");
+    int left_shoulder_yaw_joint_id = mj_name2id(m, mjOBJ_JOINT, "left_shoulder_yaw");
+    int right_shoulder_yaw_joint_id = mj_name2id(m, mjOBJ_JOINT, "right_shoulder_yaw");
+    int left_elbow_joint_id = mj_name2id(m, mjOBJ_JOINT, "left_elbow");
+    int right_elbow_joint_id = mj_name2id(m, mjOBJ_JOINT, "right_elbow");
+
+    // Set shoulder pitch angles to zero
+    d->qpos[left_shoulder_roll_joint_id] = 0;//0.15;
+    d->qpos[right_shoulder_roll_joint_id] = 0;//-0.15;
+    d->qpos[left_shoulder_pitch_joint_id] = 0;//0.2;
+    d->qpos[right_shoulder_pitch_joint_id] = 0;//0.2;
+    d->qpos[left_shoulder_yaw_joint_id] = 0;//-0.3;
+    d->qpos[right_shoulder_yaw_joint_id] = 0;//0.3;
+
+    // Set elbow angles to 90 degrees (converted to radians)
+    d->qpos[left_elbow_joint_id] = 0;
+    d->qpos[right_elbow_joint_id] = 0;
 }
 
 ImVec4 hex2ImVec4(int hex)
@@ -809,6 +837,178 @@ void* tello_controller( void * arg )
 
 }
 
+VectorXd th_R_Arm(4);
+VectorXd th_L_Arm(4);
+
+void runArmControl()
+{
+
+    float RA_pose_des = 0.0;
+    float LA_pose_des = 0.0;
+    float human_ef_log[3];
+
+    for(int i = 0; i < 2; i++){
+        float th_j1 = 0;
+        float th_j2 = 0;
+        float th_j3 = 0;
+        float th_j4 = 0;
+        if(i==0){
+        //Joystick right joint angles (input)
+            th_j1 =(R_joystick_enc[0]/180)*3.14159;
+            th_j2 =(R_joystick_enc[1]/180)*3.14159;
+            th_j3 =(R_joystick_enc[2]/180)*3.14159;
+            th_j4 =(R_joystick_enc[3]/180)*3.14159;
+        }
+        else{
+            th_j1 = -(L_joystick_enc[0]/180)*3.14159;
+            th_j2 = -(L_joystick_enc[1]/180)*3.14159;
+            th_j3 = -(L_joystick_enc[2]/180)*3.14159;
+            th_j4 = -(L_joystick_enc[3]/180)*3.14159;
+        }
+        //Physical lengths
+        float L_joy_shoulder_from_body = 0.2105; //middle to shoulder pivot (to the right)
+        float L_joy_shoulder_x = 0.1035; //to the right
+        float L_joy_shoulder_y = 0.168; //downwards
+        float L_joy_arm = 0.313; //upper arm length
+        float L_joy_forearm = 0.339; //lower arm length
+        float L_joy_hand = 0.078; //width of the hand that goes inwards
+        float L_sat_shoulder_from_body = 0.2297;
+        float L_sat_forearm = 0.2277;
+        float L_sat_arm = 0.1790;
+        //HTM of end effector in base frame
+        float joy_eff[12];
+        float s1 = sin(th_j1);
+        float c1 = cos(th_j1);
+        float s2 = sin(th_j2);
+        float c2 = cos(th_j2);
+        float c3 = cos(th_j3);
+        float s34 = sin(th_j3 - th_j4);
+        float c34 = cos(th_j3 - th_j4);
+        joy_eff[0] = -s1*s2*s34 + c1*c34;
+        joy_eff[1] = -s1*c2;
+        joy_eff[2] = s1*s2*c34 + s34*c1;
+        joy_eff[3] = -L_joy_arm*(s1*s2*c3 + sin(th_j3)*c1) - L_joy_forearm*(s1*s2*c34 + s34*c1) - L_joy_hand*s1*c2 + L_joy_shoulder_x*c1 + L_joy_shoulder_y*s1*c2;
+        joy_eff[4] = s1*c34 + s2*s34*c1;
+        joy_eff[5] = c1*c2;
+        joy_eff[6] = s1*s34 - s2*c1*c34;
+        joy_eff[7] = -L_joy_arm*(s1*sin(th_j3) - s2*c1*c3) - L_joy_forearm*(s1*s34 - s2*c1*c34) + L_joy_hand*c1*c2 - L_joy_shoulder_from_body + L_joy_shoulder_x*s1 - L_joy_shoulder_y*c1*c2;
+        joy_eff[8] = -s34*c2;
+        joy_eff[9] = s2;
+        joy_eff[10] = c2*c34;
+        joy_eff[11] = -L_joy_arm*c2*c3 - L_joy_forearm*c2*c34 + L_joy_hand*s2 - L_joy_shoulder_y*s2;
+        float human_ef[3];
+        human_ef[0] = joy_eff[3];
+        human_ef[1] = joy_eff[7];
+        human_ef[2] = joy_eff[11];
+        if(i == 0){
+            human_ef_log[0] = human_ef[0];
+            human_ef_log[1] = human_ef[1];
+            human_ef_log[2] = human_ef[2];
+        }
+        //Direction of satyrr's elbow
+        float sat_elb_dir[3];
+        sat_elb_dir[0] = L_joy_forearm*joy_eff[2] - L_joy_shoulder_x + joy_eff[3];
+        sat_elb_dir[1] = L_joy_forearm*joy_eff[6] - L_joy_hand + L_joy_shoulder_from_body + L_joy_shoulder_y + joy_eff[7];
+        sat_elb_dir[2] = L_joy_forearm*joy_eff[10] + joy_eff[11];
+        //Rz is the unit vector from satyrr's elbow to shoulder
+        float Rz[3];
+        Rz[0] = -sat_elb_dir[0];
+        Rz[1] = -sat_elb_dir[1];
+        Rz[2] = -sat_elb_dir[2];
+        float Rz_mag = sqrt(pow(Rz[0], 2) + pow(Rz[1], 2) + pow(Rz[2], 2));
+        Rz[0] = Rz[0]/Rz_mag;
+        Rz[1] = Rz[1]/Rz_mag;
+        Rz[2] = Rz[2]/Rz_mag;
+        //Ry is the component of joystick's elbow axis perpendicular to Rz (as a unit vector)
+        //Calculated with: norm3d(yaxis_joy_end - Rz*yaxis_joy_end.dot(Rz))
+        float Ry[3];
+        float ydotRz = Rz[0]*joy_eff[1] + Rz[1]*joy_eff[5] + Rz[2]*joy_eff[9];
+        Ry[0] = -Rz[0]*ydotRz + joy_eff[1];
+        Ry[1] = -Rz[1]*ydotRz + joy_eff[5];
+        Ry[2] = -Rz[2]*ydotRz + joy_eff[9];
+        float Ry_mag = sqrt(pow(Ry[0], 2) + pow(Ry[1], 2) + pow(Ry[2], 2));
+        Ry[0] = Ry[0]/Ry_mag;
+        Ry[1] = Ry[1]/Ry_mag;
+        Ry[2] = Ry[2]/Ry_mag;
+        //Rx is the remaining axis to define satyrr's elbow frame, Rx = Ry x Rz
+        float Rx[3];
+        Rx[0] = Ry[1]*Rz[2] - Ry[2]*Rz[1];
+        Rx[1] = -Ry[0]*Rz[2] + Ry[2]*Rz[0];
+        Rx[2] = Ry[0]*Rz[1] - Ry[1]*Rz[0];
+        //Inverse kinematics of a spherical wrist
+        float th_s1 = M_PI - (fmod(atan2(Rz[2], Rz[0]) + M_PI_2, 2.0*M_PI));
+    float th_s2 = M_PI - (fmod(atan2(Rz[1], sqrt(1 - pow(Rz[1], 2.0))) + M_PI, 2.0*M_PI));
+    float th_s3 = M_PI - (fmod(atan2(-Rx[1], Ry[1]) + M_PI, 2.0*M_PI));
+        //angle between satyrr's upper arm and joystick forearm about Ry
+        float th_s4 = -acos(Rz[0]*joy_eff[2] + Rz[1]*joy_eff[6] + Rz[2]*joy_eff[10]);
+        if(-Ry[0]*(Rz[1]*joy_eff[10] - Rz[2]*joy_eff[6]) + Ry[1]*(Rz[0]*joy_eff[10] - Rz[2]*joy_eff[2]) - Ry[2]*(Rz[0]*joy_eff[6] - Rz[1]*joy_eff[2]) < 0){
+            th_s4 = -1*th_s4;
+        }
+        //Flipping angle convention to match model -> robot
+        th_s1 = -th_s1;
+        th_s2 =  th_s2;
+        th_s3 =  th_s3;
+        th_s4 = -th_s4;
+        //Flipping angle convention to matc right or left arm
+        float arm_temp[4];
+        if(i==0){
+            arm_temp[0] = th_s1;
+            arm_temp[1] = th_s2;
+            arm_temp[2] = th_s3;
+            arm_temp[3] = th_s4;
+            for(int j = 0; j < 4; j++){
+                //Safety condition bounding change in RARM joint angle
+                if(abs(th_R_Arm[j] - arm_temp[j]) < 1.57){
+                    th_R_Arm[j] = arm_temp[j];
+                }
+                else{
+                    th_R_Arm[j] = th_R_Arm[j];
+                }
+            }
+            RA_pose_des = (207*cos(th_s1))/50000.0 - (10396091193541362039.0*cos(th_s1)*cos(th_s4))/225179981368524800000.0 - (2389.0*cos(th_s2)*sin(th_s1))/20000.0 - (3808975302672035301.0*cos(th_s1)*sin(th_s4))/18014398509481984000.0 + (10396091193541362039.0*cos(th_s2)*sin(th_s1)*sin(th_s4))/225179981368524800000.0 - (3808975302672035301.0*cos(th_s2)*cos(th_s4)*sin(th_s1))/18014398509481984000.0;
+            RA_pose_des = -RA_pose_des; // To get angle conventions to match of robot
+        }
+        else{
+            arm_temp[0] = -th_s1;
+            arm_temp[1] = -th_s2;
+            arm_temp[2] = -th_s3;
+            arm_temp[3] = -th_s4;
+            for(int j = 0; j < 4; j++){
+                //Safety condition bounding change in LARM joint angle
+                if(abs(th_L_Arm[j] - arm_temp[j]) < 1.57){
+                    th_L_Arm[j] = arm_temp[j];
+                }
+                else{
+                    th_L_Arm[j] = th_L_Arm[j];
+                }
+            }
+            LA_pose_des = (207.0*cos(th_L_Arm[0]))/50000.0 - (2559.0*cos(th_L_Arm[3])*(cos(th_L_Arm[0])*cos(th_L_Arm[2]) + sin(th_L_Arm[0])*sin(th_L_Arm[1])*sin(th_L_Arm[2])))/50000.0 - L_sat_forearm*(sin(th_L_Arm[3])*(cos(th_L_Arm[0])*cos(th_L_Arm[2]) + sin(th_L_Arm[0])*sin(th_L_Arm[1])*sin(th_L_Arm[2])) + cos(th_L_Arm[1])*cos(th_L_Arm[3])*sin(th_L_Arm[0])) + (2559.0*cos(th_L_Arm[1])*sin(th_L_Arm[0])*sin(th_L_Arm[3]))/50000.0 - L_sat_arm*cos(th_L_Arm[1])*sin(th_L_Arm[0]);
+        }
+    }
+
+    RoboDesignLab::JointPDConfig arm_pd;
+
+    arm_pd.joint_pos_desired = VectorXd::Zero(8);
+    arm_pd.joint_vel_desired = VectorXd::Zero(8);
+    arm_pd.joint_pos_desired << th_L_Arm(0), th_L_Arm(1), th_L_Arm(2), th_L_Arm(3), th_R_Arm(0), th_R_Arm(1), th_R_Arm(2), th_R_Arm(3);
+    arm_pd.joint_vel_desired << 0, 0, 0, 0, 0, 0, 0, 0;
+    
+    VectorXd arm_kp(8);
+    VectorXd arm_kd(8);
+    arm_kp << 100,100,100,100,    100,100,100,100;
+    arm_kd << 0.5,0.5,0.5,0.5,    0.5,0.5,0.5,0.5;
+    arm_pd.joint_kp = arm_kp.asDiagonal();
+    arm_pd.joint_kd = arm_kd.asDiagonal();
+    arm_pd.motor_kp = VectorXd::Zero(8);
+    arm_pd.motor_kd = VectorXd::Zero(8);
+    arm_pd.joint_ff_torque  = VectorXd::Zero(8);
+    VectorXd arm_torques = tello->arm_jointPD(arm_pd);
+
+    // cout << arm_torques.transpose() << endl;
+
+    applyArmJointTorquesMujoco(m,d,arm_torques);
+}
+
 
 char notes[100]; // String variable to store the entered notes
 void* mujoco_Update_1KHz( void * arg )
@@ -862,7 +1062,8 @@ void* mujoco_Update_1KHz( void * arg )
     mj_activate("./lib/Mujoco/mjkey.txt");
     if(simulation_mode == 1)
     {
-        m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-6-16-23.xml", NULL, error, 1000);
+        // m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-6-16-23.xml", NULL, error, 1000);
+        m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-with-arms.xml", NULL, error, 1000);
         // m_shared = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-color.xml", NULL, error, 1000);
     }
     else if(simulation_mode == 3)
@@ -1423,6 +1624,17 @@ void* mujoco_Update_1KHz( void * arg )
                         zero_human = false;
                     }
                     ImGui::PopStyleColor(3);
+                    ImGui::Separator();//init_foot_width
+                    ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
+                    if (ImGui::Button(" " ICON_FA_WEIGHT " Tare Arms  ")) {
+                        zero_arms = true;
+                    }
+                    else{
+                        zero_arms = false;
+                    }
+                    ImGui::PopStyleColor(3);
                 }
                 
                 ImGui::Separator();//init_foot_width
@@ -1771,7 +1983,7 @@ void* mujoco_Update_1KHz( void * arg )
 		// int n = sendto(sockfd_tx, hmi_tx_buffer, 20,MSG_CONFIRM, 
 		// 	   (const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
 
-		dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,sim_conf.en_force_feedback,zero_human,master_gain);
+		dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,sim_conf.en_force_feedback,zero_human,master_gain,zero_arms);
 		int n = sendto(sockfd_tx, hmi_tx_buffer, 24,MSG_CONFIRM, 
 			   (const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
 
@@ -1801,7 +2013,7 @@ void* mujoco_Update_1KHz( void * arg )
     hdd.FxH_hmi = 0;
     hdd.FyH_hmi = 0;
     hdd.FxH_spring = 0;
-    dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,0,0,0);
+    dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,0,0,0,0);
     int n = sendto(sockfd_tx, hmi_tx_buffer, 24,MSG_CONFIRM, 
             (const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
 
@@ -1920,6 +2132,25 @@ void* sim_step_task( void * arg )
                 tau_local = tau_shared;
                 pthread_mutex_unlock(&tau_share_mutex);
                 pthread_mutex_lock(&sim_mutex);
+                // ARM TORQUES
+
+                getArmPositionAndVelocities(m,d,tello->sim_arm_joint_pos,tello->sim_arm_joint_vel);
+
+                // Printing arm joint positions
+                // std::cout << "Arm Joint Positions:\n";
+                // for (int i = 0; i < tello->sim_arm_joint_pos.size(); ++i) {
+                //     std::cout << tello->sim_arm_joint_pos(i) << std::endl;
+                // }
+
+                // // Printing arm joint velocities
+                // std::cout << "Arm Joint Velocities:\n";
+                // for (int i = 0; i < tello->sim_arm_joint_vel.size(); ++i) {
+                //     std::cout << tello->sim_arm_joint_vel(i) << std::endl;
+                // }
+
+                runArmControl();
+
+                //END ARM TORQUES
                 applyJointTorquesMujoco(tau_local);
                 mj_step(m, d);
                 dtime = d->time;

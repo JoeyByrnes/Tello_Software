@@ -1027,47 +1027,47 @@ void* visualization_render_thread( void * arg )
             // ImGui::Text("FSM: %d", telloLocal->controller->get_FSM());
             // ImGui::Separator();
             // ImGui::Text("Next SSP: %d", telloLocal->controller->get_traj_planner_dyn_data().next_SSP);
-            // ImGui::Separator();
+            ImGui::Separator();
             ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
             ImGui::Separator();
             ImGui::PopStyleColor();
             //ImGui::Text("CoM X Velocity: %.2fm/s", telloLocal->controller->get_x()(3));
-            // ImGui::SliderInt(" R Hip ", &hw_control_data.hip_offset_right, -150, 150);
-            ImGui::SliderFloat(" roll: ", &hw_control_data.roll_adjust, -1.5, 1.5);
+            ImGui::SliderInt(" R Hip ", &hw_control_data.hip_offset_right, -150, 150);
+            // ImGui::SliderFloat(" roll: ", &hw_control_data.roll_adjust, -1.5, 1.5);
             ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
             ImGui::Separator();
             ImGui::PopStyleColor();
             // ImGui::Text("CoM X Position: %.2fm", telloLocal->controller->get_x()(0));
-            // ImGui::SliderInt(" R Knee ", &hw_control_data.knee_offset_right, -150, 150);
-            ImGui::SliderFloat(" pitch: ", &hw_control_data.pitch_adjust, -1.5, 1.5);
+            ImGui::SliderInt(" R Knee ", &hw_control_data.knee_offset_right, -150, 150);
+            // ImGui::SliderFloat(" pitch: ", &hw_control_data.pitch_adjust, -1.5, 1.5);
 
             ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
             ImGui::Separator();
             ImGui::PopStyleColor();
 
-            // ImGui::SliderInt(" R Ankle ", &hw_control_data.ankle_offset_right, -150, 150);
-            ImGui::SliderFloat(" yaw: ", &hw_control_data.yaw_adjust, -1.5, 1.5);
+            ImGui::SliderInt(" R Ankle ", &hw_control_data.ankle_offset_right, -150, 150);
+            // ImGui::SliderFloat(" yaw: ", &hw_control_data.yaw_adjust, -1.5, 1.5);
 
 
-            // ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
-            // ImGui::Separator();
-            // ImGui::PopStyleColor();
-            // //ImGui::Text("CoM X Velocity: %.2fm/s", telloLocal->controller->get_x()(3));
-            // ImGui::SliderInt(" L Hip ", &hw_control_data.hip_offset_left, -150, 150);
-            // // ImGui::SliderFloat(" roll: ", &hw_control_data.roll_adjust, -1.5, 1.5);
-            // ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
-            // ImGui::Separator();
-            // ImGui::PopStyleColor();
-            // //ImGui::Text("CoM X Position: %.2fm", telloLocal->controller->get_x()(0));
-            // ImGui::SliderInt(" L Knee ", &hw_control_data.knee_offset_left, -150, 150);
-            // // ImGui::SliderFloat(" pitch: ", &hw_control_data.pitch_adjust, -1.5, 1.5);
+            ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+            //ImGui::Text("CoM X Velocity: %.2fm/s", telloLocal->controller->get_x()(3));
+            ImGui::SliderInt(" L Hip ", &hw_control_data.hip_offset_left, -150, 150);
+            // ImGui::SliderFloat(" roll: ", &hw_control_data.roll_adjust, -1.5, 1.5);
+            ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+            //ImGui::Text("CoM X Position: %.2fm", telloLocal->controller->get_x()(0));
+            ImGui::SliderInt(" L Knee ", &hw_control_data.knee_offset_left, -150, 150);
+            // ImGui::SliderFloat(" pitch: ", &hw_control_data.pitch_adjust, -1.5, 1.5);
 
-            // ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
-            // ImGui::Separator();
-            // ImGui::PopStyleColor();
+            ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
+            ImGui::Separator();
+            ImGui::PopStyleColor();
 
-            // ImGui::SliderInt(" L Ankle ", &hw_control_data.ankle_offset_left, -150, 150);
-            // // ImGui::SliderFloat(" yaw: ", &hw_control_data.yaw_adjust, -1.5, 1.5);
+            ImGui::SliderInt(" L Ankle ", &hw_control_data.ankle_offset_left, -150, 150);
+            // ImGui::SliderFloat(" yaw: ", &hw_control_data.yaw_adjust, -1.5, 1.5);
             
             ImGui::End();
         }

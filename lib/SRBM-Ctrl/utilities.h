@@ -75,8 +75,8 @@ namespace  dash_utils
     double measure_sim_timer();
 
     void pack_data_to_hmi(uint8_t* buffer, Human_dyn_data data);
-    void pack_data_to_hmi_with_ctrls(uint8_t* buffer, Human_dyn_data data,bool ff,bool tare,float gain);
-    void pack_data_to_hmi_with_ctrls_4LISAs(uint8_t* buffer, Human_dyn_data_4LISAs data,bool ff,bool tare,float gain);
+    void pack_data_to_hmi_with_ctrls(uint8_t* buffer, Human_dyn_data data,bool ff,bool tare,float gain, bool tare_arms);
+    void pack_data_to_hmi_with_ctrls_4LISAs(uint8_t* buffer, Human_dyn_data_4LISAs data,bool ff,bool tare,float gain, bool tare_arms);
     void unpack_data_from_hmi(Human_dyn_data& data, uint8_t* buffer);
     void unpack_data_from_hmi_4LISAs(Human_dyn_data_4LISAs& data, uint8_t* buffer);
     void print_human_dyn_data(const Human_dyn_data& data);

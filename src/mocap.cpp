@@ -180,7 +180,7 @@ void* motion_capture( void * arg )
               CoM_quat << r->pose[3], r->pose[6], r->pose[4], r->pose[5];
 
               double alignment_z_offset = 0.002;
-              double floor_mat_height = -0.000;
+              double floor_mat_height = -0.001;
               CoM_pos = Vector3d(r->pose[2]/1000.0, r->pose[0]/1000.0, r->pose[1]/1000.0-0.58 + alignment_z_offset + floor_mat_height); //0.0272
               CoM_pos = rotationMatrix * CoM_pos;
               if(!(r->pose[2] == 0.0 && r->pose[0] == 0.0 && r->pose[1] == 0.0))

@@ -671,7 +671,7 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
                 traj_planner_dyn_data.sw2CoM_beg_step = pc - lfv.row(sw_idx_R).transpose();  
                 traj_planner_dyn_data.xLIP_init << (pc(0) - lfv.row(st_idx_R)(0)) + (1.0/2.0)*ft_l, dx;
                 traj_planner_dyn_data.sw_beg_step = lfv.row(sw_idx_R);
-                traj_planner_dyn_data.sw_beg_step(2) = -srb_params.hLIP-0.002 ;
+                traj_planner_dyn_data.sw_beg_step(2) = -srb_params.hLIP -0.0005;
                 
             } else if (planner_type == 2) { // planner_type = Human_Dyn_Telelocomotion
 
@@ -800,8 +800,8 @@ void dash_planner::SRB_LIP_vel_traj(double des_walking_speed, VectorXd& t_traj, 
 {
     // Tunable waypoints (time in s)
     VectorXd t_waypts_0p1to3ms(6), t_waypts_0p4ms(6), t_waypts_0p5to6ms(6), t_waypts_0p7ms(6), t_waypts_0p8ms(6);
-    double step_end = 12;
-    t_waypts_0p1to3ms << 0.0, 10.0, 11.0, step_end, step_end+1, step_end+2;
+    double step_end = 15;
+    t_waypts_0p1to3ms << 0.0, 10.0, 12.0, step_end, step_end+1, step_end+2;
     t_waypts_0p4ms << 0.0, 1.0, 2.0, 4.0, 6.0, 7.0;
     t_waypts_0p5to6ms << 0.0, 1.0, 2.0, 4.0, 6.0, 7.5;
     t_waypts_0p7ms << 0.0, 1.0, 4.0, 6.0, 9.0, 13.0;

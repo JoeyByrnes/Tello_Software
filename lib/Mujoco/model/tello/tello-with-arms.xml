@@ -1,0 +1,294 @@
+<mujoco model="TELLO">
+
+  <size njmax = "500" nconmax = "100" />
+
+  <compiler angle = 'radian' inertiafromgeom = "false" meshdir = "meshes-rev/"/>
+  <option timestep='0.001' iterations='50' solver='PGS' gravity='0 0 -9.81'/>
+	<default>
+    <joint limited='true' damping="10"/>
+    <motor ctrllimited='true'/>
+    <geom contype='0' conaffinity='0' condim='1' solref="0.0001 5"/><!--solref='0.005 1'-->
+    <default class='TELLO'>
+    </default>
+    <default class='collision'>
+      <!-- User parameter for geoms is used to identify collision types -->
+      <geom contype='1' user='2' />
+      <default class='collision-left'>
+        <geom contype='2' conaffinity='4' />
+      </default>
+      <default class='collision-right'>
+        <geom contype='4' conaffinity='2' />
+      </default>
+    </default>
+    <default class='obstacle'>
+      <geom material='obstacle' condim='3' contype='8' conaffinity='15' user='1'/>
+    </default>
+  </default>
+  
+  <asset>
+  
+    <mesh name="torso_link" file="body_torso.STL"/>
+    <mesh name="right_hip_clamp" file="body_left_hipClamp.STL"/>
+    <mesh name="right_hip_gimbal" file="body_gimbal.STL"/>
+    <mesh name="right_thigh" file="thigh.STL"/>
+    <mesh name="right_shin" file="shin.STL"/>
+    <mesh name="right_foot" file="body_left_foot.STL"/>
+    <mesh name="left_hip_clamp" file="body_left_hipClamp.STL"/>
+    <mesh name="left_hip_gimbal" file="body_gimbal.STL"/>
+    <mesh name="left_thigh" file="thigh.STL"/>
+    <mesh name="left_shin" file="shin.STL"/>
+    <mesh name="left_foot" file="body_left_foot.STL"/>
+
+	<!-- ARM MESHES -->
+	<mesh name="arm_pitch_motors" file="torso_arms.STL"/>
+	<mesh name="arm_left_roll_motor" file="left_shoulder_link.STL"/>
+	<mesh name="arm_right_roll_motor" file="right_shoulder_link.STL"/>
+	<mesh name="arm_left_roll_link" file="left_shoulder_roll_link.STL"/>
+	<mesh name="arm_right_roll_link" file="right_shoulder_roll_link.STL"/>
+	<mesh name="arm_left_upper" file="left_upper_arm.STL"/>
+	<mesh name="arm_right_upper" file="right_upper_arm.STL"/>
+	<mesh name="arm_left_forearm" file="left_forearm.STL"/>
+	<mesh name="arm_right_forearm" file="right_forearm.STL"/>
+
+
+	<texture type = "skybox" builtin = "gradient" width = "128" height = "128" rgb1 = "0.95 0.99 0.99" 
+         rgb2 = "0.7 0.7 0.7"/>    
+    <texture name = "texgeom" type = "cube" builtin = "flat" mark = "cross" width = "127" height = "1278" 
+         rgb1 = "0.8 0.6 0.4" rgb2 = "0.8 0.6 0.4" markrgb = "1 1 1" random = "0.01"/>  
+     <texture name = "texplane" type = "2d" builtin = "checker" rgb1 = "0.8 0.8 0.8" rgb2 = "0.5 0.5 0.5"  
+         width = "512" height = "512"/>  
+     <material name = 'MatPlane' reflectance = '0.1' texture = "texplane" texrepeat = "1 1" texuniform = "true"/>	
+	
+  </asset>
+  
+  
+  <worldbody>
+  
+ 	<geom name ='floor' pos ='0 0 -0.58' size ='20 10 .125' type = 'plane' material ='MatPlane' condim = '3' conaffinity = '15'/>
+	<!-- <light mode ='trackcom' pos = '0 0 5' dir = '0 0 -1'/> -->
+	<light directional = 'true' pos = '0 0 3' dir = '0 0 -1' diffuse = '0.2 0.2 0.2' specular = '0 0 0'/>	 
+    <light name="com_light" mode='trackcom' pos='10 0 10' dir='-1 0 -1' castshadow="false"/>
+	<light name="back_light" mode='trackcom' pos='-10 0 10' dir='1 0 -1' castshadow="false"/>
+  
+	<body name = 'torso' pos = '0 0 0'> 
+	
+		<site name='imu' size='0.01' pos='-0.06 0 0.155'/>
+        <inertial pos = '0.0 0.0 0.0' mass = '4.2587' diaginertia = '0.013122 0.0078744 0.013624'/>
+		<geom type="sphere" size="0.01" pos="0 0 0" rgba="1 1 0 1"/>
+		<geom name = "com" type="sphere" size="0.01" pos="0 0 0" rgba="0 1 0 1"/>
+		<joint axis = "1 0 0" pos = "0 0 0" name = "move_x" type = "slide" limited = "false" damping="0"/>
+		<joint axis = "0 1 0" pos = "0 0 0" name = "move_y" type = "slide" limited = "false" damping="0"/>
+		<joint axis = "0 0 1" pos = "0 0 0" name = "move_z" type = "slide" limited = "false" damping="0"/>
+		<joint axis = "1 0 0" pos = "0 0 0" name = "rotate_roll" type = "hinge" limited = "false" damping="0"/>
+		<joint axis = "0 1 0" pos = "0 0 0" name = "rotate_pitch" type = "hinge" limited = "false" damping="0"/>
+		<joint axis = "0 0 1" pos = "0 0 0" name = "rotate_yaw" type = "hinge" limited = "false" damping="0"/>  
+		<geom quat="0 0 0 1" type="mesh" rgba="0.7 0 0 1" mesh="torso_link" contype='0'/>
+		<geom quat="0 0 0 1" type="mesh" rgba="0 0 0.7 1" mesh="arm_pitch_motors" contype='0'/>
+		<!-- <geom quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="torso_link" class = "collision"/> -->
+		<geom name="torso_box" pos="0 0 0.01" size="0.07 0.15 0.15" type="box" rgba="0.1 0.4 0.1 0.0" class="collision"/>
+
+		<body name="right_hip_clamp" pos="0 -0.126 0.0545" quat="1 0 0 0" gravcomp="0">
+		
+		  <inertial pos="4.44319E-05 -0.011651 -0.006856" quat="0 0 0 1" mass="1.3787" diaginertia="0.00146238287829404 0.00273729393380137 0.0014215626389636"/>
+		  <joint name="right_hip_yaw" pos="0 0 0" axis="0 0 1" limited = "true" range = "-0.4363 0.4363" armature=" 0.006"/>
+		  <geom type="mesh" rgba="0 0 0.7 1" mesh="right_hip_clamp" contype='0'/>
+		  
+		  <body name="right_hip_gimbal" pos="0 0 -0.1425" gravcomp="0">
+		  
+			<inertial pos="-0.0029449 0 0.02492554" quat="0 0 0 1" mass="0.4589" diaginertia="0.000481462682576961 0.000667169674942171 0.000497975686833487"/>
+			<joint name="right_hip_roll" pos="0 0 0" axis="1 0 0" limited = "true" range = "-0.6491 0.6491" armature=" 0.006"/>
+			<geom type="mesh" rgba="0 0.5 0 1" mesh="right_hip_gimbal" contype='0'/>
+			<geom name = "right_hip_gimbal_sphere" pos = "0 0 0"  size = "0.06" type="sphere" rgba = "0.1 0.4 0.1 0.0"  class = "collision-right"/>
+			
+			<body name="right_thigh" pos="0 0 0" gravcomp="0">
+			
+			  <inertial pos="-0.008193 8.0336E-05 -0.0465117" quat="0 0 0 1" mass="1.7145" diaginertia="0.00379144706855402 0.00440910409346791 0.000892300490534084"/>
+			  <joint name="right_hip_pitch" pos="0 0 0" axis="0 1 0" limited = "true" range = "-1.5708 0.4014" armature=" 0.006"/>
+			  <geom type="mesh" rgba="0.7 0.5 0 1" mesh="right_thigh" contype='0'/>
+			  
+			  <body name="right_shin" pos="0 0 -0.2286" gravcomp="0">
+			  
+				<inertial pos="0.0047419 -0.0003324 -0.104315" quat="0 0 0 1" mass="0.3071" diaginertia="0.00196114277995999 0.00202057471858548 7.91059574612859E-05"/>
+				<joint name="right_knee" pos="0 0 0" axis="0 1 0" limited = "true" range = "0.2852 2.0305" armature=" 0.006"/>
+				<geom type="mesh" rgba="0 0 0.7 1" mesh="right_shin" contype='0'/>
+				<geom name = "right_knee_sphere" pos = "0 0 0"  size = "0.03" type="sphere" rgba = "0.1 0.4 0.1 0.0"  class = "collision-right"/>
+				
+				<body name="right_foot" pos="0 0 -0.26" quat="0 0 0 1" gravcomp="0">
+				
+				  <inertial pos="0.0033954 0 -0.0283579" quat="0 0 0 1" mass="0.14232" diaginertia="1.19095587491302E-05 0.000133626524087711 0.000131614380502955"/>
+				  <joint name="right_ankle" pos="0 0 0" axis="0 -1 0" limited = "true" range = "-0.785398 0.785398" armature=" 0.006" damping="1"/>
+				  <geom name = "rfoot" type="mesh" rgba="0.7 0 0 1" mesh="right_foot" euler="0 0 3.14159265359" contype='0'/>
+ 				  <geom name = "right_foot_heel" pos = "-0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
+				  <geom name = "right_foot_toe" pos = "0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
+
+				  <geom name = "rfh" pos = "-0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+				  <geom name = "rft" pos = "0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+                  <!-- <geom type='capsule' size='0.01' fromto='-0.06 0 0.0385 0.06 0 0.0385' class='collision-right'/> -->
+				  
+				</body>
+				
+			  </body>
+			  
+			</body>
+			
+		  </body>
+		  
+		</body>
+		
+		<body name="left_hip_clamp" pos="0 0.126 0.0545" quat="1 0 0 0" gravcomp="0">
+		
+		  <inertial pos="4.44319E-05 -0.011651 -0.006856" quat="0 0 0 1" mass="1.3787" diaginertia="0.00146238287829404 0.00273729393380137 0.0014215626389636"/>
+		  <joint name="left_hip_yaw" pos="0 0 0" axis="0 0 1" limited = "true" range = "-0.4363 0.4363" armature=" 0.006"/>
+		  <geom type="mesh" rgba="0 0 0.7 1" mesh="left_hip_clamp" contype='0'/>
+		  
+		  <body name="left_hip_gimbal" pos="0 0 -0.1425" gravcomp="0">
+		  
+			<inertial pos="-0.0029449 0 0.02492554" quat="0 0 0 1" mass="0.4589" diaginertia="0.000481462682576961 0.000667169674942171 0.000497975686833487"/>
+			<joint name="left_hip_roll" pos="0 0 0" axis="1 0 0" limited = "true" range = "-0.64910 0.6491" armature=" 0.006"/>
+			<geom type="mesh" rgba="0 0.5 0 1" mesh="left_hip_gimbal" contype='0'/>
+			<geom name = "left_hip_gimbal_sphere" pos = "0 0 0"  size = "0.06" type="sphere" rgba = "0.1 0.4 0.1 0.0"  class = "collision-left"/>
+			
+			<body name="left_thigh" pos="0 0 0" gravcomp="0">
+			
+			  <inertial pos="-0.008193 8.0336E-05 -0.0465117" quat="0 0 0 1" mass="1.7145" diaginertia="0.00379144706855402 0.00440910409346791 0.000892300490534084"/>
+			  <joint name="left_hip_pitch" pos="0 0 0" axis="0 1 0" limited = "true" range = "-1.5708 0.4014" armature=" 0.006"/>
+			  <geom type="mesh" rgba="0.7 0.5 0 1" mesh="left_thigh" contype='0'/>
+			  
+			  <body name="left_shin" pos="0 0 -0.2286" gravcomp="0">
+			  
+				<inertial pos="0.0047419 -0.0003324 -0.104315" quat="0 0 0 1" mass="0.3071" diaginertia="0.00196114277995999 0.00202057471858548 7.91059574612859E-05"/>
+				<joint name="left_knee" pos="0 0 0" axis="0 1 0" limited = "true" range = "0.2852 2.0305" armature=" 0.006"/>
+				<geom type="mesh" rgba="0 0 0.7 1" mesh="left_shin" contype='0'/>
+				<geom name = "left_knee_sphere" pos = "0 0 0"  size = "0.03" type="sphere" rgba = "0.1 0.4 0.1 0.0"  class = "collision-left"/>
+				
+				<body name="left_foot" pos="0 0 -0.26" quat="0 0 0 1" gravcomp="0">
+				
+				  <inertial pos="0.0033954 0 -0.0283579" quat="0 0 0 1" mass="0.14232" diaginertia="1.19095587491302E-05 0.000133626524087711 0.000131614380502955"/>
+				  <joint name="left_ankle" pos="0 0 0" axis="0 -1 0" limited = "true" range = "-0.785398 0.785398" armature=" 0.006" damping="1"/>
+				  <geom name = "lfoot" type="mesh" rgba="0.7 0 0 1" mesh="left_foot" euler="0 0 3.14159265359" contype='0'/>
+ 				  <geom name = "left_foot_heel" pos = "-0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>
+				  <geom name = "left_foot_toe" pos = "0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>
+
+				  <geom name = "lfh" pos = "-0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+				  <geom name = "lft" pos = "0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+                  <!-- <geom type='capsule' size='0.01' fromto='-0.06 0 0.0385 0.06 0 0.0385' class='collision-left'/> -->
+				  
+				</body>
+				
+			  </body>
+			  
+			</body>
+			
+		  </body>
+		  
+		</body>
+
+		<body name="left_shoulder_roll_motor" pos="-0.0025027 0.2297 0.2315" quat="1 0 0 0" gravcomp="0">
+		
+		  <inertial pos="-0.057242 -0.016638 0" quat="0 0 0 1" mass="0.1" diaginertia="0.001 0.001 0.001"/>
+		  <joint name="left_shoulder_pitch" pos="0 0 0" axis="0 1 0" limited = "true" range = "-1.5708 1.5708" armature=" 0.006"/>
+		  <geom type="mesh" rgba="0 0.5 0 1" mesh="arm_left_roll_motor" contype='0'/>
+		  
+				<body name="left_shoulder_roll_link" pos="0 0 0" quat="1 0 0 0" gravcomp="0">
+
+					<inertial pos="0 0 0" quat="0 0 0 1" mass="0.1" diaginertia="0.001 0.001 0.001"/>
+					<joint name="left_shoulder_roll" pos="0 0 0" axis="1 0 0" limited = "true" range = "-1.5708 1.5708" armature=" 0.006"/>
+					<geom type="mesh" rgba="0.7 0.5 0 1" mesh="arm_left_roll_link" contype='0'/>
+
+					<body name="left_upper_link" pos="0 0 0" quat="1 0 0 0" gravcomp="0">
+
+						<inertial pos="0.00025813 0.0039725 -0.062289" quat="0 0 0 1" mass="0.1" diaginertia="0.001 0.001 0.001"/>
+						<joint name="left_shoulder_yaw" pos="0 0 0" axis="0 0 1" limited = "true" range = "-1.5708 1.5708" armature=" 0.006"/>
+						<geom type="mesh" rgba="0.0 0.0 0.7 1" mesh="arm_left_upper" contype='0'/>
+
+						<body name="left_forearm_link" pos="0 0 -0.179" quat="1 0 0 0" gravcomp="0">
+
+							<inertial pos="0 0 -0.14" quat="0 0 0 1" mass="0.5" diaginertia="0.001 0.001 0.001"/>
+							<joint name="left_elbow" pos="0 0 0" axis="0 1 0" limited = "true" range = "-1.5708 1.5708" armature=" 0.006"/>
+							<geom type="mesh" rgba="0.7 0.0 0.0 1" mesh="arm_left_forearm" contype='0'/>
+
+
+						</body>
+
+					</body>
+
+				</body>
+		  
+		</body>
+
+		<body name="right_shoulder_roll_motor" pos="-0.0025027 -0.2297 0.2315" quat="1 0 0 0" gravcomp="0">
+		
+		  <inertial pos="-0.057242 0.016638 0" quat="0 0 0 1" mass="0.1" diaginertia="0.001 0.001 0.001"/>
+		  <joint name="right_shoulder_pitch" pos="0 0 0" axis="0 1 0" limited = "true" range = "-1.5708 1.5708" armature=" 0.006"/>
+		  <geom type="mesh" rgba="0 0.5 0 1" mesh="arm_right_roll_motor" contype='0'/>
+		  
+		  <body name="right_shoulder_roll_link" pos="0 0 0" quat="1 0 0 0" gravcomp="0">
+
+				<inertial pos="0 0 0" quat="0 0 0 1" mass="0.1" diaginertia="0.001 0.001 0.001"/>
+				<joint name="right_shoulder_roll" pos="0 0 0" axis="1 0 0" limited = "true" range = "-1.5708 1.5708" armature=" 0.006"/>
+				<geom type="mesh" rgba="0.7 0.5 0 1" mesh="arm_right_roll_link" contype='0'/>
+
+					<body name="right_upper_link" pos="0 0 0" quat="1 0 0 0" gravcomp="0">
+
+						<inertial pos="0.00025813 -0.0039725 -0.062289" quat="0 0 0 1" mass="0.1" diaginertia="0.001 0.001 0.001"/>
+						<joint name="right_shoulder_yaw" pos="0 0 0" axis="0 0 1" limited = "true" range = "-1.5708 1.5708" armature=" 0.006"/>
+						<geom type="mesh" rgba="0.0 0.0 0.7 1" mesh="arm_right_upper" contype='0'/>
+
+						<body name="right_forearm_link" pos="0 0 -0.179" quat="1 0 0 0" gravcomp="0">
+
+							<inertial pos="0 0 -0.14" quat="0 0 0 1" mass="0.5" diaginertia="0.001 0.001 0.001"/>
+							<joint name="right_elbow" pos="0 0 0" axis="0 1 0" limited = "true" range = "-1.5708 1.5708" armature=" 0.006"/>
+							<geom type="mesh" rgba="0.7 0.0 0.0 1" mesh="arm_right_forearm" contype='0'/>
+
+
+						</body>
+
+					</body>
+
+			</body>
+
+		</body>
+		
+	</body>	
+	
+
+	<body name="target" mocap="true" pos="0 0 -0.58" >
+        <geom name="box" type="box" size="0.2 0.25 0.001" rgba="0.2 0.2 1 0.5" contype='0'/>
+    </body>
+
+</worldbody>
+
+
+
+<actuator>
+
+	<motor name = 'right_hip_yaw_tq'  joint = 'right_hip_yaw'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'left_hip_yaw_tq'  joint = 'left_hip_yaw'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'right_hip_roll_tq'  joint = 'right_hip_roll'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'left_hip_roll_tq'  joint = 'left_hip_roll'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'right_hip_pitch_tq'  joint = 'right_hip_pitch'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'left_hip_pitch_tq'  joint = 'left_hip_pitch'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'right_knee_tq'  joint = 'right_knee'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'left_knee_tq'  joint = 'left_knee'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'right_ankle_tq'  joint = 'right_ankle'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'left_ankle_tq'  joint = 'left_ankle'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+
+	<motor name = 'left_shoulder_pitch_tq'  joint = 'left_shoulder_pitch'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'left_shoulder_roll_tq'  joint = 'left_shoulder_roll'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'left_shoulder_yaw_tq'  joint = 'left_shoulder_yaw'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'left_elbow_tq'  joint = 'left_elbow'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+
+	<motor name = 'right_shoulder_pitch_tq'  joint = 'right_shoulder_pitch'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'right_shoulder_roll_tq'  joint = 'right_shoulder_roll'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'right_shoulder_yaw_tq'  joint = 'right_shoulder_yaw'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'right_elbow_tq'  joint = 'right_elbow'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+
+
+</actuator>    
+
+<sensor>
+    <gyro name='toso-angular-velocity' site='imu' noise='5e-4' cutoff='34.9'/>
+    <accelerometer name='torso-linear-acceleration' site='imu' noise='1e-3' cutoff='157'/>
+</sensor>
+  
+</mujoco>

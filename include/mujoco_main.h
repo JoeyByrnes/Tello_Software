@@ -157,6 +157,8 @@ struct HW_CTRL_Data {
     float roll_adjust;
     float pitch_adjust;
     float yaw_adjust;
+
+    bool tare_arms;
 };
 #pragma pack()
 

@@ -69,6 +69,9 @@ extern VectorXd arm_joint_pos_desired;
 extern VectorXd R_joystick_enc;
 extern VectorXd L_joystick_enc;
 
+long long hmi_comms_counter = 0;
+long long motor_comms_counter = 0;
+
 
 void* rx_CAN( void * arg ){
     
@@ -106,6 +109,7 @@ void* rx_CAN( void * arg ){
 				uint8_t id = Message.DATA[0];
 				if(id > 0 && id < 11){
 					process_motor_data(Message, tello);
+					motor_comms_counter = 0;
 				}
 				else if(id == 18 || id == 19){
 					process_foot_sensor_data(Message, tello);
@@ -246,18 +250,18 @@ void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* rob
 }
 
 															
-double joint_zeros[10] = {0,5510,11098,2728,4260,0,2590,4772,15047,5487}; //{0,5528,11090,2808,4290-15,0,2603,4367,15047+25,5530-30};
+double joint_zeros[10] = {0,5510,11098,2728,4260,0,2590,4786,15047,5487}; //{0,5528,11090,2808,4290-15,0,2603,4367,15047+25,5530-30};
 double joint_directions[10] =      { 1,-1,1,1,-1,    1,-1,-1,-1,1};
 double joint_measured_zero_offsets[10] = {0,0,-0.15708,0.382,0,0,0,0.15708,-0.382,0};
 void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot){
 
-	joint_zeros[2] = 11098 + l_h - 30;
+	joint_zeros[2] = 11098 + l_h + 10;
 	joint_zeros[3] = 2728 + l_k  + 100;
-	joint_zeros[4] = 4260 + l_a  + 0;
+	joint_zeros[4] = 4260 + l_a  + 40;
 
-	joint_zeros[7] = 4772 + r_h  + 90;
+	joint_zeros[7] = 4786 + r_h  + 30;
 	joint_zeros[8] = 15047 + r_k - 50;
-	joint_zeros[9] = 5487 + r_a  + 0;
+	joint_zeros[9] = 5487 + r_a  - 40;
 	
 	uint8_t id = Message.DATA[0];
 	uint16_t joint_position = (Message.DATA[1] << 8) | Message.DATA[2];
@@ -470,7 +474,7 @@ void* rx_UDP( void * arg ){
 
 	//setup
 	int sockfd;
-	char rx_buffer[100];
+	char rx_buffer[200];
 
 	struct sockaddr_in servaddr, cliaddr;
 		
@@ -567,7 +571,7 @@ void* rx_UDP( void * arg ){
 		struct sockaddr_in sender_addr;  // Temporary variable to capture sender's address
 		socklen_t sender_addr_len = sizeof(sender_addr);
 
-		n = recvfrom(sockfd, (char *)rx_buffer, 100,
+		n = recvfrom(sockfd, (char *)rx_buffer, 200,
 			MSG_WAITALL, (struct sockaddr*)&sender_addr, &sender_addr_len);
 
 		if (strcmp(inet_ntoa(sender_addr.sin_addr), HMI_IP_ADDRESS) == 0) {
@@ -576,6 +580,8 @@ void* rx_UDP( void * arg ){
 			for(int i=0;i<n-1;i++){
 				checksum += rx_buffer[i]&0xFF;
 			}
+
+			hmi_comms_counter = 0;
 
 			// Human_dyn_data human_dyn_data;
 			Human_dyn_data human_dyn_data_2LISAs;
@@ -727,9 +733,28 @@ void* rx_UDP( void * arg ){
 			human_dyn_data_2LISAs.fdyH_L = fdyH_Lval;
 			human_dyn_data_2LISAs.fdzH_L = fdzH_Lval;
 
-			R_joystick_enc(0) = human_dyn_data.r_shoulder_pitch;
+			human_dyn_data_2LISAs.xH = 0;
+			human_dyn_data_2LISAs.dxH = 0;
+			human_dyn_data_2LISAs.pxH = 0;
+			human_dyn_data_2LISAs.yH = 0;
+			human_dyn_data_2LISAs.dyH = 0;
+			human_dyn_data_2LISAs.pyH = 0;
+			human_dyn_data_2LISAs.fxH_R = fxH_Rval;
+			human_dyn_data_2LISAs.fyH_R = fyH_Rval;
+			human_dyn_data_2LISAs.fzH_R = fzH_Rval;
+			human_dyn_data_2LISAs.fxH_L = fxH_Lval;
+			human_dyn_data_2LISAs.fyH_L = fyH_Lval;
+			human_dyn_data_2LISAs.fzH_L = fzH_Lval;
+			human_dyn_data_2LISAs.fdxH_R = fdxH_Rval;
+			human_dyn_data_2LISAs.fdyH_R = fdyH_Rval;
+			human_dyn_data_2LISAs.fdzH_R = fdzH_Rval;
+			human_dyn_data_2LISAs.fdxH_L = fdxH_Lval;
+			human_dyn_data_2LISAs.fdyH_L = fdyH_Lval;
+			human_dyn_data_2LISAs.fdzH_L = fdzH_Lval;
+
+			R_joystick_enc(0) = human_dyn_data.r_shoulder_yaw;
 			R_joystick_enc(1) = human_dyn_data.r_shoulder_roll;
-			R_joystick_enc(2) = human_dyn_data.r_shoulder_yaw;
+			R_joystick_enc(2) = human_dyn_data.r_shoulder_pitch;
 			R_joystick_enc(3) = human_dyn_data.r_elbow;
 
 			L_joystick_enc(0) = human_dyn_data.l_shoulder_pitch;

@@ -1165,7 +1165,7 @@ void dash_utils::unpack_data_from_hmi(Human_dyn_data& data, uint8_t* buffer)
 
 void dash_utils::unpack_data_from_hmi_4LISAs(Human_dyn_data_4LISAs& data, uint8_t* buffer)
 {
-    size_t size = sizeof(float) * 30; // Exclude: FxH_hmi, FyH_hmi, FxH_spring
+    size_t size = sizeof(float) * 39; // Exclude: FxH_hmi, FyH_hmi, FxH_spring
     memcpy(&data, buffer, size);
 }
 

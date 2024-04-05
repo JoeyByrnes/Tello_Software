@@ -1032,6 +1032,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v3(double& FxR, double& FyR,
 
 }
 
+bool first_step_ylip = true;
 void dash_ctrl::bilateral_teleop_law(VectorXd LIPR_params, VectorXd LIPH_params, VectorXd LIPR_dyn, VectorXd LIPH_dyn, 
                             double FH, double FR_ext_est, double FB_gain, double& FR, double& FH_hmi)
 {
@@ -1067,7 +1068,7 @@ void dash_ctrl::bilateral_teleop_law(VectorXd LIPR_params, VectorXd LIPH_params,
     // haptic feedback force to human
     FH_hmi = (mH*hH*wH*wH)*((dR/(hR*wR)) - (dH/(hH*wH))) + ((mH*hH*wH*wH)/(mR*hR*wR*wR))*FR_ext_est;
 }
-
+double yLIP_offset = 0;
 void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm, MatrixXd& lfddv_comm,
                                         SRB_Params srb_params, Traj_planner_dyn_data traj_planner_dyn_data, 
                                         int FSM, double t, VectorXd x, MatrixXd lfv, MatrixXd lfdv)
@@ -1112,7 +1113,7 @@ void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, 
     // vx_des = f(sim_time)
     //dash_utils::start_timer();
     double vx_des = 0;
-    if((int)(1000*t) < vx_des_vx.size()) vx_des = vx_des_vx((int)(1000*t));
+    // if((int)(1000*t) < vx_des_vx.size()) vx_des = vx_des_vx((int)(1000*t));
     if(PS4_connected){
         vx_des = vx_desired_ps4;
     }
@@ -1147,7 +1148,19 @@ void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, 
         else // terminate walking
         {
             xLIP = 0.5*(lf2CoM_mat(0, 0) + lf2CoM_mat(0, 3)); 
-            yLIP = 0.5*(lf2CoM_mat(1, 0) + lf2CoM_mat(1, 2));
+            if(first_step_ylip)
+            {
+                yLIP = 0.5*(lf2CoM_mat(1, 0) + lf2CoM_mat(1, 2))-yLIP_offset;
+                if(yLIP_offset<0.03 && t > 0.7)
+                {
+                    yLIP_offset = yLIP_offset+0.0001;
+                }
+                
+            }
+            else
+            {
+                yLIP = 0.5*(lf2CoM_mat(1, 0) + lf2CoM_mat(1, 2));
+            }
         }
     }
     // printf("Next_SSP: %d\n", next_SSP);
@@ -1177,7 +1190,7 @@ void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, 
         // next step (periodically oscillating LIP)
         // Eq. 16 from Angular Momentum about the Contact Point for Control of
         // Bipedal Locomotion: Validation in a LIP-based Controller
-        double Lxdes_end_next_step = m*H*vx_des;
+        double Lxdes_end_next_step = 0;//m*H*vx_des;
         double Lydes_end_next_step_mag = (1.0/2.0)*m*H*W*(omega*sinh(omega*T)/(1.0 + cosh(omega*T)));
         double Lydes_end_next_step = 0.0;
         if (FSM == 1)
@@ -1207,6 +1220,7 @@ void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, 
     double xLIP_ref, xd_ref;
     if (abs(FSM) == 1) 
     {
+        first_step_ylip = false;
         dash_utils::LIP_dyn_ref(t_step, omega, xLIP0, xd0, xLIP_ref,xd_ref);
         FxR = Kp_xR*(xLIP_ref - xLIP) + Kd_xR*(xd_ref - dx);
     }
@@ -1223,7 +1237,10 @@ void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, 
     }
     else // apply feedforward LIP force
     {
-        FyR = m*omega*omega*yLIP;
+        // if(first_step_ylip)
+        //     FyR = 0.9*m*omega*omega*yLIP;
+        // else
+            FyR = m*omega*omega*yLIP;
     }
     
     // desired step placement

@@ -255,7 +255,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     // compute phase variable for SSP
     double s = (t - t_sw_start) / T;
     if(s < 0.0) s = 0.0;
-    if(s > 1.0) s = 1.0;
+    if(s > 1.5) s = 1.5;
 
     // compute time variable for DSP
     double t_dsp = (t - t_dsp_start);
@@ -351,13 +351,13 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     // cout << "grf_rf: " << grf_rf << " \t grf_rb: " << grf_rb << "\t grf_lf: " << grf_lf << "\t grf_lb: " << grf_lb << endl;
     if (FSM_prev == 0) // currently in DSP
     {
-        if ( ((grf_rf + grf_rb) < 40 ) && t > 0.1 && t_dsp > 0.1 && (next_SSP==1) && ( (zHr > 0.006) || auto_mode) ) // enter SSP_L
+        if ( ((grf_rf + grf_rb) < 40 ) && t > 0.1 && t_dsp > 0.05 && (next_SSP==1) && ( (zHr > 0.006) || auto_mode) ) // enter SSP_L
         {
             cout << "Setting FSM from 0 to 1,   time: " << t << endl;
             FSM_next = 1;
             traj_planner_dyn_data.step_z_offset_L = human_dyn_data.fzH_L;
         }
-        else if ( ((grf_lf + grf_lb) < 20 ) && t > 0.1 && t_dsp > 0.1 && (next_SSP==-1) && ( (zHl > 0.006) || auto_mode) ) // enter SSP_R 
+        else if ( ((grf_lf + grf_lb) < 20 ) && t > 0.1 && t_dsp > 0.05 && (next_SSP==-1) && ( (zHl > 0.006) || auto_mode) ) // enter SSP_R 
         {
             cout << "Setting FSM from 0 to -1,   time: " << t << endl;
             FSM_next = -1;     
@@ -671,7 +671,7 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
                 traj_planner_dyn_data.sw2CoM_beg_step = pc - lfv.row(sw_idx_R).transpose();  
                 traj_planner_dyn_data.xLIP_init << (pc(0) - lfv.row(st_idx_R)(0)) + (1.0/2.0)*ft_l, dx;
                 traj_planner_dyn_data.sw_beg_step = lfv.row(sw_idx_R);
-                traj_planner_dyn_data.sw_beg_step(2) = -srb_params.hLIP -0.0005;
+                traj_planner_dyn_data.sw_beg_step(2) = -srb_params.hLIP ;//-0.0005;
                 
             } else if (planner_type == 2) { // planner_type = Human_Dyn_Telelocomotion
 
@@ -800,8 +800,9 @@ void dash_planner::SRB_LIP_vel_traj(double des_walking_speed, VectorXd& t_traj, 
 {
     // Tunable waypoints (time in s)
     VectorXd t_waypts_0p1to3ms(6), t_waypts_0p4ms(6), t_waypts_0p5to6ms(6), t_waypts_0p7ms(6), t_waypts_0p8ms(6);
-    double step_end = 15;
-    t_waypts_0p1to3ms << 0.0, 10.0, 12.0, step_end, step_end+1, step_end+2;
+    double step_end = 3;
+    double step_begin = 2;
+    t_waypts_0p1to3ms << 0.0, step_begin, step_begin+1, step_end, step_end+1, step_end+2;
     t_waypts_0p4ms << 0.0, 1.0, 2.0, 4.0, 6.0, 7.0;
     t_waypts_0p5to6ms << 0.0, 1.0, 2.0, 4.0, 6.0, 7.5;
     t_waypts_0p7ms << 0.0, 1.0, 4.0, 6.0, 9.0, 13.0;
@@ -832,16 +833,16 @@ void dash_planner::SRB_LIP_vel_traj(double des_walking_speed, VectorXd& t_traj, 
     v_waypts << 0.0, 0.0, des_walking_speed, des_walking_speed, 0.0, 0.0;
 
     // generate trajectory
-    //gen_vel_trapz_traj(t_waypts, v_waypts, t_traj, v_traj);
-    gen_smooth_traj(t_waypts, v_waypts, t_traj, v_traj);
+    gen_vel_trapz_traj(t_waypts, v_waypts, t_traj, v_traj);
+    // gen_smooth_traj(t_waypts, v_waypts, t_traj, v_traj);
     // cout << "V_TRAJ =============================" << endl;
     // cout << v_traj << endl;
 
     // time to command begin stepping
-    t_beg_stepping_time = (t_waypts(1) - t_waypts(0))/2.0;
+    t_beg_stepping_time = 1.0;//(t_waypts(1) - t_waypts(0))/2.0;
 
     // time to command end stepping
     int end = t_waypts.size() - 1;
-    t_end_stepping_time = t_waypts[end-1] + (t_waypts[end] - t_waypts[end-1])/2.0;
+    t_end_stepping_time = 100.0;//t_waypts[end-1] + (t_waypts[end] - t_waypts[end-1])/2.0;
 
 }

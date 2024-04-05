@@ -186,25 +186,25 @@
 		<body name="left_shoulder_roll_motor" pos="-0.0025027 0.2297 0.2315" quat="1 0 0 0" gravcomp="0">
 		
 		  <inertial pos="-0.057242 -0.016638 0" quat="0 0 0 1" mass="0.1" diaginertia="0.001 0.001 0.001"/>
-		  <joint name="left_shoulder_pitch" pos="0 0 0" axis="0 1 0" limited = "true" range = "-1.5708 1.5708" armature=" 0.006"/>
+		  <joint name="left_shoulder_pitch" pos="0 0 0" axis="0 1 0" limited = "true" range = "-2.5708 2.5708" armature=" 0.006"/>
 		  <geom type="mesh" rgba="0 0.5 0 1" mesh="arm_left_roll_motor" contype='0'/>
 		  
 				<body name="left_shoulder_roll_link" pos="0 0 0" quat="1 0 0 0" gravcomp="0">
 
 					<inertial pos="0 0 0" quat="0 0 0 1" mass="0.1" diaginertia="0.001 0.001 0.001"/>
-					<joint name="left_shoulder_roll" pos="0 0 0" axis="1 0 0" limited = "true" range = "-1.5708 1.5708" armature=" 0.006"/>
+					<joint name="left_shoulder_roll" pos="0 0 0" axis="1 0 0" limited = "true" range = "-2.5708 2.5708" armature=" 0.006"/>
 					<geom type="mesh" rgba="0.7 0.5 0 1" mesh="arm_left_roll_link" contype='0'/>
 
 					<body name="left_upper_link" pos="0 0 0" quat="1 0 0 0" gravcomp="0">
 
 						<inertial pos="0.00025813 0.0039725 -0.062289" quat="0 0 0 1" mass="0.1" diaginertia="0.001 0.001 0.001"/>
-						<joint name="left_shoulder_yaw" pos="0 0 0" axis="0 0 1" limited = "true" range = "-1.5708 1.5708" armature=" 0.006"/>
+						<joint name="left_shoulder_yaw" pos="0 0 0" axis="0 0 1" limited = "true" range = "-2.5708 2.5708" armature=" 0.006"/>
 						<geom type="mesh" rgba="0.0 0.0 0.7 1" mesh="arm_left_upper" contype='0'/>
 
 						<body name="left_forearm_link" pos="0 0 -0.179" quat="1 0 0 0" gravcomp="0">
 
 							<inertial pos="0 0 -0.14" quat="0 0 0 1" mass="0.5" diaginertia="0.001 0.001 0.001"/>
-							<joint name="left_elbow" pos="0 0 0" axis="0 1 0" limited = "true" range = "-1.5708 1.5708" armature=" 0.006"/>
+							<joint name="left_elbow" pos="0 0 0" axis="0 1 0" limited = "true" range = "-2.5708 2.5708" armature=" 0.006"/>
 							<geom type="mesh" rgba="0.7 0.0 0.0 1" mesh="arm_left_forearm" contype='0'/>
 
 
@@ -219,25 +219,25 @@
 		<body name="right_shoulder_roll_motor" pos="-0.0025027 -0.2297 0.2315" quat="1 0 0 0" gravcomp="0">
 		
 		  <inertial pos="-0.057242 0.016638 0" quat="0 0 0 1" mass="0.1" diaginertia="0.001 0.001 0.001"/>
-		  <joint name="right_shoulder_pitch" pos="0 0 0" axis="0 1 0" limited = "true" range = "-1.5708 1.5708" armature=" 0.006"/>
+		  <joint name="right_shoulder_pitch" pos="0 0 0" axis="0 1 0" limited = "true" range = "-2.5708 2.5708" armature=" 0.006"/>
 		  <geom type="mesh" rgba="0 0.5 0 1" mesh="arm_right_roll_motor" contype='0'/>
 		  
 		  <body name="right_shoulder_roll_link" pos="0 0 0" quat="1 0 0 0" gravcomp="0">
 
 				<inertial pos="0 0 0" quat="0 0 0 1" mass="0.1" diaginertia="0.001 0.001 0.001"/>
-				<joint name="right_shoulder_roll" pos="0 0 0" axis="1 0 0" limited = "true" range = "-1.5708 1.5708" armature=" 0.006"/>
+				<joint name="right_shoulder_roll" pos="0 0 0" axis="1 0 0" limited = "true" range = "-2.5708 2.5708" armature=" 0.006"/>
 				<geom type="mesh" rgba="0.7 0.5 0 1" mesh="arm_right_roll_link" contype='0'/>
 
 					<body name="right_upper_link" pos="0 0 0" quat="1 0 0 0" gravcomp="0">
 
 						<inertial pos="0.00025813 -0.0039725 -0.062289" quat="0 0 0 1" mass="0.1" diaginertia="0.001 0.001 0.001"/>
-						<joint name="right_shoulder_yaw" pos="0 0 0" axis="0 0 1" limited = "true" range = "-1.5708 1.5708" armature=" 0.006"/>
+						<joint name="right_shoulder_yaw" pos="0 0 0" axis="0 0 1" limited = "true" range = "-2.5708 2.5708" armature=" 0.006"/>
 						<geom type="mesh" rgba="0.0 0.0 0.7 1" mesh="arm_right_upper" contype='0'/>
 
 						<body name="right_forearm_link" pos="0 0 -0.179" quat="1 0 0 0" gravcomp="0">
 
 							<inertial pos="0 0 -0.14" quat="0 0 0 1" mass="0.5" diaginertia="0.001 0.001 0.001"/>
-							<joint name="right_elbow" pos="0 0 0" axis="0 1 0" limited = "true" range = "-1.5708 1.5708" armature=" 0.006"/>
+							<joint name="right_elbow" pos="0 0 0" axis="0 1 0" limited = "true" range = "-2.5708 2.5708" armature=" 0.006"/>
 							<geom type="mesh" rgba="0.7 0.0 0.0 1" mesh="arm_right_forearm" contype='0'/>
 
 

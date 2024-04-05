@@ -646,7 +646,7 @@ VectorXd DynamicRobot::swing_stance_mux(VectorXd stanceTorques, VectorXd swingTo
 
     }
     else{
-        return swingTorques; // disables smoothing from stance to swing
+        // return swingTorques; // disables smoothing from stance to swing
     }
     double smoothVal = sigmoid((switchFactor - 0.5) * 12);  // Scale the switch factor to be between -5 and 5, and apply sigmoid function
     if(smoothVal < 0.05) smoothVal = 0;

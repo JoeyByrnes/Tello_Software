@@ -127,6 +127,9 @@ int recording_initialized = 0;
 int playback_initialized = 0;
 int motor_targets[10];
 
+extern long long motor_comms_counter;
+bool motors_connected = false;
+
 vn::math::vec3f tello_ypr;
 
 double joint_setpoints_deg[10] = {0,0,0,0,0,0,0,0,0,0};
@@ -214,7 +217,7 @@ HW_CTRL_Data hw_control_data;
 bool last_enable_teleop = false;
 bool last_last_enable_teleop = false;
 
-double robot_init_foot_width_HW = 0.175;
+double robot_init_foot_width_HW = 0.18;
 bool use_current_foot_width = false;
 
 void init_6dof_test();
@@ -269,7 +272,7 @@ void run_tello_pd()
 	if(h_offset < 0){
 		delta_task = 0.02;
 	}
-	Vector3d target(-0.010, 0.00, -0.58+0.088-0.005);
+	Vector3d target(-0.010, 0.00, -0.58+0.088-0.005); //COM_HEIGHT
 
 	double foot_len_half = 0.060;
 	double pitch_degrees = tello_ypr[1];
@@ -823,13 +826,10 @@ void send_HMI_forces()
 		hdd.FyH_hmi = 0;
 		hdd.FxH_spring = 0;
 	}
-	// cout << "Fx: " << hdd.FxH_hmi << "  Fy: " << hdd.FyH_hmi << endl;
-	// dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,sim_conf.en_force_feedback,zero_human,master_gain);
-	// int n = sendto(sockfd_tx, hmi_tx_buffer, 20,MSG_CONFIRM, 
-	// 	   (const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
-
-	dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,hw_control_data.enable_force_feedback,hw_control_data.tare_hmi,hw_control_data.hmi_gain, hw_control_data.tare_arms);
-	int n = sendto(sockfd, hmi_tx_buffer, 44,MSG_CONFIRM, 
+	bool en_force_fdbk = hw_control_data.enable_force_feedback;
+	if(!motors_connected) en_force_fdbk = false;
+	dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,en_force_fdbk,hw_control_data.tare_hmi,hw_control_data.hmi_gain, hw_control_data.tare_arms);
+	int n = sendto(sockfd, hmi_tx_buffer, 48,MSG_CONFIRM, 
 			(const struct sockaddr *) &servaddr, sizeof(servaddr));
 
 	// cout << "sent " << n << " bytes to HMI" << endl;
@@ -896,8 +896,8 @@ void balance_pd(MatrixXd lfv_hip)
 
 	VectorXd kp_vec_joint_swing(10);
 	VectorXd kd_vec_joint_swing(10);
-	kp_vec_joint_swing << 50, 200, 200,200,100, 50, 200, 200,200,100;
-	kd_vec_joint_swing <<  0.5, 0.5, 1.0,1.0,1.0,  0.5, 0.5, 1.0,1.0,1.0;
+	kp_vec_joint_swing << 50, 100, 100,100,100, 50, 100, 100,100,100;
+	kd_vec_joint_swing <<  0.5, 1.0, 1.0,1.0,1.0,  0.5, 1.0, 1.0,1.0,1.0;
 
 	swing_pd_config.setJointKp(kp_vec_joint_swing);
 	swing_pd_config.setJointKd(kd_vec_joint_swing);
@@ -919,7 +919,7 @@ void balance_pd(MatrixXd lfv_hip)
 	posture_pd_config.setTaskKa(0,0,0);
 	VectorXd kp_vec_joint_posture(10);
 	VectorXd kd_vec_joint_posture(10);
-	kp_vec_joint_posture << 200, 300, 200,200,100, 200, 300, 200,200,100;
+	kp_vec_joint_posture << 200, 300, 100,100,100, 200, 300, 100,100,100;
 	kd_vec_joint_posture <<  0, 0, 0,0,0,  0, 0, 0,0,0;
 	posture_pd_config.setJointKp(kp_vec_joint_posture);
 	posture_pd_config.setJointKd(kd_vec_joint_posture);
@@ -972,8 +972,8 @@ void balance_pd(MatrixXd lfv_hip)
 
 	VectorXd kd_vec_motor = VectorXd::Ones(10)*motor_kd;
 
-	int kd_swing = 500;
-	int kd_stance = 500;//balancing_motor_kd;
+	int kd_swing = 300;
+	int kd_stance = balancing_motor_kd;
 	if(tello->controller->get_FSM()==1)
 	{
 		kd_vec_motor << kd_stance,kd_stance,kd_stance,kd_stance,kd_stance,kd_swing,kd_swing,kd_swing,kd_swing,kd_swing;
@@ -1470,6 +1470,45 @@ void process_hw_control_packet()
 	last_enable_teleop = hw_control_data.enable_teleop;
 }
 
+
+void* hw_monitor( void * arg )
+{
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	void* dynamic_robot_ptr = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
+
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
+	// Print the core and priority of the thread
+	int core = sched_getcpu();
+	int policy;
+	sched_param param;
+    pthread_t current_thread = pthread_self();
+    int result = pthread_getschedparam(current_thread, &policy, &param);
+	int priority = param.sched_priority;
+	printf("Controller thread running on core %d, with priority %d\n", core, priority);
+
+    struct timespec next;
+    clock_gettime(CLOCK_MONOTONIC, &next);
+
+    while(1)
+    {
+        handle_start_of_periodic_task(next);
+        
+       motor_comms_counter++;
+       if(motor_comms_counter > 1000)
+       {
+            motors_connected = false;
+       }
+       else{
+            motors_connected = true;
+       }
+        
+        handle_end_of_periodic_task(next, period);
+    }
+
+}
+
+
 void test_motor_2()
 {
 	// printf("Commanding Motor 2\n");
@@ -1643,10 +1682,6 @@ static void* update_1kHz( void * arg )
 			hdd.FyH_hmi = 0;
 			hdd.FxH_spring = 0;
 		}
-		// cout << "Fx: " << hdd.FxH_hmi << "Fy: " << hdd.FyH_hmi << endl;
-		// dash_utils::pack_data_to_hmi((uint8_t*)hmi_tx_buffer,hdd);
-		// int n = sendto(sockfd, hmi_tx_buffer, 12,MSG_CONFIRM, 
-		// 	   (const struct sockaddr *) &servaddr, sizeof(servaddr));
 
 		memcpy(viz_tx_buffer, &vizData, sizeof(vizData));
 		int n = sendto(sockfd_viz, viz_tx_buffer, 152,MSG_CONFIRM, 
@@ -1691,7 +1726,7 @@ void signal_callback_handler(int signum){
 	hdd.FxH_hmi = 0;
 	hdd.FyH_hmi = 0;
 	dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,0,0,0,0);
-	int n = sendto(sockfd_tx, hmi_tx_buffer, 24,MSG_CONFIRM, 
+	int n = sendto(sockfd_tx, hmi_tx_buffer, 48,MSG_CONFIRM, 
 			(const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
 
 	fsm_state = 0;
@@ -1740,12 +1775,12 @@ void init_6dof_test()
 	// Option 2: Walking using LIP angular momentum regulation about contact point
 	// user input (walking speed and step frequency)
 	double des_walking_speed = 0.0;
-	double des_walking_step_period = 0.2;
+	double des_walking_step_period = 0.3;
 	// end user input
 	std::string recording_file_name = "Walking";
 	srb_params.planner_type = 1; 
 	srb_params.T = des_walking_step_period;
-	srb_params.zcl = 0.02; // step height
+	srb_params.zcl = 0.03; // step height
 	VectorXd t_traj, v_traj;
 	double t_beg_stepping_time, t_end_stepping_time;
 	dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
@@ -1754,11 +1789,12 @@ void init_6dof_test()
 	srb_params.t_beg_stepping = t_beg_stepping_time;
 	srb_params.t_end_stepping = t_end_stepping_time;
 	sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
+	srb_params.init_type = 1;
 
 	// printf("Telelop Selected\n\n");
 	// std::string recording_file_name = "Telelop";
 	// srb_params.planner_type = 2; 
-	srb_params.init_type = 1;
+	// srb_params.init_type = 1;
 	// sim_time = 1e100;
 
 	// Initialize trajectory planner data
@@ -1909,8 +1945,9 @@ int main(int argc, char *argv[]) {
 		tello->addPeriodicTask(&tello_controller, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"tello_ctrl",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&curve_fitting, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_2, (void*)(NULL),"curve_fitting",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 500);
-		// tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
-		tello->addPeriodicTask(&rx_UDP_Debug, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
+		tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
+		tello->addPeriodicTask(&hmi_hw_monitor, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_2, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
+		// tello->addPeriodicTask(&rx_UDP_Debug, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 		// tello->addPeriodicTask(&Human_Playback, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"human_playback_task",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&Animate_Log, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"human_playback_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&logging, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"logging_task",TASK_CONSTANT_PERIOD, 1000);

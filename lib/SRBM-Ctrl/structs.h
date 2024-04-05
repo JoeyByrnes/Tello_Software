@@ -109,6 +109,7 @@ struct Human_dyn_data {
 }__attribute__((packed, aligned(1)));
 
 struct Human_dyn_data_4LISAs {
+    float t;
     float xH;
     float dxH;
     float pxH;
@@ -143,6 +144,16 @@ struct Human_dyn_data_4LISAs {
     float fdyH_L;
     float fdzH_L;
 
+    float r_elbow;
+    float r_shoulder_pitch;
+    float r_shoulder_roll;
+    float r_shoulder_yaw;
+
+    float l_shoulder_pitch;
+    float l_shoulder_roll;
+    float l_shoulder_yaw;
+    float l_elbow;
+
     float fx;
     float fy;
     float my;
@@ -152,15 +163,6 @@ struct Human_dyn_data_4LISAs {
     float fy_lim;
     float my_lim;
     float mz_lim;
-
-    float r_shoulder_pitch;
-    float r_shoulder_roll;
-    float r_shoulder_yaw;
-    float r_elbow;
-    float l_shoulder_pitch;
-    float l_shoulder_roll;
-    float l_shoulder_yaw;
-    float l_elbow;
 
 }__attribute__((packed, aligned(1)));
 

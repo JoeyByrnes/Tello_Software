@@ -406,7 +406,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
 
         // SRB specific
         srb_params.m = 16.8; // robot mass in kg // was 23 for mujoco // real robot is 16.6Kg
-        srb_params.hLIP = 0.58; // nominal robot LIP height
+        srb_params.hLIP = 0.58; // nominal robot LIP height //COM_HEIGHT
         srb_params.Ib = Matrix3d::Identity();
         srb_params.Ib(0,0) = 0.4874;
         srb_params.Ib(1,1) = 0.3081;
@@ -468,7 +468,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.Kd_xR = 10.0; // D gain for x-direction tracking
         srb_params.Kp_yR = 1500.0; // P gain for y-direction tracking
         srb_params.Kd_yR = 50.0; // D gain for y-direction tracking
-        srb_params.Kp_zR = 3000.0; // P gain for z-direction tracking
+        srb_params.Kp_zR = 3500.0; // P gain for z-direction tracking
         srb_params.Kd_zR = 1.0; // D gain for z-direction tracking
 
         srb_params.Kp_phiR = 300.00; // P gain for roll tracking

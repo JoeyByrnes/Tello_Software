@@ -373,5 +373,6 @@ void* curve_fitting( void * arg );
 ImVec4 hex2ImVec4(int hex);
 void* visualization_render_thread( void * arg );
 void initializeSRBMCtrl();
+void* hmi_hw_monitor( void * arg );
 
 #endif

@@ -180,6 +180,9 @@ Vector3d CoM_rpy = Vector3d::Zero();
 Vector3d CoM_vel = Vector3d::Zero();
 VectorXd CoM_quat = VectorXd::Zero(4);
 
+extern long long hmi_comms_counter;
+bool hmi_connected = false;
+
 // begin SRBM-Ctrl Variables here ================================================================
 
 SRBMController* controller;
@@ -837,6 +840,45 @@ void* tello_controller( void * arg )
 
 }
 
+
+
+void* hmi_hw_monitor( void * arg )
+{
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	void* dynamic_robot_ptr = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
+
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
+	// Print the core and priority of the thread
+	int core = sched_getcpu();
+	int policy;
+	sched_param param;
+    pthread_t current_thread = pthread_self();
+    int result = pthread_getschedparam(current_thread, &policy, &param);
+	int priority = param.sched_priority;
+	printf("Controller thread running on core %d, with priority %d\n", core, priority);
+
+    struct timespec next;
+    clock_gettime(CLOCK_MONOTONIC, &next);
+
+    while(1)
+    {
+        handle_start_of_periodic_task(next);
+        
+       hmi_comms_counter++;
+       if(hmi_comms_counter > 1000)
+       {
+            hmi_connected = false;
+       }
+       else{
+            hmi_connected = true;
+       }
+        
+        handle_end_of_periodic_task(next, period);
+    }
+
+}
+
 VectorXd th_R_Arm(4);
 VectorXd th_L_Arm(4);
 
@@ -990,7 +1032,7 @@ void runArmControl()
 
     arm_pd.joint_pos_desired = VectorXd::Zero(8);
     arm_pd.joint_vel_desired = VectorXd::Zero(8);
-    arm_pd.joint_pos_desired << th_L_Arm(0), th_L_Arm(1), th_L_Arm(2), th_L_Arm(3), th_R_Arm(0), th_R_Arm(1), th_R_Arm(2), th_R_Arm(3);
+    arm_pd.joint_pos_desired << th_L_Arm(0), th_L_Arm(1), th_L_Arm(2), th_L_Arm(3), -th_R_Arm(0), th_R_Arm(1), th_R_Arm(2), -th_R_Arm(3);
     arm_pd.joint_vel_desired << 0, 0, 0, 0, 0, 0, 0, 0;
     
     VectorXd arm_kp(8);
@@ -1606,7 +1648,14 @@ void* mujoco_Update_1KHz( void * arg )
 
                 std::string human_label;
                 if(sim_conf.en_playback_mode) human_label = "  Enable HMI Playback   ";
-                else human_label = "  Enable HMI Communication   ";
+                else
+                {
+                    if(hmi_connected)
+                        human_label = "  Enable HMI Communication   ";
+                    else{
+                        human_label = "  HMI Not Connected          ";
+                    }
+                }
                 ImGui::Checkbox(human_label.c_str(), &sim_conf.en_human_control);
                 
 
@@ -1846,7 +1895,7 @@ void* mujoco_Update_1KHz( void * arg )
         }
         if(sim_conf.en_live_variable_view)
         {
-            ImGui::SetNextWindowSize(ImVec2(800*screenScale, 3*60*screenScale + 3*15*screenScale +65*screenScale));
+            ImGui::SetNextWindowSize(ImVec2(800*screenScale, 10*60*screenScale + 10*15*screenScale +65*screenScale));
             ImGui::SetNextWindowPos(ImVec2(50, (35+60*screenScale)+50));
             ImGui::Begin("DebugView",nullptr,ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize);
             
@@ -1860,11 +1909,36 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
             ImGui::Separator();
             ImGui::PopStyleColor();
-            ImGui::Text("CoM X Velocity: %.2fm/s", telloLocal->controller->get_x()(3));
+            ImGui::Text("Arm R 0: %.2f", R_joystick_enc[0]);
             ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
             ImGui::Separator();
             ImGui::PopStyleColor();
-            ImGui::Text("CoM X Position: %.2fm", telloLocal->controller->get_x()(0));
+            ImGui::Text("Arm R 1: %.2f", R_joystick_enc[1]);
+            ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+            ImGui::Text("Arm R 2: %.2f", R_joystick_enc[2]);
+            ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+            ImGui::Text("Arm R 3: %.2f", R_joystick_enc[3]);
+
+                        ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+            ImGui::Text("Arm L 0: %.2f", L_joystick_enc[0]);
+            ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+            ImGui::Text("Arm L 1: %.2f", L_joystick_enc[1]);
+            ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+            ImGui::Text("Arm L 2: %.2f", L_joystick_enc[2]);
+            ImGui::PushStyleColor(ImGuiCol_Separator,ImVec4(0,0,0,0));
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+            ImGui::Text("Arm L 3: %.2f", L_joystick_enc[3]);
             // ImGui::Text("Impulse Force: %dN", (int)impulse_force_newtons);
             // ImGui::Separator();
             // ImGui::Text("LF: %s \tRF %s", grf_lf.c_str(),grf_rf.c_str());
@@ -1978,13 +2052,9 @@ void* mujoco_Update_1KHz( void * arg )
 			hdd.FyH_hmi = 0;
 			hdd.FxH_spring = 0;
 		}
-		// cout << "Fx: " << hdd.FxH_hmi << "  Fy: " << hdd.FyH_hmi << endl;
-        // dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,sim_conf.en_force_feedback,zero_human,master_gain);
-		// int n = sendto(sockfd_tx, hmi_tx_buffer, 20,MSG_CONFIRM, 
-		// 	   (const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
 
 		dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,sim_conf.en_force_feedback,zero_human,master_gain,zero_arms);
-		int n = sendto(sockfd_tx, hmi_tx_buffer, 24,MSG_CONFIRM, 
+		int n = sendto(sockfd_tx, hmi_tx_buffer, 48,MSG_CONFIRM, 
 			   (const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
 
         // set tello data here:
@@ -2014,7 +2084,7 @@ void* mujoco_Update_1KHz( void * arg )
     hdd.FyH_hmi = 0;
     hdd.FxH_spring = 0;
     dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,0,0,0,0);
-    int n = sendto(sockfd_tx, hmi_tx_buffer, 24,MSG_CONFIRM, 
+    int n = sendto(sockfd_tx, hmi_tx_buffer, 48,MSG_CONFIRM, 
             (const struct sockaddr *) &servaddr_tx, sizeof(servaddr_tx));
 
     // // free MuJoCo model and data, deactivate
@@ -2662,7 +2732,7 @@ void* Animate_Log( void * arg )
     double ar  = q_tello_init(0,4);
     double cam_angle = -135;
     double cam_dist = 2.0;
-    double floor_height = -0.58;
+    double floor_height = 0.58; //COM_HEIGHT
 
     struct timespec next;
     clock_gettime(CLOCK_MONOTONIC, &next);

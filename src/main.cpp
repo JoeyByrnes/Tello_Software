@@ -106,17 +106,21 @@ unsigned int pcd3 = PCAN_PCIBUS7;	// PCAN_PCIBUS7	// PCAN_PCIBUS3
 unsigned int pcd4 = PCAN_PCIBUS8;	// PCAN_PCIBUS8	// PCAN_PCIBUS4
 unsigned int pcd5 = PCAN_PCIBUS1;	// PCAN_PCIBUS1	// PCAN_PCIBUS5
 unsigned int pcd6 = PCAN_PCIBUS2;	// PCAN_PCIBUS2	// PCAN_PCIBUS6
+unsigned int pcd7 = PCAN_PCIBUS3;	
+unsigned int pcd8 = PCAN_PCIBUS4;
 
 int enable_motors = 0;
 
 uint16_t encoders[10];
+uint16_t arm_encoders[8];
+
 int position_initialized[10] = {0,0,0,0,0,0,0,0,0,0};
 int all_motors_initialized = 0;
 uint16_t encoder_positions[10];
 uint16_t encoder_offsets[10]  = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int motor_directions[10] =      { 1,-1, 1, 1,-1, 1,-1, 1, 1,-1};
 								//1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-int motor_zeros[10] = {35516,35268,33308,35071-KNEE_OFFSET_ENC,32914+KNEE_OFFSET_ENC,32721,35254,34194,33045-KNEE_OFFSET_ENC,34068+KNEE_OFFSET_ENC}; // offsets handled
+int motor_zeros[10] = {35516,35207,33308,35071-KNEE_OFFSET_ENC,32914+KNEE_OFFSET_ENC,32721,35254,34194,33045-KNEE_OFFSET_ENC,34068+KNEE_OFFSET_ENC}; // offsets handled
 int motor_init_config[10] = {35540, 36558, 31813, 38599, 31811, 32767, 36712, 32718, 38436, 33335};
 int motor_initialized[10] = {0,0,0,0,0,0,0,0,0,0};
 int motor_move_complete[10] = {0,0,0,0,0,0,0,0,0,0};
@@ -126,6 +130,20 @@ int stop_recording = 0;
 int recording_initialized = 0;
 int playback_initialized = 0;
 int motor_targets[10];
+
+int arm_motor_directions[8] = {-1, -1, 1, 1, -1, -1, 1, 1};
+
+int arm_zeros[8] = {34062, 34620, 35863, 36693, 34887, 33908, 36509, 35631};
+
+int arm_up_positions[8] = {35643, 33918, 34622, 29361, 33622, 34606, 37375, 43003};
+
+int arm_crate_positions[8] = {35173, 33996, 34211, 30074, 33768, 34373, 38006, 41972};
+
+VectorXd th_R_Arm = VectorXd::Zero(4);
+VectorXd th_L_Arm = VectorXd::Zero(4);
+
+VectorXd R_joystick_enc = VectorXd::Zero(4);
+VectorXd L_joystick_enc = VectorXd::Zero(4);
 
 extern long long motor_comms_counter;
 bool motors_connected = false;
@@ -142,6 +160,8 @@ int z_offset = 0;
 double motor_kp = 50;
 double motor_kd = 50;
 double playback_kp = 4.0;
+
+pthread_mutex_t mutex_ARMS = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_mutex_t mutex_CAN_recv = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_UDP_recv = PTHREAD_MUTEX_INITIALIZER;
@@ -210,6 +230,9 @@ extern Vector3d CoM_pos;
 extern Vector3d CoM_rpy;
 extern Vector3d CoM_vel;
 extern VectorXd CoM_quat;
+extern VectorXd CoM_rpy_rates;
+extern Vector3d CoM_rpy_vel;
+extern Vector3d CoM_acc;
 extern ctrlData cd_shared;
 VisualizationData vizData;
 HW_CTRL_Data hw_control_data;
@@ -272,7 +295,9 @@ void run_tello_pd()
 	if(h_offset < 0){
 		delta_task = 0.02;
 	}
-	Vector3d target(-0.010, 0.00, -0.58+0.088-0.005); //COM_HEIGHT
+	float height = -tello->controller->get_SRB_params().hLIP + tello->controller->get_SRB_params().CoM2H_z_dist;
+	// printf("HEIGHT: %f, hLIP: %f, COM_z: %f \n",height,-tello->controller->get_SRB_params().hLIP,tello->controller->get_SRB_params().CoM2H_z_dist);
+	Vector3d target(-0.010, 0.00, height-0.000); //COM_HEIGHT
 
 	double foot_len_half = 0.060;
 	double pitch_degrees = tello_ypr[1];
@@ -920,6 +945,7 @@ void balance_pd(MatrixXd lfv_hip)
 	VectorXd kp_vec_joint_posture(10);
 	VectorXd kd_vec_joint_posture(10);
 	kp_vec_joint_posture << 200, 300, 100,100,100, 200, 300, 100,100,100;
+	kp_vec_joint_posture << 200, 300, 0,0,0, 200, 300, 0,0,0;
 	kd_vec_joint_posture <<  0, 0, 0,0,0,  0, 0, 0,0,0;
 	posture_pd_config.setJointKp(kp_vec_joint_posture);
 	posture_pd_config.setJointKd(kd_vec_joint_posture);
@@ -1077,7 +1103,11 @@ void run_balance_controller()
 	Vector3d EA_curr = CoM_rpy; // from mocap
 	Vector3d dEA_curr = tello->_gyro; // from IMU
 
-	EA_curr(0) = CoM_rpy(0)-0.004;
+	// overwrite IMU
+	// tello->_acc = CoM_acc;
+	tello->_gyro = CoM_rpy_rates;
+
+	EA_curr(0) = CoM_rpy(0);
 
 	Vector3d pc_des, EA_des;
 
@@ -1508,14 +1538,269 @@ void* hw_monitor( void * arg )
 
 }
 
+void idle()
+{
+	VectorXd q_measured_eig = tello->getJointPositions();
+
+	for(int i=0;i<10;i++)
+	{
+		vizData.q_measured[i] = q_measured_eig(i);
+	}
+}
+
 
 void test_motor_2()
 {
 	// printf("Commanding Motor 2\n");
 
-	tello->motors[1]->enableMotor();
-	tello->motors[1]->setff((2.0*NM_TO_MOTOR_TORQUE_CMD));
-	tello->motors[1]->updateMotor();
+	// tello->motors[1]->enableMotor();
+	// tello->motors[1]->setff((0.5*NM_TO_MOTOR_TORQUE_CMD));
+	// tello->motors[1]->updateMotor();
+}
+
+int arm_motor_pos_model_to_real(int id, double actuator_position_radians)
+{
+    return (int)((float)( actuator_position_radians)*((float)(arm_motor_directions[id])/ENCODER_TO_RADIANS))+arm_zeros[id];
+}
+
+double arm_motor_pos_real_to_model(int id, int motor_position_enc_counts)
+{
+    return ((double)(motor_position_enc_counts - arm_zeros[id]))*((double)(arm_motor_directions[id]))*ENCODER_TO_RADIANS;
+}
+
+VectorXd arm_joints_to_motors(VectorXd joint_angles)
+{
+	VectorXd motor_angles_model(8);
+
+	VectorXd motor_angles_encoder(8);
+
+	motor_angles_model[0] = joint_angles[0]*1.5;
+	motor_angles_model[1] = joint_angles[1]*1.5;
+	motor_angles_model[2] = joint_angles[2]*1.0;
+	motor_angles_model[3] = joint_angles[3]*1.5;
+
+	motor_angles_model[4] = joint_angles[4]*1.5;
+	motor_angles_model[5] = joint_angles[5]*1.5;
+	motor_angles_model[6] = joint_angles[6]*1.0;
+	motor_angles_model[7] = joint_angles[7]*1.5;
+
+	for(int i=0;i<8;i++)
+	{
+		motor_angles_encoder[i] = arm_motor_pos_model_to_real(i,motor_angles_model[i]);
+	}
+	return motor_angles_encoder;
+}
+
+void* arm_ctrl( void * arg )
+{
+	auto arg_tuple_ptr = static_cast<std::tuple<void*, void*, int, int>*>(arg);
+	void* dynamic_robot_ptr = std::get<0>(*arg_tuple_ptr);
+	int period = std::get<2>(*arg_tuple_ptr);
+
+	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
+	// Print the core and priority of the thread
+	int core = sched_getcpu();
+	int policy;
+	sched_param param;
+    pthread_t current_thread = pthread_self();
+    int result = pthread_getschedparam(current_thread, &policy, &param);
+	int priority = param.sched_priority;
+	printf("Arm Ctrl thread running on core %d, with priority %d\n", core, priority);
+
+    struct timespec next;
+    clock_gettime(CLOCK_MONOTONIC, &next);
+
+    while(1)
+    {
+        handle_start_of_periodic_task(next);
+
+		VectorXd arm_joint_angles(8);
+
+		float RA_pose_des = 0.0;
+		float LA_pose_des = 0.0;
+		float human_ef_log[3];
+
+		for(int i = 0; i < 2; i++){
+			float th_j1 = 0;
+			float th_j2 = 0;
+			float th_j3 = 0;
+			float th_j4 = 0;
+			if(i==0){
+			//Joystick right joint angles (input)
+				th_j1 =(R_joystick_enc[0]/180)*3.14159;
+				th_j2 =(R_joystick_enc[1]/180)*3.14159;
+				th_j3 =(R_joystick_enc[2]/180)*3.14159;
+				th_j4 =(R_joystick_enc[3]/180)*3.14159;
+			}
+			else{
+				th_j1 = -(L_joystick_enc[0]/180)*3.14159;
+				th_j2 = -(L_joystick_enc[1]/180)*3.14159;
+				th_j3 = -(L_joystick_enc[2]/180)*3.14159;
+				th_j4 = -(L_joystick_enc[3]/180)*3.14159;
+			}
+			//Physical lengths
+			float L_joy_shoulder_from_body = 0.2105; //middle to shoulder pivot (to the right)
+			float L_joy_shoulder_x = 0.1035; //to the right
+			float L_joy_shoulder_y = 0.168; //downwards
+			float L_joy_arm = 0.313; //upper arm length
+			float L_joy_forearm = 0.339; //lower arm length
+			float L_joy_hand = 0.078; //width of the hand that goes inwards
+			float L_sat_shoulder_from_body = 0.2297;
+			float L_sat_forearm = 0.2277;
+			float L_sat_arm = 0.1790;
+			//HTM of end effector in base frame
+			float joy_eff[12];
+			float s1 = sin(th_j1);
+			float c1 = cos(th_j1);
+			float s2 = sin(th_j2);
+			float c2 = cos(th_j2);
+			float c3 = cos(th_j3);
+			float s34 = sin(th_j3 - th_j4);
+			float c34 = cos(th_j3 - th_j4);
+			joy_eff[0] = -s1*s2*s34 + c1*c34;
+			joy_eff[1] = -s1*c2;
+			joy_eff[2] = s1*s2*c34 + s34*c1;
+			joy_eff[3] = -L_joy_arm*(s1*s2*c3 + sin(th_j3)*c1) - L_joy_forearm*(s1*s2*c34 + s34*c1) - L_joy_hand*s1*c2 + L_joy_shoulder_x*c1 + L_joy_shoulder_y*s1*c2;
+			joy_eff[4] = s1*c34 + s2*s34*c1;
+			joy_eff[5] = c1*c2;
+			joy_eff[6] = s1*s34 - s2*c1*c34;
+			joy_eff[7] = -L_joy_arm*(s1*sin(th_j3) - s2*c1*c3) - L_joy_forearm*(s1*s34 - s2*c1*c34) + L_joy_hand*c1*c2 - L_joy_shoulder_from_body + L_joy_shoulder_x*s1 - L_joy_shoulder_y*c1*c2;
+			joy_eff[8] = -s34*c2;
+			joy_eff[9] = s2;
+			joy_eff[10] = c2*c34;
+			joy_eff[11] = -L_joy_arm*c2*c3 - L_joy_forearm*c2*c34 + L_joy_hand*s2 - L_joy_shoulder_y*s2;
+			float human_ef[3];
+			human_ef[0] = joy_eff[3];
+			human_ef[1] = joy_eff[7];
+			human_ef[2] = joy_eff[11];
+			if(i == 0){
+				human_ef_log[0] = human_ef[0];
+				human_ef_log[1] = human_ef[1];
+				human_ef_log[2] = human_ef[2];
+			}
+			//Direction of satyrr's elbow
+			float sat_elb_dir[3];
+			sat_elb_dir[0] = L_joy_forearm*joy_eff[2] - L_joy_shoulder_x + joy_eff[3];
+			sat_elb_dir[1] = L_joy_forearm*joy_eff[6] - L_joy_hand + L_joy_shoulder_from_body + L_joy_shoulder_y + joy_eff[7];
+			sat_elb_dir[2] = L_joy_forearm*joy_eff[10] + joy_eff[11];
+			//Rz is the unit vector from satyrr's elbow to shoulder
+			float Rz[3];
+			Rz[0] = -sat_elb_dir[0];
+			Rz[1] = -sat_elb_dir[1];
+			Rz[2] = -sat_elb_dir[2];
+			float Rz_mag = sqrt(pow(Rz[0], 2) + pow(Rz[1], 2) + pow(Rz[2], 2));
+			Rz[0] = Rz[0]/Rz_mag;
+			Rz[1] = Rz[1]/Rz_mag;
+			Rz[2] = Rz[2]/Rz_mag;
+			//Ry is the component of joystick's elbow axis perpendicular to Rz (as a unit vector)
+			//Calculated with: norm3d(yaxis_joy_end - Rz*yaxis_joy_end.dot(Rz))
+			float Ry[3];
+			float ydotRz = Rz[0]*joy_eff[1] + Rz[1]*joy_eff[5] + Rz[2]*joy_eff[9];
+			Ry[0] = -Rz[0]*ydotRz + joy_eff[1];
+			Ry[1] = -Rz[1]*ydotRz + joy_eff[5];
+			Ry[2] = -Rz[2]*ydotRz + joy_eff[9];
+			float Ry_mag = sqrt(pow(Ry[0], 2) + pow(Ry[1], 2) + pow(Ry[2], 2));
+			Ry[0] = Ry[0]/Ry_mag;
+			Ry[1] = Ry[1]/Ry_mag;
+			Ry[2] = Ry[2]/Ry_mag;
+			//Rx is the remaining axis to define satyrr's elbow frame, Rx = Ry x Rz
+			float Rx[3];
+			Rx[0] = Ry[1]*Rz[2] - Ry[2]*Rz[1];
+			Rx[1] = -Ry[0]*Rz[2] + Ry[2]*Rz[0];
+			Rx[2] = Ry[0]*Rz[1] - Ry[1]*Rz[0];
+			//Inverse kinematics of a spherical wrist
+			float th_s1 = M_PI - (fmod(atan2(Rz[2], Rz[0]) + M_PI_2, 2.0*M_PI));
+			float th_s2 = M_PI - (fmod(atan2(Rz[1], sqrt(1 - pow(Rz[1], 2.0))) + M_PI, 2.0*M_PI));
+			float th_s3 = M_PI - (fmod(atan2(-Rx[1], Ry[1]) + M_PI, 2.0*M_PI));
+			//angle between satyrr's upper arm and joystick forearm about Ry
+			float th_s4 = -acos(Rz[0]*joy_eff[2] + Rz[1]*joy_eff[6] + Rz[2]*joy_eff[10]);
+			if(-Ry[0]*(Rz[1]*joy_eff[10] - Rz[2]*joy_eff[6]) + Ry[1]*(Rz[0]*joy_eff[10] - Rz[2]*joy_eff[2]) - Ry[2]*(Rz[0]*joy_eff[6] - Rz[1]*joy_eff[2]) < 0){
+				th_s4 = -1*th_s4;
+			}
+			//Flipping angle convention to match model -> robot
+			th_s1 = -th_s1;
+			th_s2 =  th_s2;
+			th_s3 =  th_s3;
+			th_s4 = -th_s4;
+			//Flipping angle convention to matc right or left arm
+			float arm_temp[4];
+			if(i==0){
+				arm_temp[0] = th_s1;
+				arm_temp[1] = th_s2;
+				arm_temp[2] = th_s3;
+				arm_temp[3] = th_s4;
+				for(int j = 0; j < 4; j++){
+					//Safety condition bounding change in RARM joint angle
+					// if(abs(th_R_Arm[j] - arm_temp[j]) < 1e1000){
+						th_R_Arm[j] = arm_temp[j];
+					// }
+					// else{
+					// 	th_R_Arm[j] = th_R_Arm[j];
+					// }
+				}
+				RA_pose_des = (207*cos(th_s1))/50000.0 - (10396091193541362039.0*cos(th_s1)*cos(th_s4))/225179981368524800000.0 - (2389.0*cos(th_s2)*sin(th_s1))/20000.0 - (3808975302672035301.0*cos(th_s1)*sin(th_s4))/18014398509481984000.0 + (10396091193541362039.0*cos(th_s2)*sin(th_s1)*sin(th_s4))/225179981368524800000.0 - (3808975302672035301.0*cos(th_s2)*cos(th_s4)*sin(th_s1))/18014398509481984000.0;
+				RA_pose_des = -RA_pose_des; // To get angle conventions to match of robot
+			}
+			else{
+				arm_temp[0] = -th_s1;
+				arm_temp[1] = -th_s2;
+				arm_temp[2] = -th_s3;
+				arm_temp[3] = -th_s4;
+				for(int j = 0; j < 4; j++){
+					//Safety condition bounding change in LARM joint angle
+					// if(abs(th_L_Arm[j] - arm_temp[j]) < 1e1000){
+						th_L_Arm[j] = arm_temp[j];
+					// }
+					// else{
+					// 	th_L_Arm[j] = th_L_Arm[j];
+					// }
+				}
+				LA_pose_des = (207.0*cos(th_L_Arm[0]))/50000.0 - (2559.0*cos(th_L_Arm[3])*(cos(th_L_Arm[0])*cos(th_L_Arm[2]) + sin(th_L_Arm[0])*sin(th_L_Arm[1])*sin(th_L_Arm[2])))/50000.0 - L_sat_forearm*(sin(th_L_Arm[3])*(cos(th_L_Arm[0])*cos(th_L_Arm[2]) + sin(th_L_Arm[0])*sin(th_L_Arm[1])*sin(th_L_Arm[2])) + cos(th_L_Arm[1])*cos(th_L_Arm[3])*sin(th_L_Arm[0])) + (2559.0*cos(th_L_Arm[1])*sin(th_L_Arm[0])*sin(th_L_Arm[3]))/50000.0 - L_sat_arm*cos(th_L_Arm[1])*sin(th_L_Arm[0]);
+			}
+		}
+
+		RoboDesignLab::JointPDConfig arm_pd;
+
+		arm_pd.joint_pos_desired = VectorXd::Zero(8);
+		arm_pd.joint_vel_desired = VectorXd::Zero(8);
+		arm_pd.joint_pos_desired << th_L_Arm(0), th_L_Arm(1), th_L_Arm(2), th_L_Arm(3), th_R_Arm(0), th_R_Arm(1), th_R_Arm(2), th_R_Arm(3);
+		arm_pd.joint_vel_desired << 0, 0, 0, 0, 0, 0, 0, 0;
+
+		// cout << arm_pd.joint_pos_desired.transpose() << endl;
+
+		VectorXd encoder_pos_desired(8);
+		
+		for(int i=0;i<8;i++)
+		{
+			encoder_pos_desired[i] = arm_motor_pos_model_to_real(i,arm_pd.joint_pos_desired[i]);
+		}
+
+        
+		for(int i=0;i<8;i++)
+		{
+			arm_joint_angles[i] = arm_motor_pos_real_to_model(i, arm_encoders[i]);
+
+			// tello->arm_motors[i]->setKp(0);
+			// tello->arm_motors[i]->setKd(0);
+			// tello->arm_motors[i]->setVel(0);
+			// tello->arm_motors[i]->setff(0);
+			// if(i!=2)
+			// {
+				tello->arm_motors[i]->setPos(encoder_pos_desired[i]); // (Zero)
+			// }
+			// else
+			// {
+			// 	tello->arm_motors[i]->setPos((encoder_pos_desired[i] - arm_zeros[2])*2.0 + arm_zeros[2]); // (Zero)
+			// }
+			
+			tello->arm_motors[i]->updateMotor();
+		}
+
+		// cout << arm_joint_angles.transpose() << endl;
+        
+        handle_end_of_periodic_task(next, period);
+    }
+
 }
 
 static void* update_1kHz( void * arg )
@@ -1544,6 +1829,16 @@ static void* update_1kHz( void * arg )
 	tello->motors[8] = new CheetahMotor(0x09,PCAN_PCIBUS8);
 	tello->motors[9] = new CheetahMotor(0x0A,PCAN_PCIBUS7);
 
+	tello->arm_motors[0] = new CheetahMotor(30,PCAN_PCIBUS3);
+	tello->arm_motors[1] = new CheetahMotor(31,PCAN_PCIBUS3);
+	tello->arm_motors[2] = new CheetahMotor(32,PCAN_PCIBUS3);
+	tello->arm_motors[3] = new CheetahMotor(33,PCAN_PCIBUS3);
+
+	tello->arm_motors[4] = new CheetahMotor(34,PCAN_PCIBUS4);
+	tello->arm_motors[5] = new CheetahMotor(35,PCAN_PCIBUS4);
+	tello->arm_motors[6] = new CheetahMotor(36,PCAN_PCIBUS4);
+	tello->arm_motors[7] = new CheetahMotor(37,PCAN_PCIBUS4);
+
 	for(int i=0;i<10;i++)
 	{
 		tello->motors[i]->setKp(0);
@@ -1552,6 +1847,16 @@ static void* update_1kHz( void * arg )
 		tello->motors[i]->setff(0);
 		tello->motors[i]->setPos(32768); // (Zero)
 		tello->motors[i]->disableMotor();
+	}
+
+	for(int i=0;i<8;i++)
+	{
+		tello->arm_motors[i]->setKp(0);
+		tello->arm_motors[i]->setKd(50);
+		tello->arm_motors[i]->setVel(0);
+		tello->arm_motors[i]->setff(0);
+		tello->arm_motors[i]->setPos(arm_zeros[i]); // (Zero)
+		tello->arm_motors[i]->disableMotor();
 	}
 	usleep(1000);
 
@@ -1588,6 +1893,18 @@ static void* update_1kHz( void * arg )
 		tello->motors[i]->setPos(encoder_offsets[i]);
 		tello->motors[i]->updateMotor();
 		pthread_mutex_unlock(&mutex_CAN_recv);
+	}
+
+	usleep(100000); // 100ms
+
+	for(int i=0;i<8;i++)
+	{
+		tello->arm_motors[i]->setKp(0);
+		tello->arm_motors[i]->setKd(50);
+		tello->arm_motors[i]->setVel(0);
+		tello->arm_motors[i]->setff(0);
+		tello->arm_motors[i]->setPos(arm_zeros[i]); // (Zero)
+		tello->arm_motors[i]->updateMotor();
 	}
 
 
@@ -1641,6 +1958,7 @@ static void* update_1kHz( void * arg )
 		switch(fsm_state){
 			case 0:
 				// do nothing
+				idle();
 				break;
 			case 1:
 				// state removed
@@ -1770,32 +2088,32 @@ void init_6dof_test()
 	VectorXd x0 = tello->controller->get_x0();
 	// dash_planner::SRB_6DoF_Test(dummy,sim_time,srb_params,lfv0,DoF,1);
 
-	auto_mode = true;
-	printf("Walking Selected\n\n");
-	// Option 2: Walking using LIP angular momentum regulation about contact point
-	// user input (walking speed and step frequency)
-	double des_walking_speed = 0.0;
-	double des_walking_step_period = 0.3;
-	// end user input
-	std::string recording_file_name = "Walking";
-	srb_params.planner_type = 1; 
-	srb_params.T = des_walking_step_period;
-	srb_params.zcl = 0.03; // step height
-	VectorXd t_traj, v_traj;
-	double t_beg_stepping_time, t_end_stepping_time;
-	dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
-	srb_params.vx_des_t = t_traj;
-	srb_params.vx_des_vx = v_traj;
-	srb_params.t_beg_stepping = t_beg_stepping_time;
-	srb_params.t_end_stepping = t_end_stepping_time;
-	sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
-	srb_params.init_type = 1;
-
-	// printf("Telelop Selected\n\n");
-	// std::string recording_file_name = "Telelop";
-	// srb_params.planner_type = 2; 
+	// auto_mode = true;
+	// printf("Walking Selected\n\n");
+	// // Option 2: Walking using LIP angular momentum regulation about contact point
+	// // user input (walking speed and step frequency)
+	// double des_walking_speed = 0.0;
+	// double des_walking_step_period = 0.25;
+	// // end user input
+	// std::string recording_file_name = "Walking";
+	// srb_params.planner_type = 1; 
+	// srb_params.T = des_walking_step_period;
+	// srb_params.zcl = 0.025; // step height
+	// VectorXd t_traj, v_traj;
+	// double t_beg_stepping_time, t_end_stepping_time;
+	// dash_planner::SRB_LIP_vel_traj(des_walking_speed,t_traj,v_traj,t_beg_stepping_time,t_end_stepping_time);
+	// srb_params.vx_des_t = t_traj;
+	// srb_params.vx_des_vx = v_traj;
+	// srb_params.t_beg_stepping = t_beg_stepping_time;
+	// srb_params.t_end_stepping = t_end_stepping_time;
+	// sim_time = srb_params.vx_des_t(srb_params.vx_des_t.size()-1);
 	// srb_params.init_type = 1;
-	// sim_time = 1e100;
+
+	printf("Telelop Selected\n\n");
+	std::string recording_file_name = "Telelop";
+	srb_params.planner_type = 2; 
+	srb_params.init_type = 1;
+	sim_time = 1e100;
 
 	// Initialize trajectory planner data
     dash_planner::SRB_Init_Traj_Planner_Data(traj_planner_dyn_data, srb_params, human_params, x0, lfv0);
@@ -1943,10 +2261,10 @@ int main(int argc, char *argv[]) {
 		tello->addPeriodicTask(&sim_step_task, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_1, (void*)(NULL),"sim_step_task",TASK_CONSTANT_PERIOD, 998);
 		tello->addPeriodicTask(&mujoco_Update_1KHz, SCHED_FIFO, 99, ISOLATED_CORE_1_THREAD_2, (void*)(NULL),"mujoco_task",TASK_CONSTANT_PERIOD, 1000);
 		tello->addPeriodicTask(&tello_controller, SCHED_FIFO, 99, ISOLATED_CORE_2_THREAD_1, (void*)(NULL),"tello_ctrl",TASK_CONSTANT_PERIOD, 1000);
-		// tello->addPeriodicTask(&curve_fitting, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_2, (void*)(NULL),"curve_fitting",TASK_CONSTANT_PERIOD, 1000);
+		tello->addPeriodicTask(&curve_fitting, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_2, (void*)(NULL),"curve_fitting",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&PS4_Controller, SCHED_FIFO, 90, ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"ps4_controller_task",TASK_CONSTANT_PERIOD, 500);
 		tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
-		tello->addPeriodicTask(&hmi_hw_monitor, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_2, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
+		tello->addPeriodicTask(&hmi_hw_monitor, SCHED_FIFO, 90, ISOLATED_CORE_3_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 500);
 		// tello->addPeriodicTask(&rx_UDP_Debug, SCHED_FIFO, 99, ISOLATED_CORE_3_THREAD_1, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
 		// tello->addPeriodicTask(&Human_Playback, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"human_playback_task",TASK_CONSTANT_PERIOD, 1000);
 		// tello->addPeriodicTask(&Animate_Log, SCHED_FIFO, 90, ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"human_playback_task",TASK_CONSTANT_PERIOD, 1000);
@@ -2030,20 +2348,24 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Initialize Peak Systems CAN adapters
-	TPCANStatus s1,s2,s3,s4,s5,s6;
+	TPCANStatus s1,s2,s3,s4,s5,s6,s7,s8;
     s1 = CAN_Initialize(pcd1, PCAN_BAUD_1M, 0, 0, 0);
     s2 = CAN_Initialize(pcd2, PCAN_BAUD_1M, 0, 0, 0);
 	s3 = CAN_Initialize(pcd3, PCAN_BAUD_1M, 0, 0, 0);
 	s4 = CAN_Initialize(pcd4, PCAN_BAUD_1M, 0, 0, 0); 
 	s5 = CAN_Initialize(pcd5, PCAN_BAUD_1M, 0, 0, 0);
 	s6 = CAN_Initialize(pcd6, PCAN_BAUD_1M, 0, 0, 0);
+	s7 = CAN_Initialize(pcd7, PCAN_BAUD_1M, 0, 0, 0);
+	s8 = CAN_Initialize(pcd8, PCAN_BAUD_1M, 0, 0, 0);
 	std::string channels = "";
 	if(!s1)channels+="1, ";
 	if(!s2)channels+="2, ";
 	if(!s3)channels+="3, ";
 	if(!s4)channels+="4, ";
 	if(!s5)channels+="5, ";
-	if(!s6)channels+="6";
+	if(!s6)channels+="6, ";
+	if(!s7)channels+="7, ";
+	if(!s8)channels+="8";
 
 	if(channels.empty()){
 		printf('r',"No CAN channels could be opened, did you mean to run in simulation mode? \033[0;38;5;208m(y/n)\n");
@@ -2081,19 +2403,25 @@ int main(int argc, char *argv[]) {
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd2),"rx_bus2",TASK_CONSTANT_DELAY, 50);
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd3),"rx_bus3",TASK_CONSTANT_DELAY, 50);
 	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd4),"rx_bus4",TASK_CONSTANT_DELAY, 50);
-	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd5),"rx_bus4",TASK_CONSTANT_DELAY, 50);
-	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd6),"rx_bus5",TASK_CONSTANT_DELAY, 50);
+	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd5),"rx_bus5",TASK_CONSTANT_DELAY, 50);
+	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd6),"rx_bus6",TASK_CONSTANT_DELAY, 50);
+	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd7),"rx_bus7",TASK_CONSTANT_DELAY, 50);
+	tello->addPeriodicTask(&rx_CAN, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, (void*)(&pcd8),"rx_bus8",TASK_CONSTANT_DELAY, 50);
 	tello->addPeriodicTask(&rx_UDP, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_2, NULL,"rx_UDP",TASK_CONSTANT_DELAY, 100);
-	tello->addPeriodicTask(&IMU_Comms, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_2, NULL, "imu_task", TASK_CONSTANT_DELAY, 1000);
+	// tello->addPeriodicTask(&IMU_Comms, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_2, NULL, "imu_task", TASK_CONSTANT_DELAY, 1000);
 	tello->addPeriodicTask(&update_1kHz, SCHED_FIFO, 99, UPX_ISOLATED_CORE_1_THREAD_2, NULL, "update_task",TASK_CONSTANT_PERIOD, 1000);
+
+	tello->addPeriodicTask(&arm_ctrl, SCHED_FIFO, 99, UPX_ISOLATED_CORE_4_THREAD_2, NULL, "arm_ctrl_task",TASK_CONSTANT_PERIOD, 5000);
 	// tello->addPeriodicTask(&ecat_comms, SCHED_FIFO, 99, UPX_ISOLATED_CORE_1_THREAD_2, NULL, "update_task",TASK_CONSTANT_PERIOD, 1000);
-	// tello->addPeriodicTask(&BNO055_Comms, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, NULL, "bno_imu_task", TASK_CONSTANT_DELAY, 1000);
+	tello->addPeriodicTask(&BNO055_Comms, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_1, NULL, "bno_imu_task", TASK_CONSTANT_DELAY, 1000);
 	// tello->addPeriodicTask(&state_estimation, SCHED_FIFO, 99, UPX_ISOLATED_CORE_2_THREAD_2, (void*)(NULL),"EKF_Task",TASK_CONSTANT_PERIOD, 3000);
 	tello->addPeriodicTask(&motion_capture, SCHED_FIFO, 99, UPX_ISOLATED_CORE_3_THREAD_1, (void*)(NULL),"Mocap_Task",TASK_CONSTANT_PERIOD, 1000);
 	tello->addPeriodicTask(&hw_logging, SCHED_FIFO, 99, UPX_ISOLATED_CORE_3_THREAD_2, (void*)(NULL),"hw_logging_task",TASK_CONSTANT_PERIOD, 1000);
 
+	tello->addPeriodicTask(&hw_monitor, SCHED_FIFO, 99, UPX_ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"hw_monitor_task",TASK_CONSTANT_PERIOD, 5000);
+
 	// tello->addPeriodicTask(&Human_Playback_Hardware, SCHED_FIFO, 90, UPX_ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"human_playback_HW_task",TASK_CONSTANT_PERIOD, 1000);
-	// tello->addPeriodicTask(&curve_fitting, SCHED_FIFO, 99, UPX_ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"curve_fitting",TASK_CONSTANT_PERIOD, 1000);
+	tello->addPeriodicTask(&curve_fitting, SCHED_FIFO, 99, UPX_ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"curve_fitting",TASK_CONSTANT_PERIOD, 1000);
 
 	usleep(4000);
 	
@@ -2194,7 +2522,117 @@ int main(int argc, char *argv[]) {
 				break;
 			case 'd':
 				scheduleDisable();
+				printf('g',"Disabling arms\n");
+				tello->arm_motors[0]->disableMotor();
+				tello->arm_motors[1]->disableMotor();
+				tello->arm_motors[2]->disableMotor();
+				tello->arm_motors[3]->disableMotor();
+				tello->arm_motors[4]->disableMotor();
+				tello->arm_motors[5]->disableMotor();
+				tello->arm_motors[6]->disableMotor();
+				tello->arm_motors[7]->disableMotor();
 				printf("\nDisabling\n");
+				break;
+			case '2':
+				tello->motors[1]->enableMotor();
+				break;
+			case 'r':
+				printf('r',"Enabling arms\n");
+				tello->arm_motors[0]->enableMotor();
+				for(int i=0;i<8;i++)
+				{
+					tello->arm_motors[i]->enableMotor();
+				}
+
+				usleep(10000);
+				printf('r',"Moving Arms To Zero Positions\n");
+
+				for(int i=0;i<8;i++)
+				{
+					tello->arm_motors[i]->setKp(50);
+					tello->arm_motors[i]->setKd(100);
+					tello->arm_motors[i]->setVel(0);
+					tello->arm_motors[i]->setff(0);
+					tello->arm_motors[i]->setPos(arm_zeros[i]); // (Zero)
+					tello->arm_motors[i]->updateMotor();
+					
+				}
+				break;
+			case 'k':
+				printf('r',"Increasing Arm Gains\n");
+				tello->arm_motors[0]->enableMotor();
+				for(int i=0;i<8;i++)
+				{
+					tello->arm_motors[i]->enableMotor();
+				}
+
+				usleep(10000);
+				printf('r',"Moving Arms To Zero Positions\n");
+
+				for(int i=0;i<8;i++)
+				{
+					tello->arm_motors[i]->setKp(200);
+					tello->arm_motors[i]->setKd(200);
+					tello->arm_motors[i]->updateMotor();
+					
+				}
+				break;
+			case 'p':
+				for(int i=0;i<8;i++)
+				{
+					tello->arm_motors[i]->disableMotor();
+				}
+				printf("ARM MOTOR POSITIONS ==================================== \n");
+				printf("Motor 30: %d \n", arm_encoders[0]);
+				printf("Motor 31: %d \n", arm_encoders[1]);
+				printf("Motor 32: %d \n", arm_encoders[2]);
+				printf("Motor 33: %d \n", arm_encoders[3]);
+				printf("Motor 34: %d \n", arm_encoders[4]);
+				printf("Motor 35: %d \n", arm_encoders[5]);
+				printf("Motor 36: %d \n", arm_encoders[6]);
+				printf("Motor 37: %d \n", arm_encoders[7]);
+				printf("======================================================= \n");
+				break;
+			case 'f':
+				printf('o',"Increasing arm Kp\n");
+				tello->arm_motors[0]->enableMotor();
+				for(int i=0;i<8;i++)
+				{
+					tello->arm_motors[i]->setKp(500);
+					tello->arm_motors[i]->setKd(800);
+					tello->arm_motors[i]->setVel(0);
+					tello->arm_motors[i]->setff(0);
+					tello->arm_motors[i]->updateMotor();
+				}
+
+				break;
+			case 'u':
+				printf('o',"Moving Arms to Up Position\n");
+				tello->arm_motors[0]->enableMotor();
+				for(int i=0;i<8;i++)
+				{
+					tello->arm_motors[i]->setKp(100);
+					tello->arm_motors[i]->setKd(800);
+					tello->arm_motors[i]->setVel(0);
+					tello->arm_motors[i]->setff(0);
+					tello->arm_motors[i]->setPos(arm_up_positions[i]); // (Zero)
+					tello->arm_motors[i]->updateMotor();
+				}
+
+				break;
+			case 'c':
+				printf('o',"Moving Arms to Crate Position\n");
+				tello->arm_motors[0]->enableMotor();
+				for(int i=0;i<8;i++)
+				{
+					tello->arm_motors[i]->setKp(100);
+					tello->arm_motors[i]->setKd(800);
+					tello->arm_motors[i]->setVel(0);
+					tello->arm_motors[i]->setff(0);
+					tello->arm_motors[i]->setPos(arm_crate_positions[i]); // (Zero)
+					tello->arm_motors[i]->updateMotor();
+				}
+
 				break;
 			default:
 				fsm_state = 0;

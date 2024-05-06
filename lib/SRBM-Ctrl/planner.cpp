@@ -32,6 +32,8 @@ Eigen::VectorXd AHvec(100);
 
 MatrixXd lfv_dsp_start(4,3);
 
+bool first_time_planner = true;
+
 void dash_planner::SRB_6DoF_Test(std::string& recording_file_name, double& sim_time, SRB_Params& srb_params, MatrixXd lfv, char DoF, int num_tests)
 {
     double amplitude;
@@ -370,7 +372,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == 1) // currently in SSP_L
     {
-        if ( ( ((grf_rf + grf_rb) > 20 ) || (lf1z <= 0.005 || lf2z <= 0.005) ) && s > 0.98) // enter DSP
+        if ( ( ((grf_rf + grf_rb) > 10 ) || (lf1z <= 0.005 || lf2z <= 0.005) ) && s > 0.8) // enter DSP
         {
             cout << "Setting FSM from 1 to 0,   time: " << t << endl;
             FSM_next = 0;
@@ -382,7 +384,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == -1) // currently in SSP_R
     {
-        if ( ( ((grf_lf + grf_lb) > 20 ) || (lf3z <= 0.005 || lf4z <= 0.005) ) && s > 0.98) // enter DSP
+        if ( ( ((grf_lf + grf_lb) > 10 ) || (lf3z <= 0.005 || lf4z <= 0.005) ) && s > 0.8) // enter DSP
         {
             cout << "Setting FSM from -1 to 0,   time: " << t << endl;
             FSM_next = 0;
@@ -444,6 +446,8 @@ void dash_planner::SRB_Init_Traj_Planner_Data(Traj_planner_dyn_data& traj_planne
     traj_planner_dyn_data.uk_HWRM = 0.0; // initial HWRM-LIP step placement
     ::lfv0 = lfv0;
     ::lfdv0.setZero();
+
+    first_time_planner = true;
 }
 
 void dash_planner::SRB_Traj_Planner(
@@ -552,7 +556,6 @@ void dash_planner::SRB_Traj_Planner(
 
 }
 
-bool first_time_planner = true;
 Vector3d st_beg_step_last;
 void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_params& human_params, Traj_planner_dyn_data& traj_planner_dyn_data, Human_dyn_data human_dyn_data,double t,int FSM_prev,int FSM, VectorXd x, MatrixXd lfv)
 {
@@ -609,6 +612,7 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
             traj_planner_dyn_data.next_SSP = 1;
             lfv_dsp_start = lfv;
             first_time_planner = false;
+            cout << "Setting Next_SSP to 1" << endl;
         }
     }
 
@@ -843,6 +847,6 @@ void dash_planner::SRB_LIP_vel_traj(double des_walking_speed, VectorXd& t_traj, 
 
     // time to command end stepping
     int end = t_waypts.size() - 1;
-    t_end_stepping_time = 100.0;//t_waypts[end-1] + (t_waypts[end] - t_waypts[end-1])/2.0;
+    t_end_stepping_time = 5.0;//t_waypts[end-1] + (t_waypts[end] - t_waypts[end-1])/2.0;
 
 }

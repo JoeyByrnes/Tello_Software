@@ -193,7 +193,7 @@ struct Human_dyn_data_filter {
 struct Traj_planner_dyn_data
 {
     bool stepping_flg;
-    double T_step;
+    double T_step = 0.25;
     double t_sw_start;
     double t_dsp_start;
     int next_SSP;
@@ -218,8 +218,8 @@ struct Traj_planner_dyn_data
     double step_z_offset_R = 0.003;
     int human_FSM = 0;
     int human_next_SSP = 1;
-    double T_step_predicted;
-    double AH_step_predicted;
+    double T_step_predicted = 0.4;
+    double AH_step_predicted = 0.03;
     int curr_SSP_sample_count;
     VectorXd step_z_history_L = VectorXd::Zero(1000);
     VectorXd step_z_history_R = VectorXd::Zero(1000);

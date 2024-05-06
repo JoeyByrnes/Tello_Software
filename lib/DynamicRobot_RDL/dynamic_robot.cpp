@@ -801,8 +801,10 @@ void DynamicRobot::enable_all_motors()
 {
 	for(int i=0;i<10;i++)
 	{
-		this->motors[i]->enableMotor();
+        // if(i!=1)
+		    this->motors[i]->enableMotor();
 	}
+    
 }
 void DynamicRobot::disable_all_motors()
 {
@@ -923,7 +925,7 @@ VectorXd DynamicRobot::jointPD2(JointPDConfig joint_conf)
 
     // cout << "Joint Torques JPD:   " << (joint_torques).transpose() << endl;
 
-    // cout << "Joint Torques + FF:   " << (joint_torques + joint_conf.joint_ff_torque).transpose() << endl;
+    // cout << "Joint FF:   " << (joint_conf.joint_ff_torque).transpose() << endl;
 
     return (joint_torques + joint_conf.joint_ff_torque);
 }
@@ -968,9 +970,11 @@ VectorXd DynamicRobot::taskPD2(TaskPDConfig task_conf)
     // cout << "Torque from FF accel:" << endl;
     // cout << joint_forces_from_accel.transpose() << endl;
 
+    // cout << "Joint Torques: " << joint_torques.transpose() << endl;
+
 
     JointPDConfig joint_conf;
-    joint_conf.joint_ff_torque = joint_torques + joint_forces_from_accel;
+    joint_conf.joint_ff_torque = joint_torques ;//+ joint_forces_from_accel;
     joint_conf.joint_pos_desired = joint_pos_desired;
     joint_conf.joint_vel_desired = joint_vel_desired;
     joint_conf.joint_kp = task_conf.joint_kp;
@@ -1054,7 +1058,7 @@ void DynamicRobot::update_filter_kinematic_data(MatrixXd lfv_hip, Matrix3d R_rig
     covariance.setZero(); // just using ideal covariance matrix for now
     
     double W = 0.252;
-    double CoM2H_z_dist = 0.18;
+    double CoM2H_z_dist = 0.088;
 
     Vector3d CoM2hr(0,-W/2.0,-CoM2H_z_dist);
     Vector3d CoM2hl(0, W/2.0,-CoM2H_z_dist);

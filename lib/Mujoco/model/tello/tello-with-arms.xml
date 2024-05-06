@@ -50,6 +50,9 @@
 	<mesh name="arm_left_forearm" file="left_forearm.STL"/>
 	<mesh name="arm_right_forearm" file="right_forearm.STL"/>
 
+	<mesh name="crate" file="crate-for-sim.STL" scale="0.001 0.001 0.001"/>
+	<mesh name="table" file="table-for-sim.STL" scale="0.001 0.001 0.001"/>
+
 
 	<texture type = "skybox" builtin = "gradient" width = "128" height = "128" rgb1 = "0.95 0.99 0.99" 
          rgb2 = "0.7 0.7 0.7"/>    
@@ -203,10 +206,10 @@
 
 						<body name="left_forearm_link" pos="0 0 -0.179" quat="1 0 0 0" gravcomp="0">
 
-							<inertial pos="0 0 -0.14" quat="0 0 0 1" mass="0.5" diaginertia="0.001 0.001 0.001"/>
+							<inertial pos="0 0 -0.14" quat="0 0 0 1" mass="0.005" diaginertia="0.001 0.001 0.001"/>
 							<joint name="left_elbow" pos="0 0 0" axis="0 1 0" limited = "true" range = "-2.5708 2.5708" armature=" 0.006"/>
 							<geom type="mesh" rgba="0.7 0.0 0.0 1" mesh="arm_left_forearm" contype='0'/>
-
+							<geom name = "left_hand" pos = "0.003 0 -0.227"  size = "0.03" type="sphere" rgba = "0.1 0.4 0.1 0.1"  class = "collision"  condim = '3' conaffinity = '15'/>
 
 						</body>
 
@@ -236,10 +239,10 @@
 
 						<body name="right_forearm_link" pos="0 0 -0.179" quat="1 0 0 0" gravcomp="0">
 
-							<inertial pos="0 0 -0.14" quat="0 0 0 1" mass="0.5" diaginertia="0.001 0.001 0.001"/>
+							<inertial pos="0 0 -0.14" quat="0 0 0 1" mass="0.005" diaginertia="0.001 0.001 0.001"/>
 							<joint name="right_elbow" pos="0 0 0" axis="0 1 0" limited = "true" range = "-2.5708 2.5708" armature=" 0.006"/>
 							<geom type="mesh" rgba="0.7 0.0 0.0 1" mesh="arm_right_forearm" contype='0'/>
-
+							<geom name = "right_hand" pos = "0.003 0 -0.227"  size = "0.03" type="sphere" rgba = "0.1 0.4 0.1 0.1"  class = "collision"  condim = '3' conaffinity = '15'/>
 
 						</body>
 
@@ -254,6 +257,27 @@
 
 	<body name="target" mocap="true" pos="0 0 -0.58" >
         <geom name="box" type="box" size="0.2 0.25 0.001" rgba="0.2 0.2 1 0.5" contype='0'/>
+    </body>
+
+	<body name="crate_body" pos="0.25 0 0.0" quat="0.707107 0 0 0.707107">
+		<inertial pos = '0.0 0.0 0.0' mass = '0.05' diaginertia = '0.013122 0.0078744 0.013624'/>
+        <geom name="crate_geom" type="mesh" rgba="0.376 0.714 0.859 1" mesh="crate" class='collision' condim = '3' conaffinity = '15'/>
+		<joint axis = "1 0 0" pos = "0 0 0" name = "crate_move_x" type = "slide" limited = "false" damping="0"/>
+		<joint axis = "0 1 0" pos = "0 0 0" name = "crate_move_y" type = "slide" limited = "false" damping="0"/>
+		<joint axis = "0 0 1" pos = "0 0 0" name = "crate_move_z" type = "slide" limited = "false" damping="0"/>
+		<joint axis = "1 0 0" pos = "0 0 0" name = "crate_rotate_roll" type = "hinge" limited = "false" damping="0"/>
+		<joint axis = "0 1 0" pos = "0 0 0" name = "crate_rotate_pitch" type = "hinge" limited = "false" damping="0"/>
+		<joint axis = "0 0 1" pos = "0 0 0" name = "crate_rotate_yaw" type = "hinge" limited = "false" damping="0"/>  
+    </body>
+	<body name="table_body" pos="0.3 0 -0.16" quat="0.707107 0 0 0.707107">
+        <inertial pos = '0.0 0.0 0.0' mass = '40.2587' diaginertia = '0.013122 0.0078744 0.013624'/>
+        <geom name="table_geom" type="mesh" rgba="0.271 0.110 0.035 1" mesh="table" class='collision' condim = '3' conaffinity = '15'/>
+		<!-- <joint axis = "1 0 0" pos = "0 0 0" name = "table_move_x" type = "slide" limited = "false" damping="0"/>
+		<joint axis = "0 1 0" pos = "0 0 0" name = "table_move_y" type = "slide" limited = "false" damping="0"/>
+		<joint axis = "0 0 1" pos = "0 0 0" name = "table_move_z" type = "slide" limited = "false" damping="0"/>
+		<joint axis = "1 0 0" pos = "0 0 0" name = "table_rotate_roll" type = "hinge" limited = "false" damping="0"/>
+		<joint axis = "0 1 0" pos = "0 0 0" name = "table_rotate_pitch" type = "hinge" limited = "false" damping="0"/>
+		<joint axis = "0 0 1" pos = "0 0 0" name = "table_rotate_yaw" type = "hinge" limited = "false" damping="0"/>   -->
     </body>
 
 </worldbody>

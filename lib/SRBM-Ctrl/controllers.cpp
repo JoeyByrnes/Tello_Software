@@ -301,6 +301,12 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
     double swing_T_scaler = srb_params.swing_time_scaler;
     double T_step = traj_planner_dyn_data.T_step;
     if(use_adaptive_step_time) T_step = traj_planner_dyn_data.T_step_predicted*swing_T_scaler;
+    // if(abs(FSM) == 1)
+    // {
+    //     cout << "T_step: " << traj_planner_dyn_data.T_step << endl;
+    //     cout << "T_step_predicted: " << traj_planner_dyn_data.T_step_predicted << endl;
+    //     cout << "swing_T_scaler: " << swing_T_scaler << endl;
+    // }
     double sigma1H = traj_planner_dyn_data.sigma1H;
     double swx0 = traj_planner_dyn_data.sw_beg_step[0];
     double swy0 = traj_planner_dyn_data.sw_beg_step[1];
@@ -1151,7 +1157,7 @@ void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, 
             if(first_step_ylip)
             {
                 yLIP = 0.5*(lf2CoM_mat(1, 0) + lf2CoM_mat(1, 2))-yLIP_offset;
-                if(yLIP_offset<0.03 && t > 0.7)
+                if(yLIP_offset<0.03 && t > 0.5)
                 {
                     yLIP_offset = yLIP_offset+0.0001;
                 }
@@ -1295,8 +1301,8 @@ void dash_ctrl::sw2CoM_end_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm
     {
         const VectorXd sw2CoM_traj_x = dash_utils::sw_leg_ref_xy(s, sw2CoM_beg_step_x, sw2CoM_end_step_des(0));
         const VectorXd sw2CoM_traj_y = dash_utils::sw_leg_ref_xy(s, sw2CoM_beg_step_y, sw2CoM_end_step_des(1));
-        const VectorXd sw2CoM_traj_z = dash_utils::sw_leg_ref_z_v2(s, beg_step_z, zcl);
-        // const VectorXd sw2CoM_traj_z = dash_utils::sw_leg_ref_z(s, zcl, H);
+        // const VectorXd sw2CoM_traj_z = dash_utils::sw_leg_ref_z_v2(s, beg_step_z, zcl);
+        const VectorXd sw2CoM_traj_z = dash_utils::sw_leg_ref_z(s, zcl, H);
 
         // cout << "s: " << s << "\t H: " << H << "\t zcl: " << zcl << endl;
         
@@ -1304,6 +1310,7 @@ void dash_ctrl::sw2CoM_end_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm
         {
             // x-position trajectories
             lfv_comm(0, 0) = pc(0) - (sw2CoM_traj_x(0) - (1.0/2.0)*ft_l); lfv_comm(1, 0) = pc(0) - (sw2CoM_traj_x(0) + (1.0/2.0)*ft_l);
+            // lfv_comm(0, 0) = pc(0) - (0 - (1.0/2.0)*ft_l); lfv_comm(1, 0) = pc(0) - (0 + (1.0/2.0)*ft_l);
             lfdv_comm(0, 0) = sw2CoM_traj_x(1); lfdv_comm(1, 0) = lfdv_comm(0, 0);
             lfddv_comm(0, 0) = sw2CoM_traj_x(2); lfddv_comm(1, 0) = lfddv_comm(0, 0);
             // y-position trajectories
@@ -1311,7 +1318,7 @@ void dash_ctrl::sw2CoM_end_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm
             lfdv_comm(0, 1) = sw2CoM_traj_y(1); lfdv_comm(1, 1) = lfdv_comm(0, 1);
             lfddv_comm(0, 1) = sw2CoM_traj_y(2); lfddv_comm(1, 1) = lfddv_comm(0, 1);
             // z-position trajectories
-            lfv_comm(0, 2) = sw2CoM_traj_z(0); lfv_comm(1, 2) = lfv_comm(0, 2);
+            lfv_comm(0, 2) = pc(2) - sw2CoM_traj_z(0); lfv_comm(1, 2) = lfv_comm(0, 2);
             lfdv_comm(0, 2) = sw2CoM_traj_z(1); lfdv_comm(1, 2) = lfdv_comm(0, 2);
             lfddv_comm(0, 2) = sw2CoM_traj_z(2); lfddv_comm(1, 2) = lfddv_comm(0, 2);
             // cout << "traj_z(1): " << sw2CoM_traj_z(0) << endl;
@@ -1321,6 +1328,7 @@ void dash_ctrl::sw2CoM_end_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm
         {
             // x-position trajectories
             lfv_comm(2, 0) = pc(0) - (sw2CoM_traj_x(0) - (1.0/2.0)*ft_l); lfv_comm(3, 0) = pc(0) - (sw2CoM_traj_x(0) + (1.0/2.0)*ft_l);
+            // lfv_comm(2, 0) = pc(0) - (0 - (1.0/2.0)*ft_l); lfv_comm(3, 0) = pc(0) - (0 + (1.0/2.0)*ft_l);
             lfdv_comm(2, 0) = sw2CoM_traj_x(1); lfdv_comm(3, 0) = lfdv_comm(2, 0);   
             lfddv_comm(2, 0) = sw2CoM_traj_x(2); lfddv_comm(3, 0) = lfddv_comm(2, 0);        
             // y-position trajectories
@@ -1328,7 +1336,7 @@ void dash_ctrl::sw2CoM_end_step_strategy(MatrixXd& lfv_comm, MatrixXd& lfdv_comm
             lfdv_comm(2, 1) = sw2CoM_traj_y(1); lfdv_comm(3, 1) = lfdv_comm(2, 1);
             lfddv_comm(2, 1) = sw2CoM_traj_y(2); lfddv_comm(3, 1) = lfddv_comm(2, 1);
             // z-position trajectories
-            lfv_comm(2, 2) = sw2CoM_traj_z(0); lfv_comm(3, 2) = lfv_comm(2, 2);
+            lfv_comm(2, 2) = pc(2) - sw2CoM_traj_z(0); lfv_comm(3, 2) = lfv_comm(2, 2);
             lfdv_comm(2, 2) = sw2CoM_traj_z(1); lfdv_comm(3, 2) = lfdv_comm(2, 2);
             lfddv_comm(2, 2) = sw2CoM_traj_z(2); lfddv_comm(3, 2) = lfddv_comm(2, 2);
             // cout << "traj_z:(-1) " << sw2CoM_traj_z(0) << endl;

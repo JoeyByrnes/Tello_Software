@@ -528,7 +528,7 @@ double SRBMController::get_CoM_z(MatrixXd lfv_hip,VectorXd gnd_contacts, Vector3
 {
 
    double W = 0.252;
-    double CoM2H_z_dist = 0.18;
+    double CoM2H_z_dist = 0.088;
 
     Vector3d CoM2hr(0,-W/2.0,-CoM2H_z_dist);
     Vector3d CoM2hl(0, W/2.0,-CoM2H_z_dist);

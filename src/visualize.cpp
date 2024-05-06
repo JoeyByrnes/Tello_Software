@@ -753,6 +753,18 @@ void* visualization_render_thread( void * arg )
                     }
                     ImGui::PopStyleColor(3);
                 }
+
+                ImGui::Separator();//init_foot_width
+                ImGui::PushStyleColor(ImGuiCol_Button, light_navy);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lighter_navy);
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, med_navy);
+                if (ImGui::Button(" " ICON_FA_WEIGHT " Tare Arms  ")) {
+                    hw_control_data.tare_arms = true;
+                }
+                else{
+                    hw_control_data.tare_arms = false;
+                }
+                ImGui::PopStyleColor(3);
                 
                 ImGui::Separator();//init_foot_width
                 ImGui::PushStyleColor(ImGuiCol_Button, light_navy);

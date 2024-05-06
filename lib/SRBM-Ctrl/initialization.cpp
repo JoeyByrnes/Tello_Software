@@ -5,6 +5,8 @@ extern int simulation_mode;
 
 #define M_PI 3.14159265358979323846
 
+#define USING_ARMS 0
+
 void dash_init::Human_Init(Human_params &Human_params, Human_dyn_data &Human_dyn_data) {
     // Human Parameters
     double joystick_base_separation = 1.525;
@@ -405,8 +407,17 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.mu = 1.0; // coefficient of friction value
 
         // SRB specific
-        srb_params.m = 16.8; // robot mass in kg // was 23 for mujoco // real robot is 16.6Kg
-        srb_params.hLIP = 0.58; // nominal robot LIP height //COM_HEIGHT
+        if(USING_ARMS)
+            srb_params.m = 16.8+5.85;//6.85; // robot mass in kg // was 23 for mujoco // real robot is 16.6Kg
+        else
+            srb_params.m = 16.8; // robot mass in kg // was 23 for mujoco // real robot is 16.6Kg
+
+
+        if(USING_ARMS)
+            srb_params.hLIP = 0.627; // nominal robot LIP height //COM_HEIGHT
+        else
+            srb_params.hLIP = 0.58; // nominal robot LIP height //COM_HEIGHT
+        
         srb_params.Ib = Matrix3d::Identity();
         srb_params.Ib(0,0) = 0.4874;
         srb_params.Ib(1,1) = 0.3081;
@@ -420,8 +431,10 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.calf_length = 0.26; // calf length in m (L2)
         srb_params.foot_length = 0.12; // foot length in m (L3)
         srb_params.heel_length = 0.0576; // heel length in m (L4)
-        srb_params.CoM2H_z_dist = 0.088; // CoM to hip connection z-direction distance in m was 0.18 for mujoco
-
+        if(USING_ARMS)
+            srb_params.CoM2H_z_dist = 0.135;// 0.135 <--with arms //0.088; // CoM to hip connection z-direction distance in m was 0.18 for mujoco
+        else
+            srb_params.CoM2H_z_dist = 0.088;
         // planner (all) -- perhaps move to a separate data structure later
         srb_params.planner_type = 0; // none = 0, LIP_ang_mom_reg = 1, Human_Dyn_Telelocomotion = 2
         srb_params.T = 0.250; // single-support-phase time (step time)
@@ -455,6 +468,8 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.t_beg_stepping = 5; // time to initiate stepping in s
         srb_params.t_end_stepping = 4.5; // time to end stepping in s
         srb_params.zcl = 0.02; // swing-leg max height in m
+        
+        
         // planner_type = Human_Dyn_Telelocomotion 
         srb_params.xDCMH_deadband = 0.10; // deadband for applying gain for human DCM in m
         srb_params.KxDCMH = 2.0; // gain for human DCM
@@ -463,20 +478,63 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.T_DSP = 0.0750; // assumed duration of DSP in s
         srb_params.lmaxR = 0.5; // maximum step length in m
 
-        // controller 
-        srb_params.Kp_xR = 500.0; // P gain for x-direction tracking
-        srb_params.Kd_xR = 10.0; // D gain for x-direction tracking
-        srb_params.Kp_yR = 1500.0; // P gain for y-direction tracking
-        srb_params.Kd_yR = 50.0; // D gain for y-direction tracking
-        srb_params.Kp_zR = 3500.0; // P gain for z-direction tracking
-        srb_params.Kd_zR = 1.0; // D gain for z-direction tracking
+        if(USING_ARMS)
+        {
+            srb_params.Kp_xR = 1000.0; // P gain for x-direction tracking
+            srb_params.Kd_xR = 10.0; // D gain for x-direction tracking
+            srb_params.Kp_yR = 1500.0; // P gain for y-direction tracking
+            srb_params.Kd_yR = 50.0; // D gain for y-direction tracking
+            srb_params.Kp_zR = 3500.0; // P gain for z-direction tracking
+            srb_params.Kd_zR = 1.0; // D gain for z-direction tracking
 
-        srb_params.Kp_phiR = 300.00; // P gain for roll tracking
-        srb_params.Kd_phiR = 2.0; // D gain for roll tracking
-        srb_params.Kp_thetaR = 400.00; // P gain for pitch tracking
-        srb_params.Kd_thetaR = 2.0; // D gain for pitch tracking
-        srb_params.Kp_psiR = 100.00; // P gain for yaw tracking
-        srb_params.Kd_psiR = 1.0; // D gain for yaw tracking
+            srb_params.Kp_phiR = 300.00; // P gain for roll tracking
+            srb_params.Kd_phiR = 2.0; // D gain for roll tracking
+            srb_params.Kp_thetaR = 400.00; // P gain for pitch tracking
+            srb_params.Kd_thetaR = 2.0; // D gain for pitch tracking
+            srb_params.Kp_psiR = 50.00; // P gain for yaw tracking
+            srb_params.Kd_psiR = 2.0; // D gain for yaw tracking // TODO: unstable, increase?
+        }
+        else
+        {
+            srb_params.Kp_xR = 500.0; // P gain for x-direction tracking
+            srb_params.Kd_xR = 10.0; // D gain for x-direction tracking
+            srb_params.Kp_yR = 1500.0; // P gain for y-direction tracking
+            srb_params.Kd_yR = 50.0; // D gain for y-direction tracking
+            srb_params.Kp_zR = 3500.0; // P gain for z-direction tracking
+            srb_params.Kd_zR = 1.0; // D gain for z-direction tracking
+
+            srb_params.Kp_phiR = 300.00; // P gain for roll tracking
+            srb_params.Kd_phiR = 2.0; // D gain for roll tracking
+            srb_params.Kp_thetaR = 400.00; // P gain for pitch tracking
+            srb_params.Kd_thetaR = 2.0; // D gain for pitch tracking
+            srb_params.Kp_psiR = 50.00; // P gain for yaw tracking
+            srb_params.Kd_psiR = 2.0; // D gain for yaw tracking // TODO: unstable, increase?
+        }
+
+        // controller 
+        
+  
+        // srb_params.xDCMH_deadband = 0.10; // deadband for applying gain for human DCM in m
+        // srb_params.KxDCMH = 2.0; // gain for human DCM
+        // srb_params.Kx_DCM_mult = 1.0; // multiplier of K_DCM for sagittal plane control
+        // srb_params.Ky_DCM_mult = 1.0; // multiplier of K_DCM for frontal plane control
+        // srb_params.T_DSP = 0.0750; // assumed duration of DSP in s
+        // srb_params.lmaxR = 0.5; // maximum step length in m
+
+        // // controller 
+        // srb_params.Kp_xR = 200.0; // P gain for x-direction tracking
+        // srb_params.Kd_xR = 2.0; // D gain for x-direction tracking
+        // srb_params.Kp_yR = 600.0; // P gain for y-direction tracking
+        // srb_params.Kd_yR = 2.0; // D gain for y-direction tracking
+        // srb_params.Kp_zR = 2000.0; // P gain for z-direction tracking
+        // srb_params.Kd_zR = 10.0; // D gain for z-direction tracking
+
+        // srb_params.Kp_phiR = 100.00; // P gain for roll tracking
+        // srb_params.Kd_phiR = 2.0; // D gain for roll tracking
+        // srb_params.Kp_thetaR = 400.00; // P gain for pitch tracking
+        // srb_params.Kd_thetaR = 2.0; // D gain for pitch tracking
+        // srb_params.Kp_psiR = 50.00; // P gain for yaw tracking
+        // srb_params.Kd_psiR = 1.0; // D gain for yaw tracking
 
         srb_params.QP_opt_sol_type = 2; // quadprog = 0, quadprog (active-set) = 1, qpOASES = 2 --> DEFAULT
         srb_params.W_wrench = 100.0; // cost function weight for satisfying desired net wrench

@@ -4,6 +4,8 @@
 
 extern uint16_t encoders[10];
 
+extern uint16_t arm_encoders[8];
+
 // extern CheetahMotor* motors[10];
 
 extern int position_initialized[10];
@@ -15,6 +17,8 @@ extern char udp_control_packet[UDP_MAXLINE];
 
 extern pthread_mutex_t mutex_CAN_recv;
 extern pthread_mutex_t mutex_UDP_recv;
+
+extern pthread_mutex_t mutex_ARMS;
 
 extern HW_CTRL_Data hw_control_data;
 
@@ -111,6 +115,9 @@ void* rx_CAN( void * arg ){
 					process_motor_data(Message, tello);
 					motor_comms_counter = 0;
 				}
+				if(id > 29 && id < 38){
+					process_arm_motor_data(Message, tello);
+				}
 				else if(id == 18 || id == 19){
 					process_foot_sensor_data(Message, tello);
 					// cout << "RF: " << tello->_GRFs.right_front << "                  \r";
@@ -141,6 +148,11 @@ void process_motor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot)
 	uint16_t pos = (Message.DATA[1] << 8) + Message.DATA[2];
 	uint16_t vel  = (Message.DATA[3] << 4) + ((Message.DATA[4] & 0xF0) >> 4);
 	uint16_t cur = ((Message.DATA[4] & 0x0F) << 8) + Message.DATA[5];
+
+	// if(id == 2)
+	// {
+	// 	cout << "motor2: " << pos <<",   " << vel << endl;
+	// }
 	
 	
 
@@ -155,6 +167,28 @@ void process_motor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot)
 	encoders[id-1] = pos;
 	robot->motors[id-1]->updateState(pos,vel,cur);
 	robot->motor_timeouts[id-1] = 0;
+
+}
+
+void process_arm_motor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot)
+{
+	// printf("GOT ARM DATA\n");
+	uint8_t id = Message.DATA[0];
+	uint16_t pos = (Message.DATA[1] << 8) + Message.DATA[2];
+	uint16_t vel  = (Message.DATA[3] << 4) + ((Message.DATA[4] & 0xF0) >> 4);
+	uint16_t cur = ((Message.DATA[4] & 0x0F) << 8) + Message.DATA[5];
+
+	// if(id == 2)
+	// {
+	// 	cout << "motor2: " << pos <<",   " << vel << endl;
+	// }
+	
+	
+
+	encoder_positions[id-1] = pos;
+
+	arm_encoders[id-30] = pos;
+	robot->arm_motors[id-30]->updateState(pos,vel,cur);
 
 }
 
@@ -250,16 +284,16 @@ void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* rob
 }
 
 															
-double joint_zeros[10] = {0,5510,11098,2728,4260,0,2590,4786,15047,5487}; //{0,5528,11090,2808,4290-15,0,2603,4367,15047+25,5530-30};
+double joint_zeros[10] = {0,5497,11130,2728,4260,0,2599,4845,15047,5487}; //{0,5528,11090,2808,4290-15,0,2603,4367,15047+25,5530-30};
 double joint_directions[10] =      { 1,-1,1,1,-1,    1,-1,-1,-1,1};
 double joint_measured_zero_offsets[10] = {0,0,-0.15708,0.382,0,0,0,0.15708,-0.382,0};
 void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot){
 
-	joint_zeros[2] = 11098 + l_h + 10;
+	joint_zeros[2] = 11130 + l_h - 40;
 	joint_zeros[3] = 2728 + l_k  + 100;
 	joint_zeros[4] = 4260 + l_a  + 40;
 
-	joint_zeros[7] = 4786 + r_h  + 30;
+	joint_zeros[7] = 4845 + r_h  - 120 + 50;
 	joint_zeros[8] = 15047 + r_k - 50;
 	joint_zeros[9] = 5487 + r_a  - 40;
 	
@@ -274,7 +308,7 @@ void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* r
 
 	robot->setJointEncoderPosition(joint_rad,static_cast<JointName>(id-20));
 	// robot->setJointEncoderVelocity(joint_rad_per_sec,static_cast<JointName>(id-20));
-	// if(id==27)
+	// if(id==26)
 	// {
 	// 	cout << "ID: " << ((int)id) << ",   joint_position-zero: " << joint_position << "             \r";
 	// }
@@ -733,25 +767,26 @@ void* rx_UDP( void * arg ){
 			human_dyn_data_2LISAs.fdyH_L = fdyH_Lval;
 			human_dyn_data_2LISAs.fdzH_L = fdzH_Lval;
 
-			human_dyn_data_2LISAs.xH = 0;
-			human_dyn_data_2LISAs.dxH = 0;
-			human_dyn_data_2LISAs.pxH = 0;
-			human_dyn_data_2LISAs.yH = 0;
-			human_dyn_data_2LISAs.dyH = 0;
-			human_dyn_data_2LISAs.pyH = 0;
-			human_dyn_data_2LISAs.fxH_R = fxH_Rval;
-			human_dyn_data_2LISAs.fyH_R = fyH_Rval;
-			human_dyn_data_2LISAs.fzH_R = fzH_Rval;
-			human_dyn_data_2LISAs.fxH_L = fxH_Lval;
-			human_dyn_data_2LISAs.fyH_L = fyH_Lval;
-			human_dyn_data_2LISAs.fzH_L = fzH_Lval;
-			human_dyn_data_2LISAs.fdxH_R = fdxH_Rval;
-			human_dyn_data_2LISAs.fdyH_R = fdyH_Rval;
-			human_dyn_data_2LISAs.fdzH_R = fdzH_Rval;
-			human_dyn_data_2LISAs.fdxH_L = fdxH_Lval;
-			human_dyn_data_2LISAs.fdyH_L = fdyH_Lval;
-			human_dyn_data_2LISAs.fdzH_L = fdzH_Lval;
+			// human_dyn_data_2LISAs.xH = 0;
+			// human_dyn_data_2LISAs.dxH = 0;
+			// human_dyn_data_2LISAs.pxH = 0;
+			// human_dyn_data_2LISAs.yH = 0;
+			// human_dyn_data_2LISAs.dyH = 0;
+			// human_dyn_data_2LISAs.pyH = 0;
+			// human_dyn_data_2LISAs.fxH_R = fxH_Rval;
+			// human_dyn_data_2LISAs.fyH_R = fyH_Rval;
+			// human_dyn_data_2LISAs.fzH_R = fzH_Rval;
+			// human_dyn_data_2LISAs.fxH_L = fxH_Lval;
+			// human_dyn_data_2LISAs.fyH_L = fyH_Lval;
+			// human_dyn_data_2LISAs.fzH_L = fzH_Lval;
+			// human_dyn_data_2LISAs.fdxH_R = fdxH_Rval;
+			// human_dyn_data_2LISAs.fdyH_R = fdyH_Rval;
+			// human_dyn_data_2LISAs.fdzH_R = fdzH_Rval;
+			// human_dyn_data_2LISAs.fdxH_L = fdxH_Lval;
+			// human_dyn_data_2LISAs.fdyH_L = fdyH_Lval;
+			// human_dyn_data_2LISAs.fdzH_L = fdzH_Lval;
 
+			pthread_mutex_lock(&mutex_ARMS);
 			R_joystick_enc(0) = human_dyn_data.r_shoulder_yaw;
 			R_joystick_enc(1) = human_dyn_data.r_shoulder_roll;
 			R_joystick_enc(2) = human_dyn_data.r_shoulder_pitch;
@@ -761,6 +796,7 @@ void* rx_UDP( void * arg ){
 			L_joystick_enc(1) = human_dyn_data.l_shoulder_roll;
 			L_joystick_enc(2) = human_dyn_data.l_shoulder_yaw;
 			L_joystick_enc(3) = human_dyn_data.l_elbow;
+			pthread_mutex_unlock(&mutex_ARMS);
 
 
 			tello->controller->updateStepZHistoryL(fzH_Lval);
@@ -779,6 +815,7 @@ void* rx_UDP( void * arg ){
 			// if(!(sim_conf.en_playback_mode))
 			// {
 				tello->controller->set_human_dyn_data_without_forces(human_dyn_data_2LISAs);
+				// cout << "yH: " << human_dyn_data.yH << endl;
 			// }
 		}
 		else if (strcmp(inet_ntoa(sender_addr.sin_addr), VIZ_IP_ADDRESS) == 0) {
@@ -923,11 +960,11 @@ void* BNO055_Comms( void * arg ){
 	BNO055* imu = new BNO055(0,40,3);
 	imu->begin(BNO055::OPERATION_MODE_CONFIG);
 	imu->setExtCrystalUse(false);
-	imu->setAxisRemap(BNO055::REMAP_CONFIG_P7);
-	imu->setAxisSign(BNO055::REMAP_SIGN_P7);
+	imu->setAxisRemap(BNO055::REMAP_CONFIG_P6);
+	imu->setAxisSign(BNO055::REMAP_SIGN_P6);
 
 	imu->setAccelConfig(BNO055::BNO055_ACCEL_CONFIG_16G, BNO055::BNO055_ACCEL_CONFIG_1000Hz);
-	imu->setMode(BNO055::OPERATION_MODE_ACCGYRO);
+	imu->setMode(BNO055::OPERATION_MODE_IMUPLUS);
 
 
 	Eigen::Vector3d v(0.05, -0.99, 9.84);
@@ -949,9 +986,12 @@ void* BNO055_Comms( void * arg ){
 	lastTime = chrono::high_resolution_clock::now();
 	while(1){
 		
-		VectorXd xyz = (imu->getVector(BNO055::VECTOR_ACCELEROMETER));
-		xyz = Vector3d(-xyz[1], xyz[0], xyz[2]);
-		xyz = subtractGravity2(tello->_ypr, xyz);
+		VectorXd acc = (imu->getVector(BNO055::VECTOR_ACCELEROMETER));
+		VectorXd grav = (imu->getVector(BNO055::VECTOR_GRAVITY));
+		VectorXd gyro = (imu->getVector(BNO055::VECTOR_GYROSCOPE));
+		acc = acc-grav;
+		// xyz = Vector3d(-xyz[1], xyz[0], xyz[2]);
+		// xyz = subtractGravity2(tello->_ypr, xyz);
 
 		// if(calibrate_IMU_bias){
 		// 	if(cal_index < 1000){
@@ -964,7 +1004,12 @@ void* BNO055_Comms( void * arg ){
 		// 		calibrate_IMU_bias = false;
 		// 	}
 		// }
-		// tello->_acc = xyz;
+		tello->_acc = acc;
+
+		
+
+		// tello->_gyro = gyro;
+		// cout << acc[0] << ", " << acc[1] << ", " << acc[2] << endl;
 		// int delta_T = getDeltaT();
 		// double dt = (double)delta_T/1000000.0;
 		// tello->updatePosFromIMU(tello->_acc, tello->_ypr,dt,tello->_pos, tello->_vel);

@@ -42,6 +42,7 @@
 void* rx_CAN( void * arg );
 
 void process_motor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot);
+void process_arm_motor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot);
 void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot);
 void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot);
 

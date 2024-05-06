@@ -178,6 +178,8 @@ extern double robot_init_foot_width;
 Vector3d CoM_pos = Vector3d::Zero();
 Vector3d CoM_rpy = Vector3d::Zero();
 Vector3d CoM_vel = Vector3d::Zero();
+Vector3d CoM_rpy_vel = Vector3d::Zero();
+Vector3d CoM_acc = Vector3d::Zero();
 VectorXd CoM_quat = VectorXd::Zero(4);
 
 extern long long hmi_comms_counter;
@@ -191,8 +193,8 @@ MatrixXd lfv0(4,3), lfdv0(4,3); // global so planner can access them for now
 // end SRBM-Ctrl Variables here ============================================================
 
 VectorXd arm_joint_pos_desired(8);
-VectorXd R_joystick_enc(4);
-VectorXd L_joystick_enc(4);
+extern VectorXd R_joystick_enc;
+extern VectorXd L_joystick_enc;
 
 // Define variables here so code runs faster:
 
@@ -501,7 +503,7 @@ void TELLO_locomotion_ctrl(ctrlData cd)
             swing_pd_config.setTaskKp(0,0,0);
             swing_pd_config.setTaskKd(0,0,0);
             // swing_pd_config.setJointKa(swing_conf.hip_yaw_Ka,swing_conf.hip_roll_Ka,swing_conf.hip_pitch_Ka,swing_conf.knee_Ka,swing_conf.ankle_Ka);
-            swing_pd_config.setJointKa(leg_inertia*inertia_accel_gain);
+            swing_pd_config.setJointKa(0/*leg_inertia*inertia_accel_gain*/);
             swing_pd_config.setFFAccel(target_front_left_accel,target_back_left_accel,target_front_right_accel,target_back_right_accel);
             swing_pd_config.setJointKp(kp_vec_joint_swing);
             swing_pd_config.setJointKd(kd_vec_joint_swing);
@@ -562,7 +564,7 @@ void TELLO_locomotion_ctrl(ctrlData cd)
         VectorXd tau_LR(10);
         tau_LR << tau.tail(5), tau.head(5);
 
-        tau_LR = tau_LR ;//+ posture_ctrl_torques;
+        tau_LR = tau_LR + posture_ctrl_torques;
 
         // printf("%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
         //     tau_LR(0), tau_LR(1), tau_LR(2),
@@ -879,8 +881,8 @@ void* hmi_hw_monitor( void * arg )
 
 }
 
-VectorXd th_R_Arm(4);
-VectorXd th_L_Arm(4);
+extern VectorXd th_R_Arm;
+extern VectorXd th_L_Arm;
 
 void runArmControl()
 {
@@ -1034,6 +1036,8 @@ void runArmControl()
     arm_pd.joint_vel_desired = VectorXd::Zero(8);
     arm_pd.joint_pos_desired << th_L_Arm(0), th_L_Arm(1), th_L_Arm(2), th_L_Arm(3), -th_R_Arm(0), th_R_Arm(1), th_R_Arm(2), -th_R_Arm(3);
     arm_pd.joint_vel_desired << 0, 0, 0, 0, 0, 0, 0, 0;
+
+    cout << arm_pd.joint_pos_desired.transpose() << endl;
     
     VectorXd arm_kp(8);
     VectorXd arm_kd(8);

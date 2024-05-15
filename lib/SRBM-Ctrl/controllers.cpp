@@ -24,6 +24,10 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion(double& FxR, double& FyR, Ma
                                         SRB_Params srb_params, Human_params human_params, Traj_planner_dyn_data& traj_planner_dyn_data, 
                                         int FSM, double t, VectorXd x, MatrixXd lfv, MatrixXd lfdv, VectorXd tau_ext)
 {
+    // Human-generated walking reference model (HWRM) as static dynamical system
+    // ICRA 2023: https://ieeexplore.ieee.org/abstract/document/10160278 
+    // Bipedal Robot Walking Control Using Human Whole-Body Dynamic Telelocomotion
+
     // Get robot parameters
     double mR = srb_params.m; 
     double hR = srb_params.hLIP; 
@@ -279,6 +283,10 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(double& FxR, double& FyR,
                                         SRB_Params srb_params, Human_params human_params, Traj_planner_dyn_data& traj_planner_dyn_data, 
                                         int FSM, double t, VectorXd x, MatrixXd lfv, MatrixXd lfdv, VectorXd tau_ext)
 {
+    // Human-generated walking reference model (HWRM) as discrete dynamical system
+    // Humanoids 2023: https://ieeexplore.ieee.org/abstract/document/10375168  
+    // Whole-Body Dynamic Telelocomotion: A Step-to-Step Dynamics Approach to Human Walking Reference Generation
+    
     // Get robot parameters
     double mR = srb_params.m; 
     double hR = srb_params.hLIP; 
@@ -636,6 +644,11 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v3(double& FxR, double& FyR,
                                         SRB_Params srb_params, Human_params human_params, Traj_planner_dyn_data& traj_planner_dyn_data, 
                                         int FSM, double t, VectorXd x, MatrixXd lfv, MatrixXd lfdv, VectorXd tau_ext, VectorXd u)
 {
+    // Human-generated walking reference model (HWRM) as discrete dynamical system
+    // Human haptic feedback law based on synchronizing end-of-step DCM
+    // Human modeled as mass-spring-damper system
+    // Unpublished work
+
     // Get robot parameters
     double mR = srb_params.m; 
     double hR = srb_params.hLIP; 
@@ -1038,10 +1051,313 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v3(double& FxR, double& FyR,
 
 }
 
+void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v4(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm, MatrixXd& lfddv_comm, Human_dyn_data& human_dyn_data, 
+                                        SRB_Params srb_params, Human_params human_params, Traj_planner_dyn_data& traj_planner_dyn_data, 
+                                        int FSM, double t, VectorXd x, MatrixXd lfv, MatrixXd lfdv, VectorXd tau_ext)
+{
+    // Human-generated walking reference model (HWRM) as continuous dynamical system
+    // Targeted RAL/ICRA 2024 work
+    // Function written to shadow RAL2024_3DLIP_Sim_v3.c (LabView implementation)
+
+    // Parameters ------------------------------------------------------------------------
+
+    // Constants
+    double g = srb_params.g; // acceleration due to gravity in m/s^2 
+    double dt = srb_params.dt; // simulation time step
+
+    // Human parameters
+    double mH = human_params.m; // human weight in kg 
+    double hH = human_params.hLIP; // human CoM height in m 
+
+    // Robot parameters
+    double mR = srb_params.m; // robot weight in kg 
+    double hR = srb_params.hLIP; // robot CoM height in m  
+    double lmaxR = srb_params.lmaxR;; // maximum step length in m     
+
+    // Telelocomotion control parameters 
+    double Kx_DCM_mult = srb_params.Kx_DCM_mult; // multiplier of k_DCM for sagittal plane control 
+    double Ky_DCM_mult = srb_params.Ky_DCM_mult; // multiplier of k_DCM for frontal plane control
+    double T_DSP = srb_params.T_DSP; // assumed duration of DSP
+    double swing_T_scaler = srb_params.swing_time_scaler; // human swing-time scaler for step time estimation
+    double ks = 1000.0; // human haptic spring stiffness in N/m (hard-code for now)
+
+    // Robot & Human Data ----------------------------------------------------------------
+
+    // time data
+    double time = t; // time in s (global)  
+    double t_DSP = time - traj_planner_dyn_data.t_dsp_start; // time of current DSP in s
+    double t_SSP = time - traj_planner_dyn_data.t_sw_start; // time of current SSP in s
+    
+    // FSM data 
+    int FSM_val = FSM; // FSM value (SSP_L = 1, SSP_R = -1, DSP = 0)
+
+    // human data
+    double xH = human_dyn_data.xH; // human x-CoM position in m
+    double dxH = human_dyn_data.dxH; // human x-CoM velocity in m/s
+    double yH = human_dyn_data.yH; // human y-CoM position in m
+    double dyH = human_dyn_data.dyH; // human y-CoM velocity in m/s
+    double pyH = human_dyn_data.pyH; // human y-CoP position in m
+    double T_SSP = traj_planner_dyn_data.T_step; // human step time estimate in s
+    if (use_adaptive_step_time) T_SSP = traj_planner_dyn_data.T_step_predicted * swing_T_scaler; // adjusted human step time estimate in s
+
+    // ************************************* NEED TO ADD HMI INTERFACE!!!
+    double DSP_ctrl_trigger_val = 1.0; // DSP control mode trigger val (not pressed = -1, pressed = 1)
+    // ************************************* NEED TO ADD HMI INTERFACE!!!
+
+    // human generated robot reference data 
+    double xHR = traj_planner_dyn_data.xHR; // human generated robot reference CoM position in m
+    double dxHR = traj_planner_dyn_data.dxHR; // human generated robot reference CoM velocity in m/s
+    double pxHR = traj_planner_dyn_data.pxHR; // human generated robot reference control CoP position in m
+    double xHR_SSP_plus = traj_planner_dyn_data.xHR_SSP_plus; // human generated robot reference CoM position at the beginning of SSP in m
+    double dxHR_SSP_plus = traj_planner_dyn_data.dxHR_SSP_plus; // human generated robot reference CoM velocity at the beginning of SSP in m/s
+    double xHR_DSP_plus = traj_planner_dyn_data.xHR_DSP_plus; // human generated robot reference CoM position at the beginning of DSP in m
+    double dxHR_DSP_plus = traj_planner_dyn_data.dxHR_DSP_plus; // human generated robot reference CoM velocity at the beginning of DSP in m/s 
+
+    // robot data
+    double xR = x(0); // robot x-CoM position in m
+    double dxR = x(3); // robot x-CoM velocity in m/s
+    double yR = x(1) - traj_planner_dyn_data.y_LIP_offset; // robot y-CoM position in m w/ offset
+    double dyR = x(4); // robot y-CoM velocity in m/s
+    double pxR_beg_step = traj_planner_dyn_data.st_beg_step[0]; // initial robot stance-foot x-position at the beginning of step in m 
+
+    // external force data (tau_ext is zero for now, currently we cannot estimate external forces in hardware)
+    double FxR_ext = 0.0; // external x-CoM force in N
+    double FyR_ext = 0.0; // external y-CoM force in N
+
+    // Calculations ----------------------------------------------------------------------
+
+    // natural frequencies 
+    double wR = std::sqrt(g / hR); // human LIP natural frequency in s^-1
+    double wH = std::sqrt(g / hH); // robot LIP natural frequency in s^-1  
+
+    // LIP parameter vectors for human and robot (mass, LIP height, natural frequency)
+    Vector3d RLIP_params << mR, hR, wR; 
+    Vector3d HLIP_params << mH, hH, wH;   
+
+    // DCM feedback gains
+    double k_DCM = mR * hR * (wR * wR); // theoretical feedback gain for normalized DCM tracking in N
+    double kx_DCM = Kx_DCM_mult * k_DCM; // feedback gain for sagittal plane normalized DCM tracking in N
+    double ky_DCM = Ky_DCM_mult * k_DCM; // feedback gain for frontal plane normalized DCM tracking in N
+
+    // LIPM variables (CoM relative to the CoP)
+    double xHR_LIP = xHR - pxHR; // HRLIP sagittal plane in m
+    double yH_LIP = yH - pyH; // HLIP frontal plane in m
+
+    // LIPM forces
+    double FxHR = mR * (wR * wR) * xHR_LIP; // HRLIP sagittal plane GRF in N
+    double FyH = mH * (wH * wH) * yH_LIP; // HLIP frontal plane GRF in N 
+
+    // human haptic spring force
+    double FxH_spring = -1.0 * ks * xH; // HLIP haptic spring force in N
+
+    // convergent (CCM) & divergent (DCM) component of motion variables
+    double xCCMHR = xHR - (dxHR / wR); // HRLIP sagittal plane CCM in m
+    double xDCMHR = xHR + (dxHR / wR); // HRLIP sagittal plane DCM in m
+    double xDCMHR_SSP_plus = xHR_SSP_plus + (dxHR_SSP_plus / wR); // HRLIP sagittal plane DCM at the beginning of SSP in m
+    double xDCMHR_DSP_plus = xHR_DSP_plus + (dxHR_DSP_plus / wR); // HRLIP sagittal plane DCM at the beginning of DSP in m      
+    double xDCMR = xR + (dxR / wR); // RLIP sagittal plane DCM in m
+    double xDCMR_local = xDCMR - pxR_beg_step; // RLIP sagittal plane DCM relative to stance foot in m      
+    double yDCMH = yH + (dyH / wH); // HLIP frontal plane DCM in m
+    double yDCMR = yR + (dyR / wR); // RLIP frontal plane DCM in m          
+ 
+    // Local Variables --------------------------------------------------------------------
+    
+    // human step time info
+    double Ts; // human step time estimate (final) in s
+    double s; // normalized SSP time variable (0-1)
+
+    // HRLIP simulation variables (sagittal plane only)
+    // Note: HRLIP dynamics evolve relative to the stance foot
+    double pxHR_comm; // commanded human generated robot reference control CoP/CMP position in m
+    double xHR_next; // human generated robot reference CoM position update in m
+    double dxHR_next; // human generated robot reference CoM velocity update in m/s  
+
+    // control variables (DSP mode)
+    int DSP_ctrl_mode; // DSP control mode (1 -> Walking, 2 -> Balancing) 
+
+    // Control variables (sagittal plane balance ctrl)
+    double HLIP2DCMdelta; // mapping from human LIP variable to DCM delta in m
+    double DCMdelta_comm; // DCM delta command in m
+    double xDCMHR_passive_SSP = 0.0; // passive HRLIP DCM in m
+    double DCM_delta_SSP = 0.0; // DCM delta between HRLIP and passive HRLIP in m
+    double xDCMHR_des_DSP = 0.0; // desired HRLIP DCM during DSP in m
+    double FxHR_des_DSP = 0.0; // desired HRLIP CoM force to track xDCMHR_des_DSP in N
+    VectorXd xHRLIP_dyn(2); // HRLIP sagittal plane state vector 
+    VectorXd xRLIP_dyn(2); // RLIP sagittal plane state vector 
+    double FxR_ext_est = FxR_ext; // robot sagittal plane estimated external force in N
+    double FxR; // total robot sagittal plane force in N
+    double FxH_HMI; // human sagittal plane haptic force feedback in N
+
+    // Control variables (frontal plane balance ctrl)
+    VectorXd yHLIP_dyn(2); // HLIP frontal plane state vector 
+    VectorXd yRLIP_dyn(2); // RLIP frontal plane state vector 
+    double FyR_ext_est = FyR_ext; // robot frontal plane estimated external force in N
+    double FyR; // total robot frontal plane force in N
+    double FyH_HMI; // human frontal plane haptic force feedback in N
+
+    // Control variables (step placement ctrl) -- SSP only
+    double s1 = 0.0; // orbital line slope (sigma1) in s^-1
+    double eps = 0.0; // DCM offset gain on robot velocity in s
+    double xDCMR_offset_b = 0.0; // DCM offset in m
+    double step_length = 0.0; // robot step length selected by step-placement control law in m
+    double step_magnitude = 0.0; // step magnitude in m
+    double step_direction = 1.0;  // step direction (unitless)
+    double swxf = 0.0; // desired swing-foot location at the end-of-step in m    
+
+    // Human Step Time --------------------------------------------------------------------
+
+    // Based on curve-fitting & simple phase variable sanity check  
+
+    // human step time estimate (from curve fitting)
+    Ts = T_SSP; 
+
+    // calculate phase variable (0-1)
+    s = t_SSP / Ts; 
+
+    // update human step time estimate (if curve fitting is working we should not execute this at all)
+    if (s >= 1.0) { // step is taking longer than assumed
+        Ts = t_SSP + dt; // update step time
+        s = 1.0; // approximate phase variable to be 1 at all times
+    }     
+
+    // Balance Control (sagittal plane) ---------------------------------------------------
+
+    // Kinodynamic re-targeting using human LIP local variable to regulate HRLIP DCM delta
+    // Simulates dynamics of moving reference model (HRLIP) with a control CoP/CMP input
+    // SSP: Delta DCM at impact during SSP (walking)
+    // DSP Mode 1: Walking -> keep constant robot velocity during DSP
+    // DSP Mode 2: Balance -> track DCM reference relative to beginning of DSP DCM
+    // Robot controller tracks LIP reference  
+
+    // HRLIP trajectory generation 
+
+    // set DSP control mode
+    if (DSP_ctrl_trigger_val < 0.0) { // trigger not pressed (default)
+        DSP_ctrl_mode = 1; // walking mode
+    } else { // trigger pressed
+        DSP_ctrl_mode = 2; // balancing mode
+    }
+
+    // human kinodynamic mapping variable
+    HLIP2DCMdelta = xH * (hR / hH);
+
+    // compute HRLIP control CMP
+    if (abs(FSM_val) == 1) { // SSP
+
+        // SSP ankle + hip strategy
+        DCMdelta_comm = HLIP2DCMdelta; // delta DCM at impact command input from human kinodynamic mapping
+        xDCMHR_passive_SSP = xDCMHR_SSP_plus * exp(wR * t_SSP); // passive DCM at current time
+        DCM_delta_SSP = xDCMHR - xDCMHR_passive_SSP; // DCM delta between actuated and passive trajectories at current time
+        pxHR_comm = (DCM_delta_SSP - (DCMdelta_comm * exp(-1.0 * wR * (Ts - t_SSP)))) / (1.0 - exp(-1.0 * wR * (Ts - t_SSP))); // control CoP/CMP
+
+    } else { // DSP
+
+        // DSP ankle + hip strategy
+        if (DSP_ctrl_mode == 1) { // walking mode
+            DCMdelta_comm = dxHR_DSP_plus * t_DSP; // maintain constant velocity through DSP (Hybrid-LIP approach)    
+        } else { // balancing mode (DSP_ctrl_mode == 2)
+            DCMdelta_comm = HLIP2DCMdelta; // track human DCM position command
+        }
+
+        // track desired DCM delta
+        xDCMHR_des_DSP = DCMdelta_comm + xDCMHR_DSP_plus; // desired DCM
+        FxHR_des_DSP = (k_DCM / hR) * (xDCMHR_des_DSP - xDCMHR); // convert desired DCM to CoM force
+        pxHR_comm = xHR - (FxHR_des_DSP / (mR * (wR * wR))); // convert desired CoM force to control CoP/CMP
+
+    }
+
+    // simulate forward HRLIP dynamics (closed-loop solution)
+    xHR_next = (1.0 / 2.0) * (((xDCMHR - pxHR_comm) * exp(wR * dt)) + ((xCCMHR - pxHR_comm) * exp(-1.0 * wR * dt))) + pxHR_comm; // update CoM pos
+    dxHR_next = (1.0 / 2.0) * wR * (((xDCMHR - pxHR_comm) * exp(wR * dt)) - ((xCCMHR - pxHR_comm) * exp(-1.0 * wR * dt))); // update CoM vel    
+
+    // robot controller (enforce dynamic similarity between HRLIP & RLIP)
+    xRLIP_dyn << xDCMR_local, dxR;
+    xHRLIP_dyn << xHR, dxHR;
+    bilateral_teleop_law(RLIP_params, RLIP_params, xRLIP_dyn, xHRLIP_dyn, FxHR, FxR_ext_est, kx_DCM, FxR, FxH_HMI);
+
+    // scale haptic force by human weight
+    FxH_HMI = (mH / mR) * FxH_HMI;
+    
+    // update data 
+    human_dyn_data.FxH_spring = FxH_spring; FxH_spring_out = FxH_spring;       
+    human_dyn_data.FxH_hmi = FxH_HMI; FxH_hmi_out = FxH_HMI;    
+    traj_planner_dyn_data.xHR = xHR_next;
+    traj_planner_dyn_data.dxHR = dxHR_next;
+    traj_planner_dyn_data.pxHR = pxHR_comm;
+
+    // Balance Control (frontal plane) ----------------------------------------------------     
+
+    // Kinodynamic re-targeting enforcing dynamic similarity between the human and robot LIPMs
+    // Robot controller tracks LIP reference
+    // Includes haptic force feedback to the human to enforce dynamic similarity 
+
+    // robot controller (enforce dynamic similarity between HLIP & RLIP)
+    yRLIP_dyn << yDCMR, dyR;
+    yHLIP_dyn << yDCMH, dyH;
+    bilateral_teleop_law(RLIP_params, HLIP_params, yRLIP_dyn, yHLIP_dyn, FyH, FyR_ext_est, ky_DCM, FyR, FyH_HMI);
+    
+    // update data 
+    human_dyn_data.FyH_hmi = FyH_HMI; FyH_hmi_out = FyH_HMI;    
+
+    // Swing-leg Control ------------------------------------------------------------------ 
+
+    // Update robot swing-leg commands based on human motion data & step placement strategy
+    // Sagittal plane step-placement strategy is based on simple linear control framework 
+    // Goal is to preserve the LIPM orbital energy at impact                         
+
+    // initialize commanded end-effector positions (DSP)
+    lfv_comm = lfv_dsp_start; lfv_comm.col(2).setConstant(-srb_params.hLIP);
+    lfdv_comm.setZero();
+    lfddv_comm.setZero();
+
+    // x-position step-placement & swing-leg control function call
+    if (abs(FSM_val) == 1) { // SSP
+
+        // orbital line slope
+        s1 = wR * (1.0 / (tanh(wR * (Ts / 2.0))));
+
+        // DCM offset gain epsilon w/ FF for DSP
+        eps = (1.0 / wR) - (1.0 / s1) - T_DSP;
+
+        // DCM offset to drive robot to P1 orbit at given state
+        xDCMR_offset_b = eps * dxR;
+
+        // robot step placement strategy: conserve orbital energy & reach steady state periodic walking
+        step_length = xDCMR_local - xDCMR_offset_b;
+
+        // calculate step magnitude
+        step_magnitude = abs(step_length);
+
+        // step direction
+        if (step_length > 0.0) { // walking forward
+            step_direction = 1.0; // set to 1
+        } else { // walking backwards
+            step_direction = -1.0; // set to -1
+        }
+
+        // desired swing-leg x-position at the end of the step
+        if (step_magnitude > lmaxR) { // exceeded maximum step length
+            swxf = pxR_beg_step + step_direction * lmaxR; // set desired swing-foot position to maximum
+        } else { // within allowable step length
+            swxf = pxR_beg_step + step_length; // set desired swing-foot position to desired
+        }    
+
+        // main telelocomotion swing-leg control function call
+        sw_teleop_step_strategy(lfv_comm, lfdv_comm, lfddv_comm, srb_params, human_params, traj_planner_dyn_data, human_dyn_data, FSM, s, swxf, lfv, lfdv, x);
+
+    } 
+
+}
+
 bool first_step_ylip = true;
 void dash_ctrl::bilateral_teleop_law(VectorXd LIPR_params, VectorXd LIPH_params, VectorXd LIPR_dyn, VectorXd LIPH_dyn, 
                             double FH, double FR_ext_est, double FB_gain, double& FR, double& FH_hmi)
 {
+    // Dynamic similarity based kinodynamic re-targeting of human motion (LIPM)
+    // Major take-away from Prof Ramos PhD for human-robot stepping synchronization
+    // TRO 2017: https://ieeexplore.ieee.org/abstract/document/8375643 
+    // Humanoid Dynamic Synchronization Through Whole-Body Bilateral Feedback Teleoperation
+
     // Robot LIP Parameters
     double mR = LIPR_params(0);
     double hR = LIPR_params(1);
@@ -1066,19 +1382,25 @@ void dash_ctrl::bilateral_teleop_law(VectorXd LIPR_params, VectorXd LIPH_params,
     // feedback force (track normalized human DCM)
     double FR_fb = FB_gain*((DCMH/hH) - (DCMR/hR));
 
-    // cout << "(DCMH/hH): " << (DCMH/hH) << "         (DCMR/hR):" << (DCMR/hR) << "         (Diff):" << (DCMH/hH) - (DCMR/hR) << "            \r";
-
     // robot force
     FR = FR_ff + FR_fb;
 
     // haptic feedback force to human
     FH_hmi = (mH*hH*wH*wH)*((dR/(hR*wR)) - (dH/(hH*wH))) + ((mH*hH*wH*wH)/(mR*hR*wR*wR))*FR_ext_est;
+
 }
+
 double yLIP_offset = 0;
 void dash_ctrl::LIP_ang_mom_strat(double& FxR, double& FyR, MatrixXd& lfv_comm, MatrixXd& lfdv_comm, MatrixXd& lfddv_comm,
                                         SRB_Params srb_params, Traj_planner_dyn_data traj_planner_dyn_data, 
                                         int FSM, double t, VectorXd x, MatrixXd lfv, MatrixXd lfdv)
 {
+    // Regulation of angular momentum around contact point (ALIP) controller
+    // From Umich Biped Robotics Laboratory
+    // ICRA 2021: https://ieeexplore.ieee.org/document/9560821
+    // One-Step Ahead Prediction of Angular Momentum about the Contact Point for Control of 
+    // Bipedal Locomotion: Validation in a LIP-inspired Controller
+
     // Get robot parameters
     double m = srb_params.m;
     double H = srb_params.hLIP;

@@ -353,7 +353,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     // cout << "grf_rf: " << grf_rf << " \t grf_rb: " << grf_rb << "\t grf_lf: " << grf_lf << "\t grf_lb: " << grf_lb << endl;
     if (FSM_prev == 0) // currently in DSP
     {
-        if ( ((grf_rf + grf_rb) < 40 ) && t > 0.1 && t_dsp > 0.05 && (next_SSP==1) && ( (zHr > 0.006) || auto_mode) ) // enter SSP_L
+        if ( ((grf_rf + grf_rb) < 20 ) && t > 0.1 && t_dsp > 0.05 && (next_SSP==1) && ( (zHr > 0.006) || auto_mode) ) // enter SSP_L
         {
             cout << "Setting FSM from 0 to 1,   time: " << t << endl;
             FSM_next = 1;
@@ -372,7 +372,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == 1) // currently in SSP_L
     {
-        if ( ( ((grf_rf + grf_rb) > 10 ) || (lf1z <= 0.005 || lf2z <= 0.005) ) && s > 0.8) // enter DSP
+        if ( ( ((grf_rf + grf_rb) > 10 ) && (lf1z <= 0.005 || lf2z <= 0.005) ) && s > 0.6) // enter DSP
         {
             cout << "Setting FSM from 1 to 0,   time: " << t << endl;
             FSM_next = 0;
@@ -384,7 +384,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == -1) // currently in SSP_R
     {
-        if ( ( ((grf_lf + grf_lb) > 10 ) || (lf3z <= 0.005 || lf4z <= 0.005) ) && s > 0.8) // enter DSP
+        if ( ( ((grf_lf + grf_lb) > 10 ) && (lf3z <= 0.005 || lf4z <= 0.005) ) && s > 0.6) // enter DSP
         {
             cout << "Setting FSM from -1 to 0,   time: " << t << endl;
             FSM_next = 0;
@@ -444,6 +444,13 @@ void dash_planner::SRB_Init_Traj_Planner_Data(Traj_planner_dyn_data& traj_planne
     traj_planner_dyn_data.dx_HWRM = 0.0; // initial CoM velocity of HWRM-LIP
     traj_planner_dyn_data.x_plus_HWRM = VectorXd::Zero(2); // initial HWRM-LIP state vector pre-phase (SSP or DSP)
     traj_planner_dyn_data.uk_HWRM = 0.0; // initial HWRM-LIP step placement
+    traj_planner_dyn_data.xHR = 0.0; // initial CoM position of HRLIP
+    traj_planner_dyn_data.dxHR = 0.0; // initial CoM velocity of HRLIP
+    traj_planner_dyn_data.pxHR = 0.0; // initial control CoP/CMP of HRLIP
+    traj_planner_dyn_data.xHR_SSP_plus = 0.0; // initial CoM position of HRLIP at the beginning of SSP
+    traj_planner_dyn_data.dxHR_SSP_plus = 0.0; // initial CoM velocity of HRLIP at the beginning of SSP
+    traj_planner_dyn_data.xHR_DSP_plus = 0.0; // initial CoM position of HRLIP at the beginning of DSP
+    traj_planner_dyn_data.dxHR_DSP_plus = 0.0; // initial CoM velocity of HRLIP at the beginning of DSP   
     ::lfv0 = lfv0;
     ::lfdv0.setZero();
 
@@ -453,6 +460,7 @@ void dash_planner::SRB_Init_Traj_Planner_Data(Traj_planner_dyn_data& traj_planne
 void dash_planner::SRB_Traj_Planner(
     SRB_Params srb_params,
     Human_dyn_data &human_dyn_data,
+    HMI_extended_data hmi_extended_data, 
     Traj_planner_dyn_data &traj_planner_dyn_data,
     Human_params human_params,
     int &FSM,
@@ -529,10 +537,10 @@ void dash_planner::SRB_Traj_Planner(
             dash_ctrl::LIP_ang_mom_strat(FxR, FyR, lfv_comm, lfdv_comm, lfddv_comm, srb_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv);
         } else if (planner_type == 2) { // Human Whole-Body Dynamic Telelocomotion
             // Human pilot is the planner
-            // if( en_v2_ctrl )
+            if( en_v2_ctrl )
                 dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v2(FxR, FyR, lfv_comm, lfdv_comm, lfddv_comm, human_dyn_data, srb_params, human_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv, tau_ext);  
-            // else
-            //     dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v3(FxR, FyR, lfv_comm, lfdv_comm, lfddv_comm, human_dyn_data, srb_params, human_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv, tau_ext, u);
+            else
+                dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v4(FxR, FyR, lfv_comm, lfdv_comm, lfddv_comm, human_dyn_data, hmi_extended_data, srb_params, human_params, traj_planner_dyn_data, FSM, t, x, lfv, lfdv, tau_ext);
         }
         
         // SRB state reference (regulate all around SRB states around zero)
@@ -565,6 +573,7 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
     double t_end_stepping = srb_params.t_end_stepping;
     double ft_l = srb_params.foot_length;
     double hH = human_params.hLIP;
+    double hR = srb_params.hLIP;
     double g = srb_params.g;
 
     // Get trajectory planner current data
@@ -575,6 +584,10 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
     double x_HWRM = traj_planner_dyn_data.x_HWRM;
     double dx_HWRM = traj_planner_dyn_data.dx_HWRM;
     double uk_HWRM = traj_planner_dyn_data.uk_HWRM;
+    double xHR = traj_planner_dyn_data.xHR;
+    double dxHR = traj_planner_dyn_data.dxHR;
+    double t_SSP = t - t_sw_start;
+
     // cout << "    Planner uk_HWRM: " << uk_HWRM;
 
     // Get SRB states
@@ -594,8 +607,9 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
     if(fzH_R < fzH0_min_R && fzH_R != 0) fzH0_min_R = fzH_R;
     if(fzH_L < fzH0_min_L && fzH_L != 0) fzH0_min_L = fzH_L;
 
-    // compute human LIP natural frequency
+    // compute human & robot LIP natural frequency
     double wH = sqrt(g/hH);
+    double wR = sqrt(g/hR);
 
     // Comment out stepping if planner_type = none
     if (planner_type == 0) {
@@ -691,6 +705,14 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
                 traj_planner_dyn_data.sigma1H = wH*(1.0/(tanh((T_step/2.0)*wH)));
                 traj_planner_dyn_data.x_plus_HWRM = x_plus_HWRM;
 
+                // update beginning of SSP variables w/ hybrid reset (x_plus = -dx/sigma1, dx_plus = dx)
+                traj_planner_dyn_data.xHR_SSP_plus = (-1.0 * dxHR) / (wR * (1.0 / (tanh(wR * (t_SSP / 2.0)))));
+                traj_planner_dyn_data.dxHR_SSP_plus = dxHR;
+
+                // re-initialize HRLIP state variables after hybrid reset
+                traj_planner_dyn_data.xHR = traj_planner_dyn_data.xHR_SSP_plus;
+                traj_planner_dyn_data.dxHR = traj_planner_dyn_data.dxHR_SSP_plus;
+
             }
 
         } else if ((FSM_prev == 1 || FSM_prev == -1) && FSM == 0) { // SSP to DSP transition
@@ -716,6 +738,9 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
             if (planner_type == 2) {
                 // traj_planner_dyn_data.T_step = T_step_final;
                 traj_planner_dyn_data.x_plus_HWRM = x_plus_HWRM;
+                // update HRLIP beginning of DSP variables   
+                traj_planner_dyn_data.xHR_DSP_plus = xHR;
+                traj_planner_dyn_data.dxHR_DSP_plus = dxHR;
             }
 
             // terminate walking/stepping
@@ -847,6 +872,6 @@ void dash_planner::SRB_LIP_vel_traj(double des_walking_speed, VectorXd& t_traj, 
 
     // time to command end stepping
     int end = t_waypts.size() - 1;
-    t_end_stepping_time = 5.0;//t_waypts[end-1] + (t_waypts[end] - t_waypts[end-1])/2.0;
+    t_end_stepping_time = 3.0;//t_waypts[end-1] + (t_waypts[end] - t_waypts[end-1])/2.0;
 
 }

@@ -12,7 +12,8 @@
 #define LEG_DOF 5 // leg number of degrees of freedom
 
 
-#define CoM_X_Offset 0.010
+#define CoM_X_Offset -0.010
+#define COM_Y_Offset 0.005
 
 using namespace Eigen;
 

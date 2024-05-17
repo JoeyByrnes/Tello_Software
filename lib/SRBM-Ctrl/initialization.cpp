@@ -5,7 +5,7 @@ extern int simulation_mode;
 
 #define M_PI 3.14159265358979323846
 
-#define USING_ARMS 0
+#define USING_ARMS 1
 
 void dash_init::Human_Init(Human_params &Human_params, Human_dyn_data &Human_dyn_data) {
     // Human Parameters
@@ -473,7 +473,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         // planner_type = Human_Dyn_Telelocomotion 
         srb_params.xDCMH_deadband = 0.10; // deadband for applying gain for human DCM in m
         srb_params.KxDCMH = 2.0; // gain for human DCM
-        srb_params.Kx_DCM_mult = 1.0; // multiplier of K_DCM for sagittal plane control
+        srb_params.Kx_DCM_mult = 1.5; // multiplier of K_DCM for sagittal plane control
         srb_params.Ky_DCM_mult = 1.0; // multiplier of K_DCM for frontal plane control
         srb_params.T_DSP = 0.0750; // assumed duration of DSP in s
         srb_params.lmaxR = 0.5; // maximum step length in m
@@ -497,18 +497,18 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         else
         {
             srb_params.Kp_xR = 500.0; // P gain for x-direction tracking
-            srb_params.Kd_xR = 10.0; // D gain for x-direction tracking
+            srb_params.Kd_xR = 5.0; // D gain for x-direction tracking
             srb_params.Kp_yR = 1500.0; // P gain for y-direction tracking
             srb_params.Kd_yR = 50.0; // D gain for y-direction tracking
             srb_params.Kp_zR = 3500.0; // P gain for z-direction tracking
             srb_params.Kd_zR = 1.0; // D gain for z-direction tracking
 
-            srb_params.Kp_phiR = 300.00; // P gain for roll tracking
-            srb_params.Kd_phiR = 2.0; // D gain for roll tracking
-            srb_params.Kp_thetaR = 400.00; // P gain for pitch tracking
-            srb_params.Kd_thetaR = 2.0; // D gain for pitch tracking
+            srb_params.Kp_phiR = 500.00; // P gain for roll tracking
+            srb_params.Kd_phiR = 5.0; // D gain for roll tracking
+            srb_params.Kp_thetaR = 600.00; // P gain for pitch tracking
+            srb_params.Kd_thetaR = 5.0; // D gain for pitch tracking
             srb_params.Kp_psiR = 50.00; // P gain for yaw tracking
-            srb_params.Kd_psiR = 2.0; // D gain for yaw tracking // TODO: unstable, increase?
+            srb_params.Kd_psiR = 5.0; // D gain for yaw tracking // TODO: unstable, increase?
         }
 
         // controller 

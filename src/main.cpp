@@ -945,7 +945,7 @@ void balance_pd(MatrixXd lfv_hip)
 	VectorXd kp_vec_joint_posture(10);
 	VectorXd kd_vec_joint_posture(10);
 	kp_vec_joint_posture << 200, 300, 100,100,100, 200, 300, 100,100,100;
-	kp_vec_joint_posture << 200, 300, 0,0,0, 200, 300, 0,0,0;
+	kp_vec_joint_posture << 200, 300, 100,100,100, 200, 300, 100,100,100;
 	kd_vec_joint_posture <<  0, 0, 0,0,0,  0, 0, 0,0,0;
 	posture_pd_config.setJointKp(kp_vec_joint_posture);
 	posture_pd_config.setJointKd(kd_vec_joint_posture);
@@ -1106,6 +1106,8 @@ void run_balance_controller()
 	// overwrite IMU
 	// tello->_acc = CoM_acc;
 	tello->_gyro = CoM_rpy_rates;
+
+	// cout << tello->_acc.transpose() << endl;
 
 	EA_curr(0) = CoM_rpy(0);
 
@@ -1472,7 +1474,7 @@ void process_hw_control_packet()
 			micros2 = std::chrono::time_point_cast<std::chrono::microseconds>(now2);  // Round down to nearest microsecond
 			since_epoch2 = micros2.time_since_epoch();  // Get duration since epoch
 			t_program_start = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch2).count() / 1000000.0;  // Convert to double with resolution of microseconds
-			start_controller_time = true;
+			start_controller_time = false;
 		}
 	}
 	if(hw_control_data.enable_teleop && (last_enable_teleop == 0))
@@ -1486,7 +1488,7 @@ void process_hw_control_packet()
 			micros2 = std::chrono::time_point_cast<std::chrono::microseconds>(now2);  // Round down to nearest microsecond
 			since_epoch2 = micros2.time_since_epoch();  // Get duration since epoch
 			t_program_start = std::chrono::duration_cast<std::chrono::microseconds>(since_epoch2).count() / 1000000.0;  // Convert to double with resolution of microseconds
-			start_controller_time = true;
+			start_controller_time = false;
 			if(!auto_mode)
 				tello->controller->enable_human_ctrl();
 			ang = 0;
@@ -2421,7 +2423,7 @@ int main(int argc, char *argv[]) {
 	tello->addPeriodicTask(&hw_monitor, SCHED_FIFO, 99, UPX_ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"hw_monitor_task",TASK_CONSTANT_PERIOD, 5000);
 
 	// tello->addPeriodicTask(&Human_Playback_Hardware, SCHED_FIFO, 90, UPX_ISOLATED_CORE_4_THREAD_1, (void*)(NULL),"human_playback_HW_task",TASK_CONSTANT_PERIOD, 1000);
-	tello->addPeriodicTask(&curve_fitting, SCHED_FIFO, 99, UPX_ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"curve_fitting",TASK_CONSTANT_PERIOD, 1000);
+	// tello->addPeriodicTask(&curve_fitting, SCHED_FIFO, 99, UPX_ISOLATED_CORE_4_THREAD_2, (void*)(NULL),"curve_fitting",TASK_CONSTANT_PERIOD, 1000);
 
 	usleep(4000);
 	

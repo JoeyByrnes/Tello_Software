@@ -154,6 +154,8 @@ struct Human_dyn_data_4LISAs {
     float l_shoulder_yaw;
     float l_elbow;
 
+    float DSP_ctrl_trigger_val;
+
     float fx;
     float fy;
     float my;
@@ -163,6 +165,12 @@ struct Human_dyn_data_4LISAs {
     float fy_lim;
     float my_lim;
     float mz_lim;
+
+}__attribute__((packed, aligned(1)));
+
+struct HMI_extended_data {
+
+    float DSP_ctrl_trigger_val;
 
 }__attribute__((packed, aligned(1)));
 
@@ -227,6 +235,13 @@ struct Traj_planner_dyn_data
     double AH_step_actual=0.03;
     double dx_HWRM_pre_impact;
     double dxR_pre_impact;
+    double xHR;
+    double dxHR;
+    double pxHR;
+    double xHR_SSP_plus;
+    double dxHR_SSP_plus;
+    double xHR_DSP_plus;
+    double dxHR_DSP_plus;
 };
 
 struct Teleop_Ref {

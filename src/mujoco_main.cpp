@@ -1037,7 +1037,7 @@ void runArmControl()
     arm_pd.joint_pos_desired << th_L_Arm(0), th_L_Arm(1), th_L_Arm(2), th_L_Arm(3), -th_R_Arm(0), th_R_Arm(1), th_R_Arm(2), -th_R_Arm(3);
     arm_pd.joint_vel_desired << 0, 0, 0, 0, 0, 0, 0, 0;
 
-    cout << arm_pd.joint_pos_desired.transpose() << endl;
+    // cout << arm_pd.joint_pos_desired.transpose() << endl;
     
     VectorXd arm_kp(8);
     VectorXd arm_kd(8);
@@ -1109,8 +1109,9 @@ void* mujoco_Update_1KHz( void * arg )
     if(simulation_mode == 1)
     {
         // m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-6-16-23.xml", NULL, error, 1000);
-        m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-with-arms.xml", NULL, error, 1000);
-        // m_shared = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-color.xml", NULL, error, 1000);
+        // m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-with-arms.xml", NULL, error, 1000);
+        m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-with-arms-fake.xml", NULL, error, 1000);
+        // m = mj_loadXML("../../../lib/Mujoco/model/tello/tello-massive-color.xml", NULL, error, 1000);
     }
     else if(simulation_mode == 3)
     {
@@ -2056,6 +2057,7 @@ void* mujoco_Update_1KHz( void * arg )
 			hdd.FyH_hmi = 0;
 			hdd.FxH_spring = 0;
 		}
+        // cout << "Spring: " << hdd.FxH_spring << "    , X: " << hdd.FxH_hmi << "    , Y: " << hdd.FyH_hmi << endl;
 
 		dash_utils::pack_data_to_hmi_with_ctrls((uint8_t*)hmi_tx_buffer,hdd,sim_conf.en_force_feedback,zero_human,master_gain,zero_arms);
 		int n = sendto(sockfd_tx, hmi_tx_buffer, 48,MSG_CONFIRM, 

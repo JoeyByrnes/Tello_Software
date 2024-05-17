@@ -142,7 +142,7 @@ VectorXd SRBMController::update(VectorXd srb_state, MatrixXd joint_pos, MatrixXd
 	dash_kin::SRB_Kin(q, qd, Jv_mat, srb_params, x, lfv, lfdv);
 
 	// SRB trajectory planner
-	dash_planner::SRB_Traj_Planner(srb_params, human_dyn_data, traj_planner_dyn_data,
+	dash_planner::SRB_Traj_Planner(srb_params, human_dyn_data, hmi_extended_data, traj_planner_dyn_data,
 								   human_params, FSM, FSM_prev, t, x, lfv, lfdv, u, 
 								   tau_ext, SRB_state_ref, SRB_wrench_ref, lfv_comm, lfdv_comm, lfddv_comm);
     // SRB controller
@@ -213,7 +213,7 @@ VectorXd SRBMController::update_euler_integration(VectorXd srb_state, MatrixXd q
 	dash_kin::SRB_Kin(q, qd, Jv_mat, srb_params, x, lfv, lfdv);
     
 	// SRB trajectory planner
-	dash_planner::SRB_Traj_Planner(srb_params, human_dyn_data, traj_planner_dyn_data,
+	dash_planner::SRB_Traj_Planner(srb_params, human_dyn_data, hmi_extended_data, traj_planner_dyn_data,
 								   human_params, FSM, FSM_prev, t, x, lfv, lfdv, u, 
 								   tau_ext, SRB_state_ref, SRB_wrench_ref, lfv_comm, lfdv_comm, lfddv_comm);
     // SRB controller

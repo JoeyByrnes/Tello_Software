@@ -48,6 +48,9 @@ class SRBMController {
     void set_human_dyn_data_without_forces(const Human_dyn_data& data);
     void set_hmi_forces(const Human_dyn_data& data);
 
+    HMI_extended_data get_hmi_extended_data() const { return hmi_extended_data; }
+    void set_hmi_extended_data(const HMI_extended_data& data) { hmi_extended_data = data; }
+
     // Getter and setter functions for Traj_planner_dyn_data
     Traj_planner_dyn_data get_traj_planner_dyn_data() const { return traj_planner_dyn_data; }
     void set_traj_planner_dyn_data(const Traj_planner_dyn_data& data) { traj_planner_dyn_data = data; }
@@ -265,6 +268,7 @@ class SRBMController {
     SRB_Params srb_params;
     Human_params human_params;
     Human_dyn_data human_dyn_data;
+    HMI_extended_data hmi_extended_data;
     Traj_planner_dyn_data traj_planner_dyn_data;
     double t = 0;
     int FSM = 0;

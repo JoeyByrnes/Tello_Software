@@ -38,6 +38,22 @@
     <mesh name="left_thigh" file="thigh.STL"/>
     <mesh name="left_shin" file="shin.STL"/>
     <mesh name="left_foot" file="body_left_foot.STL"/>
+
+	<!-- ARM MESHES -->
+	<mesh name="arm_pitch_motors" file="torso_arms.STL"/>
+	<mesh name="arm_left_roll_motor" file="left_shoulder_link.STL"/>
+	<mesh name="arm_right_roll_motor" file="right_shoulder_link.STL"/>
+	<mesh name="arm_left_roll_link" file="left_shoulder_roll_link.STL"/>
+	<mesh name="arm_right_roll_link" file="right_shoulder_roll_link.STL"/>
+	<mesh name="arm_left_upper" file="left_upper_arm.STL"/>
+	<mesh name="arm_right_upper" file="right_upper_arm.STL"/>
+	<mesh name="arm_left_forearm" file="left_forearm.STL"/>
+	<mesh name="arm_right_forearm" file="right_forearm.STL"/>
+
+	<mesh name="crate" file="crate-for-sim.STL" scale="0.001 0.001 0.001"/>
+	<mesh name="table" file="table-for-sim.STL" scale="0.001 0.001 0.001"/>
+
+
 	<texture type = "skybox" builtin = "gradient" width = "128" height = "128" rgb1 = "0.95 0.99 0.99" 
          rgb2 = "0.7 0.7 0.7"/>    
     <texture name = "texgeom" type = "cube" builtin = "flat" mark = "cross" width = "127" height = "1278" 
@@ -70,6 +86,7 @@
 		<joint axis = "0 1 0" pos = "0 0 0" name = "rotate_pitch" type = "hinge" limited = "false" damping="0"/>
 		<joint axis = "0 0 1" pos = "0 0 0" name = "rotate_yaw" type = "hinge" limited = "false" damping="0"/>  
 		<geom quat="0 0 0 1" type="mesh" rgba="0.7 0 0 1" mesh="torso_link" contype='0'/>
+		<geom quat="0 0 0 1" type="mesh" rgba="0 0 0.7 1" mesh="arm_pitch_motors" contype='0'/>
 		<!-- <geom quat="0.707107 -0.707107 0 0" type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="torso_link" class = "collision"/> -->
 		<geom name="torso_box" pos="0 0 0.01" size="0.07 0.15 0.15" type="box" rgba="0.1 0.4 0.1 0.0" class="collision"/>
 
@@ -104,11 +121,11 @@
 				  <inertial pos="0.0033954 0 -0.0283579" quat="0 0 0 1" mass="0.14232" diaginertia="1.19095587491302E-05 0.000133626524087711 0.000131614380502955"/>
 				  <joint name="right_ankle" pos="0 0 0" axis="0 -1 0" limited = "true" range = "-0.785398 0.785398" armature=" 0.006" damping="1"/>
 				  <geom name = "rfoot" type="mesh" rgba="0.7 0 0 1" mesh="right_foot" euler="0 0 3.14159265359" contype='0'/>
- 				  <geom name = "right_foot_heel" pos = "-0.06 0 -0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
-				  <geom name = "right_foot_toe" pos = "0.06 0 -0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
+ 				  <geom name = "right_foot_heel" pos = "-0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
+				  <geom name = "right_foot_toe" pos = "0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-right"/>
 
-				  <geom name = "rfh" pos = "-0.06 0 -0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
-				  <geom name = "rft" pos = "0.06 0 -0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+				  <geom name = "rfh" pos = "-0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+				  <geom name = "rft" pos = "0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
                   <!-- <geom type='capsule' size='0.01' fromto='-0.06 0 0.0385 0.06 0 0.0385' class='collision-right'/> -->
 				  
 				</body>
@@ -152,11 +169,11 @@
 				  <inertial pos="0.0033954 0 -0.0283579" quat="0 0 0 1" mass="0.14232" diaginertia="1.19095587491302E-05 0.000133626524087711 0.000131614380502955"/>
 				  <joint name="left_ankle" pos="0 0 0" axis="0 -1 0" limited = "true" range = "-0.785398 0.785398" armature=" 0.006" damping="1"/>
 				  <geom name = "lfoot" type="mesh" rgba="0.7 0 0 1" mesh="left_foot" euler="0 0 3.14159265359" contype='0'/>
- 				  <geom name = "left_foot_heel" pos = "-0.06 0 -0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>
-				  <geom name = "left_foot_toe" pos = "0.06 0 -0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>
+ 				  <geom name = "left_foot_heel" pos = "-0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>
+				  <geom name = "left_foot_toe" pos = "0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  class = "collision-left"/>
 
-				  <geom name = "lfh" pos = "-0.06 0 -0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
-				  <geom name = "lft" pos = "0.06 0 -0.0485"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+				  <geom name = "lfh" pos = "-0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
+				  <geom name = "lft" pos = "0.06 0 -0.0516"  size = "0.001" type="sphere" rgba = "0.1 0.4 0.1 0.2"  contype='0'/>
                   <!-- <geom type='capsule' size='0.01' fromto='-0.06 0 0.0385 0.06 0 0.0385' class='collision-left'/> -->
 				  
 				</body>
@@ -168,6 +185,72 @@
 		  </body>
 		  
 		</body>
+
+		<body name="left_shoulder_roll_motor" pos="-0.0025027 0.2297 0.2315" quat="1 0 0 0" gravcomp="0">
+		
+		  <inertial pos="-0.057242 -0.016638 0" quat="0 0 0 1" mass="0.00000001" diaginertia="0.001 0.001 0.001"/>
+		  <joint name="left_shoulder_pitch" pos="0 0 0" axis="0 1 0" limited = "true" range = "-2.5708 2.5708" armature=" 0.006"/>
+		  <geom type="mesh" rgba="0 0.5 0 1" mesh="arm_left_roll_motor" contype='0'/>
+		  
+				<body name="left_shoulder_roll_link" pos="0 0 0" quat="1 0 0 0" gravcomp="0">
+
+					<inertial pos="0 0 0" quat="0 0 0 1" mass="0.00000001" diaginertia="0.001 0.001 0.001"/>
+					<joint name="left_shoulder_roll" pos="0 0 0" axis="1 0 0" limited = "true" range = "-2.5708 2.5708" armature=" 0.006"/>
+					<geom type="mesh" rgba="0.7 0.5 0 1" mesh="arm_left_roll_link" contype='0'/>
+
+					<body name="left_upper_link" pos="0 0 0" quat="1 0 0 0" gravcomp="0">
+
+						<inertial pos="0.00025813 0.0039725 -0.062289" quat="0 0 0 1" mass="0.000000001" diaginertia="0.001 0.001 0.001"/>
+						<joint name="left_shoulder_yaw" pos="0 0 0" axis="0 0 1" limited = "true" range = "-2.5708 2.5708" armature=" 0.006"/>
+						<geom type="mesh" rgba="0.0 0.0 0.7 1" mesh="arm_left_upper" contype='0'/>
+
+						<body name="left_forearm_link" pos="0 0 -0.179" quat="1 0 0 0" gravcomp="0">
+
+							<inertial pos="0 0 -0.14" quat="0 0 0 1" mass="0.0000005" diaginertia="0.001 0.001 0.001"/>
+							<joint name="left_elbow" pos="0 0 0" axis="0 1 0" limited = "true" range = "-2.5708 2.5708" armature=" 0.006"/>
+							<geom type="mesh" rgba="0.7 0.0 0.0 1" mesh="arm_left_forearm" contype='0'/>
+							<geom name = "left_hand" pos = "0.003 0 -0.227"  size = "0.03" type="sphere" rgba = "0.1 0.4 0.1 0.1"  class = "collision"  condim = '3' conaffinity = '15'/>
+
+						</body>
+
+					</body>
+
+				</body>
+		  
+		</body>
+
+		<body name="right_shoulder_roll_motor" pos="-0.0025027 -0.2297 0.2315" quat="1 0 0 0" gravcomp="0">
+		
+		  <inertial pos="-0.057242 0.016638 0" quat="0 0 0 1" mass="0.00000001" diaginertia="0.001 0.001 0.001"/>
+		  <joint name="right_shoulder_pitch" pos="0 0 0" axis="0 1 0" limited = "true" range = "-2.5708 2.5708" armature=" 0.006"/>
+		  <geom type="mesh" rgba="0 0.5 0 1" mesh="arm_right_roll_motor" contype='0'/>
+		  
+		  <body name="right_shoulder_roll_link" pos="0 0 0" quat="1 0 0 0" gravcomp="0">
+
+				<inertial pos="0 0 0" quat="0 0 0 1" mass="0.000000001" diaginertia="0.001 0.001 0.001"/>
+				<joint name="right_shoulder_roll" pos="0 0 0" axis="1 0 0" limited = "true" range = "-2.5708 2.5708" armature=" 0.006"/>
+				<geom type="mesh" rgba="0.7 0.5 0 1" mesh="arm_right_roll_link" contype='0'/>
+
+					<body name="right_upper_link" pos="0 0 0" quat="1 0 0 0" gravcomp="0">
+
+						<inertial pos="0.00025813 -0.0039725 -0.062289" quat="0 0 0 1" mass="0.0000001" diaginertia="0.001 0.001 0.001"/>
+						<joint name="right_shoulder_yaw" pos="0 0 0" axis="0 0 1" limited = "true" range = "-2.5708 2.5708" armature=" 0.006"/>
+						<geom type="mesh" rgba="0.0 0.0 0.7 1" mesh="arm_right_upper" contype='0'/>
+
+						<body name="right_forearm_link" pos="0 0 -0.179" quat="1 0 0 0" gravcomp="0">
+
+							<inertial pos="0 0 -0.14" quat="0 0 0 1" mass="0.000005" diaginertia="0.001 0.001 0.001"/>
+							<joint name="right_elbow" pos="0 0 0" axis="0 1 0" limited = "true" range = "-2.5708 2.5708" armature=" 0.006"/>
+							<geom type="mesh" rgba="0.7 0.0 0.0 1" mesh="arm_right_forearm" contype='0'/>
+							<geom name = "right_hand" pos = "0.003 0 -0.227"  size = "0.03" type="sphere" rgba = "0.1 0.4 0.1 0.1"  class = "collision"  condim = '3' conaffinity = '15'/>
+
+						</body>
+
+					</body>
+
+			</body>
+
+		</body>
 		
 	</body>	
 	
@@ -175,6 +258,8 @@
 	<body name="target" mocap="true" pos="0 0 -0.58" >
         <geom name="box" type="box" size="0.2 0.25 0.001" rgba="0.2 0.2 1 0.5" contype='0'/>
     </body>
+
+
 
 </worldbody>
 
@@ -192,6 +277,17 @@
 	<motor name = 'left_knee_tq'  joint = 'left_knee'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
 	<motor name = 'right_ankle_tq'  joint = 'right_ankle'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
 	<motor name = 'left_ankle_tq'  joint = 'left_ankle'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+
+	<motor name = 'left_shoulder_pitch_tq'  joint = 'left_shoulder_pitch'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'left_shoulder_roll_tq'  joint = 'left_shoulder_roll'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'left_shoulder_yaw_tq'  joint = 'left_shoulder_yaw'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'left_elbow_tq'  joint = 'left_elbow'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+
+	<motor name = 'right_shoulder_pitch_tq'  joint = 'right_shoulder_pitch'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'right_shoulder_roll_tq'  joint = 'right_shoulder_roll'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'right_shoulder_yaw_tq'  joint = 'right_shoulder_yaw'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+	<motor name = 'right_elbow_tq'  joint = 'right_elbow'  gear = '1' ctrllimited = 'true' ctrlrange = '-100 100'/>
+
 
 </actuator>    
 

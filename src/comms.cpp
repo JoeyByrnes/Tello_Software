@@ -284,18 +284,18 @@ void process_foot_sensor_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* rob
 }
 
 															
-double joint_zeros[10] = {0,5497,11130,2728,4260,0,2599,4845,15047,5487}; //{0,5528,11090,2808,4290-15,0,2603,4367,15047+25,5530-30};
+double joint_zeros[10] = {0,5497,6478,2728,4260,0,2599,4845,15047,5487}; //{0,5528,11090,2808,4290-15,0,2603,4367,15047+25,5530-30};
 double joint_directions[10] =      { 1,-1,1,1,-1,    1,-1,-1,-1,1};
 double joint_measured_zero_offsets[10] = {0,0,-0.15708,0.382,0,0,0,0.15708,-0.382,0};
 void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* robot){
 
-	joint_zeros[2] = 11130 + l_h - 40;
-	joint_zeros[3] = 2728 + l_k  + 100;
-	joint_zeros[4] = 4260 + l_a  + 40;
+	joint_zeros[2] = 6478 + l_h  + 80;
+	joint_zeros[3] = 2728 + l_k  + 30;
+	joint_zeros[4] = 4260 + l_a  - 10;
 
-	joint_zeros[7] = 4845 + r_h  - 120 + 50;
-	joint_zeros[8] = 15047 + r_k - 50;
-	joint_zeros[9] = 5487 + r_a  - 40;
+	joint_zeros[7] = 4845 + r_h  - 120 + 15;
+	joint_zeros[8] = 15047 + r_k + 20;
+	joint_zeros[9] = 5487 + r_a  + 20;
 	
 	uint8_t id = Message.DATA[0];
 	uint16_t joint_position = (Message.DATA[1] << 8) | Message.DATA[2];
@@ -308,7 +308,7 @@ void process_joint_encoder_data(TPCANMsg Message, RoboDesignLab::DynamicRobot* r
 
 	robot->setJointEncoderPosition(joint_rad,static_cast<JointName>(id-20));
 	// robot->setJointEncoderVelocity(joint_rad_per_sec,static_cast<JointName>(id-20));
-	// if(id==26)
+	// if(id==22)
 	// {
 	// 	cout << "ID: " << ((int)id) << ",   joint_position-zero: " << joint_position << "             \r";
 	// }
@@ -767,6 +767,25 @@ void* rx_UDP( void * arg ){
 			human_dyn_data_2LISAs.fdyH_L = fdyH_Lval;
 			human_dyn_data_2LISAs.fdzH_L = fdzH_Lval;
 
+			human_dyn_data.xH = xHval;
+			human_dyn_data.dxH = dxHval;
+			human_dyn_data.pxH = pxHval;
+			human_dyn_data.yH = yHval;
+			human_dyn_data.dyH = dyHval;
+			human_dyn_data.pyH = pyHval;
+			human_dyn_data.fxH_R = fxH_Rval;
+			human_dyn_data.fyH_R = fyH_Rval;
+			human_dyn_data.fzH_R = fzH_Rval;
+			human_dyn_data.fxH_L = fxH_Lval;
+			human_dyn_data.fyH_L = fyH_Lval;
+			human_dyn_data.fzH_L = fzH_Lval;
+			human_dyn_data.fdxH_R = fdxH_Rval;
+			human_dyn_data.fdyH_R = fdyH_Rval;
+			human_dyn_data.fdzH_R = fdzH_Rval;
+			human_dyn_data.fdxH_L = fdxH_Lval;
+			human_dyn_data.fdyH_L = fdyH_Lval;
+			human_dyn_data.fdzH_L = fdzH_Lval;
+
 			// human_dyn_data_2LISAs.xH = 0;
 			// human_dyn_data_2LISAs.dxH = 0;
 			// human_dyn_data_2LISAs.pxH = 0;
@@ -787,6 +806,7 @@ void* rx_UDP( void * arg ){
 			// human_dyn_data_2LISAs.fdzH_L = fdzH_Lval;
 
 			pthread_mutex_lock(&mutex_ARMS);
+			
 			R_joystick_enc(0) = human_dyn_data.r_shoulder_yaw;
 			R_joystick_enc(1) = human_dyn_data.r_shoulder_roll;
 			R_joystick_enc(2) = human_dyn_data.r_shoulder_pitch;
@@ -815,6 +835,12 @@ void* rx_UDP( void * arg ){
 			// if(!(sim_conf.en_playback_mode))
 			// {
 				tello->controller->set_human_dyn_data_without_forces(human_dyn_data_2LISAs);
+				HMI_extended_data hmi_extended_data;
+				hmi_extended_data.DSP_ctrl_trigger_val = human_dyn_data.DSP_ctrl_trigger_val;
+				tello->controller->set_hmi_extended_data(hmi_extended_data);
+
+				// cout << "Button: " << hmi_extended_data.DSP_ctrl_trigger_val << endl;
+
 				// cout << "yH: " << human_dyn_data.yH << endl;
 			// }
 		}
@@ -1009,13 +1035,14 @@ void* BNO055_Comms( void * arg ){
 		
 
 		// tello->_gyro = gyro;
-		// cout << acc[0] << ", " << acc[1] << ", " << acc[2] << endl;
+		// cout << "ACC: " << acc[0] << ", " << acc[1] << ", " << acc[2] << endl;
+		// cout << "GYR: " << gyro[0] << ", " << gyro[1] << ", " << gyro[2] << endl;
 		// int delta_T = getDeltaT();
 		// double dt = (double)delta_T/1000000.0;
 		// tello->updatePosFromIMU(tello->_acc, tello->_ypr,dt,tello->_pos, tello->_vel);
 
 		//printf("POS: %.3f,\t %.3f,\t %.3f               \r",tello->_pos[0], tello->_pos[1], tello->_pos[2]);
-		std::cout.flush();
+		// std::cout.flush();
 
 		// if(print_index%50 == 0){
 		// 	printf("    %.5f, \t\t %.5f, \t\t %.5f                   \r", xyz[0], xyz[1], xyz[2]);
@@ -1045,9 +1072,11 @@ void* IMU_Comms( void * arg ){ //readImuMeasurements()
 	// Open the serial port to communicate with the VN100 IMU
     const std::string port = "/dev/imu";
 	optimize_serial_communication(port);
-    const int baudrate = 921600;
+    const int baudrate = 115200;
     VnSensor vs;
     vs.connect(port, baudrate);
+	// vs.writeSerialBaudRate(230400);
+	// vs.writeSettings();
     printf('g',"\n\nConnected to VN100 IMU on port %s \n",port.c_str());
 
 	// Make sure no generic async output is registered
@@ -1090,7 +1119,7 @@ void* IMU_Comms( void * arg ){ //readImuMeasurements()
 	// Configure binary output message
 	BinaryOutputRegister bor(
 		ASYNCMODE_PORT2,
-		1,  // update rate [ms]
+		4,  // update rate [ms]
 		COMMONGROUP_YAWPITCHROLL | COMMONGROUP_QUATERNION | COMMONGROUP_ANGULARRATE | COMMONGROUP_ACCEL,
 		TIMEGROUP_NONE, 
 		IMUGROUP_NONE,

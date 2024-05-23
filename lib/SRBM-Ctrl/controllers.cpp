@@ -1088,7 +1088,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v4(double& FxR, double& FyR,
     double Ky_DCM_mult = srb_params.Ky_DCM_mult; // multiplier of k_DCM for frontal plane control
     double T_DSP = srb_params.T_DSP; // assumed duration of DSP
     double swing_T_scaler = srb_params.swing_time_scaler; // human swing-time scaler for step time estimation
-    double ks = 2500.0; // human haptic spring stiffness in N/m (hard-code for now)
+    double ks = 0.0; // human haptic spring stiffness in N/m (hard-code for now)
 
     // Robot & Human Data ----------------------------------------------------------------
 
@@ -1103,13 +1103,13 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v4(double& FxR, double& FyR,
     // human data
     double xH = human_dyn_data.xH; // human x-CoM position in m
     double dxH = human_dyn_data.dxH; // human x-CoM velocity in m/s
+    double pxH = human_dyn_data.pxH; // human x-CoP position in m
     double yH = human_dyn_data.yH; // human y-CoM position in m
     double dyH = human_dyn_data.dyH; // human y-CoM velocity in m/s
     double pyH = human_dyn_data.pyH; // human y-CoP position in m
     double T_SSP = traj_planner_dyn_data.T_step; // human step time estimate in s
     if (use_adaptive_step_time) T_SSP = traj_planner_dyn_data.T_step_predicted * swing_T_scaler; // adjusted human step time estimate in s
-
-    double DSP_ctrl_trigger_val = hmi_extended_data.DSP_ctrl_trigger_val; // DSP control mode trigger val (not pressed = -1, pressed = 1)
+    double ctrl_mode_trigger_val = hmi_extended_data.DSP_ctrl_trigger_val; // control mode trigger val (not pressed = -1, pressed = 1)
 
     // human generated robot reference data 
     double xHR = traj_planner_dyn_data.xHR; // human generated robot reference CoM position in m
@@ -1149,6 +1149,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v4(double& FxR, double& FyR,
     double ky_DCM = Ky_DCM_mult * k_DCM; // feedback gain for frontal plane normalized DCM tracking in N
 
     // LIPM variables (CoM relative to the CoP)
+    double xH_LIP = xH - pxH; // HLIP sagittal plane
     double xHR_LIP = xHR - pxHR; // HRLIP sagittal plane in m
     double yH_LIP = yH - pyH; // HLIP frontal plane in m
 
@@ -1160,6 +1161,7 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v4(double& FxR, double& FyR,
     double FxH_spring = -1.0 * ks * xH; // HLIP haptic spring force in N
 
     // convergent (CCM) & divergent (DCM) component of motion variables
+    double xDCMH = xH_LIP + (dxH / wH); // HLIP frontal plane DCM in m (local)
     double xCCMHR = xHR - (dxHR / wR); // HRLIP sagittal plane CCM in m
     double xDCMHR = xHR + (dxHR / wR); // HRLIP sagittal plane DCM in m
     double xDCMHR_SSP_plus = xHR_SSP_plus + (dxHR_SSP_plus / wR); // HRLIP sagittal plane DCM at the beginning of SSP in m
@@ -1181,8 +1183,8 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v4(double& FxR, double& FyR,
     double xHR_next; // human generated robot reference CoM position update in m
     double dxHR_next; // human generated robot reference CoM velocity update in m/s  
 
-    // control variables (DSP mode)
-    int DSP_ctrl_mode; // DSP control mode (1 -> Walking, 2 -> Balancing) 
+    // control mode selected by the user
+    int ctrl_mode; //  1 -> Walking, 2 -> Balancing
 
     // Control variables (sagittal plane balance ctrl)
     double HLIP2DCMdelta; // mapping from human LIP variable to DCM delta in m
@@ -1240,15 +1242,19 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v4(double& FxR, double& FyR,
 
     // HRLIP trajectory generation 
 
-    // set DSP control mode
-    if (DSP_ctrl_trigger_val < 0.0) { // trigger not pressed (default)
-        DSP_ctrl_mode = 1; // walking mode
-    } else { // trigger pressed
-        DSP_ctrl_mode = 2; // balancing mode
+    // set control mode
+    ctrl_mode = 2; // hardcode balancing mode for now
+    // if (ctrl_mode_trigger_val < 0.0) { // trigger not pressed (default)
+    //     ctrl_mode = 2; // balancing mode
+    // } else { // trigger pressed
+    //     ctrl_mode = 1; // walking mode
+    // }
+
+    // human kinodynamic mapping variable (hardcode for balancing mode)
+    HLIP2DCMdelta = xDCMH * (hR / hH);
+    if (ctrl_mode_trigger_val > 0.0) { // trigger pressed
+        HLIP2DCMdelta = 0.0; // zero out DCM delta command -- continuous stepping-in-place?
     }
-    cout << "DSP_ctrl_mode: " << DSP_ctrl_mode << endl;
-    // human kinodynamic mapping variable
-    HLIP2DCMdelta = xH * (hR / hH);
 
     // compute HRLIP control CMP
     if (abs(FSM_val) == 1) { // SSP
@@ -1262,9 +1268,9 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v4(double& FxR, double& FyR,
     } else { // DSP
 
         // DSP ankle + hip strategy
-        if (DSP_ctrl_mode == 1) { // walking mode
+        if (ctrl_mode == 1) { // walking mode
             DCMdelta_comm = dxHR_DSP_plus * t_DSP; // maintain constant velocity through DSP (Hybrid-LIP approach)    
-        } else { // balancing mode (DSP_ctrl_mode == 2)
+        } else { // balancing mode (ctrl_mode == 2)
             DCMdelta_comm = HLIP2DCMdelta; // track human DCM position command
         }
 
@@ -1320,8 +1326,6 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v4(double& FxR, double& FyR,
     // update data 
     human_dyn_data.FyH_hmi = FyH_HMI; FyH_hmi_out = FyH_HMI;    
 
-    
-
     // Swing-leg Control ------------------------------------------------------------------ 
 
     // Update robot swing-leg commands based on human motion data & step placement strategy
@@ -1343,7 +1347,8 @@ void dash_ctrl::Human_Whole_Body_Dyn_Telelocomotion_v4(double& FxR, double& FyR,
         eps = (1.0 / wR) - (1.0 / s1) - T_DSP;
 
         // DCM offset to drive robot to P1 orbit at given state
-        xDCMR_offset_b = eps * dxR;
+        // xDCMR_offset_b = eps * dxR;
+        xDCMR_offset_b = 0.0; // hardcode for balancing mode
 
         // robot step placement strategy: conserve orbital energy & reach steady state periodic walking
         step_length = xDCMR_local - xDCMR_offset_b;

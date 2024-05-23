@@ -705,9 +705,17 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
                 traj_planner_dyn_data.sigma1H = wH*(1.0/(tanh((T_step/2.0)*wH)));
                 traj_planner_dyn_data.x_plus_HWRM = x_plus_HWRM;
 
-                // update beginning of SSP variables w/ hybrid reset (x_plus = -dx/sigma1, dx_plus = dx)
-                traj_planner_dyn_data.xHR_SSP_plus = (-1.0 * dxHR) / (wR * (1.0 / (tanh(wR * (t_SSP / 2.0)))));
-                traj_planner_dyn_data.dxHR_SSP_plus = dxHR;
+                // update beginning of SSP variables w/ hybrid reset 
+                // need to add if-else condition based on joystick trigger value
+                // hard-code balancing mode when running Human_Whole_Body_Dyn_Telelocomotion_v4 for now
+
+                // walking mode -- drive to P1 orbit
+                // traj_planner_dyn_data.xHR_SSP_plus = (-1.0 * dxHR) / (wR * (1.0 / (tanh(wR * (t_SSP / 2.0))))); // x_plus = -dx/sigma1
+                // traj_planner_dyn_data.dxHR_SSP_plus = dxHR; // dx_plus = dx
+
+                // balancing mode -- capture point
+                traj_planner_dyn_data.xHR_SSP_plus = (-1.0 / wR) * dxHR; // x_plus = -dx/wR
+                traj_planner_dyn_data.dxHR_SSP_plus = dxHR; // dx_plus = dx                
 
                 // re-initialize HRLIP state variables after hybrid reset
                 traj_planner_dyn_data.xHR = traj_planner_dyn_data.xHR_SSP_plus;

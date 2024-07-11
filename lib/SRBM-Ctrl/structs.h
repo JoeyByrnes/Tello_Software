@@ -242,6 +242,9 @@ struct Traj_planner_dyn_data
     double dxHR_SSP_plus;
     double xHR_DSP_plus;
     double dxHR_DSP_plus;
+    int ctrl_mode; 
+    double x0H;
+    double pxR_beg_step;
 };
 
 struct Teleop_Ref {

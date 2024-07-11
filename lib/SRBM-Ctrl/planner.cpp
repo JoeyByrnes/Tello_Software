@@ -372,7 +372,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == 1) // currently in SSP_L
     {
-        if ( ( ((grf_rf + grf_rb) > 10 ) && (lf1z <= 0.005 || lf2z <= 0.005) ) && s > 0.6) // enter DSP
+        if ( ( ((grf_rf + grf_rb) > 10 ) || (lf1z <= 0.005 || lf2z <= 0.005) ) && s > 0.6) // enter DSP
         {
             cout << "Setting FSM from 1 to 0,   time: " << t << endl;
             FSM_next = 0;
@@ -384,7 +384,7 @@ int dash_planner::SRB_FSM(SRB_Params srb_params,Traj_planner_dyn_data& traj_plan
     }
     else if (FSM_prev == -1) // currently in SSP_R
     {
-        if ( ( ((grf_lf + grf_lb) > 10 ) && (lf3z <= 0.005 || lf4z <= 0.005) ) && s > 0.6) // enter DSP
+        if ( ( ((grf_lf + grf_lb) > 10 ) || (lf3z <= 0.005 || lf4z <= 0.005) ) && s > 0.6) // enter DSP
         {
             cout << "Setting FSM from -1 to 0,   time: " << t << endl;
             FSM_next = 0;
@@ -450,7 +450,10 @@ void dash_planner::SRB_Init_Traj_Planner_Data(Traj_planner_dyn_data& traj_planne
     traj_planner_dyn_data.xHR_SSP_plus = 0.0; // initial CoM position of HRLIP at the beginning of SSP
     traj_planner_dyn_data.dxHR_SSP_plus = 0.0; // initial CoM velocity of HRLIP at the beginning of SSP
     traj_planner_dyn_data.xHR_DSP_plus = 0.0; // initial CoM position of HRLIP at the beginning of DSP
-    traj_planner_dyn_data.dxHR_DSP_plus = 0.0; // initial CoM velocity of HRLIP at the beginning of DSP   
+    traj_planner_dyn_data.dxHR_DSP_plus = 0.0; // initial CoM velocity of HRLIP at the beginning of DSP  
+    traj_planner_dyn_data.ctrl_mode = 2; // initialize control mode to balancing
+    traj_planner_dyn_data.x0H = 0.0; // initial human CoM home position for haptic spring
+    traj_planner_dyn_data.pxR_beg_step = 0.0; // x-direction stance foot location (used for defining robot local CoM)
     ::lfv0 = lfv0;
     ::lfdv0.setZero();
 
@@ -489,19 +492,49 @@ void dash_planner::SRB_Traj_Planner(
     VectorXd yaw_sinu_traj_params = srb_params.yaw_sinu_traj_params;
     int num_SRB_DoF = 6;
 
+    // set DSP commanded foot positions
     tello->controller->set_lfv_dsp_start(lfv_dsp_start);
+
+    // Controller Mode (telelocomotion v4) ------------------------------------------------
+
+    // get data
+    double ctrl_mode_trigger_val = hmi_extended_data.DSP_ctrl_trigger_val; // control mode trigger val (not pressed = -1, pressed = 1)
+    int ctrl_mode_prev = traj_planner_dyn_data.ctrl_mode; // current control mode (walking = 1, balancing = 2)
+    ctrl_mode_trigger_val = 1.0; // hardcode values
+
+    // set control mode
+    int ctrl_mode;
+    if (ctrl_mode_trigger_val < 0.0) { // trigger not pressed (default)
+        ctrl_mode = 2; // balancing mode
+    } else { // trigger pressed
+        ctrl_mode = 1; // walking mode
+    }   
+
+    // check for balancing mode to walking mode transition
+    double xH0, xHR_DSP_plus, dxHR_DSP_plus;
+    if ((ctrl_mode_prev != ctrl_mode) && (ctrl_mode == 1)) { // balancing to walking transition
+        traj_planner_dyn_data.xHR_DSP_plus = traj_planner_dyn_data.xHR; // update HRLIP DSP beginning of phase value for walking mode (CoM position)
+        traj_planner_dyn_data.dxHR_DSP_plus = traj_planner_dyn_data.dxHR; // update HRLIP DSP beginning of phase value for walking mode (CoM velocity)
+        traj_planner_dyn_data.x0H = human_dyn_data.xH; // update HLIP home position along force plate for walking mode        
+    }       
+
+    // update control mode
+    traj_planner_dyn_data.ctrl_mode = ctrl_mode;
+
+    // ------------------------------------------------------------------------------------
     
     // FSM
     FSM = SRB_FSM(srb_params, traj_planner_dyn_data,human_dyn_data, FSM_prev, t, lfv, u);
-    // dash_utils::start_timer();
+
+    // swing-time prediction
     if(planner_type == 2)
         predict_ssp_params(traj_planner_dyn_data,human_dyn_data, t);
-    // dash_utils::print_timer();
+
     // Update planner data
     traj_planner_dyn_data_gen(srb_params, human_params, traj_planner_dyn_data, human_dyn_data, t, FSM_prev, FSM, x, lfv);
     
+    // Control    
     double FxR, FyR;
-     // Control
     if (planner_type == 0)
     {
         // Basic balancing capability to track SRB state references
@@ -575,10 +608,11 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
     double hH = human_params.hLIP;
     double hR = srb_params.hLIP;
     double g = srb_params.g;
+    double T_DSP = srb_params.T_DSP; 
 
     // Get trajectory planner current data
     double t_sw_start = traj_planner_dyn_data.t_sw_start;
-     double swing_T_scaler = srb_params.swing_time_scaler;
+    double swing_T_scaler = srb_params.swing_time_scaler;
     double T_step = traj_planner_dyn_data.T_step;
     if(use_adaptive_step_time && !auto_mode) T_step = traj_planner_dyn_data.T_step_predicted*swing_T_scaler;
     double x_HWRM = traj_planner_dyn_data.x_HWRM;
@@ -587,8 +621,7 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
     double xHR = traj_planner_dyn_data.xHR;
     double dxHR = traj_planner_dyn_data.dxHR;
     double t_SSP = t - t_sw_start;
-
-    // cout << "    Planner uk_HWRM: " << uk_HWRM;
+    int ctrl_mode = traj_planner_dyn_data.ctrl_mode;
 
     // Get SRB states
     VectorXd pc = x.head(3);
@@ -683,6 +716,7 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
             // beginning of step data
             // set next SSP for planner_type = LIP_ang_mom_reg 
             if (planner_type == 1) { // planner_type = LIP_ang_mom_reg 
+
                 // update
                 traj_planner_dyn_data.next_SSP = next_SSP;
                 traj_planner_dyn_data.st2CoM_beg_step = pc - lfv.row(st_idx_R).transpose();
@@ -696,30 +730,18 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
                 // update
                 traj_planner_dyn_data.next_SSP = next_SSP;
                 traj_planner_dyn_data.sw_beg_step = lfv.row(sw_idx_R);
-                traj_planner_dyn_data.sw_beg_step(2) = -srb_params.hLIP ;
-                traj_planner_dyn_data.st_beg_step = lfv.row(st_idx_R);
-                traj_planner_dyn_data.sw_beg_step(0) = traj_planner_dyn_data.sw_beg_step(0) - (1.0/2.0)*ft_l;
-                traj_planner_dyn_data.st_beg_step(0) = traj_planner_dyn_data.st_beg_step(0) - (1.0/2.0)*ft_l;
-                st_beg_step_last = traj_planner_dyn_data.st_beg_step;
+                traj_planner_dyn_data.sw_beg_step(2) = -srb_params.hLIP;
+                traj_planner_dyn_data.sw_beg_step(0) = traj_planner_dyn_data.sw_beg_step(0) - (1.0/2.0)*ft_l;  
+                traj_planner_dyn_data.st_beg_step = lfv.row(st_idx_R); // change to swing idx
+                traj_planner_dyn_data.st_beg_step(0) = traj_planner_dyn_data.st_beg_step(0) - (1.0/2.0)*ft_l;                
+                st_beg_step_last = traj_planner_dyn_data.st_beg_step;                   
                 traj_planner_dyn_data.human_leg_joystick_pos_beg_step = human_leg_joystick_data.segment<3>(sw_idx_H);
                 traj_planner_dyn_data.sigma1H = wH*(1.0/(tanh((T_step/2.0)*wH)));
                 traj_planner_dyn_data.x_plus_HWRM = x_plus_HWRM;
 
-                // update beginning of SSP variables w/ hybrid reset 
-                // need to add if-else condition based on joystick trigger value
-                // hard-code balancing mode when running Human_Whole_Body_Dyn_Telelocomotion_v4 for now
-
-                // walking mode -- drive to P1 orbit
-                // traj_planner_dyn_data.xHR_SSP_plus = (-1.0 * dxHR) / (wR * (1.0 / (tanh(wR * (t_SSP / 2.0))))); // x_plus = -dx/sigma1
-                // traj_planner_dyn_data.dxHR_SSP_plus = dxHR; // dx_plus = dx
-
-                // balancing mode -- capture point
-                traj_planner_dyn_data.xHR_SSP_plus = (-1.0 / wR) * dxHR; // x_plus = -dx/wR
-                traj_planner_dyn_data.dxHR_SSP_plus = dxHR; // dx_plus = dx                
-
-                // re-initialize HRLIP state variables after hybrid reset
-                traj_planner_dyn_data.xHR = traj_planner_dyn_data.xHR_SSP_plus;
-                traj_planner_dyn_data.dxHR = traj_planner_dyn_data.dxHR_SSP_plus;
+                // HRLIP hybrid reset
+                traj_planner_dyn_data.xHR_SSP_plus = xHR; // x_plus = x
+                traj_planner_dyn_data.dxHR_SSP_plus = dxHR; // dx_plus = dx
 
             }
 
@@ -744,11 +766,29 @@ void dash_planner::traj_planner_dyn_data_gen(SRB_Params& srb_params, Human_param
             dash_dyn::HLIP_Reset_Map_SSP_DSP(x_plus_HWRM, x_minus_HWRM);            
 
             if (planner_type == 2) {
+
                 // traj_planner_dyn_data.T_step = T_step_final;
                 traj_planner_dyn_data.x_plus_HWRM = x_plus_HWRM;
-                // update HRLIP beginning of DSP variables   
-                traj_planner_dyn_data.xHR_DSP_plus = xHR;
-                traj_planner_dyn_data.dxHR_DSP_plus = dxHR;
+
+                // update pxR_beg_step (v4)
+                if (FSM_prev == 1) { // SSP_L
+                    traj_planner_dyn_data.pxR_beg_step = lfv.row(0)(0) - (1.0/2.0)*ft_l;    
+                } else { // SSP_R
+                    traj_planner_dyn_data.pxR_beg_step = lfv.row(2)(0) - (1.0/2.0)*ft_l;     
+                }
+
+                // HRLIP hybrid reset
+                if (ctrl_mode == 1) { // walking mode -- track HRLIP
+                    traj_planner_dyn_data.xHR_DSP_plus = (-1.0 * dxHR) * (((1.0) / (wR * (1.0 / (tanh(wR * (t_SSP / 2.0)))))) + T_DSP); // x_plus = -dx*((1/sigma1) + T_DSP)
+                    traj_planner_dyn_data.dxHR_DSP_plus = dxHR; // dx_plus = dx
+                } else { // balancing mode -- capture point
+                    traj_planner_dyn_data.xHR_DSP_plus = (-1.0 * dxHR) * (1.0 / wR); // x_plus = -dx/wR
+                    traj_planner_dyn_data.dxHR_DSP_plus = dxHR; // dx_plus = dx    
+                }   
+                // re-initialize HRLIP state variables after hybrid reset
+                traj_planner_dyn_data.xHR = traj_planner_dyn_data.xHR_DSP_plus;
+                traj_planner_dyn_data.dxHR = traj_planner_dyn_data.dxHR_DSP_plus;                
+
             }
 
             // terminate walking/stepping

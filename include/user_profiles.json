@@ -4,26 +4,26 @@
             "Height": 1.15,
             "Weight": 75,
             "name": "JB",
-            "srb_file": "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user-pd-configs/srb_pd_config_joey.json"
+            "srb_file": "/home/tello/Documents/GIT/Tello_Software/include/user-pd-configs/srb_pd_config_tello.json"
         },
         {
             "Height": 1.15,
             "Weight": 75,
             "name": "JB (A)",
-            "srb_file": "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user-pd-configs/srb_pd_config_joey_autonomous.json"
+            "srb_file": "/home/tello/Documents/GIT/Tello_Software/include/user-pd-configs/srb_pd_config_tello_autonomous.json"
         },
         {
             "Height": 1.2,
             "Weight": 75,
             "name": "GC",
-            "srb_file": "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user-pd-configs/srb_pd_config_guillermo.json"
+            "srb_file": "/home/tello/Documents/GIT/Tello_Software/include/user-pd-configs/srb_pd_config_guillermo.json"
         },
         {
             "Height": 1.2,
             "Weight": 75,
             "name": "GC (A)",
-            "srb_file": "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user-pd-configs/srb_pd_config_guillermo_autonomous.json"
+            "srb_file": "/home/tello/Documents/GIT/Tello_Software/include/user-pd-configs/srb_pd_config_guillermo_autonomous.json"
         }
     ],
-    "active_user": "JB"
+    "active_user": "GC"
 }

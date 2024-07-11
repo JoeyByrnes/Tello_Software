@@ -163,7 +163,7 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods)
     {
         impulse_force_newtons -=10.0;
     }
-    if(impulse_force_newtons > 30.0) impulse_force_newtons = 30.0;
+    if(impulse_force_newtons > 40.0) impulse_force_newtons = 40.0;
     if(impulse_force_newtons < 10.0) impulse_force_newtons = 10.0;
 
     if (act == GLFW_PRESS && key == GLFW_KEY_C)
@@ -932,21 +932,30 @@ void* screenRecord( void * arg )
             std::getline(iss2, token2);
             pos_y = std::stoi(token2)-72;
 
+
+
             std::ostringstream oss1;
             oss1 << size_x << 'x' << size_y;
             std::string window_size = oss1.str();
+
+            if(pos_y < 0) pos_y = 0;
+            if(pos_x < 0) pos_x = 0;
 
             std::ostringstream oss2;
             oss2 << pos_x << ',' << pos_y;
             std::string window_pos = oss2.str();
 
             cout << "pos x: " << pos_x << "   pos y: " << pos_y << "   size x: " << size_x << "   size y: " << size_y << endl;
+            
             recording_in_progress = true;
             // Child process - execute FFmpeg command
             cnt_str = to_string(recording_cnt);
             //execl("/usr/bin/ffmpeg", "ffmpeg", "-f", "x11grab", "-video_size", "3840x2160", /*"-loglevel", "quiet",*/ "-framerate", "30", "-i", ":1+eDP-1-1", "-c:v", "h264_nvenc", "-qp", "0", "ScreenCapture.mp4", NULL);
             //cout << "recording to: " << log_folder+"ScreenCapture_"+cnt_str+".mp4" << endl;
-            system(("taskset -c 14 ffmpeg -f x11grab -video_size "+window_size+" -loglevel quiet -framerate 30 -i $DISPLAY+"+window_pos+" -c:v h264_nvenc -qp 0 " + log_folder+"ScreenCapture_"+cnt_str+".mp4").c_str());
+            // system(("taskset -c 14 ffmpeg -f x11grab -video_size "+window_size+" -loglevel debug -framerate 30 -i $DISPLAY+"+window_pos+" -c:v h264_nvenc -qp 0 " + log_folder+"ScreenCapture_"+cnt_str+".mp4").c_str());
+            // system(("taskset -c 14 ffmpeg -f x11grab -video_size 1920x1080 -framerate 30 -i $DISPLAY+0,0 -c:v h264_nvenc -qp 0 " + log_folder+"ScreenCapture_"+cnt_str+".mp4").c_str());
+            system(("taskset -c 14 ffmpeg -f x11grab -video_size 1920x1080 -loglevel quiet -framerate 30 -i $DISPLAY+0,0 -c:v h264_nvenc -qp 0 " + log_folder+"ScreenCapture_"+cnt_str+".mp4").c_str());
+            
             recording_cnt++;
         }
         usleep(10000);
@@ -976,7 +985,7 @@ void* usbCamRecord( void * arg )
             usb_recording_in_progress = true;
             // Child process - execute FFmpeg command
             cnt_str = to_string(usb_recording_cnt);
-            system(("taskset -c 15 ffmpeg -f v4l2 -loglevel quiet -framerate 30 -video_size 1024x768 -input_format mjpeg -i /dev/video6 -vf \"transpose=1\"  -c:v h264_nvenc " + log_folder+"usb_camera_"+cnt_str+".mp4").c_str());
+            system(("taskset -c 15 ffmpeg -f v4l2 -loglevel quiet -framerate 30 -video_size 1024x768 -input_format mjpeg -i /dev/video0 -vf \"transpose=1\"  -c:v h264_nvenc " + log_folder+"usb_camera_"+cnt_str+".mp4").c_str());
             usb_recording_cnt++;
         }
         usleep(10000);

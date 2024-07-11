@@ -579,7 +579,7 @@ void dash_utils::writeTrajPlannerDataToCsv(const Traj_planner_dyn_data& data, co
         file << "x_HWRM,dx_HWRM,x_plus_HWRM_x,x_plus_HWRM_y,uk_HWRM,";
         file << "st_beg_step_x,st_beg_step_y,st_beg_step_z,y_LIP_offset,step_z_offset_R,step_z_offset_L,human_FSM,";
         file << "AH_predicted,AH_actual,T_predicted,T_actual,dx_HWRM_pre_impact,dxR_pre_impact,";
-        file << "xHR,dxHR,pxHR,xHR_SSP_plus,dxHR_SSP_plus,xHR_DSP_plus,dxHR_DSP_plus" << newline;
+        file << "xHR,dxHR,pxHR,xHR_SSP_plus,dxHR_SSP_plus,xHR_DSP_plus,dxHR_DSP_plus,ctrl_mode" << newline;
         first_log_run_tpdd = false;
     }
     file << (data.stepping_flg ? 1 : 0) << delimiter
@@ -612,7 +612,8 @@ void dash_utils::writeTrajPlannerDataToCsv(const Traj_planner_dyn_data& data, co
          << data.x_plus_HWRM.x() << delimiter
          << data.x_plus_HWRM.y() << delimiter
          << data.uk_HWRM << delimiter
-         << data.st_beg_step.x() << delimiter
+        //  << data.st_beg_step.x() << delimiter
+         << data.pxR_beg_step << delimiter
          << data.st_beg_step.y() << delimiter
          << data.st_beg_step.z() << delimiter
          << data.y_LIP_offset << delimiter
@@ -631,7 +632,8 @@ void dash_utils::writeTrajPlannerDataToCsv(const Traj_planner_dyn_data& data, co
          << data.xHR_SSP_plus << delimiter
          << data.dxHR_SSP_plus << delimiter
          << data.xHR_DSP_plus << delimiter
-         << data.dxHR_DSP_plus << newline;
+         << data.dxHR_DSP_plus << delimiter
+         << data.ctrl_mode << newline;
 
     file.close();
 }
@@ -1217,10 +1219,10 @@ void dash_utils::pack_data_to_hmi_with_ctrls_4LISAs(uint8_t* buffer, Human_dyn_d
     float_buffer[2] = data.my;
     float_buffer[3] = data.mz;
 
-    float_buffer[4] = 100;//data.fx_lim;
-    float_buffer[5] = 80;//data.fy_lim;
-    float_buffer[6] = 10;//data.my_lim;
-    float_buffer[7] = 10;//data.mz_lim;
+    float_buffer[4] = 120.0;//data.fx_lim;
+    float_buffer[5] = 80.0;//data.fy_lim;
+    float_buffer[6] = 1.0;//data.my_lim;
+    float_buffer[7] = 1.0;//data.mz_lim;
 
     float_buffer[8] = gain;
 

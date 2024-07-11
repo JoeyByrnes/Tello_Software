@@ -218,14 +218,14 @@ void* visualization_render_thread( void * arg )
     struct timespec next;
     clock_gettime(CLOCK_MONOTONIC, &next);
 
-    log_folder = createLogFolder("/home/joey/Desktop/tello_outputs/Logs/");
+    log_folder = createLogFolder("/home/tello/Desktop/tello_outputs/Logs/");
     dash_utils::setOutputFolder(log_folder);
 
-    sim_conf = readSimConfigFromFile("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/sim_config.json");
+    sim_conf = readSimConfigFromFile("/home/tello/Documents/GIT/Tello_Software/include/sim_config.json");
 
     std::vector<userProfile> profiles;
     std::string active_user;
-    readProfilesFromJson("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user_profiles.json",profiles, active_user);
+    readProfilesFromJson("/home/tello/Documents/GIT/Tello_Software/include/user_profiles.json",profiles, active_user);
     for(int i=0;i<profiles.size();i++)
     {
         if(active_user.compare(profiles[i].name) == 0)
@@ -354,7 +354,7 @@ void* visualization_render_thread( void * arg )
 
     ImFont* font;
     ImFont* fontSmall;
-    if (std::filesystem::is_directory("/home/tello")) {
+    if (std::filesystem::is_directory("/home/telloHW")) {
         //std::cout << "The directory /home/tello exists!" << std::endl;
         font = io.Fonts->AddFontFromFileTTF("./tello_files/fonts/roboto/Roboto-Light.ttf", baseFontSize);
     }
@@ -376,7 +376,7 @@ void* visualization_render_thread( void * arg )
 
 
     // create a vector of all the plot pngs for selecting playback option
-    std::string plotfolderPath = "/home/joey/Desktop/tello_outputs/Hardware_Motion_Library/Plots";
+    std::string plotfolderPath = "/home/tello/Desktop/tello_outputs/Hardware_Motion_Library/Plots";
     std::vector<std::string> pngFiles;
     std::vector<GLuint> image_textures;
     std::vector<std::string> image_names;
@@ -392,7 +392,7 @@ void* visualization_render_thread( void * arg )
             LoadTextureFromFile((plotfolderPath+"/"+name).c_str(), &tex, &im_width, &im_height);
             image_textures.push_back(tex);
             image_names.push_back(name.substr(0, name.length() - 4));
-            hddFiles.push_back("/home/joey/Desktop/tello_outputs/Hardware_Motion_Library/"+name.substr(0, name.length() - 4)+"/human_dyn_data.csv");
+            hddFiles.push_back("/home/tello/Desktop/tello_outputs/Hardware_Motion_Library/"+name.substr(0, name.length() - 4)+"/human_dyn_data.csv");
         }
     }
 
@@ -545,7 +545,7 @@ void* visualization_render_thread( void * arg )
             ImGui::Separator();
             if (ImGui::MenuItem(" " ICON_FA_SAVE "  Save Configuration"))
             { 
-                writeSimConfigToFile(sim_conf, "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/sim_config.json");
+                writeSimConfigToFile(sim_conf, "/home/tello/Documents/GIT/Tello_Software/include/sim_config.json");
             }
             ImGui::Separator();
             ImGui::EndMenu();
@@ -567,7 +567,7 @@ void* visualization_render_thread( void * arg )
                 if(ImGui::Button((" " + user.name + " ").c_str(),ImVec2(500, 0)))
                 {
                     activeUser = profiles[p];
-                    updateActiveUserInJson("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user_profiles.json",activeUser.name);
+                    updateActiveUserInJson("/home/tello/Documents/GIT/Tello_Software/include/user_profiles.json",activeUser.name);
                     initializeSRBMCtrl();
                 }
                 ImGui::Separator();
@@ -604,7 +604,7 @@ void* visualization_render_thread( void * arg )
                 {
                     if(pause_sim && !screen_recording && !usbcam_recording && !usbcam_hw_recording)
                     {
-                        std::string command = "cp -R " + log_folder + " /home/joey/Desktop/tello_outputs/Favorite_Logs/";
+                        std::string command = "cp -R " + log_folder + " /home/tello/Desktop/tello_outputs/Favorite_Logs/";
                         system(command.c_str());
                     }
                     else
@@ -968,7 +968,7 @@ void* visualization_render_thread( void * arg )
                     active_playback_log_index = i;
                     playback_changed = true;
                     playback_chosen = true;
-                    writeActivePlaybackLog(hddFiles[i],"/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/active_playback_log.json");
+                    writeActivePlaybackLog(hddFiles[i],"/home/tello/Documents/GIT/Tello_Software/include/active_playback_log.json");
                 }
             }
             ImGui::PopFont();

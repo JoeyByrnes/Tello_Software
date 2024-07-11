@@ -280,7 +280,7 @@ void dash_init::SRB_params_tello(SRB_Params& srb_params)
         srb_params.Kd_psiR = 3.34; // D gain for yaw tracking
         srb_params.QP_opt_sol_type = 2; // quadprog = 0, quadprog (active-set) = 1, qpOASES = 2 --> DEFAULT
         srb_params.W_wrench = 100.0; // cost function weight for satisfying desired net wrench
-        srb_params.W_u_minus_u0_norm = 1.0; // cost function weight for penalizing large GRFs that differ too much from the previous (helps with large internal forces that cancel)
+        srb_params.W_u_minus_u0_norm = 15.0; // cost function weight for penalizing large GRFs that differ too much from the previous (helps with large internal forces that cancel)
         srb_params.Act_const_type = 0; // joint torque based = 0 or motor torque based = 1
         srb_params.tau_m_max = 15.0; // maximum motor torque (15-20)
         srb_params.tau_m_stall = 15.0; // motor stall torque

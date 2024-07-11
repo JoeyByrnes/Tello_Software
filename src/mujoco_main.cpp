@@ -616,7 +616,7 @@ void initializeSRBMCtrl()
     lfdv0 = controller->get_lfdv0();
     lfv_dsp_start = lfv0;
 
-    if (std::filesystem::is_directory("/home/tello")) {
+    if (std::filesystem::is_directory("/home/telloHW")) {
         //std::cout << "The directory /home/tello exists!" << std::endl;
         if(simulation_mode == 1)
         {
@@ -640,9 +640,9 @@ void initializeSRBMCtrl()
         }
         if(simulation_mode == 2)
         {
-            dash_utils::parse_json_to_srb_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config_SRBsim.json",srb_params);
-            dash_utils::parse_json_to_pd_params("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config_SRBsim.json",swing_conf,posture_conf);
-            copyFile("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/srb_pd_config_SRBsim.json",log_folder);
+            dash_utils::parse_json_to_srb_params("/home/tello/Documents/GIT/Tello_Software/include/srb_pd_config_SRBsim.json",srb_params);
+            dash_utils::parse_json_to_pd_params("/home/tello/Documents/GIT/Tello_Software/include/srb_pd_config_SRBsim.json",swing_conf,posture_conf);
+            copyFile("/home/tello/Documents/GIT/Tello_Software/include/srb_pd_config_SRBsim.json",log_folder);
         }
             
     }
@@ -1076,14 +1076,14 @@ void* mujoco_Update_1KHz( void * arg )
     struct timespec next;
     clock_gettime(CLOCK_MONOTONIC, &next);
 
-    log_folder = createLogFolder("/home/joey/Desktop/tello_outputs/Logs/");
+    log_folder = createLogFolder("/home/tello/Desktop/tello_outputs/Logs/");
     dash_utils::setOutputFolder(log_folder);
 
-    sim_conf = readSimConfigFromFile("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/sim_config.json");
+    sim_conf = readSimConfigFromFile("/home/tello/Documents/GIT/Tello_Software/include/sim_config.json");
 
     std::vector<userProfile> profiles;
     std::string active_user;
-    readProfilesFromJson("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user_profiles.json",profiles, active_user);
+    readProfilesFromJson("/home/tello/Documents/GIT/Tello_Software/include/user_profiles.json",profiles, active_user);
     for(int i=0;i<profiles.size();i++)
     {
         if(active_user.compare(profiles[i].name) == 0)
@@ -1223,7 +1223,7 @@ void* mujoco_Update_1KHz( void * arg )
 
     ImFont* font;
     ImFont* fontSmall;
-    if (std::filesystem::is_directory("/home/tello")) {
+    if (std::filesystem::is_directory("/home/telloHW")) {
         //std::cout << "The directory /home/tello exists!" << std::endl;
         font = io.Fonts->AddFontFromFileTTF("./tello_files/fonts/roboto/Roboto-Light.ttf", baseFontSize);
     }
@@ -1245,7 +1245,7 @@ void* mujoco_Update_1KHz( void * arg )
 
 
     // create a vector of all the plot pngs for selecting playback option
-    std::string plotfolderPath = "/home/joey/Desktop/tello_outputs/Favorite_Logs/Plots";
+    std::string plotfolderPath = "/home/tello/Desktop/tello_outputs/Favorite_Logs/Plots";
     std::vector<std::string> pngFiles;
     std::vector<GLuint> image_textures;
     std::vector<std::string> image_names;
@@ -1261,7 +1261,7 @@ void* mujoco_Update_1KHz( void * arg )
             LoadTextureFromFile((plotfolderPath+"/"+name).c_str(), &tex, &im_width, &im_height);
             image_textures.push_back(tex);
             image_names.push_back(name.substr(0, name.length() - 4));
-            hddFiles.push_back("/home/joey/Desktop/tello_outputs/Favorite_Logs/"+name.substr(0, name.length() - 4)+"/human_dyn_data.csv");
+            hddFiles.push_back("/home/tello/Desktop/tello_outputs/Favorite_Logs/"+name.substr(0, name.length() - 4)+"/human_dyn_data.csv");
         }
     }
 
@@ -1299,7 +1299,7 @@ void* mujoco_Update_1KHz( void * arg )
             // cout << "Impulse Applied" << endl;
             // dash_utils::start_timer();
         }
-        if(d->time - impulse_start_time > 0.1 && impulse_active)
+        if(d->time - impulse_start_time > 0.15 && impulse_active)
         {
             mju_zero(d->qfrc_applied, m->nv);
             push_force[0] = 0;
@@ -1452,7 +1452,7 @@ void* mujoco_Update_1KHz( void * arg )
             ImGui::Separator();
             if (ImGui::MenuItem(" " ICON_FA_SAVE "  Save Configuration"))
             { 
-                writeSimConfigToFile(sim_conf, "/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/sim_config.json");
+                writeSimConfigToFile(sim_conf, "/home/tello/Documents/GIT/Tello_Software/include/sim_config.json");
             }
             ImGui::Separator();
             ImGui::EndMenu();
@@ -1474,7 +1474,7 @@ void* mujoco_Update_1KHz( void * arg )
                 if(ImGui::Button((" " + user.name + " ").c_str(),ImVec2(500, 0)))
                 {
                     activeUser = profiles[p];
-                    updateActiveUserInJson("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/user_profiles.json",activeUser.name);
+                    updateActiveUserInJson("/home/tello/Documents/GIT/Tello_Software/include/user_profiles.json",activeUser.name);
                     initializeSRBMCtrl();
                 }
                 ImGui::Separator();
@@ -1511,7 +1511,7 @@ void* mujoco_Update_1KHz( void * arg )
                 {
                     if(pause_sim && !screen_recording && !usbcam_recording && ! usbcam_hw_recording)
                     {
-                        std::string command = "cp -R " + log_folder + " /home/joey/Desktop/tello_outputs/Favorite_Logs/";
+                        std::string command = "cp -R " + log_folder + " /home/tello/Desktop/tello_outputs/Favorite_Logs/";
                         system(command.c_str());
                     }
                     else
@@ -1839,7 +1839,7 @@ void* mujoco_Update_1KHz( void * arg )
                     active_playback_log_index = i;
                     playback_changed = true;
                     playback_chosen = true;
-                    writeActivePlaybackLog(hddFiles[i],"/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/active_playback_log.json");
+                    writeActivePlaybackLog(hddFiles[i],"/home/tello/Documents/GIT/Tello_Software/include/active_playback_log.json");
                 }
             }
             ImGui::PopFont();
@@ -2417,10 +2417,10 @@ void* Human_Playback( void * arg )
 
 	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
 
-    std::string active_log = readActivePlaybackLog("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/active_playback_log.json");
-    // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Desktop/tello_outputs/Logs/05-28-23__23-26-37/human_dyn_data.csv");
-    // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Desktop/tello_outputs/teleop/5-15_to_16/5-16-23-stepping-with-no-sim/human_dyn_data.csv");
-    // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/joey/Documents/hdd-tuning.csv");
+    std::string active_log = readActivePlaybackLog("/home/tello/Documents/GIT/Tello_Software/include/active_playback_log.json");
+    // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/tello/Desktop/tello_outputs/Logs/05-28-23__23-26-37/human_dyn_data.csv");
+    // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/tello/Desktop/tello_outputs/teleop/5-15_to_16/5-16-23-stepping-with-no-sim/human_dyn_data.csv");
+    // std::vector<Human_dyn_data> hdd_vec = dash_utils::readHumanDynDataFromFile("/home/tello/Documents/hdd-tuning.csv");
 
     std::string logPath = removeTextAfterLastSlash(active_log);
 
@@ -2649,7 +2649,7 @@ void* Human_Playback( void * arg )
             }
             else if(sim_conf.en_playback_mode)
             {
-                active_log = readActivePlaybackLog("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/active_playback_log.json");
+                active_log = readActivePlaybackLog("/home/tello/Documents/GIT/Tello_Software/include/active_playback_log.json");
                 hdd_vec = dash_utils::readHumanDynDataFromFile(active_log);
                 hdd_cnt = 0;
                 playback_changed = false;
@@ -2687,7 +2687,7 @@ void* Animate_Log( void * arg )
 
 	RoboDesignLab::DynamicRobot* tello = reinterpret_cast<RoboDesignLab::DynamicRobot*>(dynamic_robot_ptr);
 
-    std::string logPath = removeTextAfterLastSlash(readActivePlaybackLog("/home/joey/Documents/PlatformIO/Projects/Tello_Software/include/active_animation_log.json"));
+    std::string logPath = removeTextAfterLastSlash(readActivePlaybackLog("/home/tello/Documents/GIT/Tello_Software/include/active_animation_log.json"));
     cout << "LogPath: " << logPath << endl;
     std::vector<Vector2d> time_vec = dash_utils::readTimeDataFromFile(logPath + "t_and_FSM.csv");
     std::vector<VectorXd> x_vec = dash_utils::readVectorXdfromCSV(logPath + "x.csv");
@@ -2769,12 +2769,13 @@ void* Animate_Log( void * arg )
                     // curr_x.segment<3>(3) = CoM_pos;
                     // curr_x.segment<3>(3) = CoM_rpy;
                     tello->controller->set_x(curr_x);
-                    // tello->controller->set_q(q_tello);
+                    tello->controller->set_q(q_tello);
 
                     set_mujoco_state(curr_x);
 
                     cout << "CoM_vel: " << CoM_vel.transpose() << "       \r";
 
+                    CoM_pos = curr_x.segment<3>(0);
                     d->mocap_pos[0] = CoM_pos(0);
                     d->mocap_pos[1] = CoM_pos(1);
                     d->mocap_pos[2] = CoM_pos(2);

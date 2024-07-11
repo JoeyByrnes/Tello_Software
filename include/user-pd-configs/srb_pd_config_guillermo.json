@@ -18,11 +18,11 @@
       "Step_Height": 0.03,
       "Walking_Speed": 0.5,
       
-      "Kx_DCM_mult": 10.0,
-      "Ky_DCM_mult": 20.0,
+      "Kx_DCM_mult": 15.0,
+      "Ky_DCM_mult": 25.0,
 
       "KxDCMH": 1.0,
-      "T_DSP"  : 0.15,
+      "T_DSP"  : 0.2,
       "xDCMH_deadband": 0.05,
       "swing_time_scaler": 0.6
     },
@@ -57,7 +57,7 @@
       "Knee_Kp": 2500,
       "Knee_Kd": 4,
       
-      "Ankle_Kp": 1000,
-      "Ankle_Kd": 2
+      "Ankle_Kp": 1500,
+      "Ankle_Kd": 4
     }
   }
